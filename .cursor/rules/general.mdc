@@ -1,0 +1,156 @@
+---
+description: Project overview and architecture for Aggregato RSS aggregator
+globs: ["**/*.py", "**/*.html", "**/*.js"]
+alwaysApply: false
+---
+
+# Aggregato Project Overview
+
+Django-based RSS feed aggregator that fetches **full article content** (not just headlines) using Playwright for browser automation.
+
+## Design Principles
+
+### SOLID Principles
+
+Follow SOLID design principles throughout the codebase:
+
+- **Single Responsibility**: Each class/function has one well-defined purpose
+- **Open/Closed**: Extend functionality via inheritance/composition, not modification
+- **Liskov Substitution**: Subtypes must be substitutable for base types (e.g., all aggregators work with BaseAggregator interface)
+- **Interface Segregation**: Prefer focused interfaces (BaseAggregator uses mixins: FetchMixin, ExtractMixin, ProcessMixin, OptionsMixin)
+- **Dependency Inversion**: Depend on abstractions (aggregator plugin system uses base classes, services use dependency injection)
+
+### KISS (Keep It Simple, Stupid)
+
+- **Favor simplicity over cleverness**: Write clear, readable code
+- **Avoid over-engineering**: Don't add features/abstraction until needed
+- **Be explicit**: Prefer explicit code over implicit magic
+- **Minimize dependencies**: Use Django's built-in features when possible
+
+### Fat Services, Thin Models/Views
+
+Business logic lives in **service classes** (`core/services/`, `api/services/`), not in models or views:
+
+**Good - Service layer:**
+```python
+# core/services/feed_service.py
+class FeedService:
+    def reload_feed(self, feed: Feed) -> tuple[int, list[str]]:
+        """Fetch and process articles for a feed."""
+        # All aggregation logic here
+        aggregator_class = self.get_feed_aggregator_class(feed)
+        aggregator = aggregator_class(feed)
+        return aggregator.aggregate()
+
+# core/views.py
+def reload_feed_view(request, feed_id):
+    feed_service = FeedService()
+    count, errors = feed_service.reload_feed(feed)
+    return JsonResponse({"count": count, "errors": errors})
+```
+
+**Bad - Logic in views/models:**
+```python
+# DON'T do this - logic in view
+def reload_feed_view(request, feed_id):
+    feed = Feed.objects.get(pk=feed_id)
+    aggregator_class = get_aggregator_by_id(feed.aggregator).cls
+    aggregator = aggregator_class(feed)
+    count, errors = aggregator.aggregate()  # Business logic in view!
+    return JsonResponse({"count": count})
+```
+
+**Service Layer Benefits:**
+- Testable in isolation
+- Reusable across views, APIs, CLI commands, and tasks
+- Clear separation of concerns
+- Easier to maintain and refactor
+
+## Core Data Flow
+
+1. **Feed** model stores RSS source URL and aggregator ID
+2. **Aggregator** plugin fetches RSS → extracts full content via Playwright → creates **Article** records
+3. **UniversalFeed** (`core/feeds.py`) serves articles as RSS 2.0 at `/feeds/<feed_id>/`
+
+## Key Modules
+
+| Module | Purpose |
+|--------|---------|
+| `aggregators/base/` | BaseAggregator class with mixins (fetch, extract, process, options) |
+| `aggregators/*.py` | Individual aggregator plugins (auto-discovered) |
+| `core/models.py` | `Feed` and `Article` models |
+| `core/services/` | Business logic services (feed, article, aggregation, icon, discovery) |
+| `core/feeds.py` | `UniversalFeed` RSS generation class |
+| `core/admin.py` | Admin with aggregator dropdown and "Run aggregation" action |
+| `core/tasks.py` | Django-Q2 scheduled tasks |
+| `api/models.py` | `Group`, `GReaderAuthToken`, `UserArticleState` |
+| `api/views.py` | Google Reader API at `/api/greader/` |
+| `api/services/` | Google Reader API business logic services |
+| `api_v1/` | Modern REST API (Django Ninja) with OpenAPI docs at `/api/v1/docs` |
+| `aggregators/reddit.py` | Reddit aggregation logic (creates Article records from subreddit posts) |
+| `aggregators/youtube.py` | YouTube aggregation logic (creates Article records from channel videos) |
+
+## Project Structure
+
+```
+aggregato/
+├── backend/
+│   ├── aggregato/           # Django settings (settings.py, urls.py)
+│   ├── core/                # Core app
+│   │   ├── models.py        # Feed and Article models
+│   │   ├── services/        # Business logic layer
+│   │   │   ├── feed_service.py           # Feed operations
+│   │   │   ├── article_service.py        # Article operations
+│   │   │   ├── aggregation_service.py    # Aggregation orchestration
+│   │   │   ├── icon_service.py           # Icon/favicon fetching
+│   │   │   └── feed_discovery_service.py # RSS feed discovery
+│   │   ├── admin.py         # Django admin with aggregator actions
+│   │   ├── feeds.py         # UniversalFeed RSS generation
+│   │   └── tasks.py         # Django-Q2 scheduled tasks
+│   ├── api/                 # Google Reader API compatibility
+│   │   ├── models.py        # Group, GReaderAuthToken, UserArticleState
+│   │   ├── views.py         # Google Reader API endpoints
+│   │   └── services/        # Google Reader business logic
+│   ├── api_v1/              # Modern REST API (Django Ninja)
+│   │   ├── endpoints/       # API endpoint modules
+│   │   ├── schemas/         # Pydantic request/response schemas
+│   │   └── api.py           # Main API router with OpenAPI docs
+│   ├── aggregators/         # Aggregator plugins (auto-discovered)
+│   │   ├── base/            # BaseAggregator framework with mixins
+│   │   ├── heise.py         # Example: Heise.de aggregator
+│   │   ├── reddit.py        # Reddit subreddit aggregator
+│   │   ├── youtube.py       # YouTube channel aggregator
+│   │   ├── podcast.py       # Podcast RSS aggregator
+│   │   └── full_website.py  # Generic full-content aggregator
+│   └── manage.py
+├── frontend/                # Angular frontend (optional)
+└── .cursor/                 # Development documentation
+    ├── rules/               # Coding guidelines and patterns
+    └── hooks/               # Pre-commit validation
+```
+
+## User Access Control
+
+- **Regular users**: See own feeds/subreddits + shared content (`user=NULL`)
+- **Shared content** (`user=NULL`): Visible to all users
+- **Superusers**: See ALL content from all users
+
+Query pattern for user filtering:
+```python
+from django.db.models import Q
+
+# Regular users
+queryset.filter(Q(user=request.user) | Q(user__isnull=True))
+
+# Superusers - no filtering
+queryset.all()
+```
+
+## Environment Configuration
+
+All settings via environment variables. Key vars:
+- `SECRET_KEY`, `DEBUG`, `ALLOWED_HOSTS`, `DATABASE_URL`
+- `AGGREGATION_SCHEDULE` (cron format for Django-Q2)
+- `REDDIT_CLIENT_ID`, `REDDIT_CLIENT_SECRET` (for Reddit integration)
+
+New env vars: add to `settings.py` + `.env.example` + README table.

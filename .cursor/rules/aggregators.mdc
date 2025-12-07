@@ -1,0 +1,181 @@
+---
+description: Creating and modifying aggregator plugins
+globs: ["aggregators/**/*.py"]
+alwaysApply: false
+---
+
+# Aggregator Plugin System
+
+## Quick Start
+
+Create `aggregators/my_site.py`:
+
+```python
+"""Aggregator for My Site RSS feeds."""
+
+from aggregators.base import BaseAggregator
+
+
+class MySiteAggregator(BaseAggregator):
+    """Aggregator for My Site."""
+
+    # REQUIRED: Unique identifier
+    id = "my_site"
+
+    # REQUIRED: "managed" (pre-configured URL) or "custom" (user provides URL)
+    type = "managed"
+
+    # REQUIRED: Human-readable name (shown in admin dropdown)
+    name = "My Site"
+
+    # REQUIRED: Example/default feed URL
+    url = "https://example.com/feed.xml"
+
+    # REQUIRED: Description of what this aggregator does
+    description = "Full-text articles from My Site"
+
+    # OPTIONAL: CSS selectors for elements to remove
+    selectors_to_remove = [
+        "nav", "footer", ".advertisement", ".social-share"
+    ]
+
+    # OPTIONAL: Wait for this element before extracting content
+    wait_for_selector = ".article-content"
+
+    # OPTIONAL: Playwright timeout in milliseconds
+    fetch_timeout = 30000
+```
+
+## Aggregator Types
+
+### Managed Aggregators
+- Pre-configured URL in class
+- One-click enable in admin
+- Example: `heise.py`, `tagesschau.py`
+
+### Custom Aggregators
+- User provides feed URL
+- Generic content extraction
+- Example: `full_website.py`
+
+## Common Customizations
+
+### Skip Unwanted Articles
+
+```python
+def should_skip_article(self, article: RawArticle) -> tuple[bool, str | None]:
+    """Skip sponsored or unwanted content."""
+    skip_terms = ["[SPONSORED]", "Advertisement", "heise+"]
+
+    if any(term in article.title for term in skip_terms):
+        return True, f"Skipping filtered: {article.title}"
+
+    return super().should_skip_article(article)
+```
+
+### Custom Content Extraction
+
+```python
+def extract_content(self, article: RawArticle) -> None:
+    """Extract content from specific container."""
+    from bs4 import BeautifulSoup
+
+    soup = BeautifulSoup(article.html, "html.parser")
+
+    # Find main article container
+    main = soup.select_one("article.post-content, .story-body")
+    if main:
+        article.html = str(main)
+```
+
+### Configuration Options
+
+```python
+# Define options (shown in admin)
+options = {
+    "max_comments": {
+        "type": "integer",
+        "label": "Maximum comments",
+        "help_text": "Number of comments to extract (0 to disable)",
+        "default": 0,
+        "min": 0,
+        "max": 100,
+    },
+    "traverse_multipage": {
+        "type": "boolean",
+        "label": "Traverse multi-page articles",
+        "default": False,
+    },
+}
+
+# Access options at runtime
+def process_article(self, article, is_first=False):
+    max_comments = self.get_option("max_comments", 0)
+    if max_comments > 0:
+        # Extract comments...
+        pass
+    return super().process_article(article, is_first)
+```
+
+## BaseAggregator Lifecycle
+
+1. `on_aggregation_start()` - Called before processing
+2. `fetch_rss_feed(url)` - Fetch RSS with feedparser
+3. For each entry:
+   - `parse_entry(entry)` → `RawArticle`
+   - `should_skip_article(article)` → Skip check
+   - `process_article(article)`:
+     - `fetch_article_html(article)` - Playwright fetch
+     - `extract_content(article)` - Content extraction
+     - `remove_unwanted_elements(article)` - Remove selectors
+     - `sanitize_content(article)` - HTML sanitization
+     - `standardize_format(article)` - Add header image, source link
+   - `save_article(article, content)` - Save to database
+   - `on_article_created(article)` - Post-save hook
+4. `on_aggregation_complete(count)` - Called after all articles
+
+## API-Based Aggregators
+
+Some aggregators use external APIs instead of RSS feeds. Examples:
+
+### YouTube Aggregator (`youtube.py`)
+
+Uses YouTube Data API v3 to fetch videos from channels:
+
+```python
+class YouTubeAggregator(BaseAggregator):
+    id = "youtube"
+    type = "social"  # Uses identifier instead of URL
+    name = "YouTube Channel"
+    
+    # Override fetch_rss_feed to use API instead
+    def fetch_rss_feed(self, feed_identifier: str) -> Any:
+        """Fetch videos using YouTube Data API v3."""
+        youtube = get_youtube_client()  # Requires YOUTUBE_API_KEY
+        # ... API calls to channels.list, playlistItems.list, videos.list
+        # Return mock feedparser-like structure
+        return MockFeed(entries)
+```
+
+**Key differences from RSS-based aggregators:**
+- Uses `type = "social"` (identifier-based, not URL-based)
+- Overrides `fetch_rss_feed()` to make API calls
+- Converts API responses to feedparser-like structure for compatibility
+- Requires API credentials in Django settings (`YOUTUBE_API_KEY`)
+- No web scraping or RSS parsing needed
+
+**Pattern for API-based aggregators:**
+1. Override `fetch_rss_feed()` to make API calls
+2. Convert API responses to entry-like dicts with: `title`, `link`, `published_parsed`, `summary`, etc.
+3. Return a mock feedparser object with `.entries` list
+4. Rest of the pipeline (parse_entry, process_article, save_article) works the same
+
+See `aggregators/youtube.py` for a complete example.
+
+## Reference Files
+
+- `aggregators/base/aggregator.py` - BaseAggregator class
+- `aggregators/heise.py` - Complex example with comments extraction
+- `aggregators/full_website.py` - Simple generic aggregator
+- `aggregators/youtube.py` - API-based aggregator example (YouTube Data API v3)
+- `aggregators/reddit.py` - API-based aggregator example (Reddit API via PRAW)

@@ -1,0 +1,216 @@
+---
+description: Development workflow and communication guidelines
+globs: ["**/*"]
+alwaysApply: true
+---
+
+# Development Workflow
+
+## Communication Style
+
+**Be concise and direct:**
+- Get straight to the point - no preambles like "I'll help you with..."
+- Skip acknowledgments - just do the task
+- Use brief explanations - code speaks louder than words
+- Don't repeat information already in conversation
+
+## Before Implementing
+
+**Clarify unclear requirements first.** When in doubt about:
+- Implementation details or scope
+- Expected behavior or edge cases
+- Dependencies or data models
+- Breaking changes
+
+Ask before coding.
+
+## Planning Complex Tasks
+
+For multi-step tasks, create a plan:
+
+```markdown
+## Goal
+[What needs to be accomplished]
+
+## Steps
+1. [Action with affected files]
+2. [Action with affected files]
+
+## Files to Modify
+- `path/to/file.py` - [What changes]
+
+## Questions
+- [Any unclear requirements]
+```
+
+## Token Efficiency
+
+- **Limit file reading** - Use `offset`/`limit` for large files
+- **Grep before Read** - Search first, then read specific files
+- **Skip dependencies** - Don't read node_modules, venv, .git
+- **Batch operations** - Combine related edits
+
+## Commit Messages
+
+**MANDATORY: Always use Conventional Commits format.**
+
+**When generating commit messages (for git commits, suggested commits, or any commit-related operations), ALWAYS use the Conventional Commits format described below.**
+
+All commit messages must follow the [Conventional Commits](https://www.conventionalcommits.org/) specification:
+
+```
+<type>[optional scope]: <description>
+
+[optional body]
+
+[optional footer(s)]
+```
+
+### Commit Types
+
+- `feat`: A new feature
+- `fix`: A bug fix
+- `docs`: Documentation only changes
+- `style`: Changes that do not affect the meaning of the code (white-space, formatting, missing semi-colons, etc.)
+- `refactor`: A code change that neither fixes a bug nor adds a feature
+- `perf`: A code change that improves performance
+- `test`: Adding missing tests or correcting existing tests
+- `build`: Changes that affect the build system or external dependencies
+- `ci`: Changes to CI configuration files and scripts
+- `chore`: Other changes that don't modify src or test files
+- `revert`: Reverts a previous commit
+
+### Examples
+
+```bash
+feat(api): add user authentication endpoint
+fix(aggregators): handle missing RSS feed gracefully
+docs: update installation instructions
+refactor(core): extract feed service logic
+test(api): add tests for subscription endpoints
+chore: update dependencies
+```
+
+### Scope (Optional)
+
+Use scope to indicate the area of the codebase affected:
+- `api`, `api_v1`: API-related changes
+- `core`: Core Django app changes
+- `aggregators`: Aggregator plugin changes
+- `frontend`: Frontend changes
+- `deps`: Dependency updates
+- `ci`: CI/CD changes
+
+### Breaking Changes
+
+For breaking changes, add `!` after the type/scope and include `BREAKING CHANGE:` in the footer:
+
+```
+feat(api)!: change authentication method
+
+BREAKING CHANGE: Authentication now requires API key instead of username/password
+```
+
+## Before Committing
+
+**MANDATORY: Run ruff and tests before every commit.**
+
+**IMPORTANT: Always activate the virtual environment first.**
+
+```bash
+# Activate virtual environment
+source .venv/bin/activate
+
+# 1. Run linter with auto-fix
+ruff check --fix .
+
+# 2. Format code
+ruff format .
+
+# 3. Run ALL tests
+python manage.py test core api social --verbosity=1
+
+# 4. Check for missing migrations
+python manage.py makemigrations --check
+```
+
+**Do NOT commit if any of these fail.** Fix issues first.
+
+Pre-commit hooks enforce this automatically, but always run manually to catch issues early.
+
+### Quick Validation Command
+
+```bash
+source .venv/bin/activate && ruff check --fix . && ruff format . && python manage.py test core api social
+```
+
+## Question Requests
+
+Critically evaluate requests and suggest better approaches when appropriate:
+
+1. Acknowledge the goal
+2. Explain potential concerns
+3. Propose alternatives
+4. Let them decide
+
+**Balance:** Don't over-question simple, clear requests.
+
+## Pre-Commit Validation
+
+Pre-commit hooks automatically run before commits:
+
+1. `ruff check --fix backend/` - Lint and auto-fix
+2. `ruff format backend/` - Format code
+3. Prettier formatting for frontend (if frontend directory exists)
+4. Dependency installation check
+5. `python manage.py test core api social` - Run all tests
+
+**Note:** For manual testing, always activate the virtual environment first: `source .venv/bin/activate`
+
+**Commits are BLOCKED if any step fails.**
+
+If commit fails:
+1. Read the error output
+2. Fix the issues (linting errors, test failures)
+3. Stage the fixes
+4. Commit again
+
+**Never bypass validation** - it defeats the purpose of quality gates.
+
+## Generating Commit Messages
+
+**When the user requests a commit or when suggesting commits:**
+
+1. **ALWAYS use Conventional Commits format** - Never generate commit messages that don't follow the format: `<type>[optional scope]: <description>`
+
+2. **Analyze the changes** to determine the appropriate type:
+   - New functionality → `feat`
+   - Bug fixes → `fix`
+   - Documentation → `docs`
+   - Code style/formatting → `style`
+   - Refactoring → `refactor`
+   - Performance improvements → `perf`
+   - Tests → `test`
+   - Build/CI changes → `build` or `ci`
+   - Other maintenance → `chore`
+
+3. **Include scope when appropriate** - Use scope to indicate the affected area (e.g., `feat(api):`, `fix(core):`, `refactor(frontend):`)
+
+4. **Write clear, concise descriptions** - Use imperative mood, lowercase (except proper nouns), no period at the end
+
+5. **Examples of good commit messages:**
+   - `feat(api): add user authentication endpoint`
+   - `fix(aggregators): handle missing RSS feed gracefully`
+   - `refactor(core): extract feed service logic`
+   - `test(api): add tests for subscription endpoints`
+   - `chore: update dependencies`
+
+6. **Never generate invalid formats** like:
+   - ❌ "Added new feature"
+   - ❌ "fix bug"
+   - ❌ "Update code"
+   - ✅ `feat: add new feature`
+   - ✅ `fix: resolve bug`
+   - ✅ `chore: update code`
+
+**The commit-msg hook will automatically reject any commit messages that don't follow this format.**

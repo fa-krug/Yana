@@ -1,0 +1,160 @@
+---
+description: Testing patterns and examples
+globs: ["**/test*.py", "**/tests.py"]
+alwaysApply: false
+---
+
+# Testing Patterns
+
+## Running Tests
+
+**IMPORTANT: Always activate the virtual environment first.**
+
+```bash
+# Activate virtual environment
+source .venv/bin/activate
+
+# Run all tests
+python manage.py test core api social --verbosity=1
+
+# Run specific test file
+python manage.py test core.tests.FeedModelTest
+
+# Run with coverage (if installed)
+coverage run manage.py test && coverage report
+```
+
+**One-liner for CI/scripts:**
+```bash
+source .venv/bin/activate && python manage.py test core api social --verbosity=1
+```
+
+## Test Structure
+
+Reference: `core/tests.py`
+
+```python
+from django.test import TestCase, Client
+from django.contrib.auth.models import User
+from django.utils import timezone
+
+from core.models import Feed, Article
+
+
+class FeedModelTest(TestCase):
+    """Tests for the Feed model."""
+
+    def setUp(self) -> None:
+        """Set up test data."""
+        self.feed = Feed.objects.create(
+            name="Test Feed",
+            url="https://example.com/feed.xml",
+            aggregator="full_website",
+        )
+
+    def test_feed_creation(self) -> None:
+        """Test that a feed can be created with valid data."""
+        self.assertEqual(self.feed.name, "Test Feed")
+        self.assertIsNotNone(self.feed.created_at)
+
+    def test_feed_str(self) -> None:
+        """Test the string representation."""
+        self.assertEqual(str(self.feed), "Test Feed")
+```
+
+## Testing Views with Authentication
+
+```python
+class FeedViewTest(TestCase):
+    def setUp(self) -> None:
+        self.client = Client()
+        self.user = User.objects.create_user(
+            username="testuser", password="testpass"
+        )
+        self.client.login(username="testuser", password="testpass")
+
+        self.feed = Feed.objects.create(
+            name="Test Feed",
+            url="https://example.com/feed.xml",
+            aggregator="full_website",
+            user=self.user,  # Assign to test user
+        )
+
+    def test_feed_requires_auth(self) -> None:
+        """Test that unauthenticated access returns 401."""
+        client = Client()  # New unauthenticated client
+        response = client.get(f"/feeds/{self.feed.id}/rss.xml")
+        self.assertEqual(response.status_code, 401)
+
+    def test_user_cannot_access_other_feed(self) -> None:
+        """Test user isolation."""
+        other_user = User.objects.create_user(
+            username="other", password="pass"
+        )
+        other_feed = Feed.objects.create(
+            name="Other Feed",
+            url="https://other.com/feed.xml",
+            user=other_user,
+        )
+
+        response = self.client.get(f"/feeds/{other_feed.id}/rss.xml")
+        self.assertEqual(response.status_code, 403)
+```
+
+## Mocking External Services
+
+```python
+from unittest.mock import MagicMock, patch
+
+
+class AggregatorTest(TestCase):
+    @patch("feedparser.parse")
+    def test_fetch_feed(self, mock_parse: MagicMock) -> None:
+        """Test RSS feed fetching."""
+        mock_parse.return_value = MagicMock(
+            bozo=False,
+            entries=[{"title": "Test Entry", "link": "https://example.com/1"}]
+        )
+
+        from aggregators.base import fetch_feed
+        result = fetch_feed("https://example.com/feed.xml")
+
+        mock_parse.assert_called_once()
+        self.assertEqual(len(result.entries), 1)
+
+    @patch("core.models.Feed.get_aggregator_class")
+    def test_aggregate_command(self, mock_get_class: MagicMock) -> None:
+        """Test aggregation with mocked aggregator."""
+        mock_instance = MagicMock()
+        mock_instance.aggregate.return_value = 5
+        mock_get_class.return_value = MagicMock(return_value=mock_instance)
+
+        from django.core.management import call_command
+        from io import StringIO
+
+        out = StringIO()
+        call_command("aggregate", stdout=out)
+
+        self.assertIn("5 new articles", out.getvalue())
+```
+
+## Testing HTML Content
+
+```python
+def test_sanitize_html(self) -> None:
+    """Test HTML sanitization removes dangerous elements."""
+    from aggregators.base import sanitize_html
+
+    html = '<p>Hello</p><script>alert("xss")</script>'
+    sanitized = sanitize_html(html)
+
+    self.assertIn("<p>Hello</p>", sanitized)
+    self.assertNotIn("<script>", sanitized)
+```
+
+## Important Notes
+
+- **Playwright won't work** in test environment. Mock it or use `requests`.
+- Always use type hints on test methods (`-> None`)
+- Clean up test data in `tearDown()` if needed
+- Test both success and error paths

@@ -1,0 +1,122 @@
+---
+description: Common CLI commands reference
+globs: ["**/management/commands/*.py"]
+alwaysApply: false
+---
+
+# CLI Commands Reference
+
+## Development Setup
+
+```bash
+# Activate virtual environment (required for all commands)
+source .venv/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
+playwright install chromium && playwright install-deps chromium
+
+# Database setup
+python manage.py migrate
+python manage.py createsuperuser
+
+# Run server
+python manage.py runserver
+```
+
+## Code Quality
+
+```bash
+# Activate virtual environment first
+source .venv/bin/activate
+
+# Linting
+ruff check .              # Check for issues
+ruff check --fix .        # Auto-fix issues
+ruff format .             # Format code
+
+# Run tests
+python manage.py test core api social --verbosity=1
+
+# Check migrations
+python manage.py makemigrations --check
+```
+
+## Aggregation
+
+```bash
+# Aggregate all enabled feeds
+python manage.py aggregate
+
+# Force re-download all articles
+python manage.py aggregate --force
+
+# Aggregate specific feeds by name
+python manage.py aggregate --feeds "Heise" "Tagesschau"
+```
+
+## Django-Q2 Task Queue
+
+```bash
+# Set up scheduled tasks (run once)
+python manage.py setup_schedule
+
+# Start task queue worker (keep running)
+python manage.py qcluster
+
+# Delete all schedules
+python manage.py setup_schedule --delete
+```
+
+## Managed Feeds
+
+```bash
+# Sync managed feeds from aggregators to database
+python manage.py sync_managed_feeds
+
+# List available aggregators
+python manage.py sync_managed_feeds --list
+```
+
+## Database
+
+```bash
+# Django shell
+python manage.py shell
+
+# Database shell
+python manage.py dbshell
+
+# Show migration status
+python manage.py showmigrations
+```
+
+## Docker
+
+```bash
+# Build image
+docker build -t aggregato:latest .
+
+# Run container
+docker run -p 8000:8000 \
+  -e SECRET_KEY=your-key \
+  -e DEBUG=True \
+  -e ALLOWED_HOSTS=* \
+  aggregato:latest
+
+# View logs
+docker logs -f aggregato
+```
+
+## Scheduled Tasks
+
+| Task | Default Schedule | Description |
+|------|------------------|-------------|
+| `aggregate_all_feeds` | `*/30 * * * *` | Aggregate all feeds and subreddits |
+| `delete_old_articles` | `0 1 * * *` | Delete articles older than 2 months |
+| `clean_django_q_history` | `0 2 * * *` | Clean task history older than 7 days |
+
+Common cron patterns:
+- `0 * * * *` - Every hour
+- `*/30 * * * *` - Every 30 minutes
+- `0 1 * * *` - Daily at 01:00

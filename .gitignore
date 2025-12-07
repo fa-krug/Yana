@@ -17,7 +17,6 @@ Thumbs.db
 *.bak
 *.tmp
 *.log
-.cursor/
 
 # Python
 __pycache__/

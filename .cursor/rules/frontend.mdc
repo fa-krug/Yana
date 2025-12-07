@@ -1,0 +1,91 @@
+---
+description: Frontend HTML/CSS/JavaScript conventions
+globs: ["**/*.html", "**/*.css", "**/*.js", "**/templates/**/*"]
+alwaysApply: false
+---
+
+# Frontend Conventions
+
+## Angular SPA
+
+The frontend is built with **Angular** and served as a single-page application (SPA).
+
+**Frontend location:** `frontend/`
+
+**Build output:** `frontend/dist/browser/`
+
+## JavaScript
+
+**No inline scripts.** All JavaScript in external `.js` files:
+
+```html
+<!-- Good -->
+<script src="{% static 'js/main.js' %}" defer></script>
+
+<!-- Bad -->
+<script>
+  document.querySelector('.btn').addEventListener('click', ...)
+</script>
+```
+
+**Use `defer` attribute** for non-blocking loading.
+
+**Toggle classes, don't manipulate styles:**
+
+```javascript
+// Good
+element.classList.add('hidden');
+element.classList.remove('active');
+element.classList.toggle('expanded');
+
+// Bad
+element.style.display = 'none';
+element.style.backgroundColor = 'red';
+```
+
+## CSS
+
+**No inline styles.** Use CSS classes:
+
+```html
+<!-- Good -->
+<button class="btn btn-primary hidden">Click me</button>
+
+<!-- Bad -->
+<button style="display: none; background: blue;">Click me</button>
+```
+
+**Static files location:** `frontend/src/styles.scss` and component-specific styles
+
+## Django Templates
+
+**Minimal templates:** Only `templates/index.html` for Angular SPA catch-all route.
+
+All UI is handled by Angular components in `frontend/src/app/`.
+
+## Angular Patterns
+
+**Component-based architecture:**
+- Components in `frontend/src/app/features/`
+- Services in `frontend/src/app/core/services/`
+- Models/types in `frontend/src/app/core/api/`
+
+**API Integration:**
+- Django Ninja REST API at `/api/v1/`
+- Auto-generated TypeScript client from OpenAPI schema
+- Client code in `frontend/src/app/core/api/client/`
+
+## Material Design
+
+The project uses Angular Material:
+- Components: `@angular/material`
+- Icons: `@angular/material/icons`
+- Theming: Custom theme in `frontend/src/styles.scss`
+
+## PWA Support
+
+Progressive Web App features:
+- Service worker (via `@angular/pwa`)
+- Web manifest (`manifest.webmanifest`)
+- Offline support
+- Installable app
