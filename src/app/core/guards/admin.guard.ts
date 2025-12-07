@@ -1,0 +1,42 @@
+/**
+ * Admin guard to protect admin routes.
+ * Requires superuser access.
+ */
+
+import { inject, PLATFORM_ID } from '@angular/core';
+import { isPlatformServer } from '@angular/common';
+import { Router, CanActivateFn } from '@angular/router';
+import { of } from 'rxjs';
+import { map, take, catchError } from 'rxjs/operators';
+import { AuthService } from '../services/auth.service';
+
+export const adminGuard: CanActivateFn = (route, state) => {
+  const platformId = inject(PLATFORM_ID);
+  const router = inject(Router);
+  const authService = inject(AuthService);
+
+  // If running on the server, allow access (client will handle auth after hydration)
+  if (isPlatformServer(platformId)) {
+    return true;
+  }
+
+  // Check if user is authenticated and is superuser
+  if (authService.authenticated() && authService.isSuperuser()) {
+    return true;
+  }
+
+  // Wait for auth check to complete, then check status
+  return authService.checkAuthStatus().pipe(
+    take(1),
+    catchError(() => of({ authenticated: false, user: null })),
+    map(() => {
+      if (authService.authenticated() && authService.isSuperuser()) {
+        return true;
+      }
+      // Redirect to dashboard if not admin
+      return router.createUrlTree(['/'], {
+        queryParams: { returnUrl: state.url },
+      });
+    })
+  );
+};

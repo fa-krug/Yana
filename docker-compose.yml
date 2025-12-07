@@ -1,0 +1,56 @@
+services:
+  yana:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: yana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      # Server Configuration
+      - NODE_ENV=production
+      - PORT=3000
+      
+      # Database
+      - DATABASE_URL=/app/data/db.sqlite3
+      
+      # Session Security
+      - SESSION_SECRET=${SESSION_SECRET:-change-this-in-production}
+      
+      # Scheduler
+      - AGGREGATION_SCHEDULE=${AGGREGATION_SCHEDULE:-*/30 * * * *}
+      - SCHEDULER_ENABLED=${SCHEDULER_ENABLED:-true}
+      
+      # Worker Pool
+      - WORKER_COUNT=${WORKER_COUNT:-4}
+      - WORKER_POOL_ENABLED=${WORKER_POOL_ENABLED:-true}
+      
+      # Base URL (for RSS feeds, etc.)
+      - BASE_URL=${BASE_URL:-http://localhost:3000}
+      
+      # Logging
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      
+      # Optional: Create superuser on first run
+      - DJANGO_SUPERUSER_USERNAME=${DJANGO_SUPERUSER_USERNAME:-}
+      - DJANGO_SUPERUSER_EMAIL=${DJANGO_SUPERUSER_EMAIL:-}
+      - DJANGO_SUPERUSER_PASSWORD=${DJANGO_SUPERUSER_PASSWORD:-}
+    volumes:
+      # Persist database and data
+      - ./data:/app/data
+      # Optional: Persist icon cache
+      - ./cache:/app/cache
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - yana-network
+
+networks:
+  yana-network:
+    driver: bridge
+

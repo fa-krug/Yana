@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Yana - Setup Required</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            max-width: 800px;
+            margin: 100px auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        h1 { color: #333; }
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+        pre {
+            background: #f4f4f4;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        .warning {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Yana - Angular Build Required</h1>
+
+    <div class="warning">
+        <strong>⚠️ This is a placeholder file.</strong> The actual Angular application needs to be built and deployed.
+    </div>
+
+    <h2>Setup Instructions</h2>
+
+    <p>To run the Angular frontend, follow these steps:</p>
+
+    <h3>1. Build the Angular Application</h3>
+    <pre>cd frontend
+ng build --configuration production</pre>
+
+    <h3>2. Copy index.html to Templates</h3>
+    <pre>cp dist/browser/index.html ../templates/</pre>
+
+    <h3>3. Collect Static Files</h3>
+    <pre>cd ..
+python manage.py collectstatic --noinput</pre>
+
+    <h3>4. Run the Development Server</h3>
+    <pre>python manage.py runserver</pre>
+
+    <h2>Development Mode</h2>
+
+    <p>For development with hot reload, run the Angular dev server separately:</p>
+    <pre>cd frontend
+npm install
+ng serve</pre>
+
+    <p>Then access the app at <code>http://localhost:4200</code></p>
+
+    <h2>Need Help?</h2>
+
+    <p>See <code>CLAUDE.md</code> in the root directory for complete build and deployment instructions.</p>
+</body>
+</html>

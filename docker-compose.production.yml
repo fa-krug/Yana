@@ -1,0 +1,86 @@
+services:
+  yana:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: yana
+    restart: unless-stopped
+    # Don't expose port directly - use nginx reverse proxy
+    expose:
+      - "3000"
+    environment:
+      # Server Configuration
+      - NODE_ENV=production
+      - PORT=3000
+      
+      # Database
+      - DATABASE_URL=/app/data/db.sqlite3
+      
+      # Session Security (MUST be set in production)
+      - SESSION_SECRET=${SESSION_SECRET}
+      
+      # Scheduler
+      - AGGREGATION_SCHEDULE=${AGGREGATION_SCHEDULE:-*/30 * * * *}
+      - SCHEDULER_ENABLED=${SCHEDULER_ENABLED:-true}
+      
+      # Worker Pool
+      - WORKER_COUNT=${WORKER_COUNT:-4}
+      - WORKER_POOL_ENABLED=${WORKER_POOL_ENABLED:-true}
+      
+      # Base URL (for RSS feeds, etc.) - MUST match your domain
+      - BASE_URL=${BASE_URL:-https://your-domain.com}
+      
+      # Logging
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      
+      # Optional: Create superuser on first run
+      - DJANGO_SUPERUSER_USERNAME=${DJANGO_SUPERUSER_USERNAME:-}
+      - DJANGO_SUPERUSER_EMAIL=${DJANGO_SUPERUSER_EMAIL:-}
+      - DJANGO_SUPERUSER_PASSWORD=${DJANGO_SUPERUSER_PASSWORD:-}
+    volumes:
+      # Persist database and data
+      - yana-data:/app/data
+      # Optional: Persist icon cache
+      - yana-cache:/app/cache
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - yana-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.yana.rule=Host(`your-domain.com`)"
+      - "traefik.http.routers.yana.entrypoints=websecure"
+      - "traefik.http.routers.yana.tls.certresolver=letsencrypt"
+      - "traefik.http.services.yana.loadbalancer.server.port=3000"
+
+  # Optional: Nginx reverse proxy (alternative to Traefik)
+  # Uncomment if you want to use Nginx instead of Traefik
+  # nginx:
+  #   image: nginx:alpine
+  #   container_name: yana-nginx
+  #   restart: unless-stopped
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #   volumes:
+  #     - ./nginx.conf:/etc/nginx/nginx.conf:ro
+  #     - ./ssl:/etc/nginx/ssl:ro
+  #   depends_on:
+  #     - yana
+  #   networks:
+  #     - yana-network
+
+volumes:
+  yana-data:
+    driver: local
+  yana-cache:
+    driver: local
+
+networks:
+  yana-network:
+    driver: bridge
+

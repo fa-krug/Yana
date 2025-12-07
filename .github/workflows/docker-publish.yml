@@ -1,0 +1,172 @@
+name: CI - Test, Build and Push
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  IMAGE_NAME: yana
+  REGISTRY: docker.io
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        timeout-minutes: 10
+        run: |
+          npm ci --prefer-offline --no-audit || {
+            echo "::error::npm ci failed or timed out"
+            exit 1
+          }
+
+      - name: Check Prettier formatting
+        run: npm run format:check
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        timeout-minutes: 10
+        run: |
+          npm ci --prefer-offline --no-audit || {
+            echo "::error::npm ci failed or timed out"
+            exit 1
+          }
+
+      - name: Run tests
+        run: npm test
+        env:
+          DATABASE_URL: ./tests/test.db
+
+  build-and-push:
+    needs: [lint, test]
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=sha,prefix=sha-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Docker image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64
+
+      - name: Image digest
+        run: echo ${{ steps.build.outputs.digest }}
+
+  deploy:
+    needs: build-and-push
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Redeploy Portainer stack
+        env:
+          PORTAINER_URL: ${{ secrets.PORTAINER_HOST }}
+          API_KEY: ${{ secrets.PORTAINER_TOKEN }}
+          ENDPOINT_ID: ${{ secrets.PORTAINER_ENDPOINT_ID }}
+          STACK_ID: ${{ secrets.PORTAINER_STACK_ID }}
+        run: |
+          set -e
+
+          echo "Fetching stack configuration..."
+          STACK_RESPONSE=$(curl -sf -H "X-API-Key: $API_KEY" "$PORTAINER_URL/api/stacks/$STACK_ID")
+          ENV_VARS=$(echo "$STACK_RESPONSE" | jq -c '.Env // []')
+          WEBHOOK=$(echo "$STACK_RESPONSE" | jq -c '.Webhook // null')
+
+          echo "Fetching stack file content..."
+          FILE_RESPONSE=$(curl -sf -H "X-API-Key: $API_KEY" "$PORTAINER_URL/api/stacks/$STACK_ID/file")
+          STACK_FILE_CONTENT=$(echo "$FILE_RESPONSE" | jq -r '.StackFileContent')
+
+          echo "Redeploying stack..."
+          PAYLOAD=$(jq -n \
+            --arg content "$STACK_FILE_CONTENT" \
+            --argjson env "$ENV_VARS" \
+            --argjson webhook "$WEBHOOK" \
+            --arg id "$STACK_ID" \
+            '{StackFileContent: $content, Env: $env, Prune: true, PullImage: true, Webhook: $webhook, Id: $id}')
+
+          HTTP_CODE=$(curl -s -o /tmp/response.txt -w "%{http_code}" \
+            -X PUT "$PORTAINER_URL/api/stacks/$STACK_ID?endpointId=$ENDPOINT_ID" \
+            -H "X-API-Key: $API_KEY" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD")
+
+          if [ "$HTTP_CODE" = "200" ]; then
+            echo "Stack redeployed successfully!"
+          elif [ "$HTTP_CODE" = "524" ]; then
+            echo "Got 524 timeout, checking stack status..."
+            CHECK_CODE=$(curl -s -o /tmp/check.txt -w "%{http_code}" -H "X-API-Key: $API_KEY" "$PORTAINER_URL/api/stacks/$STACK_ID")
+            if [ "$CHECK_CODE" = "200" ]; then
+              STATUS=$(cat /tmp/check.txt | jq -r '.Status')
+              if [ "$STATUS" = "1" ]; then
+                echo "Stack is running - deployment likely succeeded!"
+              else
+                echo "::warning::Stack status: $STATUS - may need attention"
+              fi
+            else
+              echo "::error::Could not verify stack status: $CHECK_CODE"
+              exit 1
+            fi
+          else
+            echo "::error::Failed to redeploy stack (HTTP $HTTP_CODE)"
+            exit 1
+          fi

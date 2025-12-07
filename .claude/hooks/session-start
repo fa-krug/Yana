@@ -1,0 +1,26 @@
+#!/bin/bash
+# Claude Code SessionStart hook
+# Automatically installs git pre-commit hook when session starts
+
+echo "🔧 Setting up git pre-commit hook..."
+
+# Check if the hook needs to be installed or updated
+HOOK_SOURCE="hooks/pre-commit"
+HOOK_TARGET=".git/hooks/pre-commit"
+
+if [ ! -f "$HOOK_SOURCE" ]; then
+    echo "⚠️  Warning: $HOOK_SOURCE not found. Skipping hook installation."
+    exit 0
+fi
+
+# Install or update the hook
+if [ ! -f "$HOOK_TARGET" ] || ! cmp -s "$HOOK_SOURCE" "$HOOK_TARGET"; then
+    echo "📦 Installing pre-commit hook from $HOOK_SOURCE..."
+    cp "$HOOK_SOURCE" "$HOOK_TARGET"
+    chmod +x "$HOOK_TARGET"
+    echo "✅ Pre-commit hook installed successfully!"
+else
+    echo "✅ Pre-commit hook already up to date."
+fi
+
+exit 0
