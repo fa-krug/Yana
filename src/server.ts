@@ -70,8 +70,9 @@ const sessionSecret =
 
 // Check if we're in a build context (Angular route extraction)
 // During build, we don't need a real database connection
-const isBuildContext = process.env["NG_BUILD"] === "true" || 
-  process.argv.some(arg => arg.includes("ng") && arg.includes("build"));
+const isBuildContext =
+  process.env["NG_BUILD"] === "true" ||
+  process.argv.some((arg) => arg.includes("ng") && arg.includes("build"));
 
 let sessionStore: SQLiteStore | null = null;
 function getSessionStore(): SQLiteStore {

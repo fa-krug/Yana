@@ -27,14 +27,43 @@ function getDatabasePath(): string {
  */
 function getDatabase(): Database.Database {
   if (!sqlite) {
+    const databasePath = getDatabasePath();
+
+    // During build time (Angular route extraction), use in-memory database
+    // to avoid native module loading issues
+    const isBuildContext =
+      databasePath.includes("/tmp/build-db") ||
+      process.env["NG_BUILD"] === "true" ||
+      process.argv.some((arg) => arg.includes("ng") && arg.includes("build"));
+
+    if (isBuildContext) {
+      // Use in-memory database during build to avoid native module issues
+      try {
+        sqlite = new Database(":memory:");
+        sqlite.pragma("foreign_keys = ON");
+        logger.warn("Using in-memory database for build context");
+      } catch (error) {
+        // If even in-memory fails, we're in a problematic state
+        // This shouldn't happen, but handle it gracefully
+        logger.error(
+          { error },
+          "Failed to create in-memory database during build",
+        );
+        throw new DatabaseError(
+          "Failed to create database during build",
+          error as Error,
+        );
+      }
+      return sqlite;
+    }
+
     try {
-      const databasePath = getDatabasePath();
       // Create parent directory if it doesn't exist (for build-time scenarios)
       const dir = dirname(databasePath);
       if (dir && dir !== "." && !existsSync(dir)) {
         mkdirSync(dir, { recursive: true });
       }
-      
+
       sqlite = new Database(databasePath);
 
       // Enable foreign keys
@@ -48,25 +77,11 @@ function getDatabase(): Database.Database {
 
       logger.info({ path: databasePath }, "Database connection established");
     } catch (error) {
-      const databasePath = getDatabasePath();
-      // During build time (Angular route extraction), database might not be needed
-      // Check if we're in a build context by looking for Angular build indicators
-      const isBuildContext = process.env["NG_BUILD"] === "true" || 
-        process.argv.some(arg => arg.includes("ng") && arg.includes("build")) ||
-        process.env["NODE_ENV"] === undefined; // Build might not have NODE_ENV set
-      
-      if (isBuildContext) {
-        // Use in-memory database during build
-        logger.warn({ path: databasePath }, "Using in-memory database for build context");
-        sqlite = new Database(":memory:");
-        sqlite.pragma("foreign_keys = ON");
-      } else {
-        logger.error(
-          { error, path: databasePath },
-          "Failed to connect to database",
-        );
-        throw new DatabaseError("Failed to connect to database", error as Error);
-      }
+      logger.error(
+        { error, path: databasePath },
+        "Failed to connect to database",
+      );
+      throw new DatabaseError("Failed to connect to database", error as Error);
     }
   }
 
