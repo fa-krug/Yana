@@ -78,8 +78,9 @@ RUN apk add --no-cache \
 
 # Install production dependencies + tsx for running TypeScript scripts
 # Skip prepare script (husky) since it's only needed for development
-# Don't ignore scripts - better-sqlite3 needs to build native bindings
-RUN npm ci --omit=dev && \
+# Don't ignore all scripts - better-sqlite3 needs to build native bindings
+# Use --ignore-scripts to skip prepare, then manually run postinstall if needed
+RUN npm ci --omit=dev --ignore-scripts && \
     npm install --save-prod tsx && \
     npm cache clean --force
 
