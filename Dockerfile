@@ -10,6 +10,7 @@ WORKDIR /app
 
 # Install ONLY what's needed for better-sqlite3 compilation
 # bcrypt 6.x and sharp use prebuilt binaries on glibc
+ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     make \
@@ -38,6 +39,7 @@ FROM node:22-slim AS deps
 WORKDIR /app
 
 # Need build tools for better-sqlite3 in prod deps
+ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 make g++ \
     && rm -rf /var/lib/apt/lists/*
@@ -45,8 +47,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY package*.json ./
 
 # Install production deps only - bcrypt/sharp use prebuilt
+# --ignore-scripts skips prepare script (husky) which isn't available without dev deps
 RUN --mount=type=cache,target=/root/.npm \
-    npm ci --omit=dev && \
+    npm ci --omit=dev --ignore-scripts && \
     npm cache clean --force
 
 # =============================================================================
@@ -57,6 +60,7 @@ FROM node:22-slim AS runtime
 WORKDIR /app
 
 # Install runtime deps for Playwright chromium
+ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
     chromium \
     fonts-liberation \
