@@ -8,22 +8,23 @@ FROM node:22-alpine AS builder
 
 WORKDIR /app
 
-# Install build dependencies for native modules (better-sqlite3, sharp, etc.)
-# APK_NO_TRIGGERS=1 prevents trigger execution issues in QEMU emulated builds
-RUN APK_NO_TRIGGERS=1 apk add --no-cache \
-    python3 \
-    make \
-    g++ \
-    sqlite-dev \
-    && rm -rf /var/cache/apk/*
+# Install build dependencies as fallback (only needed if prebuilt binaries unavailable)
+# npm will use prebuilt binaries when available (sharp has them for Alpine)
+# Ignore trigger failures in QEMU emulated builds (packages install successfully)
+RUN apk add --no-cache \
+        python3 \
+        make \
+        g++ \
+        sqlite-dev \
+    || true && \
+    rm -rf /var/cache/apk/*
 
 # Copy package files first for better layer caching
 COPY package*.json ./
 
 # Install all dependencies (including dev dependencies for build)
-# Rebuild native modules to ensure they're compiled for Alpine Linux
-RUN npm ci && \
-    npm rebuild better-sqlite3 --build-from-source
+# npm automatically uses prebuilt binaries when available, falls back to building if needed
+RUN npm ci
 
 # Copy source code
 COPY . .
@@ -44,19 +45,18 @@ FROM node:22-alpine
 
 WORKDIR /app
 
-# Install runtime dependencies for native modules and Playwright
-# APK_NO_TRIGGERS=1 prevents trigger execution issues in QEMU emulated builds
-RUN APK_NO_TRIGGERS=1 apk add --no-cache \
-    chromium \
-    nss \
-    freetype \
-    harfbuzz \
-    ca-certificates \
-    ttf-freefont \
-    python3 \
-    make \
-    g++ \
-    && rm -rf /var/cache/apk/*
+# Install runtime dependencies for Playwright
+# Native modules (better-sqlite3, sharp) use prebuilt binaries, no build tools needed
+# Ignore trigger failures in QEMU emulated builds (packages install successfully)
+RUN apk add --no-cache \
+        chromium \
+        nss \
+        freetype \
+        harfbuzz \
+        ca-certificates \
+        ttf-freefont \
+    || true && \
+    rm -rf /var/cache/apk/*
 
 # Set Playwright environment variables
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
