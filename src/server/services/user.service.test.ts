@@ -3,11 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import {
-  setupTestDb,
-  teardownTestDb,
-  getTestDb,
-} from "../../../tests/utils/testDb";
+import { setupTestDb, teardownTestDb } from "../../../tests/utils/testDb";
 import {
   createUser,
   authenticateUser,
@@ -15,7 +11,6 @@ import {
   getUserByUsername,
 } from "./user.service";
 import { testUser } from "../../../tests/utils/fixtures";
-import * as bcrypt from "bcrypt";
 import { db, users } from "../db";
 import { eq } from "drizzle-orm";
 

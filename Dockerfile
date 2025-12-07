@@ -46,7 +46,6 @@ FROM node:22-alpine
 WORKDIR /app
 
 # Install runtime dependencies for Playwright
-# Native modules (better-sqlite3, sharp) use prebuilt binaries, no build tools needed
 # Ignore trigger failures in QEMU emulated builds (packages install successfully)
 RUN apk add --no-cache \
         chromium \
@@ -68,11 +67,30 @@ RUN npx playwright install chromium --with-deps || true
 # Copy package files for production dependency installation
 COPY package*.json ./
 
+# Install build dependencies temporarily for native module compilation
+# Ignore trigger failures in QEMU emulated builds (packages install successfully)
+RUN apk add --no-cache \
+        python3 \
+        make \
+        g++ \
+        sqlite-dev \
+    || true
+
 # Install production dependencies + tsx for running TypeScript scripts
 # Skip prepare script (husky) since it's only needed for development
-RUN npm ci --omit=dev --ignore-scripts && \
+# Don't ignore scripts - better-sqlite3 needs to build native bindings
+RUN npm ci --omit=dev && \
     npm install --save-prod tsx && \
     npm cache clean --force
+
+# Remove build dependencies after native modules are built
+RUN apk del \
+        python3 \
+        make \
+        g++ \
+        sqlite-dev \
+    || true && \
+    rm -rf /var/cache/apk/*
 
 # Copy built application from builder stage
 COPY --from=builder /app/dist ./dist
