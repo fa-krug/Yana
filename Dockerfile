@@ -10,9 +10,9 @@ WORKDIR /app
 
 # Install build dependencies for native module compilation
 # Note: python3 is required by node-gyp for building native modules
-# Install busybox first to avoid trigger execution issues during cross-platform builds
-RUN apk add --no-cache busybox && \
-    apk add --no-cache \
+# Use --no-scripts to skip trigger execution which fails under qemu emulation for ARM64
+RUN apk update && \
+    apk add --no-cache --no-scripts \
         python3 \
         make \
         g++ \
@@ -46,9 +46,10 @@ WORKDIR /app
 
 # Install runtime dependencies for Playwright
 # chromium and dependencies are needed for Playwright to work
-# Install busybox first to avoid trigger execution issues during cross-platform builds
-RUN apk add --no-cache busybox && \
-    apk add --no-cache \
+# Use --no-scripts to skip trigger execution which fails under qemu emulation for ARM64
+# This is a known workaround for cross-platform builds - triggers are non-critical for these packages
+RUN apk update && \
+    apk add --no-cache --no-scripts \
         chromium \
         nss \
         freetype \
