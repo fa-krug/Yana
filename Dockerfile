@@ -9,7 +9,8 @@ FROM node:22-alpine AS builder
 WORKDIR /app
 
 # Install build dependencies for native modules (better-sqlite3, sharp, etc.)
-RUN apk add --no-cache \
+# APK_NO_TRIGGERS=1 prevents trigger execution issues in QEMU emulated builds
+RUN APK_NO_TRIGGERS=1 apk add --no-cache \
     python3 \
     make \
     g++ \
@@ -44,7 +45,8 @@ FROM node:22-alpine
 WORKDIR /app
 
 # Install runtime dependencies for native modules and Playwright
-RUN apk add --no-cache \
+# APK_NO_TRIGGERS=1 prevents trigger execution issues in QEMU emulated builds
+RUN APK_NO_TRIGGERS=1 apk add --no-cache \
     chromium \
     nss \
     freetype \
