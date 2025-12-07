@@ -49,8 +49,7 @@ COPY package*.json ./
 # Install production deps only - bcrypt/sharp use prebuilt
 # --ignore-scripts skips prepare script (husky) which isn't available without dev deps
 RUN --mount=type=cache,target=/root/.npm \
-    npm ci --omit=dev --ignore-scripts && \
-    npm cache clean --force
+    npm ci --omit=dev --ignore-scripts
 
 # =============================================================================
 # Runtime Stage - Minimal production image
