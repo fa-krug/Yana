@@ -1,125 +1,111 @@
-# Dockerfile for Fullstack TypeScript/Node Application
-# Multi-stage build: builder stage for compilation, runtime stage for production
+# =============================================================================
+# Optimized Dockerfile for Yana - Node.js/Angular SSR Application
+# Strategy: node-slim (glibc) for prebuilt binaries + minimal compilation
+# =============================================================================
 
-# ============================================================================
-# Builder Stage - Contains all build dependencies
-# ============================================================================
-FROM node:22-alpine AS builder
+# Build stage - compile native modules and Angular app
+FROM node:22-slim AS builder
 
 WORKDIR /app
 
-# Install build dependencies for native module compilation
-# Note: python3 is required by node-gyp for building native modules
-# Use --no-scripts to skip trigger execution which fails under qemu emulation for ARM64
-RUN apk update && \
-    apk add --no-cache --no-scripts \
-        python3 \
-        make \
-        g++ \
-        sqlite-dev \
-    && rm -rf /var/cache/apk/*
+# Install ONLY what's needed for better-sqlite3 compilation
+# bcrypt 6.x and sharp use prebuilt binaries on glibc
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 \
+    make \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
 
-# Copy package files first for better layer caching
+# Copy package files for layer caching
 COPY package*.json ./
 
-# Install all dependencies (including dev dependencies for build)
-# Use npm ci for reproducible builds
-# Cache npm packages to speed up rebuilds
+# Install all dependencies with cache mount for speed
+# Prebuilt binaries for bcrypt/sharp download automatically
 RUN --mount=type=cache,target=/root/.npm \
     npm ci --include=dev
 
-# Copy source code
+# Copy source and build
 COPY . .
 
-# Build Angular app for production
-# Set a temporary DATABASE_URL for build time (database not needed during build)
-ENV DATABASE_URL=/tmp/build-db.sqlite3
 ENV NODE_ENV=production
+ENV DATABASE_URL=/tmp/build-db.sqlite3
+
 RUN npm run build
 
-# ============================================================================
-# Runtime Stage - Minimal production image
-# ============================================================================
-FROM node:22-alpine AS runtime
+# Production dependencies only - separate stage for caching
+FROM node:22-slim AS deps
 
 WORKDIR /app
 
-# Install runtime dependencies for Playwright
-# chromium and dependencies are needed for Playwright to work
-# Use --no-scripts to skip trigger execution which fails under qemu emulation for ARM64
-# This is a known workaround for cross-platform builds - triggers are non-critical for these packages
-RUN apk update && \
-    apk add --no-cache --no-scripts \
-        chromium \
-        nss \
-        freetype \
-        harfbuzz \
-        ca-certificates \
-        ttf-freefont \
-    && rm -rf /var/cache/apk/*
+# Need build tools for better-sqlite3 in prod deps
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 make g++ \
+    && rm -rf /var/lib/apt/lists/*
 
-# Set Playwright environment variables
-ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
-ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
-ENV CHROMIUM_PATH=/usr/bin/chromium-browser
+COPY package*.json ./
 
-# Copy package files and node_modules from builder
-# Native modules (better-sqlite3) are already built in builder stage
-COPY --from=builder /app/package*.json ./
-COPY --from=builder /app/node_modules ./node_modules
-
-# Prune dev dependencies (native modules stay intact)
-# Then install tsx which is needed at runtime but in devDependencies
-# Cache npm packages to speed up rebuilds
+# Install production deps only - bcrypt/sharp use prebuilt
 RUN --mount=type=cache,target=/root/.npm \
-    npm prune --production && \
-    npm install --save-prod tsx && \
+    npm ci --omit=dev && \
     npm cache clean --force
 
-# Install Playwright chromium (uses system chromium via CHROMIUM_PATH)
-# Skip --with-deps since we're on Alpine (uses apk, not apt-get) and dependencies are already installed
-# This just registers the browser with Playwright, system chromium is used via CHROMIUM_PATH
-RUN npx playwright install chromium
+# =============================================================================
+# Runtime Stage - Minimal production image
+# =============================================================================
+FROM node:22-slim AS runtime
 
-# Copy built application from builder stage
+WORKDIR /app
+
+# Install runtime deps for Playwright chromium
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    chromium \
+    fonts-liberation \
+    libnss3 \
+    libatk1.0-0 \
+    libatk-bridge2.0-0 \
+    libcups2 \
+    libdrm2 \
+    libxkbcommon0 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxrandr2 \
+    libgbm1 \
+    libasound2 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Playwright config - use system chromium
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+ENV CHROMIUM_PATH=/usr/bin/chromium
+
+# Copy production node_modules (prebuilt binaries intact)
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/package*.json ./
+
+# Copy built app
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/src/server ./src/server
-COPY --from=builder /app/docker-entrypoint.sh ./docker-entrypoint.sh
+COPY --from=builder /app/docker-entrypoint.sh ./
 
-# Remove unnecessary files to reduce image size
-RUN rm -rf src/app src/main.ts src/main.server.ts src/styles.scss \
-           angular.json tsconfig*.json vite.config.ts vitest.config.ts \
-           .eslintrc.json .prettierrc .prettierignore \
-           .github .vscode .cursor \
-           public scripts aggregators legacy_backend \
-           *.md .dockerignore .gitignore .git \
-    && chmod +x ./docker-entrypoint.sh
+# Register chromium with Playwright (no download, just setup)
+RUN npx playwright install chromium || true
 
-# Create non-root user for security
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001
+# Security: non-root user
+RUN useradd -r -u 1001 nodejs && \
+    mkdir -p /app/data && \
+    chown -R nodejs:nodejs /app && \
+    chmod +x ./docker-entrypoint.sh
 
-# Create directory for SQLite database with correct ownership
-RUN mkdir -p /app/data && \
-    chown -R nodejs:nodejs /app
+USER nodejs
 
-# Set environment variables
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV DATABASE_URL=/app/data/db.sqlite3
 
-# Switch to non-root user
-USER nodejs
-
-# Expose port
 EXPOSE 3000
 
-# Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
   CMD node -e "require('http').get('http://localhost:3000/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
-# Set entrypoint
 ENTRYPOINT ["./docker-entrypoint.sh"]
-
-# Default command
 CMD ["node", "dist/server/server.mjs"]
