@@ -10,7 +10,9 @@ WORKDIR /app
 
 # Install build dependencies for native module compilation
 # Note: python3 is required by node-gyp for building native modules
-RUN apk add --no-cache \
+# Install busybox first to avoid trigger execution issues during cross-platform builds
+RUN apk add --no-cache busybox && \
+    apk add --no-cache \
         python3 \
         make \
         g++ \
@@ -44,7 +46,9 @@ WORKDIR /app
 
 # Install runtime dependencies for Playwright
 # chromium and dependencies are needed for Playwright to work
-RUN apk add --no-cache \
+# Install busybox first to avoid trigger execution issues during cross-platform builds
+RUN apk add --no-cache busybox && \
+    apk add --no-cache \
         chromium \
         nss \
         freetype \
