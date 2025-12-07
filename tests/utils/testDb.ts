@@ -47,7 +47,10 @@ export function setupTestDb(): void {
   reconnectDatabase();
 
   // Run migrations on the test database
-  const migrationsFolder = path.resolve(process.cwd(), "src/server/db/migrations");
+  const migrationsFolder = path.resolve(
+    process.cwd(),
+    "src/server/db/migrations",
+  );
   migrate(db, {
     migrationsFolder,
   });
@@ -64,7 +67,7 @@ export function teardownTestDb(): void {
 
   // Reset DATABASE_URL
   delete process.env["DATABASE_URL"];
-  
+
   // Don't delete the file here - let setupTestDb() handle it
   // This avoids "database is locked" errors when the connection
   // is still open or being used
