@@ -64,21 +64,48 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 // Session configuration with persistent SQLite store
+// Initialize lazily to avoid database connection during build-time route extraction
 const sessionSecret =
   process.env["SESSION_SECRET"] || "change-this-in-production";
-const db = getDatabase();
-const sessionStore = new SQLiteStore({
-  db,
-  tableName: "sessions",
-  skipTableCreation: true,
-});
+
+// Check if we're in a build context (Angular route extraction)
+// During build, we don't need a real database connection
+const isBuildContext = process.env["NG_BUILD"] === "true" || 
+  process.argv.some(arg => arg.includes("ng") && arg.includes("build"));
+
+let sessionStore: SQLiteStore | null = null;
+function getSessionStore(): SQLiteStore {
+  if (!sessionStore) {
+    if (isBuildContext) {
+      // During build, use a dummy store that won't actually be used
+      // We'll create a minimal store that satisfies the interface
+      sessionStore = {
+        get: () => {},
+        set: () => {},
+        destroy: () => {},
+        all: () => {},
+        length: () => 0,
+        clear: () => {},
+        touch: () => {},
+      } as unknown as SQLiteStore;
+    } else {
+      const db = getDatabase();
+      sessionStore = new SQLiteStore({
+        db,
+        tableName: "sessions",
+        skipTableCreation: true,
+      });
+    }
+  }
+  return sessionStore;
+}
 
 app.use(
   session({
     secret: sessionSecret,
     resave: false,
     saveUninitialized: false,
-    store: sessionStore,
+    store: getSessionStore(),
     cookie: {
       httpOnly: true,
       secure: !isDevelopment, // Only use secure cookies in production

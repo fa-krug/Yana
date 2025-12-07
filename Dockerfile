@@ -13,18 +13,23 @@ RUN apk add --no-cache \
     python3 \
     make \
     g++ \
+    sqlite-dev \
     && rm -rf /var/cache/apk/*
 
 # Copy package files first for better layer caching
 COPY package*.json ./
 
 # Install all dependencies (including dev dependencies for build)
-RUN npm ci
+# Rebuild native modules to ensure they're compiled for Alpine Linux
+RUN npm ci && \
+    npm rebuild better-sqlite3 --build-from-source
 
 # Copy source code
 COPY . .
 
 # Build Angular app for production (creates dist/browser/ and dist/server/server.mjs)
+# Set a temporary DATABASE_URL for build time (database not needed during build)
+ENV DATABASE_URL=/tmp/build-db.sqlite3
 RUN npm run build
 
 # Copy TypeScript source files for scripts (migrate, createSuperuser, etc.)
@@ -62,7 +67,8 @@ RUN npx playwright install chromium --with-deps || true
 COPY package*.json ./
 
 # Install production dependencies + tsx for running TypeScript scripts
-RUN npm ci --only=production && \
+# Skip prepare script (husky) since it's only needed for development
+RUN npm ci --omit=dev --ignore-scripts && \
     npm install --save-prod tsx && \
     npm cache clean --force
 
