@@ -77,8 +77,9 @@ RUN --mount=type=cache,target=/root/.npm \
     npm cache clean --force
 
 # Install Playwright chromium (uses system chromium via CHROMIUM_PATH)
-# --with-deps installs system dependencies, but we already have them
-RUN npx playwright install chromium --with-deps
+# Skip --with-deps since we're on Alpine (uses apk, not apt-get) and dependencies are already installed
+# This just registers the browser with Playwright, system chromium is used via CHROMIUM_PATH
+RUN npx playwright install chromium
 
 # Copy built application from builder stage
 COPY --from=builder /app/dist ./dist
