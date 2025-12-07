@@ -4,8 +4,8 @@
  * Uses node-cron for cron-based scheduling.
  */
 
-import cron, { type ScheduledTask as CronScheduledTask } from 'node-cron';
-import { logger } from '../utils/logger';
+import cron, { type ScheduledTask as CronScheduledTask } from "node-cron";
+import { logger } from "../utils/logger";
 
 export type ScheduledTask = {
   id: string;
@@ -25,7 +25,7 @@ class Scheduler {
    */
   scheduleTask(taskDef: ScheduledTask): void {
     if (!taskDef.enabled) {
-      logger.debug({ taskId: taskDef.id }, 'Task disabled, skipping');
+      logger.debug({ taskId: taskDef.id }, "Task disabled, skipping");
       return;
     }
 
@@ -33,7 +33,7 @@ class Scheduler {
     if (!cron.validate(taskDef.cronExpression)) {
       logger.error(
         { taskId: taskDef.id, cronExpression: taskDef.cronExpression },
-        'Invalid cron expression'
+        "Invalid cron expression",
       );
       return;
     }
@@ -45,19 +45,22 @@ class Scheduler {
     const scheduledTask = cron.schedule(
       taskDef.cronExpression,
       async () => {
-        logger.info({ taskId: taskDef.id, name: taskDef.name }, 'Executing scheduled task');
+        logger.info(
+          { taskId: taskDef.id, name: taskDef.name },
+          "Executing scheduled task",
+        );
         try {
           await taskDef.task();
-          logger.info({ taskId: taskDef.id }, 'Scheduled task completed');
+          logger.info({ taskId: taskDef.id }, "Scheduled task completed");
         } catch (error) {
-          logger.error({ error, taskId: taskDef.id }, 'Scheduled task failed');
+          logger.error({ error, taskId: taskDef.id }, "Scheduled task failed");
           // Task will be retried on next schedule if needed
           // For critical tasks, could implement retry logic here
         }
       },
       {
-        timezone: 'UTC',
-      }
+        timezone: "UTC",
+      },
     );
 
     // Start task if scheduler is running
@@ -69,8 +72,12 @@ class Scheduler {
     this.taskDefinitions.set(taskDef.id, taskDef);
 
     logger.info(
-      { taskId: taskDef.id, name: taskDef.name, cronExpression: taskDef.cronExpression },
-      'Task scheduled'
+      {
+        taskId: taskDef.id,
+        name: taskDef.name,
+        cronExpression: taskDef.cronExpression,
+      },
+      "Task scheduled",
     );
   }
 
@@ -82,7 +89,7 @@ class Scheduler {
     if (task) {
       task.stop();
       this.tasks.delete(taskId);
-      logger.info({ taskId }, 'Task cancelled');
+      logger.info({ taskId }, "Task cancelled");
     }
   }
 
@@ -91,7 +98,7 @@ class Scheduler {
    */
   start(): void {
     if (this.running) {
-      logger.warn('Scheduler already running');
+      logger.warn("Scheduler already running");
       return;
     }
 
@@ -102,7 +109,7 @@ class Scheduler {
       task.start();
     }
 
-    logger.info('Scheduler started');
+    logger.info("Scheduler started");
   }
 
   /**
@@ -118,7 +125,7 @@ class Scheduler {
       task.stop();
     }
 
-    logger.info('Scheduler stopped');
+    logger.info("Scheduler stopped");
   }
 
   /**
@@ -166,13 +173,13 @@ class Scheduler {
     }
 
     if (taskDef.enabled) {
-      logger.debug({ taskId }, 'Task already enabled');
+      logger.debug({ taskId }, "Task already enabled");
       return;
     }
 
     taskDef.enabled = true;
     this.scheduleTask(taskDef);
-    logger.info({ taskId }, 'Task enabled');
+    logger.info({ taskId }, "Task enabled");
   }
 
   /**
@@ -185,13 +192,13 @@ class Scheduler {
     }
 
     if (!taskDef.enabled) {
-      logger.debug({ taskId }, 'Task already disabled');
+      logger.debug({ taskId }, "Task already disabled");
       return;
     }
 
     taskDef.enabled = false;
     this.cancelTask(taskId);
-    logger.info({ taskId }, 'Task disabled');
+    logger.info({ taskId }, "Task disabled");
   }
 
   /**
@@ -203,12 +210,15 @@ class Scheduler {
       throw new Error(`Task ${taskId} not found`);
     }
 
-    logger.info({ taskId, name: taskDef.name }, 'Manually triggering scheduled task');
+    logger.info(
+      { taskId, name: taskDef.name },
+      "Manually triggering scheduled task",
+    );
     try {
       await taskDef.task();
-      logger.info({ taskId }, 'Manually triggered task completed');
+      logger.info({ taskId }, "Manually triggered task completed");
     } catch (error) {
-      logger.error({ error, taskId }, 'Manually triggered task failed');
+      logger.error({ error, taskId }, "Manually triggered task failed");
       throw error;
     }
   }

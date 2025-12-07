@@ -4,12 +4,12 @@
  * Handles login, logout, and authentication status.
  */
 
-import { z } from 'zod';
-import { TRPCError } from '@trpc/server';
-import { router, publicProcedure, protectedProcedure } from '../procedures';
-import { authenticateUser } from '../../services/user.service';
-import { logger } from '../../utils/logger';
-import { loginSchema } from '../../validation/schemas';
+import { z } from "zod";
+import { TRPCError } from "@trpc/server";
+import { router, publicProcedure, protectedProcedure } from "../procedures";
+import { authenticateUser } from "../../services/user.service";
+import { logger } from "../../utils/logger";
+import { loginSchema } from "../../validation/schemas";
 
 /**
  * Login input schema.
@@ -62,31 +62,37 @@ export const authRouter = router({
       try {
         const { username, password } = input;
 
-        logger.info({ username, sessionId: ctx.req.session.id }, 'Login attempt started');
+        logger.info(
+          { username, sessionId: ctx.req.session.id },
+          "Login attempt started",
+        );
 
         const user = await authenticateUser(username, password);
-        logger.info({ userId: user.id, username: user.username }, 'User authenticated');
+        logger.info(
+          { userId: user.id, username: user.username },
+          "User authenticated",
+        );
 
         // Set session
         const session = ctx.req.session;
-        logger.debug({ sessionId: session.id }, 'Setting session properties');
+        logger.debug({ sessionId: session.id }, "Setting session properties");
 
         session.userId = user.id;
         session.isSuperuser = user.isSuperuser;
 
         logger.debug(
           { sessionId: session.id, userId: user.id },
-          'Session properties set, saving...'
+          "Session properties set, saving...",
         );
 
         // Explicitly save the session and handle errors
         await new Promise<void>((resolve, reject) => {
-          session.save(err => {
+          session.save((err) => {
             if (err) {
               // Log detailed error information
               const errorDetails = {
-                message: err?.message || 'Unknown error',
-                name: err?.name || 'Error',
+                message: err?.message || "Unknown error",
+                name: err?.name || "Error",
                 stack: err?.stack,
                 sessionId: session.id,
                 userId: user.id,
@@ -94,25 +100,29 @@ export const authRouter = router({
                 errorType: err?.constructor?.name,
                 errorString: String(err),
               };
-              logger.error(errorDetails, 'Failed to save session during login');
+              logger.error(errorDetails, "Failed to save session during login");
 
               // Create a proper Error object if needed
-              const errorToReject = err instanceof Error ? err : new Error(String(err));
+              const errorToReject =
+                err instanceof Error ? err : new Error(String(err));
               reject(errorToReject);
             } else {
               logger.debug(
                 { sessionId: session.id, userId: user.id },
-                'Session saved successfully'
+                "Session saved successfully",
               );
               resolve();
             }
           });
         });
 
-        logger.info({ userId: user.id, username: user.username }, 'Login successful');
+        logger.info(
+          { userId: user.id, username: user.username },
+          "Login successful",
+        );
         return {
           success: true,
-          message: 'Login successful',
+          message: "Login successful",
           user: {
             id: user.id,
             username: user.username,
@@ -134,18 +144,18 @@ export const authRouter = router({
         };
 
         // Convert service errors to tRPC errors
-        if (err.name === 'AuthenticationError') {
-          logger.warn(errorContext, 'Login failed: authentication error');
+        if (err.name === "AuthenticationError") {
+          logger.warn(errorContext, "Login failed: authentication error");
           throw new TRPCError({
-            code: 'UNAUTHORIZED',
-            message: err.message || 'Invalid username or password',
+            code: "UNAUTHORIZED",
+            message: err.message || "Invalid username or password",
           });
         }
 
-        logger.error(errorContext, 'Login failed: unexpected error');
+        logger.error(errorContext, "Login failed: unexpected error");
         throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'Login failed',
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Login failed",
         });
       }
     }),
@@ -154,47 +164,54 @@ export const authRouter = router({
    * Logout procedure.
    * Destroys the session.
    */
-  logout: protectedProcedure.output(z.object({ message: z.string() })).mutation(async ({ ctx }) => {
-    return new Promise((resolve, reject) => {
-      ctx.req.session.destroy(err => {
-        if (err) {
-          logger.error({ error: err }, 'Failed to destroy session during logout');
-          reject(
-            new TRPCError({
-              code: 'INTERNAL_SERVER_ERROR',
-              message: 'Failed to logout',
-            })
-          );
-          return;
-        }
+  logout: protectedProcedure
+    .output(z.object({ message: z.string() }))
+    .mutation(async ({ ctx }) => {
+      return new Promise((resolve, reject) => {
+        ctx.req.session.destroy((err) => {
+          if (err) {
+            logger.error(
+              { error: err },
+              "Failed to destroy session during logout",
+            );
+            reject(
+              new TRPCError({
+                code: "INTERNAL_SERVER_ERROR",
+                message: "Failed to logout",
+              }),
+            );
+            return;
+          }
 
-        ctx.res.clearCookie('yana.sid');
-        resolve({ message: 'Logged out successfully' });
+          ctx.res.clearCookie("yana.sid");
+          resolve({ message: "Logged out successfully" });
+        });
       });
-    });
-  }),
+    }),
 
   /**
    * Get authentication status.
    * Returns current user if authenticated, null otherwise.
    */
-  status: publicProcedure.output(authStatusResponseSchema).query(async ({ ctx }) => {
-    if (ctx.user) {
-      return {
-        authenticated: true,
-        user: {
-          id: ctx.user.id,
-          username: ctx.user.username,
-          email: ctx.user.email,
-          is_superuser: ctx.user.isSuperuser,
-          is_staff: ctx.user.isStaff,
-        },
-      };
-    } else {
-      return {
-        authenticated: false,
-        user: null,
-      };
-    }
-  }),
+  status: publicProcedure
+    .output(authStatusResponseSchema)
+    .query(async ({ ctx }) => {
+      if (ctx.user) {
+        return {
+          authenticated: true,
+          user: {
+            id: ctx.user.id,
+            username: ctx.user.username,
+            email: ctx.user.email,
+            is_superuser: ctx.user.isSuperuser,
+            is_staff: ctx.user.isStaff,
+          },
+        };
+      } else {
+        return {
+          authenticated: false,
+          user: null,
+        };
+      }
+    }),
 });

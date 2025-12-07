@@ -3,34 +3,36 @@
  * Now uses tRPC for type-safe API calls.
  */
 
-import { Injectable, inject, signal, computed } from '@angular/core';
-import { Observable, from, of } from 'rxjs';
-import { tap, catchError, map } from 'rxjs';
+import { Injectable, inject, signal, computed } from "@angular/core";
+import { Observable, from, of } from "rxjs";
+import { tap, catchError, map } from "rxjs";
 import {
   Aggregator,
   AggregatorList,
   AggregatorDetail,
   AggregatorOption,
   PaginatedResponse,
-} from '../models';
-import { TRPCService } from '../trpc/trpc.service';
+} from "../models";
+import { TRPCService } from "../trpc/trpc.service";
 
 export interface AggregatorFilters {
   search?: string;
-  type?: 'managed' | 'social' | 'custom';
+  type?: "managed" | "social" | "custom";
   page?: number;
   page_size?: number;
 }
 
-@Injectable({ providedIn: 'root' })
+@Injectable({ providedIn: "root" })
 export class AggregatorService {
   private trpc = inject(TRPCService);
 
   private allAggregatorsSignal = signal<Aggregator[]>([]);
   private loadingSignal = signal<boolean>(false);
   private errorSignal = signal<string | null>(null);
-  private searchQuerySignal = signal<string>('');
-  private typeFilterSignal = signal<'managed' | 'social' | 'custom' | null>(null);
+  private searchQuerySignal = signal<string>("");
+  private typeFilterSignal = signal<"managed" | "social" | "custom" | null>(
+    null,
+  );
   private currentPageSignal = signal<number>(1);
   private pageSizeSignal = signal<number>(6);
 
@@ -49,17 +51,17 @@ export class AggregatorService {
     const search = this.searchQuerySignal().toLowerCase();
     if (search) {
       filtered = filtered.filter(
-        agg =>
+        (agg) =>
           agg.name.toLowerCase().includes(search) ||
           agg.id.toLowerCase().includes(search) ||
-          (agg.description && agg.description.toLowerCase().includes(search))
+          (agg.description && agg.description.toLowerCase().includes(search)),
       );
     }
 
     // Apply type filter
     const type = this.typeFilterSignal();
     if (type) {
-      filtered = filtered.filter(agg => agg.type === type);
+      filtered = filtered.filter((agg) => agg.type === type);
     }
 
     return filtered;
@@ -75,7 +77,9 @@ export class AggregatorService {
   });
 
   readonly totalCount = computed(() => this.filteredAggregators().length);
-  readonly totalPages = computed(() => Math.ceil(this.totalCount() / this.pageSizeSignal()));
+  readonly totalPages = computed(() =>
+    Math.ceil(this.totalCount() / this.pageSizeSignal()),
+  );
 
   /**
    * Load available aggregators
@@ -85,9 +89,13 @@ export class AggregatorService {
     this.errorSignal.set(null);
 
     return from(this.trpc.client.aggregator.grouped.query()).pipe(
-      tap(response => {
+      tap((response) => {
         // Flatten all aggregators into a single array
-        const allAggregators = [...response.managed, ...response.social, ...response.custom];
+        const allAggregators = [
+          ...response.managed,
+          ...response.social,
+          ...response.custom,
+        ];
         this.allAggregatorsSignal.set(allAggregators);
         this.loadingSignal.set(false);
 
@@ -105,12 +113,12 @@ export class AggregatorService {
           this.pageSizeSignal.set(filters.page_size);
         }
       }),
-      catchError(error => {
-        console.error('Error loading aggregators:', error);
-        this.errorSignal.set(error.message || 'Failed to load aggregators');
+      catchError((error) => {
+        console.error("Error loading aggregators:", error);
+        this.errorSignal.set(error.message || "Failed to load aggregators");
         this.loadingSignal.set(false);
         return of({ managed: [], social: [], custom: [] });
-      })
+      }),
     );
   }
 
@@ -125,7 +133,7 @@ export class AggregatorService {
   /**
    * Set type filter
    */
-  setTypeFilter(type: 'managed' | 'social' | 'custom' | null) {
+  setTypeFilter(type: "managed" | "social" | "custom" | null) {
     this.typeFilterSignal.set(type);
     this.currentPageSignal.set(1); // Reset to first page
   }
@@ -150,15 +158,21 @@ export class AggregatorService {
    */
   getAggregator(modulePath: string): Aggregator | null {
     const allAggregators = this.allAggregatorsSignal();
-    return allAggregators.find(a => a.id === modulePath || a.modulePath === modulePath) || null;
+    return (
+      allAggregators.find(
+        (a) => a.id === modulePath || a.modulePath === modulePath,
+      ) || null
+    );
   }
 
   /**
    * Get detailed aggregator information including identifier fields and options
    */
   getAggregatorDetail(aggregatorId: string): Observable<AggregatorDetail> {
-    return from(this.trpc.client.aggregator.getById.query({ id: aggregatorId })).pipe(
-      map(detail => ({
+    return from(
+      this.trpc.client.aggregator.getById.query({ id: aggregatorId }),
+    ).pipe(
+      map((detail) => ({
         id: detail.id,
         identifierType: detail.identifierType,
         identifierLabel: detail.identifierLabel,
@@ -168,19 +182,19 @@ export class AggregatorService {
         identifierEditable: detail.identifierEditable,
         options: detail.options as Record<string, AggregatorOption>,
       })),
-      catchError(error => {
-        console.error('Error loading aggregator detail:', error);
+      catchError((error) => {
+        console.error("Error loading aggregator detail:", error);
         return of({
           id: aggregatorId,
-          identifierType: 'url' as const,
-          identifierLabel: 'Identifier',
-          identifierDescription: '',
-          identifierPlaceholder: '',
+          identifierType: "url" as const,
+          identifierLabel: "Identifier",
+          identifierDescription: "",
+          identifierPlaceholder: "",
           identifierChoices: undefined,
           identifierEditable: false,
           options: {},
         } as AggregatorDetail);
-      })
+      }),
     );
   }
 }

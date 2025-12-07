@@ -2,9 +2,9 @@
  * Breadcrumb service for tracking navigation hierarchy.
  */
 
-import { Injectable, inject, signal, computed } from '@angular/core';
-import { Router, NavigationEnd, ActivatedRouteSnapshot } from '@angular/router';
-import { filter, map } from 'rxjs/operators';
+import { Injectable, inject, signal, computed } from "@angular/core";
+import { Router, NavigationEnd, ActivatedRouteSnapshot } from "@angular/router";
+import { filter, map } from "rxjs/operators";
 
 export interface BreadcrumbItem {
   label: string;
@@ -12,7 +12,7 @@ export interface BreadcrumbItem {
 }
 
 @Injectable({
-  providedIn: 'root',
+  providedIn: "root",
 })
 export class BreadcrumbService {
   private router = inject(Router);
@@ -27,8 +27,8 @@ export class BreadcrumbService {
     // Listen to route changes
     this.router.events
       .pipe(
-        filter(event => event instanceof NavigationEnd),
-        map(() => this.router.routerState.snapshot.root)
+        filter((event) => event instanceof NavigationEnd),
+        map(() => this.router.routerState.snapshot.root),
       )
       .subscribe(() => {
         this.updateBreadcrumbs();
@@ -66,7 +66,7 @@ export class BreadcrumbService {
     const breadcrumbs: BreadcrumbItem[] = [];
 
     // Always start with Home
-    breadcrumbs.push({ label: 'Home', url: '/' });
+    breadcrumbs.push({ label: "Home", url: "/" });
 
     // Build breadcrumbs from route segments
     this.buildBreadcrumbs(route, breadcrumbs);
@@ -77,7 +77,10 @@ export class BreadcrumbService {
   /**
    * Recursively build breadcrumbs from route segments.
    */
-  private buildBreadcrumbs(route: ActivatedRouteSnapshot, breadcrumbs: BreadcrumbItem[]) {
+  private buildBreadcrumbs(
+    route: ActivatedRouteSnapshot,
+    breadcrumbs: BreadcrumbItem[],
+  ) {
     const children = route.firstChild;
 
     if (!children) {
@@ -86,26 +89,26 @@ export class BreadcrumbService {
 
     const routePath = children.routeConfig?.path;
 
-    if (!routePath || routePath === '') {
+    if (!routePath || routePath === "") {
       // Recurse into child routes
       this.buildBreadcrumbs(children, breadcrumbs);
       return;
     }
 
     // Check if route path is a combined path with parameter (e.g., ":id/edit", "articles/:articleId")
-    if (routePath.includes('/') && routePath.includes(':')) {
-      const parts = routePath.split('/');
-      const paramPart = parts.find(p => p.startsWith(':'));
+    if (routePath.includes("/") && routePath.includes(":")) {
+      const parts = routePath.split("/");
+      const paramPart = parts.find((p) => p.startsWith(":"));
       const basePath = parts[0];
 
       // Handle ":id/edit" pattern for feeds
-      if (paramPart === ':id' && parts[1] === 'edit') {
+      if (paramPart === ":id" && parts[1] === "edit") {
         // Check if we're in feeds context by checking all ancestor routes
         let parent = children.parent;
         let isFeedsContext = false;
         while (parent) {
           const parentPath = parent.routeConfig?.path;
-          if (parentPath === 'feeds') {
+          if (parentPath === "feeds") {
             isFeedsContext = true;
             break;
           }
@@ -113,24 +116,25 @@ export class BreadcrumbService {
         }
         if (isFeedsContext) {
           // Check if we have a dynamic label for this feed (feed name)
-          const paramValue = children.params['id'] || children.paramMap.get('id');
+          const paramValue =
+            children.params["id"] || children.paramMap.get("id");
           const labelKey = `id:${paramValue}`;
           const dynamicLabel = this.dynamicLabels().get(labelKey);
 
           // Use feed name if available, otherwise fall back to "Feed"
-          const label = dynamicLabel || 'Feed';
+          const label = dynamicLabel || "Feed";
           breadcrumbs.push({ label, url: null }); // null URL makes it non-clickable (current page)
           return;
         }
       }
 
       // Handle "articles/:articleId" pattern
-      if (basePath === 'articles' && paramPart) {
+      if (basePath === "articles" && paramPart) {
         const paramName = paramPart.substring(1);
         // Check if this is an article ID parameter
-        if (paramName === 'id' || paramName === 'articleId') {
+        if (paramName === "id" || paramName === "articleId") {
           // Use "Article" as the label for article detail pages
-          breadcrumbs.push({ label: 'Article', url: null }); // null URL makes it non-clickable (current page)
+          breadcrumbs.push({ label: "Article", url: null }); // null URL makes it non-clickable (current page)
           // Don't recurse further - article detail is the final breadcrumb
           return;
         }
@@ -138,17 +142,18 @@ export class BreadcrumbService {
     }
 
     // Skip if it's a parameterized route without a label
-    if (routePath.startsWith(':')) {
+    if (routePath.startsWith(":")) {
       const paramName = routePath.substring(1);
       // Get param value from children params (Angular stores params on the route with the param)
-      const paramValue = children.params[paramName] || children.paramMap.get(paramName);
+      const paramValue =
+        children.params[paramName] || children.paramMap.get(paramName);
 
       // Check if this is an article detail route
       const isArticleDetail = this.isArticleDetailRoute(children);
       if (isArticleDetail) {
         // Use "Article" as the label for article detail pages
         const url = this.buildUrl(children);
-        breadcrumbs.push({ label: 'Article', url: null }); // null URL makes it non-clickable (current page)
+        breadcrumbs.push({ label: "Article", url: null }); // null URL makes it non-clickable (current page)
         // Don't recurse further - article detail is the final breadcrumb
         return;
       }
@@ -167,7 +172,11 @@ export class BreadcrumbService {
       } else {
         // For numeric IDs without labels, skip adding breadcrumb
         // The parent route (e.g., "Feeds") will be shown instead
-        if (paramName === 'id' && paramValue && /^\d+$/.test(String(paramValue))) {
+        if (
+          paramName === "id" &&
+          paramValue &&
+          /^\d+$/.test(String(paramValue))
+        ) {
           // Don't add a breadcrumb for numeric IDs without labels
           // Just recurse to child routes (e.g., "edit")
           this.buildBreadcrumbs(children, breadcrumbs);
@@ -180,7 +189,7 @@ export class BreadcrumbService {
     } else {
       // Regular route segment
       // Skip "articles" segment if we're going to show an article detail
-      if (routePath === 'articles' && this.hasArticleDetailChild(children)) {
+      if (routePath === "articles" && this.hasArticleDetailChild(children)) {
         // Don't add "Articles" breadcrumb, just recurse
         this.buildBreadcrumbs(children, breadcrumbs);
         return;
@@ -200,19 +209,19 @@ export class BreadcrumbService {
    */
   private isArticleDetailRoute(route: ActivatedRouteSnapshot): boolean {
     const routePath = route.routeConfig?.path;
-    if (!routePath?.startsWith(':')) {
+    if (!routePath?.startsWith(":")) {
       return false;
     }
 
     const paramName = routePath.substring(1);
 
     // Check if this is an article ID parameter (id or articleId)
-    if (paramName === 'id' || paramName === 'articleId') {
+    if (paramName === "id" || paramName === "articleId") {
       // Check if any parent route is "articles"
       let parent = route.parent;
       while (parent) {
         const parentPath = parent.routeConfig?.path;
-        if (parentPath === 'articles') {
+        if (parentPath === "articles") {
           return true;
         }
         parent = parent.parent;
@@ -241,23 +250,25 @@ export class BreadcrumbService {
    */
   private getRouteLabel(path: string, route: ActivatedRouteSnapshot): string {
     // Check for dynamic labels first
-    if (path.includes(':')) {
-      const paramName = path.split(':')[1];
+    if (path.includes(":")) {
+      const paramName = path.split(":")[1];
       const paramValue = route.params[paramName];
-      const dynamicLabel = this.dynamicLabels().get(`${paramName}:${paramValue}`);
+      const dynamicLabel = this.dynamicLabels().get(
+        `${paramName}:${paramValue}`,
+      );
       if (dynamicLabel) {
         return dynamicLabel;
       }
     }
 
     // Check if we're in feeds context and on edit route - show "Feed" instead of "Edit"
-    if (path === 'edit') {
+    if (path === "edit") {
       let parent = route.parent;
       while (parent) {
         const parentPath = parent.routeConfig?.path;
-        if (parentPath === 'feeds' || parentPath === '') {
+        if (parentPath === "feeds" || parentPath === "") {
           // We're in feeds context, return "Feed" for edit route
-          return 'Feed';
+          return "Feed";
         }
         parent = parent.parent;
       }
@@ -265,10 +276,10 @@ export class BreadcrumbService {
 
     // Map route paths to labels
     const labelMap: Record<string, string> = {
-      feeds: 'Feeds',
-      create: 'Create Feed',
-      edit: 'Edit',
-      articles: 'Articles',
+      feeds: "Feeds",
+      create: "Create Feed",
+      edit: "Edit",
+      articles: "Articles",
     };
 
     return labelMap[path] || path.charAt(0).toUpperCase() + path.slice(1);
@@ -283,10 +294,10 @@ export class BreadcrumbService {
 
     while (current) {
       const path = current.routeConfig?.path;
-      if (path && path !== '') {
-        if (path.startsWith(':')) {
+      if (path && path !== "") {
+        if (path.startsWith(":")) {
           const paramName = path.substring(1);
-          segments.push(current.params[paramName] || '');
+          segments.push(current.params[paramName] || "");
         } else {
           segments.push(path);
         }
@@ -296,6 +307,6 @@ export class BreadcrumbService {
 
     // Reverse to get correct order and build URL
     segments.reverse();
-    return '/' + segments.join('/');
+    return "/" + segments.join("/");
   }
 }

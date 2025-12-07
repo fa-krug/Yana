@@ -5,20 +5,20 @@
  * without fetching full articles from the web.
  */
 
-import { BaseAggregator } from './base/aggregator';
-import type { RawArticle } from './base/types';
-import { fetchFeed } from './base/fetch';
-import { processContent } from './base/process';
-import { sanitizeHtml } from './base/utils';
-import { logger } from '../utils/logger';
+import { BaseAggregator } from "./base/aggregator";
+import type { RawArticle } from "./base/types";
+import { fetchFeed } from "./base/fetch";
+import { processContent } from "./base/process";
+import { sanitizeHtml } from "./base/utils";
+import { logger } from "../utils/logger";
 
 export class FeedContentAggregator extends BaseAggregator {
-  override readonly id: string = 'feed_content';
-  override readonly type: 'managed' | 'custom' | 'social' = 'custom';
-  override readonly name: string = 'RSS-Only';
-  override readonly url: string = '';
+  override readonly id: string = "feed_content";
+  override readonly type: "managed" | "custom" | "social" = "custom";
+  override readonly name: string = "RSS-Only";
+  override readonly url: string = "";
   override readonly description: string =
-    'RSS feeds with full content already included in the feed.';
+    "RSS feeds with full content already included in the feed.";
 
   async aggregate(articleLimit?: number): Promise<RawArticle[]> {
     const aggregateStart = Date.now();
@@ -27,13 +27,13 @@ export class FeedContentAggregator extends BaseAggregator {
         aggregator: this.id,
         feedId: this.feed?.id,
         articleLimit,
-        step: 'aggregate_start',
+        step: "aggregate_start",
       },
-      `Starting RSS-Only aggregation${articleLimit ? ` (limit: ${articleLimit})` : ''}`
+      `Starting RSS-Only aggregation${articleLimit ? ` (limit: ${articleLimit})` : ""}`,
     );
 
     if (!this.feed) {
-      throw new Error('Feed not initialized');
+      throw new Error("Feed not initialized");
     }
 
     const feedUrl = this.feed.identifier;
@@ -41,9 +41,9 @@ export class FeedContentAggregator extends BaseAggregator {
       {
         feedUrl,
         aggregator: this.id,
-        step: 'fetch_feed_start',
+        step: "fetch_feed_start",
       },
-      'Fetching RSS feed'
+      "Fetching RSS feed",
     );
 
     // Fetch RSS feed
@@ -57,9 +57,9 @@ export class FeedContentAggregator extends BaseAggregator {
         itemCount: feed.items?.length || 0,
         elapsed: feedFetchElapsed,
         aggregator: this.id,
-        step: 'fetch_feed_complete',
+        step: "fetch_feed_complete",
       },
-      'RSS feed fetched, processing items'
+      "RSS feed fetched, processing items",
     );
 
     const articles: RawArticle[] = [];
@@ -74,9 +74,9 @@ export class FeedContentAggregator extends BaseAggregator {
           limitedCount: itemsToProcess.length,
           articleLimit,
           aggregator: this.id,
-          step: 'apply_limit',
+          step: "apply_limit",
         },
-        `Limited to first ${articleLimit} item(s)`
+        `Limited to first ${articleLimit} item(s)`,
       );
     }
 
@@ -84,9 +84,9 @@ export class FeedContentAggregator extends BaseAggregator {
       {
         itemCount: itemsToProcess.length,
         aggregator: this.id,
-        step: 'process_items_start',
+        step: "process_items_start",
       },
-      `Processing ${itemsToProcess.length} feed items`
+      `Processing ${itemsToProcess.length} feed items`,
     );
 
     for (let i = 0; i < itemsToProcess.length; i++) {
@@ -101,17 +101,17 @@ export class FeedContentAggregator extends BaseAggregator {
             title: item.title,
             url: item.link,
             aggregator: this.id,
-            step: 'process_item_start',
+            step: "process_item_start",
           },
-          `Processing item ${i + 1}/${itemsToProcess.length}`
+          `Processing item ${i + 1}/${itemsToProcess.length}`,
         );
 
         const article: RawArticle = {
-          title: item.title || '',
-          url: item.link || '',
+          title: item.title || "",
+          url: item.link || "",
           published: item.pubDate ? new Date(item.pubDate) : new Date(),
-          content: item.content || item.contentSnippet || '',
-          summary: item.contentSnippet || item.content || '',
+          content: item.content || item.contentSnippet || "",
+          summary: item.contentSnippet || item.content || "",
           author: item.creator || item.author || undefined,
         };
 
@@ -122,9 +122,9 @@ export class FeedContentAggregator extends BaseAggregator {
               index: i + 1,
               title: article.title,
               aggregator: this.id,
-              step: 'item_skipped',
+              step: "item_skipped",
             },
-            'Item skipped by shouldSkipArticle'
+            "Item skipped by shouldSkipArticle",
           );
           continue;
         }
@@ -137,15 +137,15 @@ export class FeedContentAggregator extends BaseAggregator {
               url: article.url,
               title: article.title,
               aggregator: this.id,
-              step: 'skip_existing',
+              step: "skip_existing",
             },
-            'Skipping existing article'
+            "Skipping existing article",
           );
           continue;
         }
 
         // Use RSS content directly - no need to fetch from web
-        let content = article.content || article.summary || '';
+        let content = article.content || article.summary || "";
 
         // Sanitize HTML (remove scripts, rename attributes)
         const sanitizedContent = sanitizeHtml(content);
@@ -159,7 +159,7 @@ export class FeedContentAggregator extends BaseAggregator {
           sanitizedContent,
           article,
           generateTitleImage,
-          addSourceFooter
+          addSourceFooter,
         );
         const processElapsed = Date.now() - processStart;
 
@@ -169,9 +169,9 @@ export class FeedContentAggregator extends BaseAggregator {
             url: article.url,
             elapsed: processElapsed,
             aggregator: this.id,
-            step: 'process_complete',
+            step: "process_complete",
           },
-          'Content processed'
+          "Content processed",
         );
 
         // Update article with processed content
@@ -187,9 +187,9 @@ export class FeedContentAggregator extends BaseAggregator {
             title: article.title,
             elapsed: itemElapsed,
             aggregator: this.id,
-            step: 'item_complete',
+            step: "item_complete",
           },
-          `Item ${i + 1}/${itemsToProcess.length} processed`
+          `Item ${i + 1}/${itemsToProcess.length} processed`,
         );
       } catch (error) {
         logger.error(
@@ -199,9 +199,9 @@ export class FeedContentAggregator extends BaseAggregator {
             title: item.title,
             url: item.link,
             aggregator: this.id,
-            step: 'item_error',
+            step: "item_error",
           },
-          'Error processing item'
+          "Error processing item",
         );
         continue;
       }
@@ -214,9 +214,9 @@ export class FeedContentAggregator extends BaseAggregator {
         feedId: this.feed.id,
         articleCount: articles.length,
         elapsed: aggregateElapsed,
-        step: 'aggregate_complete',
+        step: "aggregate_complete",
       },
-      `RSS-Only aggregation completed: ${articles.length} article(s)`
+      `RSS-Only aggregation completed: ${articles.length} article(s)`,
     );
 
     return articles;

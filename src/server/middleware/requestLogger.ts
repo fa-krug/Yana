@@ -4,8 +4,8 @@
  * Logs all HTTP requests with structured logging.
  */
 
-import pinoHttp from 'pino-http';
-import { logger } from '../utils/logger';
+import pinoHttp from "pino-http";
+import { logger } from "../utils/logger";
 
 /**
  * Request logging middleware.
@@ -15,12 +15,12 @@ export const requestLogger = pinoHttp({
   logger,
   customLogLevel: (req, res, err) => {
     if (res.statusCode >= 400 && res.statusCode < 500) {
-      return 'warn';
+      return "warn";
     }
     if (res.statusCode >= 500 || err) {
-      return 'error';
+      return "error";
     }
-    return 'info';
+    return "info";
   },
   customSuccessMessage: (req, res) => {
     return `${req.method} ${req.url} - ${res.statusCode}`;
@@ -29,17 +29,17 @@ export const requestLogger = pinoHttp({
     return `${req.method} ${req.url} - ${res.statusCode} - ${err?.message}`;
   },
   serializers: {
-    req: req => ({
+    req: (req) => ({
       method: req.method,
       url: req.url,
       path: req.path,
       query: req.query,
       headers: {
-        'user-agent': req.headers['user-agent'],
-        'content-type': req.headers['content-type'],
+        "user-agent": req.headers["user-agent"],
+        "content-type": req.headers["content-type"],
       },
     }),
-    res: res => ({
+    res: (res) => ({
       statusCode: res.statusCode,
     }),
   },

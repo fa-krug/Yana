@@ -2,16 +2,16 @@
  * Admin tasks component - container with tabs.
  */
 
-import { Component, ChangeDetectionStrategy } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
-import { MatTabsModule } from '@angular/material/tabs';
-import { MetricsComponent } from './metrics.component';
-import { TasksListComponent } from './tasks-list.component';
-import { TaskQueueComponent } from './task-queue.component';
+import { Component, ChangeDetectionStrategy } from "@angular/core";
+import { CommonModule } from "@angular/common";
+import { RouterModule } from "@angular/router";
+import { MatTabsModule } from "@angular/material/tabs";
+import { MetricsComponent } from "./metrics.component";
+import { TasksListComponent } from "./tasks-list.component";
+import { TaskQueueComponent } from "./task-queue.component";
 
 @Component({
-  selector: 'app-admin-tasks',
+  selector: "app-admin-tasks",
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [

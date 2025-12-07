@@ -3,8 +3,8 @@
  * Article components register their action handlers with this service.
  */
 
-import { Injectable } from '@angular/core';
-import { Subject } from 'rxjs';
+import { Injectable } from "@angular/core";
+import { Subject } from "rxjs";
 
 export interface ArticleActions {
   toggleRead?: () => void;
@@ -18,7 +18,7 @@ export interface ArticleActions {
   viewFeed?: () => void;
 }
 
-@Injectable({ providedIn: 'root' })
+@Injectable({ providedIn: "root" })
 export class ArticleActionsService {
   private actionsSubject = new Subject<ArticleActions | null>();
   actions$ = this.actionsSubject.asObservable();

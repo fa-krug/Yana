@@ -18,21 +18,21 @@ import {
   ViewChild,
   AfterViewInit,
   signal,
-} from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { RouterModule, Router } from '@angular/router';
-import { MatSidenavModule, MatSidenav } from '@angular/material/sidenav';
-import { MatListModule } from '@angular/material/list';
-import { MatDividerModule } from '@angular/material/divider';
-import { MatToolbarModule } from '@angular/material/toolbar';
-import { MatIconModule } from '@angular/material/icon';
-import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';
-import { HeaderComponent } from './header.component';
-import { AuthService } from '../core/services/auth.service';
-import { BreadcrumbComponent } from '../core/components/breadcrumb.component';
+} from "@angular/core";
+import { CommonModule } from "@angular/common";
+import { RouterModule, Router } from "@angular/router";
+import { MatSidenavModule, MatSidenav } from "@angular/material/sidenav";
+import { MatListModule } from "@angular/material/list";
+import { MatDividerModule } from "@angular/material/divider";
+import { MatToolbarModule } from "@angular/material/toolbar";
+import { MatIconModule } from "@angular/material/icon";
+import { BreakpointObserver, Breakpoints } from "@angular/cdk/layout";
+import { HeaderComponent } from "./header.component";
+import { AuthService } from "../core/services/auth.service";
+import { BreadcrumbComponent } from "../core/components/breadcrumb.component";
 
 @Component({
-  selector: 'app-main-layout',
+  selector: "app-main-layout",
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
@@ -191,7 +191,7 @@ export class MainLayoutComponent implements AfterViewInit {
   authService = inject(AuthService);
   private breakpointObserver = inject(BreakpointObserver);
 
-  @ViewChild('drawer') drawer!: MatSidenav;
+  @ViewChild("drawer") drawer!: MatSidenav;
 
   isMobile = signal(false);
 
@@ -200,9 +200,11 @@ export class MainLayoutComponent implements AfterViewInit {
     this.updateMobileState();
 
     // Watch for breakpoint changes
-    this.breakpointObserver.observe([Breakpoints.Handset, Breakpoints.Tablet]).subscribe(() => {
-      this.updateMobileState();
-    });
+    this.breakpointObserver
+      .observe([Breakpoints.Handset, Breakpoints.Tablet])
+      .subscribe(() => {
+        this.updateMobileState();
+      });
   }
 
   private updateMobileState() {

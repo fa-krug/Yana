@@ -4,8 +4,8 @@
  * Provides type-safe validation for all API inputs.
  */
 
-import { z } from 'zod';
-import { commonSchemas } from '../utils/validation';
+import { z } from "zod";
+import { commonSchemas } from "../utils/validation";
 
 // User schemas
 export const createUserSchema = z.object({
@@ -64,7 +64,9 @@ export const adminListUsersSchema = z.object({
 export const taskListSchema = z.object({
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().positive().max(100).default(20),
-  status: z.array(z.enum(['pending', 'running', 'completed', 'failed'])).optional(),
+  status: z
+    .array(z.enum(["pending", "running", "completed", "failed"]))
+    .optional(),
   type: z.array(z.string()).optional(),
   dateFrom: z.string().datetime().optional(),
   dateTo: z.string().datetime().optional(),
@@ -74,7 +76,9 @@ export const taskListSchema = z.object({
 export const createFeedSchema = z.object({
   name: z.string().min(1).max(255),
   identifier: z.string().min(1).max(500),
-  feedType: z.enum(['article', 'youtube', 'podcast', 'reddit']).default('article'),
+  feedType: z
+    .enum(["article", "youtube", "podcast", "reddit"])
+    .default("article"),
   aggregator: z.string().min(1).max(255),
   enabled: z.boolean().default(true),
   generateTitleImage: z.boolean().default(true),
@@ -83,11 +87,11 @@ export const createFeedSchema = z.object({
   useCurrentTimestamp: z.boolean().default(true),
   dailyPostLimit: z.number().int().default(50),
   aggregatorOptions: z.record(z.string(), z.unknown()).default({}),
-  aiTranslateTo: z.string().max(10).default(''),
+  aiTranslateTo: z.string().max(10).default(""),
   aiSummarize: z.boolean().default(false),
-  aiCustomPrompt: z.string().max(500).default(''),
+  aiCustomPrompt: z.string().max(500).default(""),
   icon: z.string().url().optional().nullable(),
-  example: z.string().default(''),
+  example: z.string().default(""),
 });
 
 export const updateFeedSchema = createFeedSchema.partial();
@@ -102,7 +106,7 @@ export const markArticlesSchema = z.object({
 export const articleListSchema = z.object({
   ...commonSchemas.pagination.shape,
   feedId: z.coerce.number().int().positive().optional(),
-  feedType: z.enum(['article', 'youtube', 'podcast', 'reddit']).optional(),
+  feedType: z.enum(["article", "youtube", "podcast", "reddit"]).optional(),
   isRead: z.coerce.boolean().optional(),
   isSaved: z.coerce.boolean().optional(),
   search: z.string().optional(),

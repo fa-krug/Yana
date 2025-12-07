@@ -1,7 +1,7 @@
-import { Injectable, inject } from '@angular/core';
-import { Observable, from } from 'rxjs';
-import { map } from 'rxjs';
-import { TRPCService } from '../trpc/trpc.service';
+import { Injectable, inject } from "@angular/core";
+import { Observable, from } from "rxjs";
+import { map } from "rxjs";
+import { TRPCService } from "../trpc/trpc.service";
 
 export interface UserProfile {
   username: string;
@@ -88,19 +88,19 @@ export interface MessageResponse {
 }
 
 @Injectable({
-  providedIn: 'root',
+  providedIn: "root",
 })
 export class UserSettingsService {
   private trpc = inject(TRPCService);
 
   getProfile(): Observable<UserProfile> {
     return from(this.trpc.client.user.getProfile.query()).pipe(
-      map(profile => ({
+      map((profile) => ({
         username: profile.username,
-        firstName: profile.firstName || '',
-        lastName: profile.lastName || '',
+        firstName: profile.firstName || "",
+        lastName: profile.lastName || "",
         email: profile.email,
-      }))
+      })),
     );
   }
 
@@ -110,11 +110,11 @@ export class UserSettingsService {
 
   getSettings(): Observable<UserSettings> {
     return from(this.trpc.client.user.getSettings.query()).pipe(
-      map(settings => ({
+      map((settings) => ({
         reddit_enabled: settings.redditEnabled || false,
         youtube_enabled: settings.youtubeEnabled || false,
         openai_enabled: settings.openaiEnabled || false,
-      }))
+      })),
     );
   }
 
@@ -124,63 +124,67 @@ export class UserSettingsService {
         redditEnabled: data.reddit_enabled,
         youtubeEnabled: data.youtube_enabled,
         openaiEnabled: data.openai_enabled,
-      } as any)
+      } as any),
     ).pipe(
-      map(settings => ({
+      map((settings) => ({
         reddit_enabled: settings.redditEnabled || false,
         youtube_enabled: settings.youtubeEnabled || false,
         openai_enabled: settings.openaiEnabled || false,
-      }))
+      })),
     );
   }
 
   getRedditSettings(): Observable<RedditSettings> {
     return from(this.trpc.client.user.getRedditSettings.query()).pipe(
-      map(settings => ({
+      map((settings) => ({
         enabled: settings.enabled,
-        client_id: settings.clientId || '',
-        client_secret: settings.clientSecret || '',
-        user_agent: settings.userAgent || '',
-      }))
+        client_id: settings.clientId || "",
+        client_secret: settings.clientSecret || "",
+        user_agent: settings.userAgent || "",
+      })),
     );
   }
 
-  updateRedditSettings(data: RedditSettingsRequest): Observable<MessageResponse> {
+  updateRedditSettings(
+    data: RedditSettingsRequest,
+  ): Observable<MessageResponse> {
     return from(
       this.trpc.client.user.updateRedditSettings.mutate({
         redditEnabled: data.enabled,
         redditClientId: data.client_id,
         redditClientSecret: data.client_secret,
         redditUserAgent: data.user_agent,
-      })
+      }),
     );
   }
 
   getYouTubeSettings(): Observable<YouTubeSettings> {
     return from(this.trpc.client.user.getYouTubeSettings.query()).pipe(
-      map(settings => ({
+      map((settings) => ({
         enabled: settings.enabled,
-        api_key: settings.apiKey || '',
-      }))
+        api_key: settings.apiKey || "",
+      })),
     );
   }
 
-  updateYouTubeSettings(data: YouTubeSettingsRequest): Observable<MessageResponse> {
+  updateYouTubeSettings(
+    data: YouTubeSettingsRequest,
+  ): Observable<MessageResponse> {
     return from(
       this.trpc.client.user.updateYouTubeSettings.mutate({
         youtubeEnabled: data.enabled,
         youtubeApiKey: data.api_key,
-      })
+      }),
     );
   }
 
   getOpenAISettings(): Observable<OpenAISettings> {
     return from(this.trpc.client.user.getOpenAISettings.query()).pipe(
-      map(settings => ({
+      map((settings) => ({
         enabled: settings.enabled,
-        api_url: settings.apiUrl || '',
-        api_key: settings.apiKey || '',
-        model: settings.model || '',
+        api_url: settings.apiUrl || "",
+        api_key: settings.apiKey || "",
+        model: settings.model || "",
         temperature: settings.temperature || 0.7,
         max_tokens: settings.maxTokens || 1000,
         daily_limit: settings.defaultDailyLimit || 100,
@@ -189,11 +193,13 @@ export class UserSettingsService {
         request_timeout: settings.requestTimeout || 30000,
         max_retries: settings.maxRetries || 3,
         retry_delay: settings.retryDelay || 1000,
-      }))
+      })),
     );
   }
 
-  updateOpenAISettings(data: OpenAISettingsRequest): Observable<MessageResponse> {
+  updateOpenAISettings(
+    data: OpenAISettingsRequest,
+  ): Observable<MessageResponse> {
     return from(
       this.trpc.client.user.updateOpenAISettings.mutate({
         openaiEnabled: data.enabled,
@@ -208,7 +214,7 @@ export class UserSettingsService {
         aiRequestTimeout: data.request_timeout,
         aiMaxRetries: data.max_retries,
         aiRetryDelay: data.retry_delay,
-      })
+      }),
     );
   }
 
@@ -218,7 +224,7 @@ export class UserSettingsService {
         current_password: data.current_password,
         new_password: data.new_password,
         confirm_password: data.confirm_password,
-      })
+      }),
     );
   }
 }

@@ -4,11 +4,11 @@
  * Provides a singleton tRPC client instance.
  */
 
-import { Injectable } from '@angular/core';
-import { createTRPCClient, type AppRouter } from './trpc-client';
+import { Injectable } from "@angular/core";
+import { createTRPCClient, type AppRouter } from "./trpc-client";
 
 @Injectable({
-  providedIn: 'root',
+  providedIn: "root",
 })
 export class TRPCService {
   /**

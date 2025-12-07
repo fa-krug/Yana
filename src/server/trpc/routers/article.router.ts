@@ -4,10 +4,10 @@
  * Handles article management endpoints.
  */
 
-import { z } from 'zod';
-import { TRPCError } from '@trpc/server';
-import { router, protectedProcedure } from '../procedures';
-import { getAuthenticatedUser } from '../procedures';
+import { z } from "zod";
+import { TRPCError } from "@trpc/server";
+import { router, protectedProcedure } from "../procedures";
+import { getAuthenticatedUser } from "../procedures";
 import {
   listArticles,
   getArticle,
@@ -18,12 +18,15 @@ import {
   getArticleNavigation,
   markArticleReadOnView,
   enrichArticleData,
-} from '../../services/article.service';
-import { getFeed } from '../../services/feed.service';
-import { articleListSchema, markArticlesSchema } from '../../validation/schemas';
-import { NotFoundError, PermissionDeniedError } from '../../errors';
-import { logger } from '../../utils/logger';
-import { getTask } from '../../services/taskQueue.service';
+} from "../../services/article.service";
+import { getFeed } from "../../services/feed.service";
+import {
+  articleListSchema,
+  markArticlesSchema,
+} from "../../validation/schemas";
+import { NotFoundError, PermissionDeniedError } from "../../errors";
+import { logger } from "../../utils/logger";
+import { getTask } from "../../services/taskQueue.service";
 
 /**
  * Article list input schema.
@@ -32,7 +35,7 @@ const articleListInputSchema = z.object({
   page: z.number().int().positive().default(1),
   pageSize: z.number().int().positive().max(100).default(20),
   feedId: z.number().int().positive().nullish(),
-  feedType: z.enum(['article', 'youtube', 'podcast', 'reddit']).nullish(),
+  feedType: z.enum(["article", "youtube", "podcast", "reddit"]).nullish(),
   isRead: z.boolean().nullish(),
   isSaved: z.boolean().nullish(),
   search: z.string().nullish(),
@@ -41,11 +44,13 @@ const articleListInputSchema = z.object({
 /**
  * Helper to convert date to ISO string.
  */
-const toISOString = (date: Date | number | string | null | undefined): string => {
+const toISOString = (
+  date: Date | number | string | null | undefined,
+): string => {
   if (!date) return new Date().toISOString();
   if (date instanceof Date) return date.toISOString();
-  if (typeof date === 'number') return new Date(date).toISOString();
-  if (typeof date === 'string') return date;
+  if (typeof date === "number") return new Date(date).toISOString();
+  if (typeof date === "string") return date;
   return new Date().toISOString();
 };
 
@@ -56,66 +61,68 @@ export const articleRouter = router({
   /**
    * List articles with pagination and filters.
    */
-  list: protectedProcedure.input(articleListInputSchema).query(async ({ input, ctx }) => {
-    const user = getAuthenticatedUser(ctx);
-    const result = await listArticles(user, {
-      feedId: input.feedId ?? undefined,
-      feedType: input.feedType ?? undefined,
-      isRead: input.isRead ?? undefined,
-      isSaved: input.isSaved ?? undefined,
-      search: input.search ?? undefined,
-      page: input.page,
-      pageSize: input.pageSize,
-    });
+  list: protectedProcedure
+    .input(articleListInputSchema)
+    .query(async ({ input, ctx }) => {
+      const user = getAuthenticatedUser(ctx);
+      const result = await listArticles(user, {
+        feedId: input.feedId ?? undefined,
+        feedType: input.feedType ?? undefined,
+        isRead: input.isRead ?? undefined,
+        isSaved: input.isSaved ?? undefined,
+        search: input.search ?? undefined,
+        page: input.page,
+        pageSize: input.pageSize,
+      });
 
-    // Enrich articles with computed fields and convert dates
-    const enrichedArticles = await Promise.all(
-      result.articles.map(async article => {
-        const enrichment = await enrichArticleData(article, user);
-        return {
-          id: article.id,
-          feedId: article.feedId,
-          name: article.name,
-          url: article.url,
-          date: toISOString(article.date),
-          content: article.content,
-          thumbnailUrl: article.thumbnailUrl || null,
-          mediaUrl: article.mediaUrl || null,
-          duration: article.duration || null,
-          viewCount: article.viewCount || null,
-          mediaType: article.mediaType || null,
-          author: article.author || null,
-          externalId: article.externalId || null,
-          score: article.score || null,
-          createdAt: toISOString(article.createdAt),
-          updatedAt: toISOString(article.updatedAt),
-          // Enrichment fields
-          isRead: enrichment.isRead,
-          isSaved: enrichment.isSaved,
-          isVideo: enrichment.isVideo,
-          isPodcast: enrichment.isPodcast,
-          isReddit: enrichment.isReddit,
-          hasMedia: enrichment.hasMedia,
-          durationFormatted: enrichment.durationFormatted || null,
-          // Frontend-friendly aliases
-          read: enrichment.isRead,
-          saved: enrichment.isSaved,
-          title: article.name,
-          published: toISOString(article.date),
-          link: article.url,
-          summary: undefined,
-        };
-      })
-    );
+      // Enrich articles with computed fields and convert dates
+      const enrichedArticles = await Promise.all(
+        result.articles.map(async (article) => {
+          const enrichment = await enrichArticleData(article, user);
+          return {
+            id: article.id,
+            feedId: article.feedId,
+            name: article.name,
+            url: article.url,
+            date: toISOString(article.date),
+            content: article.content,
+            thumbnailUrl: article.thumbnailUrl || null,
+            mediaUrl: article.mediaUrl || null,
+            duration: article.duration || null,
+            viewCount: article.viewCount || null,
+            mediaType: article.mediaType || null,
+            author: article.author || null,
+            externalId: article.externalId || null,
+            score: article.score || null,
+            createdAt: toISOString(article.createdAt),
+            updatedAt: toISOString(article.updatedAt),
+            // Enrichment fields
+            isRead: enrichment.isRead,
+            isSaved: enrichment.isSaved,
+            isVideo: enrichment.isVideo,
+            isPodcast: enrichment.isPodcast,
+            isReddit: enrichment.isReddit,
+            hasMedia: enrichment.hasMedia,
+            durationFormatted: enrichment.durationFormatted || null,
+            // Frontend-friendly aliases
+            read: enrichment.isRead,
+            saved: enrichment.isSaved,
+            title: article.name,
+            published: toISOString(article.date),
+            link: article.url,
+            summary: undefined,
+          };
+        }),
+      );
 
-    return {
-      items: enrichedArticles,
-      count: result.total,
-      page: input.page,
-      pageSize: input.pageSize,
-      pages: Math.ceil(result.total / input.pageSize),
-    };
-  }),
+      return {
+        items: enrichedArticles,
+        count: result.total,
+        page: input.page,
+        pageSize: input.pageSize,
+        pages: Math.ceil(result.total / input.pageSize),
+      };
+    }),
 
   /**
    * Get article details with navigation and enrichment.
@@ -128,23 +135,23 @@ export const articleRouter = router({
       const articleId = input.id;
 
       try {
-        logger.debug({ articleId, userId: user.id }, 'Fetching article');
+        logger.debug({ articleId, userId: user.id }, "Fetching article");
         const article = await getArticle(articleId, user);
 
         // Get feed information
-        logger.debug({ articleId, feedId: article.feedId }, 'Fetching feed');
+        logger.debug({ articleId, feedId: article.feedId }, "Fetching feed");
         const feed = await getFeed(article.feedId, user);
 
         // Get navigation
-        logger.debug({ articleId }, 'Fetching navigation');
+        logger.debug({ articleId }, "Fetching navigation");
         const navigation = await getArticleNavigation(article, user);
 
         // Enrich article data (read state, computed fields)
-        logger.debug({ articleId }, 'Enriching article data');
+        logger.debug({ articleId }, "Enriching article data");
         const enrichment = await enrichArticleData(article, user);
 
         // Mark as read automatically when viewing (matching Django behavior)
-        logger.debug({ articleId }, 'Marking article as read');
+        logger.debug({ articleId }, "Marking article as read");
         await markArticleReadOnView(articleId, user);
 
         // Build response with camelCase
@@ -180,7 +187,7 @@ export const articleRouter = router({
           nextArticleId: navigation.next?.id || null,
         };
 
-        logger.debug({ articleId }, 'Article fetched successfully');
+        logger.debug({ articleId }, "Article fetched successfully");
         return response;
       } catch (error) {
         logger.error(
@@ -189,18 +196,18 @@ export const articleRouter = router({
             userId: user.id,
             err: error instanceof Error ? error : new Error(String(error)),
           },
-          'Error fetching article'
+          "Error fetching article",
         );
 
         if (error instanceof NotFoundError) {
           throw new TRPCError({
-            code: 'NOT_FOUND',
+            code: "NOT_FOUND",
             message: error.message,
           });
         }
         if (error instanceof PermissionDeniedError) {
           throw new TRPCError({
-            code: 'FORBIDDEN',
+            code: "FORBIDDEN",
             message: error.message,
           });
         }
@@ -216,7 +223,7 @@ export const articleRouter = router({
       z.object({
         articleIds: z.array(z.number().int().positive()).min(1),
         isRead: z.boolean(),
-      })
+      }),
     )
     .mutation(async ({ input, ctx }) => {
       const user = getAuthenticatedUser(ctx);
@@ -232,7 +239,7 @@ export const articleRouter = router({
       z.object({
         articleIds: z.array(z.number().int().positive()).min(1),
         isSaved: z.boolean(),
-      })
+      }),
     )
     .mutation(async ({ input, ctx }) => {
       const user = getAuthenticatedUser(ctx);
@@ -253,13 +260,13 @@ export const articleRouter = router({
       } catch (error) {
         if (error instanceof NotFoundError) {
           throw new TRPCError({
-            code: 'NOT_FOUND',
+            code: "NOT_FOUND",
             message: error.message,
           });
         }
         if (error instanceof PermissionDeniedError) {
           throw new TRPCError({
-            code: 'FORBIDDEN',
+            code: "FORBIDDEN",
             message: error.message,
           });
         }
@@ -279,13 +286,13 @@ export const articleRouter = router({
       } catch (error) {
         if (error instanceof NotFoundError) {
           throw new TRPCError({
-            code: 'NOT_FOUND',
+            code: "NOT_FOUND",
             message: error.message,
           });
         }
         if (error instanceof PermissionDeniedError) {
           throw new TRPCError({
-            code: 'FORBIDDEN',
+            code: "FORBIDDEN",
             message: error.message,
           });
         }
@@ -306,13 +313,13 @@ export const articleRouter = router({
       } catch (error) {
         if (error instanceof NotFoundError) {
           throw new TRPCError({
-            code: 'NOT_FOUND',
+            code: "NOT_FOUND",
             message: error.message,
           });
         }
         if (error instanceof PermissionDeniedError) {
           throw new TRPCError({
-            code: 'FORBIDDEN',
+            code: "FORBIDDEN",
             message: error.message,
           });
         }
@@ -329,7 +336,7 @@ export const articleRouter = router({
       const task = await getTask(input.taskId);
       if (!task) {
         throw new TRPCError({
-          code: 'NOT_FOUND',
+          code: "NOT_FOUND",
           message: `Task with id ${input.taskId} not found`,
         });
       }
@@ -337,7 +344,7 @@ export const articleRouter = router({
       // Handle result - it might be a string (if stored as text) or already parsed (if mode: 'json' worked)
       let parsedResult: unknown = null;
       if (task.result) {
-        if (typeof task.result === 'string') {
+        if (typeof task.result === "string") {
           try {
             parsedResult = JSON.parse(task.result);
           } catch {

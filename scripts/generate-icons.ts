@@ -3,15 +3,15 @@
  * Uses Playwright to render SVG and capture screenshots.
  */
 
-import { chromium } from 'playwright';
-import { writeFile, mkdir, readFileSync } from 'fs';
-import { existsSync } from 'fs';
-import { join } from 'path';
+import { chromium } from "playwright";
+import { writeFile, mkdir, readFileSync } from "fs";
+import { existsSync } from "fs";
+import { join } from "path";
 
 const sizes = [72, 96, 128, 144, 152, 192, 384, 512];
-const publicDir = join(process.cwd(), 'public');
-const iconsDir = join(publicDir, 'icons');
-const svgPath = join(publicDir, 'logo-icon-only.svg');
+const publicDir = join(process.cwd(), "public");
+const iconsDir = join(publicDir, "icons");
+const svgPath = join(publicDir, "logo-icon-only.svg");
 
 async function generateIcons() {
   if (!existsSync(svgPath)) {
@@ -20,7 +20,7 @@ async function generateIcons() {
   }
 
   // Read SVG content
-  const svgContent = readFileSync(svgPath, 'utf-8');
+  const svgContent = readFileSync(svgPath, "utf-8");
 
   // Ensure icons directory exists
   if (!existsSync(iconsDir)) {
@@ -31,7 +31,7 @@ async function generateIcons() {
   const browser = await chromium.launch();
   const page = await browser.newPage();
 
-  console.log('Generating icons...');
+  console.log("Generating icons...");
 
   for (const size of sizes) {
     // Set viewport to match icon size
@@ -70,7 +70,7 @@ async function generateIcons() {
 
     // Take screenshot
     const screenshot = await page.screenshot({
-      type: 'png',
+      type: "png",
       omitBackground: true,
     });
 
@@ -81,10 +81,10 @@ async function generateIcons() {
   }
 
   await browser.close();
-  console.log('\nAll icons generated successfully!');
+  console.log("\nAll icons generated successfully!");
 }
 
 generateIcons().catch((error) => {
-  console.error('Error generating icons:', error);
+  console.error("Error generating icons:", error);
   process.exit(1);
 });

@@ -5,10 +5,10 @@
  * environment-based configuration.
  */
 
-import pino from 'pino';
+import pino from "pino";
 
-const isDevelopment = process.env['NODE_ENV'] === 'development';
-const logLevel = process.env['LOG_LEVEL'] || (isDevelopment ? 'debug' : 'info');
+const isDevelopment = process.env["NODE_ENV"] === "development";
+const logLevel = process.env["LOG_LEVEL"] || (isDevelopment ? "debug" : "info");
 
 /**
  * Serialize error objects for logging.
@@ -23,22 +23,23 @@ function serializeError(error: unknown): Record<string, unknown> {
     };
 
     if (error.stack) {
-      serialized['stack'] = error.stack;
+      serialized["stack"] = error.stack;
     }
 
     // Include any additional properties from custom error classes
-    if ('statusCode' in error) {
-      serialized['statusCode'] = (error as { statusCode?: number }).statusCode;
+    if ("statusCode" in error) {
+      serialized["statusCode"] = (error as { statusCode?: number }).statusCode;
     }
 
-    if ('feedId' in error) {
-      serialized['feedId'] = (error as { feedId?: number }).feedId;
+    if ("feedId" in error) {
+      serialized["feedId"] = (error as { feedId?: number }).feedId;
     }
 
-    if ('originalError' in error) {
-      const originalError = (error as { originalError?: Error | unknown }).originalError;
+    if ("originalError" in error) {
+      const originalError = (error as { originalError?: Error | unknown })
+        .originalError;
       if (originalError) {
-        serialized['originalError'] = serializeError(originalError);
+        serialized["originalError"] = serializeError(originalError);
       }
     }
 
@@ -48,13 +49,13 @@ function serializeError(error: unknown): Record<string, unknown> {
       const errorRecord = error as unknown as Record<string, unknown>;
       for (const key in error) {
         if (
-          key !== 'name' &&
-          key !== 'message' &&
-          key !== 'stack' &&
+          key !== "name" &&
+          key !== "message" &&
+          key !== "stack" &&
           !seen.has(errorRecord[key] as object)
         ) {
           const value = errorRecord[key];
-          if (value && typeof value === 'object') {
+          if (value && typeof value === "object") {
             seen.add(value as object);
           }
           serialized[key] = value;
@@ -71,7 +72,7 @@ function serializeError(error: unknown): Record<string, unknown> {
   try {
     return { value: String(error) };
   } catch {
-    return { value: '[Unable to serialize error]' };
+    return { value: "[Unable to serialize error]" };
   }
 }
 
@@ -86,7 +87,7 @@ function serializeError(error: unknown): Record<string, unknown> {
 const loggerConfig: pino.LoggerOptions = {
   level: logLevel,
   formatters: {
-    level: label => {
+    level: (label) => {
       return { level: label };
     },
   },
@@ -101,11 +102,11 @@ const loggerConfig: pino.LoggerOptions = {
 // Using transport.target as a string works with ESM - pino handles the module loading
 if (isDevelopment) {
   loggerConfig.transport = {
-    target: 'pino-pretty',
+    target: "pino-pretty",
     options: {
       colorize: true,
-      translateTime: 'HH:MM:ss.l',
-      ignore: 'pid,hostname',
+      translateTime: "HH:MM:ss.l",
+      ignore: "pid,hostname",
       singleLine: false,
     },
   };

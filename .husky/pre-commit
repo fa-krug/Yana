@@ -1,0 +1,16 @@
+echo "🔍 Running Prettier format check..."
+npm run format:check || {
+  echo "❌ Prettier check failed!"
+  echo "💡 Run 'npm run format' to auto-fix formatting issues"
+  exit 1
+}
+
+echo "✅ Prettier check passed!"
+echo ""
+echo "🧪 Running tests..."
+npm test || {
+  echo "❌ Tests failed!"
+  exit 1
+}
+
+echo "✅ All checks passed!"

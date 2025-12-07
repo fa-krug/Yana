@@ -4,19 +4,19 @@
  * Handles feed management operations.
  */
 
-import { eq, and, or, isNull, desc, sql, like, inArray } from 'drizzle-orm';
-import { db, feeds, articles, userArticleStates } from '../db';
-import { NotFoundError, PermissionDeniedError } from '../errors';
-import { logger } from '../utils/logger';
-import type { Feed, FeedInsert, User } from '../db/types';
-import { getAggregatorById } from '../aggregators/registry';
-import type { RawArticle } from '../aggregators/base/types';
-import { getAggregatorMetadataById } from './aggregator.service';
+import { eq, and, or, isNull, desc, sql, like, inArray } from "drizzle-orm";
+import { db, feeds, articles, userArticleStates } from "../db";
+import { NotFoundError, PermissionDeniedError } from "../errors";
+import { logger } from "../utils/logger";
+import type { Feed, FeedInsert, User } from "../db/types";
+import { getAggregatorById } from "../aggregators/registry";
+import type { RawArticle } from "../aggregators/base/types";
+import { getAggregatorMetadataById } from "./aggregator.service";
 
 /**
  * Minimal user info needed for feed operations.
  */
-type UserInfo = Pick<User, 'id' | 'isSuperuser'>;
+type UserInfo = Pick<User, "id" | "isSuperuser">;
 
 /**
  * List feeds for a user.
@@ -29,7 +29,7 @@ export async function listFeeds(
     enabled?: boolean;
     page?: number;
     pageSize?: number;
-  } = {}
+  } = {},
 ): Promise<{ feeds: Feed[]; total: number }> {
   const { search, feedType, enabled, page = 1, pageSize = 20 } = filters;
   const offset = (page - 1) * pageSize;
@@ -86,7 +86,7 @@ export async function getFeed(id: number, user: UserInfo): Promise<Feed> {
 
   // Check access: user must own feed or feed must be shared (user_id = null)
   if (feed.userId !== null && feed.userId !== user.id && !user.isSuperuser) {
-    throw new PermissionDeniedError('You do not have access to this feed');
+    throw new PermissionDeniedError("You do not have access to this feed");
   }
 
   return feed;
@@ -95,8 +95,10 @@ export async function getFeed(id: number, user: UserInfo): Promise<Feed> {
 /**
  * Get feed aggregator metadata.
  */
-export async function getFeedAggregatorMetadata(feed: Feed): Promise<Record<string, unknown>> {
-  const { getAggregatorMetadata } = await import('./aggregator.service');
+export async function getFeedAggregatorMetadata(
+  feed: Feed,
+): Promise<Record<string, unknown>> {
+  const { getAggregatorMetadata } = await import("./aggregator.service");
   try {
     const metadata = getAggregatorMetadata(feed.aggregator);
     if (!metadata) {
@@ -129,7 +131,10 @@ export async function getFeedArticleCount(feedId: number): Promise<number> {
 /**
  * Get unread article count for a feed and user.
  */
-export async function getFeedUnreadCount(feedId: number, userId: number): Promise<number> {
+export async function getFeedUnreadCount(
+  feedId: number,
+  userId: number,
+): Promise<number> {
   // Get all article IDs for this feed
   const feedArticles = await db
     .select({ id: articles.id })
@@ -140,7 +145,7 @@ export async function getFeedUnreadCount(feedId: number, userId: number): Promis
     return 0;
   }
 
-  const articleIds = feedArticles.map(a => a.id);
+  const articleIds = feedArticles.map((a) => a.id);
 
   // Get read article IDs for this user
   const readStates = await db
@@ -150,14 +155,14 @@ export async function getFeedUnreadCount(feedId: number, userId: number): Promis
       and(
         eq(userArticleStates.userId, userId),
         eq(userArticleStates.isRead, true),
-        inArray(userArticleStates.articleId, articleIds)
-      )
+        inArray(userArticleStates.articleId, articleIds),
+      ),
     );
 
-  const readIds = new Set(readStates.map(s => s.articleId));
+  const readIds = new Set(readStates.map((s) => s.articleId));
 
   // Count unread: articles that are not in the read list
-  return articleIds.filter(id => !readIds.has(id)).length;
+  return articleIds.filter((id) => !readIds.has(id)).length;
 }
 
 /**
@@ -166,7 +171,7 @@ export async function getFeedUnreadCount(feedId: number, userId: number): Promis
  */
 function filterManagedFeedData(
   data: Partial<FeedInsert>,
-  aggregatorId?: string
+  aggregatorId?: string,
 ): {
   aggregatorOptions?: Record<string, any>;
   aiTranslateTo?: string;
@@ -180,7 +185,7 @@ function filterManagedFeedData(
   try {
     const aggregatorMetadata = getAggregatorMetadataById(aggregatorId);
 
-    if (aggregatorMetadata.type === 'managed') {
+    if (aggregatorMetadata.type === "managed") {
       const filtered: {
         aggregatorOptions?: Record<string, any>;
         aiTranslateTo?: string;
@@ -191,10 +196,10 @@ function filterManagedFeedData(
       // Filter out restricted aggregator options
       if (data.aggregatorOptions) {
         const restrictedOptions = [
-          'exclude_selectors',
-          'ignore_content_contains',
-          'ignore_title_contains',
-          'regex_replacements',
+          "exclude_selectors",
+          "ignore_content_contains",
+          "ignore_title_contains",
+          "regex_replacements",
         ];
         const filteredOptions: Record<string, any> = {};
         Object.entries(data.aggregatorOptions).forEach(([key, value]) => {
@@ -208,9 +213,9 @@ function filterManagedFeedData(
       }
 
       // Filter out AI features
-      filtered.aiTranslateTo = '';
+      filtered.aiTranslateTo = "";
       filtered.aiSummarize = false;
-      filtered.aiCustomPrompt = '';
+      filtered.aiCustomPrompt = "";
 
       return filtered;
     }
@@ -218,7 +223,7 @@ function filterManagedFeedData(
     // If we can't get aggregator metadata, continue without filtering
     logger.warn(
       { error, aggregator: aggregatorId },
-      'Failed to get aggregator metadata for filtering'
+      "Failed to get aggregator metadata for filtering",
     );
   }
 
@@ -228,18 +233,21 @@ function filterManagedFeedData(
 /**
  * Create a new feed.
  */
-export async function createFeed(user: UserInfo, data: FeedInsert): Promise<Feed> {
+export async function createFeed(
+  user: UserInfo,
+  data: FeedInsert,
+): Promise<Feed> {
   // Filter out restricted options and AI features for managed aggregators
   const filteredFields = filterManagedFeedData(data, data.aggregator);
 
   // For managed aggregators, always use the aggregator's icon
   let icon = data.icon;
   if (data.aggregator) {
-    const { getAggregatorMetadataById } = await import('./aggregator.service');
+    const { getAggregatorMetadataById } = await import("./aggregator.service");
     try {
       const aggregatorMetadata = getAggregatorMetadataById(data.aggregator);
       // If aggregator is managed, always use its icon
-      if (aggregatorMetadata.type === 'managed' && aggregatorMetadata.icon) {
+      if (aggregatorMetadata.type === "managed" && aggregatorMetadata.icon) {
         icon = aggregatorMetadata.icon;
       } else if (!icon && aggregatorMetadata.icon) {
         // For non-managed aggregators, use icon if not provided
@@ -247,7 +255,10 @@ export async function createFeed(user: UserInfo, data: FeedInsert): Promise<Feed
       }
     } catch (error) {
       // If we can't get aggregator metadata, continue without icon
-      logger.warn({ error, aggregator: data.aggregator }, 'Failed to get aggregator icon');
+      logger.warn(
+        { error, aggregator: data.aggregator },
+        "Failed to get aggregator icon",
+      );
     }
   }
 
@@ -263,7 +274,7 @@ export async function createFeed(user: UserInfo, data: FeedInsert): Promise<Feed
     })
     .returning();
 
-  logger.info({ feedId: feed.id, userId: user.id }, 'Feed created');
+  logger.info({ feedId: feed.id, userId: user.id }, "Feed created");
 
   return feed;
 }
@@ -274,7 +285,7 @@ export async function createFeed(user: UserInfo, data: FeedInsert): Promise<Feed
 export async function updateFeed(
   id: number,
   user: UserInfo,
-  data: Partial<FeedInsert>
+  data: Partial<FeedInsert>,
 ): Promise<Feed> {
   // Check access
   const existingFeed = await getFeed(id, user);
@@ -293,7 +304,7 @@ export async function updateFeed(
     throw new NotFoundError(`Feed with id ${id} not found`);
   }
 
-  logger.info({ feedId: id, userId: user.id }, 'Feed updated');
+  logger.info({ feedId: id, userId: user.id }, "Feed updated");
 
   return updated;
 }
@@ -307,7 +318,7 @@ export async function deleteFeed(id: number, user: UserInfo): Promise<void> {
 
   await db.delete(feeds).where(eq(feeds.id, id));
 
-  logger.info({ feedId: id, userId: user.id }, 'Feed deleted');
+  logger.info({ feedId: id, userId: user.id }, "Feed deleted");
 }
 
 /**
@@ -317,7 +328,7 @@ export async function deleteFeed(id: number, user: UserInfo): Promise<void> {
  */
 export async function previewFeed(
   user: UserInfo,
-  data: Partial<FeedInsert>
+  data: Partial<FeedInsert>,
 ): Promise<{
   success: boolean;
   articles: Array<{
@@ -330,7 +341,13 @@ export async function previewFeed(
   }>;
   count: number;
   error?: string;
-  errorType?: 'validation' | 'network' | 'parse' | 'authentication' | 'timeout' | 'unknown';
+  errorType?:
+    | "validation"
+    | "network"
+    | "parse"
+    | "authentication"
+    | "timeout"
+    | "unknown";
 }> {
   const previewStart = Date.now();
   logger.info(
@@ -338,43 +355,43 @@ export async function previewFeed(
       userId: user.id,
       aggregator: data.aggregator,
       identifier: data.identifier,
-      step: 'preview_start',
+      step: "preview_start",
     },
-    'Feed preview requested'
+    "Feed preview requested",
   );
 
   try {
     // Validate required fields
-    logger.debug({ step: 'validation_start' }, 'Validating input');
+    logger.debug({ step: "validation_start" }, "Validating input");
     if (!data.aggregator) {
       logger.warn(
-        { step: 'validation_failed', reason: 'missing_aggregator' },
-        'Aggregator is required'
+        { step: "validation_failed", reason: "missing_aggregator" },
+        "Aggregator is required",
       );
       return {
         success: false,
         articles: [],
         count: 0,
-        error: 'Aggregator is required',
-        errorType: 'validation',
+        error: "Aggregator is required",
+        errorType: "validation",
       };
     }
 
     if (!data.identifier) {
       logger.warn(
-        { step: 'validation_failed', reason: 'missing_identifier' },
-        'Identifier is required'
+        { step: "validation_failed", reason: "missing_identifier" },
+        "Identifier is required",
       );
       return {
         success: false,
         articles: [],
         count: 0,
-        error: 'Identifier is required',
-        errorType: 'validation',
+        error: "Identifier is required",
+        errorType: "validation",
       };
     }
 
-    logger.debug({ step: 'validation_complete' }, 'Input validated');
+    logger.debug({ step: "validation_complete" }, "Input validated");
 
     // Filter out restricted options and AI features for managed aggregators
     const filteredFields = filterManagedFeedData(data, data.aggregator);
@@ -382,42 +399,48 @@ export async function previewFeed(
 
     // Get aggregator
     const getAggregatorStart = Date.now();
-    logger.debug({ step: 'get_aggregator_start' }, 'Getting aggregator instance');
+    logger.debug(
+      { step: "get_aggregator_start" },
+      "Getting aggregator instance",
+    );
     const aggregator = getAggregatorById(filteredData.aggregator!);
     if (!aggregator) {
       logger.error(
-        { aggregator: filteredData.aggregator, step: 'get_aggregator_failed' },
-        'Aggregator not found'
+        { aggregator: filteredData.aggregator, step: "get_aggregator_failed" },
+        "Aggregator not found",
       );
       return {
         success: false,
         articles: [],
         count: 0,
         error: `Aggregator '${filteredData.aggregator}' not found`,
-        errorType: 'validation',
+        errorType: "validation",
       };
     }
     logger.debug(
       {
         aggregator: filteredData.aggregator,
         elapsed: Date.now() - getAggregatorStart,
-        step: 'get_aggregator_complete',
+        step: "get_aggregator_complete",
       },
-      'Aggregator instance obtained'
+      "Aggregator instance obtained",
     );
 
     // Create temporary feed object for preview
     // Note: skipDuplicates is set to false for preview (like backend)
     const createFeedStart = Date.now();
-    logger.debug({ step: 'create_feed_start' }, 'Creating temporary feed object');
+    logger.debug(
+      { step: "create_feed_start" },
+      "Creating temporary feed object",
+    );
     const tempFeed: Feed = {
       id: -1, // Temporary ID
       userId: user.id,
-      name: filteredData.name || 'Preview Feed',
+      name: filteredData.name || "Preview Feed",
       identifier: filteredData.identifier!,
-      feedType: (filteredData.feedType as any) || 'article',
+      feedType: (filteredData.feedType as any) || "article",
       icon: filteredData.icon || null,
-      example: filteredData.example || '',
+      example: filteredData.example || "",
       aggregator: filteredData.aggregator!,
       enabled: true,
       generateTitleImage: filteredData.generateTitleImage ?? true,
@@ -425,35 +448,36 @@ export async function previewFeed(
       skipDuplicates: false, // Don't skip duplicates during preview (like backend)
       useCurrentTimestamp: filteredData.useCurrentTimestamp ?? true,
       dailyPostLimit: filteredData.dailyPostLimit ?? 50,
-      aggregatorOptions: (filteredData.aggregatorOptions as Record<string, unknown>) || {},
-      aiTranslateTo: filteredData.aiTranslateTo || '',
+      aggregatorOptions:
+        (filteredData.aggregatorOptions as Record<string, unknown>) || {},
+      aiTranslateTo: filteredData.aiTranslateTo || "",
       aiSummarize: filteredData.aiSummarize ?? false,
-      aiCustomPrompt: filteredData.aiCustomPrompt || '',
+      aiCustomPrompt: filteredData.aiCustomPrompt || "",
       createdAt: new Date(),
       updatedAt: new Date(),
     };
     logger.debug(
       {
         elapsed: Date.now() - createFeedStart,
-        step: 'create_feed_complete',
+        step: "create_feed_complete",
       },
-      'Temporary feed object created'
+      "Temporary feed object created",
     );
 
     // Initialize aggregator
     const initStart = Date.now();
-    logger.debug({ step: 'init_aggregator_start' }, 'Initializing aggregator');
+    logger.debug({ step: "init_aggregator_start" }, "Initializing aggregator");
     aggregator.initialize(
       tempFeed,
       true, // Force refresh for preview
-      (filteredData.aggregatorOptions as Record<string, unknown>) || {}
+      (filteredData.aggregatorOptions as Record<string, unknown>) || {},
     );
     logger.debug(
       {
         elapsed: Date.now() - initStart,
-        step: 'init_aggregator_complete',
+        step: "init_aggregator_complete",
       },
-      'Aggregator initialized'
+      "Aggregator initialized",
     );
 
     // Run aggregation with 30 second timeout (matching backend)
@@ -464,9 +488,9 @@ export async function previewFeed(
       {
         timeout: timeoutMs,
         articleLimit,
-        step: 'aggregation_start',
+        step: "aggregation_start",
       },
-      `Starting aggregation with ${timeoutMs}ms timeout (limit: ${articleLimit} article)`
+      `Starting aggregation with ${timeoutMs}ms timeout (limit: ${articleLimit} article)`,
     );
 
     const timeoutPromise = new Promise<never>((_, reject) => {
@@ -476,11 +500,11 @@ export async function previewFeed(
           {
             elapsed,
             timeout: timeoutMs,
-            step: 'timeout_triggered',
+            step: "timeout_triggered",
           },
-          'Feed preview timeout triggered'
+          "Feed preview timeout triggered",
         );
-        reject(new Error('Feed preview timed out after 30 seconds'));
+        reject(new Error("Feed preview timed out after 30 seconds"));
       }, timeoutMs);
     });
 
@@ -489,37 +513,40 @@ export async function previewFeed(
 
     let rawArticles: RawArticle[];
     try {
-      logger.debug({ step: 'race_start' }, 'Starting Promise.race between aggregation and timeout');
+      logger.debug(
+        { step: "race_start" },
+        "Starting Promise.race between aggregation and timeout",
+      );
       rawArticles = await Promise.race([aggregationPromise, timeoutPromise]);
       const aggregationElapsed = Date.now() - aggregationStart;
       logger.info(
         {
           articleCount: rawArticles.length,
           elapsed: aggregationElapsed,
-          step: 'aggregation_complete',
+          step: "aggregation_complete",
         },
-        `Aggregation completed: ${rawArticles.length} articles`
+        `Aggregation completed: ${rawArticles.length} articles`,
       );
     } catch (timeoutError: any) {
       const aggregationElapsed = Date.now() - aggregationStart;
-      if (timeoutError.message?.includes('timed out')) {
+      if (timeoutError.message?.includes("timed out")) {
         logger.warn(
           {
             userId: user.id,
             feedName: data.name,
             elapsed: aggregationElapsed,
             totalElapsed: Date.now() - previewStart,
-            step: 'timeout_error',
+            step: "timeout_error",
           },
-          'Feed preview timed out'
+          "Feed preview timed out",
         );
         return {
           success: false,
           articles: [],
           count: 0,
           error:
-            'Feed preview timed out after 30 seconds. The feed may be too slow or unavailable.',
-          errorType: 'timeout',
+            "Feed preview timed out after 30 seconds. The feed may be too slow or unavailable.",
+          errorType: "timeout",
         };
       }
       throw timeoutError;
@@ -527,17 +554,18 @@ export async function previewFeed(
 
     // Check if feed is empty
     logger.debug(
-      { articleCount: rawArticles?.length || 0, step: 'check_empty' },
-      'Checking if feed is empty'
+      { articleCount: rawArticles?.length || 0, step: "check_empty" },
+      "Checking if feed is empty",
     );
     if (!rawArticles || rawArticles.length === 0) {
-      logger.warn({ step: 'empty_feed' }, 'No articles found in feed');
+      logger.warn({ step: "empty_feed" }, "No articles found in feed");
       return {
         success: false,
         articles: [],
         count: 0,
-        error: 'No articles found in the feed. The feed may be empty or the URL may be incorrect.',
-        errorType: 'parse',
+        error:
+          "No articles found in the feed. The feed may be empty or the URL may be incorrect.",
+        errorType: "parse",
       };
     }
 
@@ -546,9 +574,9 @@ export async function previewFeed(
     logger.debug(
       {
         articleCount: rawArticles.length,
-        step: 'process_articles_start',
+        step: "process_articles_start",
       },
-      'Processing articles for preview'
+      "Processing articles for preview",
     );
 
     const previewArticles: Array<{
@@ -567,27 +595,29 @@ export async function previewFeed(
           {
             title: article.title,
             url: article.url,
-            step: 'process_article',
+            step: "process_article",
           },
-          'Processing article for preview'
+          "Processing article for preview",
         );
         previewArticles.push({
           title: article.title,
-          content: article.content || article.summary || '',
-          published: article.published ? article.published.toISOString() : undefined,
+          content: article.content || article.summary || "",
+          published: article.published
+            ? article.published.toISOString()
+            : undefined,
           author: article.author,
           thumbnailUrl: article.thumbnailUrl,
           link: article.url,
         });
-        logger.debug({ step: 'process_article_complete' }, 'Article processed');
+        logger.debug({ step: "process_article_complete" }, "Article processed");
       } catch (error) {
         logger.warn(
           {
             error,
             article,
-            step: 'process_article_error',
+            step: "process_article_error",
           },
-          'Error processing article for preview'
+          "Error processing article for preview",
         );
         continue;
       }
@@ -597,20 +627,23 @@ export async function previewFeed(
     logger.debug(
       {
         elapsed: processElapsed,
-        step: 'process_articles_complete',
+        step: "process_articles_complete",
       },
-      'Articles processed'
+      "Articles processed",
     );
 
     if (previewArticles.length === 0) {
-      logger.warn({ step: 'no_processed_articles' }, 'Could not process any articles');
+      logger.warn(
+        { step: "no_processed_articles" },
+        "Could not process any articles",
+      );
       return {
         success: false,
         articles: [],
         count: 0,
         error:
-          'Could not process any articles from the feed. The feed format may not be supported.',
-        errorType: 'parse',
+          "Could not process any articles from the feed. The feed format may not be supported.",
+        errorType: "parse",
       };
     }
 
@@ -621,9 +654,9 @@ export async function previewFeed(
         aggregator: data.aggregator,
         count: previewArticles.length,
         totalElapsed,
-        step: 'preview_complete',
+        step: "preview_complete",
       },
-      `Feed preview completed successfully in ${totalElapsed}ms`
+      `Feed preview completed successfully in ${totalElapsed}ms`,
     );
 
     return {
@@ -632,36 +665,44 @@ export async function previewFeed(
       count: previewArticles.length,
     };
   } catch (error: any) {
-    logger.error({ error, userId: user.id, data }, 'Feed preview failed');
+    logger.error({ error, userId: user.id, data }, "Feed preview failed");
 
     // Determine error type (matching backend error detection)
-    const errorMsg = String(error?.message || error || '').toLowerCase();
-    let errorType: 'validation' | 'network' | 'parse' | 'authentication' | 'timeout' | 'unknown' =
-      'unknown';
-    let errorMessage = 'Unknown error occurred';
+    const errorMsg = String(error?.message || error || "").toLowerCase();
+    let errorType:
+      | "validation"
+      | "network"
+      | "parse"
+      | "authentication"
+      | "timeout"
+      | "unknown" = "unknown";
+    let errorMessage = "Unknown error occurred";
 
     if (
-      errorMsg.includes('authentication') ||
-      errorMsg.includes('unauthorized') ||
-      errorMsg.includes('forbidden')
+      errorMsg.includes("authentication") ||
+      errorMsg.includes("unauthorized") ||
+      errorMsg.includes("forbidden")
     ) {
-      errorType = 'authentication';
+      errorType = "authentication";
       errorMessage = `Authentication failed: ${error?.message || String(error)}`;
-    } else if (errorMsg.includes('timeout') || errorMsg.includes('timed out')) {
-      errorType = 'timeout';
+    } else if (errorMsg.includes("timeout") || errorMsg.includes("timed out")) {
+      errorType = "timeout";
       errorMessage = `Request timed out: ${error?.message || String(error)}`;
-    } else if (errorMsg.includes('connection') || errorMsg.includes('network')) {
-      errorType = 'network';
+    } else if (
+      errorMsg.includes("connection") ||
+      errorMsg.includes("network")
+    ) {
+      errorType = "network";
       errorMessage = `Network error: ${error?.message || String(error)}`;
     } else if (
-      errorMsg.includes('parse') ||
-      errorMsg.includes('xml') ||
-      errorMsg.includes('feed')
+      errorMsg.includes("parse") ||
+      errorMsg.includes("xml") ||
+      errorMsg.includes("feed")
     ) {
-      errorType = 'parse';
+      errorType = "parse";
       errorMessage = `Could not parse feed: ${error?.message || String(error)}`;
     } else {
-      errorType = 'unknown';
+      errorType = "unknown";
       errorMessage = `An error occurred: ${error?.message || String(error)}`;
     }
 
@@ -681,7 +722,7 @@ export async function previewFeed(
 export async function reloadFeed(
   id: number,
   user: UserInfo,
-  force: boolean = false
+  force: boolean = false,
 ): Promise<{
   success: boolean;
   message: string;
@@ -694,11 +735,14 @@ export async function reloadFeed(
   const feed = await getFeed(id, user);
 
   try {
-    const { processFeedAggregation } = await import('./aggregation.service');
+    const { processFeedAggregation } = await import("./aggregation.service");
     const result = await processFeedAggregation(id, force);
 
     const message = `Feed '${feed.name}' reloaded successfully`;
-    logger.info({ feedId: id, userId: user.id, force, ...result }, 'Feed reload completed');
+    logger.info(
+      { feedId: id, userId: user.id, force, ...result },
+      "Feed reload completed",
+    );
 
     return {
       success: true,
@@ -709,8 +753,9 @@ export async function reloadFeed(
       errors: [],
     };
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    logger.error({ feedId: id, userId: user.id, error }, 'Feed reload failed');
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
+    logger.error({ feedId: id, userId: user.id, error }, "Feed reload failed");
 
     return {
       success: false,
@@ -726,11 +771,14 @@ export async function reloadFeed(
 /**
  * Clear all articles from a feed.
  */
-export async function clearFeedArticles(id: number, user: UserInfo): Promise<void> {
+export async function clearFeedArticles(
+  id: number,
+  user: UserInfo,
+): Promise<void> {
   // Check access
   await getFeed(id, user);
 
   await db.delete(articles).where(eq(articles.feedId, id));
 
-  logger.info({ feedId: id, userId: user.id }, 'Feed articles cleared');
+  logger.info({ feedId: id, userId: user.id }, "Feed articles cleared");
 }

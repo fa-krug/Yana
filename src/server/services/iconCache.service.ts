@@ -4,12 +4,12 @@
  * Local file system caching of icons.
  */
 
-import * as fs from 'fs';
-import * as path from 'path';
-import axios from 'axios';
-import { logger } from '../utils/logger';
+import * as fs from "fs";
+import * as path from "path";
+import axios from "axios";
+import { logger } from "../utils/logger";
 
-const CACHE_DIR = process.env['ICON_CACHE_DIR'] || './cache/icons';
+const CACHE_DIR = process.env["ICON_CACHE_DIR"] || "./cache/icons";
 const CACHE_MAX_AGE = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 /**
@@ -25,7 +25,9 @@ function ensureCacheDir(): void {
  * Get cache file path for a URL.
  */
 function getCacheFilePath(iconUrl: string): string {
-  const urlHash = Buffer.from(iconUrl).toString('base64').replace(/[/+=]/g, '_');
+  const urlHash = Buffer.from(iconUrl)
+    .toString("base64")
+    .replace(/[/+=]/g, "_");
   return path.join(CACHE_DIR, `${urlHash}.cache`);
 }
 
@@ -51,11 +53,11 @@ export function getCachedIcon(iconUrl: string): string | null {
     }
 
     // Return cached URL (we store the URL, not the file)
-    const cachedData = fs.readFileSync(cachePath, 'utf-8');
+    const cachedData = fs.readFileSync(cachePath, "utf-8");
     const data = JSON.parse(cachedData);
     return data.url || null;
   } catch (error) {
-    logger.error({ error, iconUrl }, 'Error reading icon cache');
+    logger.error({ error, iconUrl }, "Error reading icon cache");
     return null;
   }
 }
@@ -73,10 +75,10 @@ export function cacheIcon(iconUrl: string, cachedUrl: string): void {
       cachedAt: new Date().toISOString(),
     };
 
-    fs.writeFileSync(cachePath, JSON.stringify(data), 'utf-8');
-    logger.debug({ iconUrl, cachedUrl }, 'Icon cached');
+    fs.writeFileSync(cachePath, JSON.stringify(data), "utf-8");
+    logger.debug({ iconUrl, cachedUrl }, "Icon cached");
   } catch (error) {
-    logger.error({ error, iconUrl }, 'Error caching icon');
+    logger.error({ error, iconUrl }, "Error caching icon");
   }
 }
 
@@ -102,14 +104,14 @@ export function clearExpiredCache(): void {
         }
       } catch (error) {
         // Ignore errors for individual files
-        logger.debug({ error, file }, 'Error checking cache file');
+        logger.debug({ error, file }, "Error checking cache file");
       }
     }
 
     if (cleared > 0) {
-      logger.info({ cleared }, 'Expired cache entries cleared');
+      logger.info({ cleared }, "Expired cache entries cleared");
     }
   } catch (error) {
-    logger.error({ error }, 'Error clearing expired cache');
+    logger.error({ error }, "Error clearing expired cache");
   }
 }

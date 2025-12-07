@@ -2,12 +2,12 @@
  * Worker pool monitoring and metrics.
  */
 
-import { getTasksByStatus, listTasks } from '../services/taskQueue.service';
-import { getWorkerPool } from './pool';
-import { logger } from '../utils/logger';
-import { db, tasks } from '../db';
-import { sql } from 'drizzle-orm';
-import type { TaskStatus } from '../services/taskQueue.service';
+import { getTasksByStatus, listTasks } from "../services/taskQueue.service";
+import { getWorkerPool } from "./pool";
+import { logger } from "../utils/logger";
+import { db, tasks } from "../db";
+import { sql } from "drizzle-orm";
+import type { TaskStatus } from "../services/taskQueue.service";
 
 export interface WorkerMetrics {
   pendingTasks: number;
@@ -38,10 +38,10 @@ export interface TaskMetrics {
  */
 export async function getWorkerMetrics(): Promise<WorkerMetrics> {
   const [pending, running, completed, failed] = await Promise.all([
-    getTasksByStatus('pending', 1000),
-    getTasksByStatus('running', 1000),
-    getTasksByStatus('completed', 100),
-    getTasksByStatus('failed', 100),
+    getTasksByStatus("pending", 1000),
+    getTasksByStatus("running", 1000),
+    getTasksByStatus("completed", 100),
+    getTasksByStatus("failed", 100),
   ]);
 
   return {
@@ -75,14 +75,16 @@ export async function getWorkerPoolStatus(): Promise<WorkerPoolStatus> {
 export async function getTaskMetrics(): Promise<TaskMetrics> {
   // Get counts by status
   const [pending, running, completed, failed] = await Promise.all([
-    getTasksByStatus('pending', 1000),
-    getTasksByStatus('running', 1000),
-    getTasksByStatus('completed', 100),
-    getTasksByStatus('failed', 100),
+    getTasksByStatus("pending", 1000),
+    getTasksByStatus("running", 1000),
+    getTasksByStatus("completed", 100),
+    getTasksByStatus("failed", 100),
   ]);
 
   // Get total count
-  const totalResult = await db.select({ count: sql<number>`count(*)` }).from(tasks);
+  const totalResult = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(tasks);
   const total = totalResult[0]?.count || 0;
 
   // Get breakdown by type

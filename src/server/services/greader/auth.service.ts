@@ -2,18 +2,18 @@
  * Google Reader API authentication service.
  */
 
-import crypto from 'crypto';
-import { eq } from 'drizzle-orm';
-import { db, users, greaderAuthTokens } from '../../db';
-import { authenticateUser } from '../user.service';
-import { logger } from '../../utils/logger';
+import crypto from "crypto";
+import { eq } from "drizzle-orm";
+import { db, users, greaderAuthTokens } from "../../db";
+import { authenticateUser } from "../user.service";
+import { logger } from "../../utils/logger";
 
 /**
  * Authenticate user with credentials and create token.
  */
 export async function authenticateWithCredentials(
   email: string,
-  password: string
+  password: string,
 ): Promise<{ user: { id: number; username: string }; token: string } | null> {
   if (!email || !password) {
     return null;
@@ -34,7 +34,10 @@ export async function authenticateWithCredentials(
       updatedAt: new Date(),
     });
 
-    logger.info({ username: user.username }, 'GReader API authentication successful');
+    logger.info(
+      { username: user.username },
+      "GReader API authentication successful",
+    );
 
     return {
       user: {
@@ -44,7 +47,7 @@ export async function authenticateWithCredentials(
       token,
     };
   } catch {
-    logger.warn({ email }, 'GReader API authentication failed');
+    logger.warn({ email }, "GReader API authentication failed");
     return null;
   }
 }
@@ -54,17 +57,21 @@ export async function authenticateWithCredentials(
  */
 export async function authenticateRequest(
   authHeader: string | undefined,
-  sessionUserId: number | undefined
+  sessionUserId: number | undefined,
 ): Promise<{ id: number; username: string } | null> {
   // Try Authorization header (GoogleLogin auth=token)
-  if (authHeader?.startsWith('GoogleLogin auth=')) {
+  if (authHeader?.startsWith("GoogleLogin auth=")) {
     const token = authHeader.slice(17);
     return await getUserByToken(token);
   }
 
   // Fallback to session authentication
   if (sessionUserId) {
-    const [user] = await db.select().from(users).where(eq(users.id, sessionUserId)).limit(1);
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, sessionUserId))
+      .limit(1);
     if (user) {
       return {
         id: user.id,
@@ -80,25 +87,27 @@ export async function authenticateRequest(
  * Generate session token (short-lived).
  */
 export function generateSessionToken(userId: number): string {
-  const hash = crypto.createHash('sha256');
+  const hash = crypto.createHash("sha256");
   hash.update(`${userId}:${Date.now()}`);
-  return hash.digest('hex').slice(0, 57); // 57 characters as per Google Reader spec
+  return hash.digest("hex").slice(0, 57); // 57 characters as per Google Reader spec
 }
 
 /**
  * Generate auth token.
  */
 function generateToken(username: string, userId: number): string {
-  const randomBytes = crypto.randomBytes(16).toString('hex');
-  const hash = crypto.createHash('sha256');
+  const randomBytes = crypto.randomBytes(16).toString("hex");
+  const hash = crypto.createHash("sha256");
   hash.update(`${username}:${userId}:${randomBytes}`);
-  return hash.digest('hex');
+  return hash.digest("hex");
 }
 
 /**
  * Get user by token.
  */
-async function getUserByToken(token: string): Promise<{ id: number; username: string } | null> {
+async function getUserByToken(
+  token: string,
+): Promise<{ id: number; username: string } | null> {
   const [authToken] = await db
     .select({
       userId: greaderAuthTokens.userId,
@@ -118,7 +127,11 @@ async function getUserByToken(token: string): Promise<{ id: number; username: st
   }
 
   // Get user
-  const [user] = await db.select().from(users).where(eq(users.id, authToken.userId)).limit(1);
+  const [user] = await db
+    .select()
+    .from(users)
+    .where(eq(users.id, authToken.userId))
+    .limit(1);
 
   if (!user) {
     return null;

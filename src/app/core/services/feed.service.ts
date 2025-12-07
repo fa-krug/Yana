@@ -3,27 +3,27 @@
  * Now uses tRPC for type-safe API calls.
  */
 
-import { Injectable, inject, signal, computed } from '@angular/core';
-import { Observable, from, of } from 'rxjs';
-import { tap, catchError, map } from 'rxjs';
+import { Injectable, inject, signal, computed } from "@angular/core";
+import { Observable, from, of } from "rxjs";
+import { tap, catchError, map } from "rxjs";
 import {
   Feed,
   FeedCreateRequest,
   FeedPreviewRequest,
   FeedPreviewResponse,
   PaginatedResponse,
-} from '../models';
-import { TRPCService } from '../trpc/trpc.service';
+} from "../models";
+import { TRPCService } from "../trpc/trpc.service";
 
 export interface FeedFilters {
   search?: string;
-  feedType?: 'article' | 'youtube' | 'podcast' | 'reddit';
+  feedType?: "article" | "youtube" | "podcast" | "reddit";
   enabled?: boolean;
   page?: number;
   pageSize?: number;
 }
 
-@Injectable({ providedIn: 'root' })
+@Injectable({ providedIn: "root" })
 export class FeedService {
   private trpc = inject(TRPCService);
 
@@ -40,7 +40,9 @@ export class FeedService {
   readonly totalCount = this.totalCountSignal.asReadonly();
   readonly currentPage = this.currentPageSignal.asReadonly();
   readonly pageSize = this.pageSizeSignal.asReadonly();
-  readonly totalPages = computed(() => Math.ceil(this.totalCountSignal() / this.pageSizeSignal()));
+  readonly totalPages = computed(() =>
+    Math.ceil(this.totalCountSignal() / this.pageSizeSignal()),
+  );
 
   /**
    * Load feeds with optional filters
@@ -56,28 +58,28 @@ export class FeedService {
         search: filters.search,
         feedType: filters.feedType,
         enabled: filters.enabled,
-      })
+      }),
     ).pipe(
-      map(response => ({
+      map((response) => ({
         items: response.items || [],
         count: response.count || 0,
         page: response.page || 1,
         pageSize: response.pageSize || 20,
         pages: response.pages || 0,
       })),
-      tap(response => {
+      tap((response) => {
         this.feedsSignal.set(response.items || []);
         this.totalCountSignal.set(response.count || 0);
         this.currentPageSignal.set(response.page || 1);
         this.pageSizeSignal.set(response.pageSize || 20);
         this.loadingSignal.set(false);
       }),
-      catchError(error => {
-        console.error('Error loading feeds:', error);
-        this.errorSignal.set(error.message || 'Failed to load feeds');
+      catchError((error) => {
+        console.error("Error loading feeds:", error);
+        this.errorSignal.set(error.message || "Failed to load feeds");
         this.loadingSignal.set(false);
         return of({ items: [], count: 0, page: 1, pageSize: 20, pages: 0 });
-      })
+      }),
     );
   }
 
@@ -96,7 +98,7 @@ export class FeedService {
       tap(() => {
         // Refresh feeds list after creation
         this.loadFeeds({ page: this.currentPageSignal() }).subscribe();
-      })
+      }),
     );
   }
 
@@ -115,18 +117,18 @@ export class FeedService {
       this.trpc.client.feed.update.mutate({
         id,
         data: feed,
-      })
+      }),
     ).pipe(
-      tap(updatedFeed => {
+      tap((updatedFeed) => {
         // Update feed in local state
         const feeds = this.feedsSignal();
-        const index = feeds.findIndex(f => f.id === id);
+        const index = feeds.findIndex((f) => f.id === id);
         if (index !== -1) {
           const newFeeds = [...feeds];
           newFeeds[index] = updatedFeed;
           this.feedsSignal.set(newFeeds);
         }
-      })
+      }),
     );
   }
 
@@ -138,10 +140,10 @@ export class FeedService {
       tap(() => {
         // Remove feed from local state
         const feeds = this.feedsSignal();
-        this.feedsSignal.set(feeds.filter(f => f.id !== id));
+        this.feedsSignal.set(feeds.filter((f) => f.id !== id));
         this.totalCountSignal.set(this.totalCountSignal() - 1);
       }),
-      map(() => undefined)
+      map(() => undefined),
     );
   }
 
@@ -150,7 +152,7 @@ export class FeedService {
    */
   reloadFeed(
     id: number,
-    forceRefresh: boolean = false
+    forceRefresh: boolean = false,
   ): Observable<{
     message: string;
     articlesAdded: number;
@@ -163,28 +165,30 @@ export class FeedService {
       this.trpc.client.feed.reload.mutate({
         id,
         force: forceRefresh,
-      })
+      }),
     ).pipe(
-      map(response => ({
-        message: response.message || '',
+      map((response) => ({
+        message: response.message || "",
         articlesAdded: response.articlesAdded || 0,
         articlesUpdated: response.articlesUpdated || 0,
         articlesSkipped: response.articlesSkipped || 0,
         success: response.success || false,
         errors: response.errors || [],
-      }))
+      })),
     );
   }
 
   /**
    * Clear all articles from a feed
    */
-  clearFeedArticles(id: number): Observable<{ message: string; articleCount: number }> {
+  clearFeedArticles(
+    id: number,
+  ): Observable<{ message: string; articleCount: number }> {
     return from(this.trpc.client.feed.clear.mutate({ id })).pipe(
-      map(response => ({
-        message: response.message || '',
+      map((response) => ({
+        message: response.message || "",
         articleCount: 0, // tRPC response doesn't include article count
-      }))
+      })),
     );
   }
 

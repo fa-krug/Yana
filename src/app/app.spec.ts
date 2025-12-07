@@ -1,9 +1,9 @@
-import { TestBed } from '@angular/core/testing';
-import { AppComponent } from './app';
-import { SwUpdate } from '@angular/service-worker';
-import { KeyboardShortcutsService } from './core/services/keyboard-shortcuts.service';
+import { TestBed } from "@angular/core/testing";
+import { AppComponent } from "./app";
+import { SwUpdate } from "@angular/service-worker";
+import { KeyboardShortcutsService } from "./core/services/keyboard-shortcuts.service";
 
-describe('AppComponent', () => {
+describe("AppComponent", () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [AppComponent],
@@ -29,7 +29,7 @@ describe('AppComponent', () => {
     }).compileComponents();
   });
 
-  it('should create the app', () => {
+  it("should create the app", () => {
     const fixture = TestBed.createComponent(AppComponent);
     const app = fixture.componentInstance;
     expect(app).toBeTruthy();

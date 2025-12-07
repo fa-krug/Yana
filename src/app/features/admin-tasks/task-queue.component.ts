@@ -10,36 +10,36 @@ import {
   signal,
   ChangeDetectionStrategy,
   ChangeDetectorRef,
-} from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { FormControl, ReactiveFormsModule } from '@angular/forms';
-import { Subject, debounceTime, distinctUntilChanged, takeUntil } from 'rxjs';
-import { MatCardModule } from '@angular/material/card';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { MatTableModule } from '@angular/material/table';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
-import { MatDatepickerModule } from '@angular/material/datepicker';
-import { MatNativeDateModule } from '@angular/material/core';
-import { MatChipsModule } from '@angular/material/chips';
-import { MatMenuModule } from '@angular/material/menu';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { MatDialog, MatDialogModule } from '@angular/material/dialog';
-import { MatTooltipModule } from '@angular/material/tooltip';
+} from "@angular/core";
+import { CommonModule } from "@angular/common";
+import { FormControl, ReactiveFormsModule } from "@angular/forms";
+import { Subject, debounceTime, distinctUntilChanged, takeUntil } from "rxjs";
+import { MatCardModule } from "@angular/material/card";
+import { MatButtonModule } from "@angular/material/button";
+import { MatIconModule } from "@angular/material/icon";
+import { MatTableModule } from "@angular/material/table";
+import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
+import { MatPaginatorModule, PageEvent } from "@angular/material/paginator";
+import { MatFormFieldModule } from "@angular/material/form-field";
+import { MatInputModule } from "@angular/material/input";
+import { MatSelectModule } from "@angular/material/select";
+import { MatDatepickerModule } from "@angular/material/datepicker";
+import { MatNativeDateModule } from "@angular/material/core";
+import { MatChipsModule } from "@angular/material/chips";
+import { MatMenuModule } from "@angular/material/menu";
+import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
+import { MatDialog, MatDialogModule } from "@angular/material/dialog";
+import { MatTooltipModule } from "@angular/material/tooltip";
 import {
   AdminTasksService,
   type Task,
   type TaskFilters,
   type PaginatedTasks,
-} from '../../core/services/admin-tasks.service';
-import { TaskDetailsDialogComponent } from './task-details-dialog.component';
+} from "../../core/services/admin-tasks.service";
+import { TaskDetailsDialogComponent } from "./task-details-dialog.component";
 
 @Component({
-  selector: 'app-task-queue',
+  selector: "app-task-queue",
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
@@ -87,15 +87,29 @@ import { TaskDetailsDialogComponent } from './task-details-dialog.component';
 
             <mat-form-field appearance="outline">
               <mat-label>From Date</mat-label>
-              <input matInput [matDatepicker]="fromPicker" [formControl]="fromDateControl" />
-              <mat-datepicker-toggle matSuffix [for]="fromPicker"></mat-datepicker-toggle>
+              <input
+                matInput
+                [matDatepicker]="fromPicker"
+                [formControl]="fromDateControl"
+              />
+              <mat-datepicker-toggle
+                matSuffix
+                [for]="fromPicker"
+              ></mat-datepicker-toggle>
               <mat-datepicker #fromPicker></mat-datepicker>
             </mat-form-field>
 
             <mat-form-field appearance="outline">
               <mat-label>To Date</mat-label>
-              <input matInput [matDatepicker]="toPicker" [formControl]="toDateControl" />
-              <mat-datepicker-toggle matSuffix [for]="toPicker"></mat-datepicker-toggle>
+              <input
+                matInput
+                [matDatepicker]="toPicker"
+                [formControl]="toDateControl"
+              />
+              <mat-datepicker-toggle
+                matSuffix
+                [for]="toPicker"
+              ></mat-datepicker-toggle>
               <mat-datepicker #toPicker></mat-datepicker>
             </mat-form-field>
           </div>
@@ -110,7 +124,9 @@ import { TaskDetailsDialogComponent } from './task-details-dialog.component';
         <mat-card class="error-card">
           <mat-card-content>
             <p>{{ error() }}</p>
-            <button mat-raised-button color="primary" (click)="loadTasks()">Retry</button>
+            <button mat-raised-button color="primary" (click)="loadTasks()">
+              Retry
+            </button>
           </mat-card-content>
         </mat-card>
       } @else {
@@ -138,13 +154,19 @@ import { TaskDetailsDialogComponent } from './task-details-dialog.component';
 
               <ng-container matColumnDef="createdAt">
                 <th mat-header-cell *matHeaderCellDef>Created</th>
-                <td mat-cell *matCellDef="let task">{{ task.createdAt | date: 'short' }}</td>
+                <td mat-cell *matCellDef="let task">
+                  {{ task.createdAt | date: "short" }}
+                </td>
               </ng-container>
 
               <ng-container matColumnDef="actions">
                 <th mat-header-cell *matHeaderCellDef>Actions</th>
                 <td mat-cell *matCellDef="let task">
-                  <button mat-icon-button [matMenuTriggerFor]="menu" matTooltip="Actions">
+                  <button
+                    mat-icon-button
+                    [matMenuTriggerFor]="menu"
+                    matTooltip="Actions"
+                  >
                     <mat-icon>more_vert</mat-icon>
                   </button>
                   <mat-menu #menu="matMenu">
@@ -152,13 +174,15 @@ import { TaskDetailsDialogComponent } from './task-details-dialog.component';
                       <mat-icon>info</mat-icon>
                       <span>View Details</span>
                     </button>
-                    @if (task.status === 'pending' || task.status === 'running') {
+                    @if (
+                      task.status === "pending" || task.status === "running"
+                    ) {
                       <button mat-menu-item (click)="cancelTask(task.id)">
                         <mat-icon>cancel</mat-icon>
                         <span>Cancel</span>
                       </button>
                     }
-                    @if (task.status === 'failed') {
+                    @if (task.status === "failed") {
                       <button mat-menu-item (click)="retryTask(task.id)">
                         <mat-icon>refresh</mat-icon>
                         <span>Retry</span>
@@ -238,11 +262,11 @@ export class TaskQueueComponent implements OnInit, OnDestroy {
   pageSize = signal(20);
 
   statusControl = new FormControl<string[]>([]);
-  typeControl = new FormControl<string>('');
+  typeControl = new FormControl<string>("");
   fromDateControl = new FormControl<Date | null>(null);
   toDateControl = new FormControl<Date | null>(null);
 
-  displayedColumns: string[] = ['id', 'type', 'status', 'createdAt', 'actions'];
+  displayedColumns: string[] = ["id", "type", "status", "createdAt", "actions"];
 
   ngOnInit() {
     // Setup filter debouncing
@@ -270,18 +294,31 @@ export class TaskQueueComponent implements OnInit, OnDestroy {
       .connectSSE()
       .pipe(takeUntil(this.destroy$))
       .subscribe({
-        next: event => {
+        next: (event) => {
           // Refresh task list on task updates
-          if (event.event === 'task-updated' || event.event === 'task-created') {
-            const eventData = event.data as { taskId?: number; status?: string };
-            console.log('[TaskQueue] Received SSE event:', event.event, 'taskId:', eventData.taskId, 'status:', eventData.status);
+          if (
+            event.event === "task-updated" ||
+            event.event === "task-created"
+          ) {
+            const eventData = event.data as {
+              taskId?: number;
+              status?: string;
+            };
+            console.log(
+              "[TaskQueue] Received SSE event:",
+              event.event,
+              "taskId:",
+              eventData.taskId,
+              "status:",
+              eventData.status,
+            );
             // Trigger change detection and reload tasks
             this.cdr.markForCheck();
             this.loadTasks();
           }
         },
-        error: err => {
-          console.error('[TaskQueue] SSE connection error:', err);
+        error: (err) => {
+          console.error("[TaskQueue] SSE connection error:", err);
         },
       });
   }
@@ -300,9 +337,9 @@ export class TaskQueueComponent implements OnInit, OnDestroy {
     const typeValue = this.typeControl.value?.trim();
     const typeFilter = typeValue
       ? typeValue
-          .split(',')
-          .map(t => t.trim())
-          .filter(t => t)
+          .split(",")
+          .map((t) => t.trim())
+          .filter((t) => t)
       : undefined;
 
     const filters: TaskFilters = {
@@ -311,23 +348,29 @@ export class TaskQueueComponent implements OnInit, OnDestroy {
           ? (this.statusControl.value as any)
           : undefined,
       type: typeFilter && typeFilter.length > 0 ? typeFilter : undefined,
-      dateFrom: this.fromDateControl.value ? this.fromDateControl.value.toISOString() : undefined,
-      dateTo: this.toDateControl.value ? this.toDateControl.value.toISOString() : undefined,
+      dateFrom: this.fromDateControl.value
+        ? this.fromDateControl.value.toISOString()
+        : undefined,
+      dateTo: this.toDateControl.value
+        ? this.toDateControl.value.toISOString()
+        : undefined,
     };
 
-    this.tasksService.listTasks(filters, { page: this.page(), limit: this.pageSize() }).subscribe({
-      next: result => {
-        this.tasks.set(result.items);
-        this.total.set(result.total);
-        this.loading.set(false);
-        this.cdr.markForCheck(); // Ensure change detection runs
-      },
-      error: err => {
-        this.error.set(err.message || 'Failed to load tasks');
-        this.loading.set(false);
-        this.cdr.markForCheck();
-      },
-    });
+    this.tasksService
+      .listTasks(filters, { page: this.page(), limit: this.pageSize() })
+      .subscribe({
+        next: (result) => {
+          this.tasks.set(result.items);
+          this.total.set(result.total);
+          this.loading.set(false);
+          this.cdr.markForCheck(); // Ensure change detection runs
+        },
+        error: (err) => {
+          this.error.set(err.message || "Failed to load tasks");
+          this.loading.set(false);
+          this.cdr.markForCheck();
+        },
+      });
   }
 
   onPageChange(event: PageEvent) {
@@ -336,22 +379,22 @@ export class TaskQueueComponent implements OnInit, OnDestroy {
     this.loadTasks();
   }
 
-  getStatusColor(status: string): 'primary' | 'accent' | 'warn' {
+  getStatusColor(status: string): "primary" | "accent" | "warn" {
     switch (status) {
-      case 'completed':
-        return 'primary';
-      case 'running':
-        return 'accent';
-      case 'failed':
-        return 'warn';
+      case "completed":
+        return "primary";
+      case "running":
+        return "accent";
+      case "failed":
+        return "warn";
       default:
-        return 'primary';
+        return "primary";
     }
   }
 
   viewDetails(id: number) {
     this.dialog.open(TaskDetailsDialogComponent, {
-      width: '800px',
+      width: "800px",
       data: { taskId: id },
     });
   }
@@ -359,11 +402,13 @@ export class TaskQueueComponent implements OnInit, OnDestroy {
   cancelTask(id: number) {
     this.tasksService.cancelTask(id).subscribe({
       next: () => {
-        this.snackBar.open('Task cancelled', 'Close', { duration: 3000 });
+        this.snackBar.open("Task cancelled", "Close", { duration: 3000 });
         this.loadTasks();
       },
-      error: err => {
-        this.snackBar.open(err.message || 'Failed to cancel task', 'Close', { duration: 5000 });
+      error: (err) => {
+        this.snackBar.open(err.message || "Failed to cancel task", "Close", {
+          duration: 5000,
+        });
       },
     });
   }
@@ -371,11 +416,13 @@ export class TaskQueueComponent implements OnInit, OnDestroy {
   retryTask(id: number) {
     this.tasksService.retryTask(id).subscribe({
       next: () => {
-        this.snackBar.open('Task retried', 'Close', { duration: 3000 });
+        this.snackBar.open("Task retried", "Close", { duration: 3000 });
         this.loadTasks();
       },
-      error: err => {
-        this.snackBar.open(err.message || 'Failed to retry task', 'Close', { duration: 5000 });
+      error: (err) => {
+        this.snackBar.open(err.message || "Failed to retry task", "Close", {
+          duration: 5000,
+        });
       },
     });
   }

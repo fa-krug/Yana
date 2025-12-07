@@ -4,17 +4,17 @@
  * Implements Google Reader API for RSS reader compatibility.
  */
 
-import { Router } from 'express';
-import type { Request, Response } from 'express';
-import { asyncHandler } from '../middleware/errorHandler';
+import { Router } from "express";
+import type { Request, Response } from "express";
+import { asyncHandler } from "../middleware/errorHandler";
 import {
   authenticateWithCredentials,
   authenticateRequest,
   generateSessionToken,
-} from '../services/greader/auth.service';
-import { loadUser } from '../middleware/auth';
-import type { AuthenticatedRequest } from '../middleware/auth';
-import { NotFoundError, PermissionDeniedError } from '../errors';
+} from "../services/greader/auth.service";
+import { loadUser } from "../middleware/auth";
+import type { AuthenticatedRequest } from "../middleware/auth";
+import { NotFoundError, PermissionDeniedError } from "../errors";
 
 const router = Router();
 
@@ -26,26 +26,26 @@ router.use(loadUser);
  * Client login endpoint
  */
 router.post(
-  '/accounts/ClientLogin',
+  "/accounts/ClientLogin",
   asyncHandler(async (req: Request, res: Response) => {
-    const email = req.body.Email || req.body.email || '';
-    const password = req.body.Passwd || req.body.passwd || '';
+    const email = req.body.Email || req.body.email || "";
+    const password = req.body.Passwd || req.body.passwd || "";
 
     const result = await authenticateWithCredentials(email, password);
 
     if (!result) {
       res.status(401);
-      res.setHeader('Content-Type', 'text/plain');
-      res.send('Error=BadAuthentication');
+      res.setHeader("Content-Type", "text/plain");
+      res.send("Error=BadAuthentication");
       return;
     }
 
     // Return in expected format
     const responseText = `SID=${result.token}\nLSID=null\nAuth=${result.token}\n`;
 
-    res.setHeader('Content-Type', 'text/plain');
+    res.setHeader("Content-Type", "text/plain");
     res.send(responseText);
-  })
+  }),
 );
 
 /**
@@ -53,7 +53,7 @@ router.post(
  * Get session token
  */
 router.get(
-  '/reader/api/0/token',
+  "/reader/api/0/token",
   asyncHandler(async (req: Request, res: Response) => {
     const authHeader = req.headers.authorization;
     const session = (req as AuthenticatedRequest).session;
@@ -61,15 +61,15 @@ router.get(
 
     if (!user) {
       res.status(401);
-      res.setHeader('Content-Type', 'text/plain');
-      res.send('Unauthorized');
+      res.setHeader("Content-Type", "text/plain");
+      res.send("Unauthorized");
       return;
     }
 
     const token = generateSessionToken(user.id);
-    res.setHeader('Content-Type', 'text/plain');
+    res.setHeader("Content-Type", "text/plain");
     res.send(token);
-  })
+  }),
 );
 
 /**
@@ -77,19 +77,19 @@ router.get(
  * Get user info
  */
 router.get(
-  '/reader/api/0/user-info',
+  "/reader/api/0/user-info",
   asyncHandler(async (req: Request, res: Response) => {
     const authHeader = req.headers.authorization;
     const session = (req as AuthenticatedRequest).session;
     const user = await authenticateRequest(authHeader, session?.userId);
 
     if (!user) {
-      res.status(401).json({ error: 'Unauthorized' });
+      res.status(401).json({ error: "Unauthorized" });
       return;
     }
 
     // Get user email
-    const { getUserById } = await import('../services/user.service');
+    const { getUserById } = await import("../services/user.service");
     const fullUser = await getUserById(user.id);
 
     res.json({
@@ -98,7 +98,7 @@ router.get(
       userProfileId: String(user.id),
       userEmail: fullUser.email || `${user.username}@localhost`,
     });
-  })
+  }),
 );
 
 /**
@@ -106,22 +106,23 @@ router.get(
  * List subscriptions
  */
 router.get(
-  '/reader/api/0/subscription/list',
+  "/reader/api/0/subscription/list",
   asyncHandler(async (req: Request, res: Response) => {
     const authHeader = req.headers.authorization;
     const session = (req as AuthenticatedRequest).session;
     const user = await authenticateRequest(authHeader, session?.userId);
 
     if (!user) {
-      res.status(401).json({ error: 'Unauthorized' });
+      res.status(401).json({ error: "Unauthorized" });
       return;
     }
 
-    const { listSubscriptions } = await import('../services/greader/subscription.service');
+    const { listSubscriptions } =
+      await import("../services/greader/subscription.service");
     const subscriptions = await listSubscriptions(user.id);
 
     res.json({ subscriptions });
-  })
+  }),
 );
 
 /**
@@ -129,7 +130,7 @@ router.get(
  * Edit subscription
  */
 router.post(
-  '/reader/api/0/subscription/edit',
+  "/reader/api/0/subscription/edit",
   asyncHandler(async (req: Request, res: Response) => {
     const authHeader = req.headers.authorization;
     const session = (req as AuthenticatedRequest).session;
@@ -137,33 +138,37 @@ router.post(
 
     if (!user) {
       res.status(401);
-      res.setHeader('Content-Type', 'text/plain');
-      res.send('Unauthorized');
+      res.setHeader("Content-Type", "text/plain");
+      res.send("Unauthorized");
       return;
     }
 
-    const { editSubscription } = await import('../services/greader/subscription.service');
+    const { editSubscription } =
+      await import("../services/greader/subscription.service");
     try {
       await editSubscription(user.id, {
-        streamId: req.body.s || req.body.stream_id || '',
-        action: req.body.ac || req.body.action || 'edit',
-        newTitle: req.body.t || req.body.new_title || '',
-        addLabel: req.body.a || req.body.add_label || '',
-        removeLabel: req.body.r || req.body.remove_label || '',
+        streamId: req.body.s || req.body.stream_id || "",
+        action: req.body.ac || req.body.action || "edit",
+        newTitle: req.body.t || req.body.new_title || "",
+        addLabel: req.body.a || req.body.add_label || "",
+        removeLabel: req.body.r || req.body.remove_label || "",
       });
 
-      res.setHeader('Content-Type', 'text/plain');
-      res.send('OK');
+      res.setHeader("Content-Type", "text/plain");
+      res.send("OK");
     } catch (error: any) {
-      if (error instanceof NotFoundError || error instanceof PermissionDeniedError) {
+      if (
+        error instanceof NotFoundError ||
+        error instanceof PermissionDeniedError
+      ) {
         res.status(error instanceof NotFoundError ? 404 : 403);
-        res.setHeader('Content-Type', 'text/plain');
+        res.setHeader("Content-Type", "text/plain");
         res.send(error.message);
       } else {
         throw error;
       }
     }
-  })
+  }),
 );
 
 /**
@@ -171,22 +176,22 @@ router.post(
  * List tags
  */
 router.get(
-  '/reader/api/0/tag/list',
+  "/reader/api/0/tag/list",
   asyncHandler(async (req: Request, res: Response) => {
     const authHeader = req.headers.authorization;
     const session = (req as AuthenticatedRequest).session;
     const user = await authenticateRequest(authHeader, session?.userId);
 
     if (!user) {
-      res.status(401).json({ error: 'Unauthorized' });
+      res.status(401).json({ error: "Unauthorized" });
       return;
     }
 
-    const { listTags } = await import('../services/greader/tag.service');
+    const { listTags } = await import("../services/greader/tag.service");
     const tags = await listTags(user.id);
 
     res.json({ tags });
-  })
+  }),
 );
 
 /**
@@ -194,7 +199,7 @@ router.get(
  * Edit tags (mark as read/starred)
  */
 router.post(
-  '/reader/api/0/edit-tag',
+  "/reader/api/0/edit-tag",
   asyncHandler(async (req: Request, res: Response) => {
     const authHeader = req.headers.authorization;
     const session = (req as AuthenticatedRequest).session;
@@ -202,21 +207,21 @@ router.post(
 
     if (!user) {
       res.status(401);
-      res.setHeader('Content-Type', 'text/plain');
-      res.send('Unauthorized');
+      res.setHeader("Content-Type", "text/plain");
+      res.send("Unauthorized");
       return;
     }
 
     const itemIds = req.body.i || req.body.item_ids || [];
-    const addTag = req.body.a || req.body.add_tag || '';
-    const removeTag = req.body.r || req.body.remove_tag || '';
+    const addTag = req.body.a || req.body.add_tag || "";
+    const removeTag = req.body.r || req.body.remove_tag || "";
 
-    const { editTags } = await import('../services/greader/tag.service');
+    const { editTags } = await import("../services/greader/tag.service");
     await editTags(user.id, itemIds, addTag, removeTag);
 
-    res.setHeader('Content-Type', 'text/plain');
-    res.send('OK');
-  })
+    res.setHeader("Content-Type", "text/plain");
+    res.send("OK");
+  }),
 );
 
 /**
@@ -224,7 +229,7 @@ router.post(
  * Mark all as read
  */
 router.post(
-  '/reader/api/0/mark-all-as-read',
+  "/reader/api/0/mark-all-as-read",
   asyncHandler(async (req: Request, res: Response) => {
     const authHeader = req.headers.authorization;
     const session = (req as AuthenticatedRequest).session;
@@ -232,20 +237,20 @@ router.post(
 
     if (!user) {
       res.status(401);
-      res.setHeader('Content-Type', 'text/plain');
-      res.send('Unauthorized');
+      res.setHeader("Content-Type", "text/plain");
+      res.send("Unauthorized");
       return;
     }
 
-    const streamId = req.body.s || req.body.stream_id || '';
-    const timestamp = req.body.ts || req.body.timestamp || '';
+    const streamId = req.body.s || req.body.stream_id || "";
+    const timestamp = req.body.ts || req.body.timestamp || "";
 
-    const { markAllAsRead } = await import('../services/greader/tag.service');
+    const { markAllAsRead } = await import("../services/greader/tag.service");
     await markAllAsRead(user.id, streamId, timestamp);
 
-    res.setHeader('Content-Type', 'text/plain');
-    res.send('OK');
-  })
+    res.setHeader("Content-Type", "text/plain");
+    res.send("OK");
+  }),
 );
 
 /**
@@ -253,24 +258,25 @@ router.post(
  * Get unread counts
  */
 router.get(
-  '/reader/api/0/unread-count',
+  "/reader/api/0/unread-count",
   asyncHandler(async (req: Request, res: Response) => {
     const authHeader = req.headers.authorization;
     const session = (req as AuthenticatedRequest).session;
     const user = await authenticateRequest(authHeader, session?.userId);
 
     if (!user) {
-      res.status(401).json({ error: 'Unauthorized' });
+      res.status(401).json({ error: "Unauthorized" });
       return;
     }
 
-    const includeAll = req.query['all'] === '1';
+    const includeAll = req.query["all"] === "1";
 
-    const { getUnreadCount } = await import('../services/greader/stream.service');
+    const { getUnreadCount } =
+      await import("../services/greader/stream.service");
     const result = await getUnreadCount(user.id, includeAll);
 
     res.json(result);
-  })
+  }),
 );
 
 /**
@@ -278,25 +284,30 @@ router.get(
  * Get stream item IDs
  */
 router.get(
-  '/reader/api/0/stream/items/ids',
+  "/reader/api/0/stream/items/ids",
   asyncHandler(async (req: Request, res: Response) => {
     const authHeader = req.headers.authorization;
     const session = (req as AuthenticatedRequest).session;
     const user = await authenticateRequest(authHeader, session?.userId);
 
     if (!user) {
-      res.status(401).json({ error: 'Unauthorized' });
+      res.status(401).json({ error: "Unauthorized" });
       return;
     }
 
-    const streamId = (req.query['s'] as string) || 'user/-/state/com.google/reading-list';
-    const limit = Math.min(parseInt((req.query['n'] as string) || '1000', 10), 10000);
-    const olderThan = (req.query['ot'] as string) || '';
-    const excludeTag = (req.query['xt'] as string) || '';
-    const includeTag = (req.query['it'] as string) || '';
-    const reverseOrder = req.query['r'] === 'o';
+    const streamId =
+      (req.query["s"] as string) || "user/-/state/com.google/reading-list";
+    const limit = Math.min(
+      parseInt((req.query["n"] as string) || "1000", 10),
+      10000,
+    );
+    const olderThan = (req.query["ot"] as string) || "";
+    const excludeTag = (req.query["xt"] as string) || "";
+    const includeTag = (req.query["it"] as string) || "";
+    const reverseOrder = req.query["r"] === "o";
 
-    const { getStreamItemIds } = await import('../services/greader/stream.service');
+    const { getStreamItemIds } =
+      await import("../services/greader/stream.service");
     const response = await getStreamItemIds(
       user.id,
       streamId,
@@ -304,11 +315,11 @@ router.get(
       olderThan,
       excludeTag,
       includeTag,
-      reverseOrder
+      reverseOrder,
     );
 
     res.json(response);
-  })
+  }),
 );
 
 /**
@@ -316,43 +327,53 @@ router.get(
  * GET /api/greader/reader/api/0/stream/items/contents
  * Get stream contents
  */
-const streamContentsHandler = asyncHandler(async (req: Request, res: Response) => {
-  const authHeader = req.headers.authorization;
-  const session = (req as AuthenticatedRequest).session;
-  const user = await authenticateRequest(authHeader, session?.userId);
+const streamContentsHandler = asyncHandler(
+  async (req: Request, res: Response) => {
+    const authHeader = req.headers.authorization;
+    const session = (req as AuthenticatedRequest).session;
+    const user = await authenticateRequest(authHeader, session?.userId);
 
-  if (!user) {
-    res.status(401).json({ error: 'Unauthorized' });
-    return;
-  }
+    if (!user) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
 
-  const streamId = (req.params['streamId'] as string) || '';
-  const itemIds = (req.query['i'] as string[]) || (req.body['i'] as string[]) || [];
-  const excludeTag = (req.query['xt'] as string) || (req.body['xt'] as string) || '';
-  const limit = parseInt((req.query['n'] as string) || (req.body['n'] as string) || '50', 10);
-  const olderThan = (req.query['ot'] as string) || (req.body['ot'] as string) || '';
-  const continuation = (req.query['c'] as string) || (req.body['c'] as string) || '';
+    const streamId = (req.params["streamId"] as string) || "";
+    const itemIds =
+      (req.query["i"] as string[]) || (req.body["i"] as string[]) || [];
+    const excludeTag =
+      (req.query["xt"] as string) || (req.body["xt"] as string) || "";
+    const limit = parseInt(
+      (req.query["n"] as string) || (req.body["n"] as string) || "50",
+      10,
+    );
+    const olderThan =
+      (req.query["ot"] as string) || (req.body["ot"] as string) || "";
+    const continuation =
+      (req.query["c"] as string) || (req.body["c"] as string) || "";
 
-  const { getStreamContents } = await import('../services/greader/stream.service');
-  const response = await getStreamContents(
-    user.id,
-    streamId,
-    itemIds,
-    excludeTag,
-    limit,
-    olderThan,
-    continuation
-  );
+    const { getStreamContents } =
+      await import("../services/greader/stream.service");
+    const response = await getStreamContents(
+      user.id,
+      streamId,
+      itemIds,
+      excludeTag,
+      limit,
+      olderThan,
+      continuation,
+    );
 
-  res.json(response);
-});
+    res.json(response);
+  },
+);
 
-router.get('/reader/api/0/stream/contents', streamContentsHandler);
-router.get('/reader/api/0/stream/contents/:streamId', streamContentsHandler);
-router.post('/reader/api/0/stream/contents', streamContentsHandler);
-router.post('/reader/api/0/stream/contents/:streamId', streamContentsHandler);
-router.get('/reader/api/0/stream/items/contents', streamContentsHandler);
-router.post('/reader/api/0/stream/items/contents', streamContentsHandler);
+router.get("/reader/api/0/stream/contents", streamContentsHandler);
+router.get("/reader/api/0/stream/contents/:streamId", streamContentsHandler);
+router.post("/reader/api/0/stream/contents", streamContentsHandler);
+router.post("/reader/api/0/stream/contents/:streamId", streamContentsHandler);
+router.get("/reader/api/0/stream/items/contents", streamContentsHandler);
+router.post("/reader/api/0/stream/items/contents", streamContentsHandler);
 
 export function greaderRoutes(): Router {
   return router;

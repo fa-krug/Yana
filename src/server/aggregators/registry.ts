@@ -4,18 +4,20 @@
  * Discovers and manages all available aggregators.
  */
 
-import type { AggregatorMetadata } from './base/types';
-import { BaseAggregator } from './base/aggregator';
-import { logger } from '../utils/logger';
+import type { AggregatorMetadata } from "./base/types";
+import { BaseAggregator } from "./base/aggregator";
+import { logger } from "../utils/logger";
 
 /**
  * Map aggregator ID to feed type.
  */
-function getFeedTypeForAggregator(id: string): 'article' | 'youtube' | 'podcast' | 'reddit' {
-  if (id === 'youtube') return 'youtube';
-  if (id === 'podcast') return 'podcast';
-  if (id === 'reddit') return 'reddit';
-  return 'article';
+function getFeedTypeForAggregator(
+  id: string,
+): "article" | "youtube" | "podcast" | "reddit" {
+  if (id === "youtube") return "youtube";
+  if (id === "podcast") return "podcast";
+  if (id === "reddit") return "reddit";
+  return "article";
 }
 
 /**
@@ -24,29 +26,29 @@ function getFeedTypeForAggregator(id: string): 'article' | 'youtube' | 'podcast'
  */
 function getIconForAggregator(
   id: string,
-  feedType: 'article' | 'youtube' | 'podcast' | 'reddit'
+  feedType: "article" | "youtube" | "podcast" | "reddit",
 ): string {
   // Aggregator-specific logo mapping
   const aggregatorIconMap: Record<string, string> = {
     // Social aggregators
-    youtube: '/assets/icons/feed-youtube.svg',
-    reddit: '/assets/icons/feed-reddit.svg',
-    podcast: '/assets/icons/feed-podcast.svg',
+    youtube: "/assets/icons/feed-youtube.svg",
+    reddit: "/assets/icons/feed-reddit.svg",
+    podcast: "/assets/icons/feed-podcast.svg",
 
     // Managed aggregators - use high-resolution local logos
-    heise: '/assets/icons/heise-128.png',
-    merkur: '/assets/icons/merkur-128.png',
-    tagesschau: 'https://www.tagesschau.de/favicon.ico',
-    explosm: 'https://www.explosm.net/favicon.ico',
-    mactechnews: '/assets/icons/mactechnews-128.png',
-    caschys_blog: 'https://caschys.blog/favicon.ico',
-    dark_legacy: 'https://www.darklegacycomics.com/favicon.ico',
-    oglaf: '/assets/icons/oglaf.jpg',
-    mein_mmo: '/assets/icons/mein-mmo-128.png',
+    heise: "/assets/icons/heise-128.png",
+    merkur: "/assets/icons/merkur-128.png",
+    tagesschau: "https://www.tagesschau.de/favicon.ico",
+    explosm: "https://www.explosm.net/favicon.ico",
+    mactechnews: "/assets/icons/mactechnews-128.png",
+    caschys_blog: "https://caschys.blog/favicon.ico",
+    dark_legacy: "https://www.darklegacycomics.com/favicon.ico",
+    oglaf: "/assets/icons/oglaf.jpg",
+    mein_mmo: "/assets/icons/mein-mmo-128.png",
 
     // Custom aggregators - use feed type icon
-    full_website: '/assets/icons/feed-article.svg',
-    feed_content: '/assets/icons/feed-article.svg',
+    full_website: "/assets/icons/feed-article.svg",
+    feed_content: "/assets/icons/feed-article.svg",
   };
 
   // Return aggregator-specific icon if available, otherwise use feed type icon
@@ -56,46 +58,46 @@ function getIconForAggregator(
 
   // Fallback to feed type icons
   const feedTypeIconMap: Record<string, string> = {
-    article: '/assets/icons/feed-article.svg',
-    youtube: '/assets/icons/feed-youtube.svg',
-    podcast: '/assets/icons/feed-podcast.svg',
-    reddit: '/assets/icons/feed-reddit.svg',
+    article: "/assets/icons/feed-article.svg",
+    youtube: "/assets/icons/feed-youtube.svg",
+    podcast: "/assets/icons/feed-podcast.svg",
+    reddit: "/assets/icons/feed-reddit.svg",
   };
 
-  return feedTypeIconMap[feedType] || feedTypeIconMap['article'];
+  return feedTypeIconMap[feedType] || feedTypeIconMap["article"];
 }
 
 // Import aggregators
-import { FullWebsiteAggregator } from './full_website';
-import { HeiseAggregator } from './heise';
-import { MerkurAggregator } from './merkur';
-import { YouTubeAggregator } from './youtube';
-import { RedditAggregator } from './reddit';
-import { PodcastAggregator } from './podcast';
-import { TagesschauAggregator } from './tagesschau';
-import { ExplosmAggregator } from './explosm';
-import { MacTechNewsAggregator } from './mactechnews';
-import { CaschysBlogAggregator } from './caschys_blog';
-import { DarkLegacyAggregator } from './dark_legacy';
-import { OglafAggregator } from './oglaf';
-import { MeinMmoAggregator } from './mein_mmo';
-import { FeedContentAggregator } from './feed_content';
+import { FullWebsiteAggregator } from "./full_website";
+import { HeiseAggregator } from "./heise";
+import { MerkurAggregator } from "./merkur";
+import { YouTubeAggregator } from "./youtube";
+import { RedditAggregator } from "./reddit";
+import { PodcastAggregator } from "./podcast";
+import { TagesschauAggregator } from "./tagesschau";
+import { ExplosmAggregator } from "./explosm";
+import { MacTechNewsAggregator } from "./mactechnews";
+import { CaschysBlogAggregator } from "./caschys_blog";
+import { DarkLegacyAggregator } from "./dark_legacy";
+import { OglafAggregator } from "./oglaf";
+import { MeinMmoAggregator } from "./mein_mmo";
+import { FeedContentAggregator } from "./feed_content";
 
 // Registry of all aggregators
 const aggregatorClasses = new Map<string, new () => BaseAggregator>([
-  ['full_website', FullWebsiteAggregator],
-  ['heise', HeiseAggregator],
-  ['merkur', MerkurAggregator],
-  ['youtube', YouTubeAggregator],
-  ['reddit', RedditAggregator],
-  ['podcast', PodcastAggregator],
-  ['tagesschau', TagesschauAggregator],
-  ['dark_legacy', DarkLegacyAggregator],
-  ['caschys_blog', CaschysBlogAggregator],
-  ['mactechnews', MacTechNewsAggregator],
-  ['oglaf', OglafAggregator],
-  ['mein_mmo', MeinMmoAggregator],
-  ['feed_content', FeedContentAggregator],
+  ["full_website", FullWebsiteAggregator],
+  ["heise", HeiseAggregator],
+  ["merkur", MerkurAggregator],
+  ["youtube", YouTubeAggregator],
+  ["reddit", RedditAggregator],
+  ["podcast", PodcastAggregator],
+  ["tagesschau", TagesschauAggregator],
+  ["dark_legacy", DarkLegacyAggregator],
+  ["caschys_blog", CaschysBlogAggregator],
+  ["mactechnews", MacTechNewsAggregator],
+  ["oglaf", OglafAggregator],
+  ["mein_mmo", MeinMmoAggregator],
+  ["feed_content", FeedContentAggregator],
 ]);
 
 /**
@@ -126,7 +128,10 @@ export function getAggregatorMetadata(id: string): AggregatorMetadata | null {
       icon,
     };
   } catch (error) {
-    logger.error({ error, aggregatorId: id }, 'Failed to get aggregator metadata');
+    logger.error(
+      { error, aggregatorId: id },
+      "Failed to get aggregator metadata",
+    );
     return null;
   }
 }
@@ -165,14 +170,17 @@ export function getAllAggregators(): AggregatorMetadata[] {
 export function getAggregatorById(id: string): BaseAggregator | null {
   const AggregatorClass = aggregatorClasses.get(id);
   if (!AggregatorClass) {
-    logger.warn({ aggregatorId: id }, 'Aggregator not found');
+    logger.warn({ aggregatorId: id }, "Aggregator not found");
     return null;
   }
 
   try {
     return new AggregatorClass();
   } catch (error) {
-    logger.error({ error, aggregatorId: id }, 'Failed to create aggregator instance');
+    logger.error(
+      { error, aggregatorId: id },
+      "Failed to create aggregator instance",
+    );
     return null;
   }
 }

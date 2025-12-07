@@ -4,16 +4,32 @@
  * Handles article management operations.
  */
 
-import { eq, and, or, isNull, desc, sql, like, inArray, lt, gt } from 'drizzle-orm';
-import { db, articles, feeds, userArticleStates } from '../db';
-import { NotFoundError, PermissionDeniedError } from '../errors';
-import { logger } from '../utils/logger';
-import type { Article, ArticleInsert, User, UserArticleState } from '../db/types';
+import {
+  eq,
+  and,
+  or,
+  isNull,
+  desc,
+  sql,
+  like,
+  inArray,
+  lt,
+  gt,
+} from "drizzle-orm";
+import { db, articles, feeds, userArticleStates } from "../db";
+import { NotFoundError, PermissionDeniedError } from "../errors";
+import { logger } from "../utils/logger";
+import type {
+  Article,
+  ArticleInsert,
+  User,
+  UserArticleState,
+} from "../db/types";
 
 /**
  * Minimal user info needed for article operations.
  */
-export type UserInfo = Pick<User, 'id' | 'isSuperuser'>;
+export type UserInfo = Pick<User, "id" | "isSuperuser">;
 
 /**
  * List articles for a user.
@@ -28,9 +44,17 @@ export async function listArticles(
     search?: string;
     page?: number;
     pageSize?: number;
-  } = {}
+  } = {},
 ): Promise<{ articles: Article[]; total: number }> {
-  const { feedId, feedType, isRead, isSaved, search, page = 1, pageSize = 20 } = filters;
+  const {
+    feedId,
+    feedType,
+    isRead,
+    isSaved,
+    search,
+    page = 1,
+    pageSize = 20,
+  } = filters;
   const offset = (page - 1) * pageSize;
 
   // Build where conditions for feeds (user access)
@@ -50,7 +74,7 @@ export async function listArticles(
     .from(feeds)
     .where(and(...feedConditions));
 
-  const feedIds = accessibleFeeds.map(f => f.id);
+  const feedIds = accessibleFeeds.map((f) => f.id);
 
   if (feedIds.length === 0) {
     return { articles: [], total: 0 };
@@ -84,19 +108,25 @@ export async function listArticles(
   let filteredArticles = articleList;
 
   if (isRead !== undefined || isSaved !== undefined) {
-    const articleIds = articleList.map(a => a.id);
+    const articleIds = articleList.map((a) => a.id);
     const states = await db
       .select()
       .from(userArticleStates)
       .where(
-        and(eq(userArticleStates.userId, user.id), inArray(userArticleStates.articleId, articleIds))
+        and(
+          eq(userArticleStates.userId, user.id),
+          inArray(userArticleStates.articleId, articleIds),
+        ),
       );
 
     const stateMap = new Map(
-      states.map(s => [s.articleId, { isRead: s.isRead, isSaved: s.isSaved }])
+      states.map((s) => [
+        s.articleId,
+        { isRead: s.isRead, isSaved: s.isSaved },
+      ]),
     );
 
-    filteredArticles = articleList.filter(article => {
+    filteredArticles = articleList.filter((article) => {
       const state = stateMap.get(article.id);
       if (isRead !== undefined) {
         if (state?.isRead !== isRead) return false;
@@ -115,21 +145,29 @@ export async function listArticles(
  * Get article by ID.
  */
 export async function getArticle(id: number, user: UserInfo): Promise<Article> {
-  const [article] = await db.select().from(articles).where(eq(articles.id, id)).limit(1);
+  const [article] = await db
+    .select()
+    .from(articles)
+    .where(eq(articles.id, id))
+    .limit(1);
 
   if (!article) {
     throw new NotFoundError(`Article with id ${id} not found`);
   }
 
   // Check feed access
-  const [feed] = await db.select().from(feeds).where(eq(feeds.id, article.feedId)).limit(1);
+  const [feed] = await db
+    .select()
+    .from(feeds)
+    .where(eq(feeds.id, article.feedId))
+    .limit(1);
 
   if (!feed) {
-    throw new NotFoundError('Feed not found');
+    throw new NotFoundError("Feed not found");
   }
 
   if (feed.userId !== null && feed.userId !== user.id && !user.isSuperuser) {
-    throw new PermissionDeniedError('You do not have access to this article');
+    throw new PermissionDeniedError("You do not have access to this article");
   }
 
   return article;
@@ -141,7 +179,7 @@ export async function getArticle(id: number, user: UserInfo): Promise<Article> {
 export async function markArticlesRead(
   user: UserInfo,
   articleIds: number[],
-  isRead: boolean
+  isRead: boolean,
 ): Promise<void> {
   // Verify user has access to all articles
   for (const articleId of articleIds) {
@@ -153,7 +191,12 @@ export async function markArticlesRead(
     const [existing] = await db
       .select()
       .from(userArticleStates)
-      .where(and(eq(userArticleStates.userId, user.id), eq(userArticleStates.articleId, articleId)))
+      .where(
+        and(
+          eq(userArticleStates.userId, user.id),
+          eq(userArticleStates.articleId, articleId),
+        ),
+      )
       .limit(1);
 
     if (existing) {
@@ -161,7 +204,10 @@ export async function markArticlesRead(
         .update(userArticleStates)
         .set({ isRead, updatedAt: new Date() })
         .where(
-          and(eq(userArticleStates.userId, user.id), eq(userArticleStates.articleId, articleId))
+          and(
+            eq(userArticleStates.userId, user.id),
+            eq(userArticleStates.articleId, articleId),
+          ),
         );
     } else {
       await db.insert(userArticleStates).values({
@@ -175,7 +221,10 @@ export async function markArticlesRead(
     }
   }
 
-  logger.info({ userId: user.id, articleIds, isRead }, 'Articles marked as read/unread');
+  logger.info(
+    { userId: user.id, articleIds, isRead },
+    "Articles marked as read/unread",
+  );
 }
 
 /**
@@ -184,7 +233,7 @@ export async function markArticlesRead(
 export async function markArticlesSaved(
   user: UserInfo,
   articleIds: number[],
-  isSaved: boolean
+  isSaved: boolean,
 ): Promise<void> {
   // Verify user has access to all articles
   for (const articleId of articleIds) {
@@ -196,7 +245,12 @@ export async function markArticlesSaved(
     const [existing] = await db
       .select()
       .from(userArticleStates)
-      .where(and(eq(userArticleStates.userId, user.id), eq(userArticleStates.articleId, articleId)))
+      .where(
+        and(
+          eq(userArticleStates.userId, user.id),
+          eq(userArticleStates.articleId, articleId),
+        ),
+      )
       .limit(1);
 
     if (existing) {
@@ -204,7 +258,10 @@ export async function markArticlesSaved(
         .update(userArticleStates)
         .set({ isSaved, updatedAt: new Date() })
         .where(
-          and(eq(userArticleStates.userId, user.id), eq(userArticleStates.articleId, articleId))
+          and(
+            eq(userArticleStates.userId, user.id),
+            eq(userArticleStates.articleId, articleId),
+          ),
         );
     } else {
       await db.insert(userArticleStates).values({
@@ -218,7 +275,10 @@ export async function markArticlesSaved(
     }
   }
 
-  logger.info({ userId: user.id, articleIds, isSaved }, 'Articles marked as saved/unsaved');
+  logger.info(
+    { userId: user.id, articleIds, isSaved },
+    "Articles marked as saved/unsaved",
+  );
 }
 
 /**
@@ -230,7 +290,7 @@ export async function deleteArticle(id: number, user: UserInfo): Promise<void> {
 
   await db.delete(articles).where(eq(articles.id, id));
 
-  logger.info({ articleId: id, userId: user.id }, 'Article deleted');
+  logger.info({ articleId: id, userId: user.id }, "Article deleted");
 }
 
 /**
@@ -238,15 +298,19 @@ export async function deleteArticle(id: number, user: UserInfo): Promise<void> {
  */
 export async function reloadArticle(
   id: number,
-  user: UserInfo
+  user: UserInfo,
 ): Promise<{ success: boolean; taskId: number }> {
   // Check access
   await getArticle(id, user);
 
-  const { reloadArticle: reloadArticleTask } = await import('./aggregation.service');
+  const { reloadArticle: reloadArticleTask } =
+    await import("./aggregation.service");
   const result = await reloadArticleTask(id);
 
-  logger.info({ articleId: id, userId: user.id, taskId: result.taskId }, 'Article reload enqueued');
+  logger.info(
+    { articleId: id, userId: user.id, taskId: result.taskId },
+    "Article reload enqueued",
+  );
   return { success: true, taskId: result.taskId };
 }
 
@@ -255,16 +319,19 @@ export async function reloadArticle(
  */
 export async function getArticleNavigation(
   article: Article,
-  user: UserInfo
+  user: UserInfo,
 ): Promise<{ prev: Article | null; next: Article | null }> {
   // Ensure date is a Date object (Drizzle timestamp mode expects Date for comparisons)
-  const articleDate = article.date instanceof Date ? article.date : new Date(article.date);
+  const articleDate =
+    article.date instanceof Date ? article.date : new Date(article.date);
 
   // Get previous article (older)
   const [prev] = await db
     .select()
     .from(articles)
-    .where(and(eq(articles.feedId, article.feedId), lt(articles.date, articleDate)))
+    .where(
+      and(eq(articles.feedId, article.feedId), lt(articles.date, articleDate)),
+    )
     .orderBy(desc(articles.date))
     .limit(1);
 
@@ -272,7 +339,9 @@ export async function getArticleNavigation(
   const [next] = await db
     .select()
     .from(articles)
-    .where(and(eq(articles.feedId, article.feedId), gt(articles.date, articleDate)))
+    .where(
+      and(eq(articles.feedId, article.feedId), gt(articles.date, articleDate)),
+    )
     .orderBy(articles.date)
     .limit(1);
 
@@ -282,7 +351,10 @@ export async function getArticleNavigation(
 /**
  * Mark an article as read when viewed.
  */
-export async function markArticleReadOnView(articleId: number, user: UserInfo): Promise<void> {
+export async function markArticleReadOnView(
+  articleId: number,
+  user: UserInfo,
+): Promise<void> {
   // Check access first
   await getArticle(articleId, user);
 
@@ -290,7 +362,12 @@ export async function markArticleReadOnView(articleId: number, user: UserInfo): 
   const [existing] = await db
     .select()
     .from(userArticleStates)
-    .where(and(eq(userArticleStates.userId, user.id), eq(userArticleStates.articleId, articleId)))
+    .where(
+      and(
+        eq(userArticleStates.userId, user.id),
+        eq(userArticleStates.articleId, articleId),
+      ),
+    )
     .limit(1);
 
   if (existing) {
@@ -298,7 +375,10 @@ export async function markArticleReadOnView(articleId: number, user: UserInfo): 
       .update(userArticleStates)
       .set({ isRead: true, updatedAt: new Date() })
       .where(
-        and(eq(userArticleStates.userId, user.id), eq(userArticleStates.articleId, articleId))
+        and(
+          eq(userArticleStates.userId, user.id),
+          eq(userArticleStates.articleId, articleId),
+        ),
       );
   } else {
     await db.insert(userArticleStates).values({
@@ -312,7 +392,7 @@ export async function markArticleReadOnView(articleId: number, user: UserInfo): 
   }
 
   // Invalidate statistics cache
-  const { cache } = await import('../utils/cache');
+  const { cache } = await import("../utils/cache");
   cache.delete(`statistics_${user.id}`);
 }
 
@@ -321,12 +401,17 @@ export async function markArticleReadOnView(articleId: number, user: UserInfo): 
  */
 export async function getArticleReadState(
   articleId: number,
-  user: UserInfo
+  user: UserInfo,
 ): Promise<{ isRead: boolean; isSaved: boolean }> {
   const [state] = await db
     .select()
     .from(userArticleStates)
-    .where(and(eq(userArticleStates.userId, user.id), eq(userArticleStates.articleId, articleId)))
+    .where(
+      and(
+        eq(userArticleStates.userId, user.id),
+        eq(userArticleStates.articleId, articleId),
+      ),
+    )
     .limit(1);
 
   return {
@@ -340,7 +425,7 @@ export async function getArticleReadState(
  */
 export async function enrichArticleData(
   article: Article,
-  user: UserInfo
+  user: UserInfo,
 ): Promise<{
   isRead: boolean;
   isSaved: boolean;
@@ -358,12 +443,12 @@ export async function enrichArticleData(
     .from(feeds)
     .where(eq(feeds.id, article.feedId))
     .limit(1);
-  const feedType = feed?.feedType || 'article';
+  const feedType = feed?.feedType || "article";
 
   // Compute fields based on feed type
-  const isVideo = feedType === 'youtube';
-  const isPodcast = feedType === 'podcast';
-  const isReddit = feedType === 'reddit';
+  const isVideo = feedType === "youtube";
+  const isPodcast = feedType === "podcast";
+  const isReddit = feedType === "reddit";
   const hasMedia = !!(article.mediaUrl || article.thumbnailUrl);
 
   // Format duration if available
@@ -374,9 +459,9 @@ export async function enrichArticleData(
     const seconds = article.duration % 60;
 
     if (hours > 0) {
-      durationFormatted = `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+      durationFormatted = `${hours}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
     } else {
-      durationFormatted = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+      durationFormatted = `${minutes}:${seconds.toString().padStart(2, "0")}`;
     }
   }
 

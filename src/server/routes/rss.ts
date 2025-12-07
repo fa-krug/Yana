@@ -4,16 +4,16 @@
  * Provides RSS feed generation for external RSS readers.
  */
 
-import { Router } from 'express';
-import type { Request, Response } from 'express';
-import { asyncHandler } from '../middleware/errorHandler';
-import { loadUser } from '../middleware/auth';
-import { getFeed } from '../services/feed.service';
-import { eq, desc } from 'drizzle-orm';
-import { db, articles } from '../db';
-import type { AuthenticatedRequest } from '../middleware/auth';
-import { NotFoundError, PermissionDeniedError } from '../errors';
-import { authenticateUser } from '../services/user.service';
+import { Router } from "express";
+import type { Request, Response } from "express";
+import { asyncHandler } from "../middleware/errorHandler";
+import { loadUser } from "../middleware/auth";
+import { getFeed } from "../services/feed.service";
+import { eq, desc } from "drizzle-orm";
+import { db, articles } from "../db";
+import type { AuthenticatedRequest } from "../middleware/auth";
+import { NotFoundError, PermissionDeniedError } from "../errors";
+import { authenticateUser } from "../services/user.service";
 
 const router = Router();
 
@@ -21,7 +21,7 @@ const router = Router();
  * Authenticate request using session or HTTP Basic Auth.
  */
 async function authenticateRssRequest(
-  req: Request
+  req: Request,
 ): Promise<{ id: number; username: string } | null> {
   const authReq = req as AuthenticatedRequest;
 
@@ -35,15 +35,17 @@ async function authenticateRssRequest(
 
   // Try HTTP Basic Auth
   const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Basic ')) {
+  if (!authHeader || !authHeader.startsWith("Basic ")) {
     return null;
   }
 
   try {
     // Decode base64 credentials
     const base64Credentials = authHeader.slice(6);
-    const credentials = Buffer.from(base64Credentials, 'base64').toString('utf-8');
-    const [username, password] = credentials.split(':', 2);
+    const credentials = Buffer.from(base64Credentials, "base64").toString(
+      "utf-8",
+    );
+    const [username, password] = credentials.split(":", 2);
 
     // Authenticate user
     try {
@@ -72,31 +74,31 @@ function generateRssFeed(
     date: Date;
     content: string;
     author: string | null;
-  }>
+  }>,
 ): string {
-  const baseUrl = process.env['BASE_URL'] || 'http://localhost:3000';
+  const baseUrl = process.env["BASE_URL"] || "http://localhost:3000";
   const feedUrl = `${baseUrl}/feeds/${feed.id}/rss.xml`;
   const feedLink = feed.identifier;
   const feedDescription = `Aggregated feed for ${feed.name}`;
 
   const items = feedArticles
-    .map(article => {
+    .map((article) => {
       const itemUrl = article.url;
       const itemTitle = escapeXml(article.name);
       const itemDescription = escapeXml(article.content);
       const itemPubDate = new Date(article.date).toUTCString();
-      const itemAuthor = article.author ? escapeXml(article.author) : '';
+      const itemAuthor = article.author ? escapeXml(article.author) : "";
 
       return `    <item>
       <title>${itemTitle}</title>
       <link>${itemUrl}</link>
       <description>${itemDescription}</description>
       <pubDate>${itemPubDate}</pubDate>
-      ${itemAuthor ? `<author>${itemAuthor}</author>` : ''}
+      ${itemAuthor ? `<author>${itemAuthor}</author>` : ""}
       <guid isPermaLink="false">${baseUrl}/articles/${article.id}</guid>
     </item>`;
     })
-    .join('\n');
+    .join("\n");
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/">
@@ -117,11 +119,11 @@ ${items}
  */
 function escapeXml(text: string): string {
   return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;');
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
 }
 
 /**
@@ -130,22 +132,22 @@ function escapeXml(text: string): string {
  * Supports authentication via session or HTTP Basic Auth
  */
 router.get(
-  '/feeds/:feedId/rss.xml',
+  "/feeds/:feedId/rss.xml",
   loadUser,
   asyncHandler(async (req: Request, res: Response) => {
     const { feedId } = req.params;
     const feedIdNum = parseInt(feedId, 10);
 
     if (isNaN(feedIdNum)) {
-      throw new NotFoundError('Feed not found');
+      throw new NotFoundError("Feed not found");
     }
 
     // Authenticate request
     const user = await authenticateRssRequest(req);
     if (!user) {
       res.status(401);
-      res.setHeader('WWW-Authenticate', 'Basic realm="Yana RSS Feeds"');
-      res.send('Authentication required');
+      res.setHeader("WWW-Authenticate", 'Basic realm="Yana RSS Feeds"');
+      res.send("Authentication required");
       return;
     }
 
@@ -170,9 +172,9 @@ router.get(
     // Generate RSS feed
     const rssXml = generateRssFeed(feed, feedArticles);
 
-    res.setHeader('Content-Type', 'application/rss+xml; charset=utf-8');
+    res.setHeader("Content-Type", "application/rss+xml; charset=utf-8");
     res.send(rssXml);
-  })
+  }),
 );
 
 export function rssRoutes(): Router {

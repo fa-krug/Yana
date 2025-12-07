@@ -2,18 +2,18 @@
  * Mock utilities for testing.
  */
 
-import { vi } from 'vitest';
-import type { Request, Response } from 'express';
-import type { AuthenticatedRequest } from '../../src/server/middleware/auth';
-import type { User } from '../../src/server/db/types';
+import { vi } from "vitest";
+import type { Request, Response } from "express";
+import type { AuthenticatedRequest } from "../../src/server/middleware/auth";
+import type { User } from "../../src/server/db/types";
 
 /**
  * Create a mock Express request.
  */
 export function createMockRequest(overrides: Partial<Request> = {}): Request {
   return {
-    method: 'GET',
-    path: '/',
+    method: "GET",
+    path: "/",
     query: {},
     params: {},
     body: {},
@@ -30,7 +30,7 @@ export function createMockRequest(overrides: Partial<Request> = {}): Request {
  */
 export function createMockAuthenticatedRequest(
   user: User,
-  overrides: Partial<AuthenticatedRequest> = {}
+  overrides: Partial<AuthenticatedRequest> = {},
 ): AuthenticatedRequest {
   return {
     ...createMockRequest(),

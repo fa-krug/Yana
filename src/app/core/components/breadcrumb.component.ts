@@ -10,14 +10,14 @@
  * - Responsive design with proper ARIA labels
  */
 
-import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
-import { MatIconModule } from '@angular/material/icon';
-import { BreadcrumbService } from '../services/breadcrumb.service';
+import { Component, inject, ChangeDetectionStrategy } from "@angular/core";
+import { CommonModule } from "@angular/common";
+import { RouterModule } from "@angular/router";
+import { MatIconModule } from "@angular/material/icon";
+import { BreadcrumbService } from "../services/breadcrumb.service";
 
 @Component({
-  selector: 'app-breadcrumb',
+  selector: "app-breadcrumb",
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CommonModule, RouterModule, MatIconModule],
@@ -25,12 +25,18 @@ import { BreadcrumbService } from '../services/breadcrumb.service';
     @if (shouldShowBreadcrumbs()) {
       <nav class="breadcrumb" aria-label="Breadcrumb">
         <ol class="breadcrumb-list">
-          @for (crumb of breadcrumbService.breadcrumbs(); track crumb.label; let last = $last) {
+          @for (
+            crumb of breadcrumbService.breadcrumbs();
+            track crumb.label;
+            let last = $last
+          ) {
             <li class="breadcrumb-item">
               @if (last) {
                 <span class="breadcrumb-current">{{ crumb.label }}</span>
               } @else {
-                <a [routerLink]="crumb.url" class="breadcrumb-link">{{ crumb.label }}</a>
+                <a [routerLink]="crumb.url" class="breadcrumb-link">{{
+                  crumb.label
+                }}</a>
                 <mat-icon class="breadcrumb-separator">chevron_right</mat-icon>
               }
             </li>
@@ -78,7 +84,10 @@ import { BreadcrumbService } from '../services/breadcrumb.service';
 
       .breadcrumb-link:hover {
         color: var(--mat-sys-primary, #1976d2);
-        background: var(--mat-sys-surface-container-highest, rgba(0, 0, 0, 0.04));
+        background: var(
+          --mat-sys-surface-container-highest,
+          rgba(0, 0, 0, 0.04)
+        );
         transform: translateY(-1px);
       }
 
@@ -92,7 +101,10 @@ import { BreadcrumbService } from '../services/breadcrumb.service';
         font-weight: 500;
         padding: 4px 8px;
         border-radius: 4px;
-        background: var(--mat-sys-surface-container-highest, rgba(0, 0, 0, 0.04));
+        background: var(
+          --mat-sys-surface-container-highest,
+          rgba(0, 0, 0, 0.04)
+        );
       }
 
       .breadcrumb-separator {
@@ -166,6 +178,6 @@ export class BreadcrumbComponent {
   shouldShowBreadcrumbs(): boolean {
     const breadcrumbs = this.breadcrumbService.breadcrumbs();
     // Hide breadcrumbs if only "Home" is shown (we're on the home page)
-    return !(breadcrumbs.length === 1 && breadcrumbs[0].label === 'Home');
+    return !(breadcrumbs.length === 1 && breadcrumbs[0].label === "Home");
   }
 }

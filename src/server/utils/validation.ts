@@ -4,9 +4,9 @@
  * Provides type-safe input validation using Zod schemas.
  */
 
-import { z } from 'zod';
-import type { Request, Response, NextFunction } from 'express';
-import { ValidationError } from '../errors';
+import { z } from "zod";
+import type { Request, Response, NextFunction } from "express";
+import { ValidationError } from "../errors";
 
 /**
  * Validation middleware factory.
@@ -16,7 +16,10 @@ import { ValidationError } from '../errors';
  * @param source - Where to validate ('body', 'query', or 'params')
  * @returns Express middleware function
  */
-export function validate(schema: z.ZodSchema, source: 'body' | 'query' | 'params' = 'body') {
+export function validate(
+  schema: z.ZodSchema,
+  source: "body" | "query" | "params" = "body",
+) {
   return (req: Request, res: Response, next: NextFunction): void => {
     try {
       const data = req[source];
@@ -24,11 +27,11 @@ export function validate(schema: z.ZodSchema, source: 'body' | 'query' | 'params
 
       if (!result.success) {
         const errors = result.error.issues.map((err) => ({
-          path: err.path.map(String).join('.'),
+          path: err.path.map(String).join("."),
           message: err.message,
         }));
 
-        throw new ValidationError('Validation failed', errors);
+        throw new ValidationError("Validation failed", errors);
       }
 
       // Replace request data with validated data
@@ -47,7 +50,7 @@ export function validate(schema: z.ZodSchema, source: 'body' | 'query' | 'params
  * @returns Express middleware
  */
 export function validateBody(schema: z.ZodSchema) {
-  return validate(schema, 'body');
+  return validate(schema, "body");
 }
 
 /**
@@ -57,7 +60,7 @@ export function validateBody(schema: z.ZodSchema) {
  * @returns Express middleware
  */
 export function validateQuery(schema: z.ZodSchema) {
-  return validate(schema, 'query');
+  return validate(schema, "query");
 }
 
 /**
@@ -67,7 +70,7 @@ export function validateQuery(schema: z.ZodSchema) {
  * @returns Express middleware
  */
 export function validateParams(schema: z.ZodSchema) {
-  return validate(schema, 'params');
+  return validate(schema, "params");
 }
 
 /**

@@ -4,17 +4,17 @@
  * Handles user management endpoints for superusers.
  */
 
-import { Router } from 'express';
-import type { Response } from 'express';
-import { asyncHandler } from '../middleware/errorHandler';
-import { requireAuth, loadUser, requireSuperuser } from '../middleware/auth';
-import { validateBody, validateQuery } from '../utils/validation';
+import { Router } from "express";
+import type { Response } from "express";
+import { asyncHandler } from "../middleware/errorHandler";
+import { requireAuth, loadUser, requireSuperuser } from "../middleware/auth";
+import { validateBody, validateQuery } from "../utils/validation";
 import {
   adminUpdateUserSchema,
   adminCreateUserSchema,
   adminChangePasswordSchema,
   adminListUsersSchema,
-} from '../validation/schemas';
+} from "../validation/schemas";
 import {
   createUser,
   getUserById,
@@ -22,9 +22,9 @@ import {
   updateUserPassword,
   listUsers,
   updateUser,
-} from '../services/user.service';
-import { AuthenticationError, NotFoundError } from '../errors';
-import type { AuthenticatedRequest } from '../middleware/auth';
+} from "../services/user.service";
+import { AuthenticationError, NotFoundError } from "../errors";
+import type { AuthenticatedRequest } from "../middleware/auth";
 
 const router = Router();
 
@@ -38,13 +38,15 @@ router.use(requireSuperuser);
  * List all users with filters
  */
 router.get(
-  '/',
+  "/",
   validateQuery(adminListUsersSchema),
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-    const page = parseInt((req.query['page'] as string) || '1') || 1;
-    const pageSize = parseInt((req.query['pageSize'] as string) || '50') || 50;
-    const search = req.query['search'] as string | undefined;
-    const isSuperuser = req.query['isSuperuser'] ? req.query['isSuperuser'] === 'true' : undefined;
+    const page = parseInt((req.query["page"] as string) || "1") || 1;
+    const pageSize = parseInt((req.query["pageSize"] as string) || "50") || 50;
+    const search = req.query["search"] as string | undefined;
+    const isSuperuser = req.query["isSuperuser"]
+      ? req.query["isSuperuser"] === "true"
+      : undefined;
 
     const result = await listUsers({
       page,
@@ -54,7 +56,7 @@ router.get(
     });
 
     res.json(result);
-  })
+  }),
 );
 
 /**
@@ -62,11 +64,11 @@ router.get(
  * Get user by ID
  */
 router.get(
-  '/:id',
+  "/:id",
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-    const userId = parseInt(req.params['id']);
+    const userId = parseInt(req.params["id"]);
     if (isNaN(userId)) {
-      throw new NotFoundError('Invalid user ID');
+      throw new NotFoundError("Invalid user ID");
     }
 
     const user = await getUserById(userId);
@@ -74,14 +76,14 @@ router.get(
       id: user.id,
       username: user.username,
       email: user.email,
-      firstName: user.firstName || '',
-      lastName: user.lastName || '',
+      firstName: user.firstName || "",
+      lastName: user.lastName || "",
       isSuperuser: user.isSuperuser,
       isStaff: user.isStaff,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     });
-  })
+  }),
 );
 
 /**
@@ -89,15 +91,20 @@ router.get(
  * Create a new user
  */
 router.post(
-  '/',
+  "/",
   validateBody(adminCreateUserSchema),
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-    const { username, email, password, firstName, lastName, isSuperuser } = req.body;
+    const { username, email, password, firstName, lastName, isSuperuser } =
+      req.body;
 
     const user = await createUser(username, email, password);
 
     // Update additional fields if provided
-    if (firstName !== undefined || lastName !== undefined || isSuperuser !== undefined) {
+    if (
+      firstName !== undefined ||
+      lastName !== undefined ||
+      isSuperuser !== undefined
+    ) {
       const updateData: {
         firstName?: string;
         lastName?: string;
@@ -116,14 +123,14 @@ router.post(
       id: updatedUser.id,
       username: updatedUser.username,
       email: updatedUser.email,
-      firstName: updatedUser.firstName || '',
-      lastName: updatedUser.lastName || '',
+      firstName: updatedUser.firstName || "",
+      lastName: updatedUser.lastName || "",
       isSuperuser: updatedUser.isSuperuser,
       isStaff: updatedUser.isStaff,
       createdAt: updatedUser.createdAt,
       updatedAt: updatedUser.updatedAt,
     });
-  })
+  }),
 );
 
 /**
@@ -131,12 +138,12 @@ router.post(
  * Update user profile
  */
 router.put(
-  '/:id',
+  "/:id",
   validateBody(adminUpdateUserSchema),
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-    const userId = parseInt(req.params['id']);
+    const userId = parseInt(req.params["id"]);
     if (isNaN(userId)) {
-      throw new NotFoundError('Invalid user ID');
+      throw new NotFoundError("Invalid user ID");
     }
 
     const { username, email, firstName, lastName, isSuperuser } = req.body;
@@ -145,9 +152,13 @@ router.put(
     await getUserById(userId);
 
     // Update profile fields if provided
-    if (email !== undefined || firstName !== undefined || lastName !== undefined) {
+    if (
+      email !== undefined ||
+      firstName !== undefined ||
+      lastName !== undefined
+    ) {
       await updateUserProfile(userId, {
-        email: email || '',
+        email: email || "",
         firstName,
         lastName,
       });
@@ -171,14 +182,14 @@ router.put(
       id: updatedUser.id,
       username: updatedUser.username,
       email: updatedUser.email,
-      firstName: updatedUser.firstName || '',
-      lastName: updatedUser.lastName || '',
+      firstName: updatedUser.firstName || "",
+      lastName: updatedUser.lastName || "",
       isSuperuser: updatedUser.isSuperuser,
       isStaff: updatedUser.isStaff,
       createdAt: updatedUser.createdAt,
       updatedAt: updatedUser.updatedAt,
     });
-  })
+  }),
 );
 
 /**
@@ -186,12 +197,12 @@ router.put(
  * Change user password (admin can change any user's password)
  */
 router.post(
-  '/:id/password',
+  "/:id/password",
   validateBody(adminChangePasswordSchema),
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-    const userId = parseInt(req.params['id']);
+    const userId = parseInt(req.params["id"]);
     if (isNaN(userId)) {
-      throw new NotFoundError('Invalid user ID');
+      throw new NotFoundError("Invalid user ID");
     }
 
     // Check if user exists
@@ -202,9 +213,9 @@ router.post(
 
     res.json({
       success: true,
-      message: 'Password changed successfully',
+      message: "Password changed successfully",
     });
-  })
+  }),
 );
 
 export function adminUsersRoutes(): Router {

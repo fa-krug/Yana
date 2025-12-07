@@ -10,11 +10,16 @@ import {
   signal,
   computed,
   ChangeDetectionStrategy,
-} from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { ActivatedRoute, Router, RouterModule, NavigationEnd } from '@angular/router';
-import { filter } from 'rxjs/operators';
-import { FormControl, ReactiveFormsModule } from '@angular/forms';
+} from "@angular/core";
+import { CommonModule } from "@angular/common";
+import {
+  ActivatedRoute,
+  Router,
+  RouterModule,
+  NavigationEnd,
+} from "@angular/router";
+import { filter } from "rxjs/operators";
+import { FormControl, ReactiveFormsModule } from "@angular/forms";
 import {
   debounceTime,
   distinctUntilChanged,
@@ -24,31 +29,34 @@ import {
   takeUntil,
   catchError,
   of,
-} from 'rxjs';
+} from "rxjs";
 
 // Material imports
-import { MatCardModule } from '@angular/material/card';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
-import { MatChipsModule } from '@angular/material/chips';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
-import { MatMenuModule } from '@angular/material/menu';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { MatDividerModule } from '@angular/material/divider';
-import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatCardModule } from "@angular/material/card";
+import { MatButtonModule } from "@angular/material/button";
+import { MatIconModule } from "@angular/material/icon";
+import { MatFormFieldModule } from "@angular/material/form-field";
+import { MatInputModule } from "@angular/material/input";
+import { MatSelectModule } from "@angular/material/select";
+import { MatChipsModule } from "@angular/material/chips";
+import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
+import { MatPaginatorModule, PageEvent } from "@angular/material/paginator";
+import { MatMenuModule } from "@angular/material/menu";
+import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
+import { MatDividerModule } from "@angular/material/divider";
+import { MatTooltipModule } from "@angular/material/tooltip";
 
-import { FeedService } from '../../core/services/feed.service';
-import { ArticleService, ArticleFilters } from '../../core/services/article.service';
-import { BreadcrumbService } from '../../core/services/breadcrumb.service';
-import { ConfirmationService } from '../../core/services/confirmation.service';
-import { Feed, Article } from '../../core/models';
+import { FeedService } from "../../core/services/feed.service";
+import {
+  ArticleService,
+  ArticleFilters,
+} from "../../core/services/article.service";
+import { BreadcrumbService } from "../../core/services/breadcrumb.service";
+import { ConfirmationService } from "../../core/services/confirmation.service";
+import { Feed, Article } from "../../core/models";
 
 @Component({
-  selector: 'app-feed-detail',
+  selector: "app-feed-detail",
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
@@ -83,7 +91,9 @@ import { Feed, Article } from '../../core/models';
           <div class="state-center error">
             <mat-icon>error</mat-icon>
             <p>{{ feedError() }}</p>
-            <button mat-raised-button color="primary" routerLink="/feeds">Back to Feeds</button>
+            <button mat-raised-button color="primary" routerLink="/feeds">
+              Back to Feeds
+            </button>
           </div>
         } @else if (feed(); as currentFeed) {
           <mat-card class="feed-header">
@@ -105,7 +115,9 @@ import { Feed, Article } from '../../core/models';
                 }
               </div>
               <mat-card-title>{{ currentFeed.name }}</mat-card-title>
-              <mat-card-subtitle>{{ currentFeed.identifier }}</mat-card-subtitle>
+              <mat-card-subtitle>{{
+                currentFeed.identifier
+              }}</mat-card-subtitle>
               <button
                 mat-icon-button
                 [matMenuTriggerFor]="menu"
@@ -115,19 +127,32 @@ import { Feed, Article } from '../../core/models';
                 <mat-icon>more_vert</mat-icon>
               </button>
               <mat-menu #menu="matMenu">
-                <button mat-menu-item [routerLink]="['/feeds', currentFeed.id, 'edit']">
+                <button
+                  mat-menu-item
+                  [routerLink]="['/feeds', currentFeed.id, 'edit']"
+                >
                   <mat-icon>edit</mat-icon>
                   <span>Edit Feed</span>
                 </button>
                 <button mat-menu-item (click)="toggleEnabled()">
-                  <mat-icon>{{ currentFeed.enabled ? 'pause' : 'play_arrow' }}</mat-icon>
-                  <span>{{ currentFeed.enabled ? 'Disable' : 'Enable' }}</span>
+                  <mat-icon>{{
+                    currentFeed.enabled ? "pause" : "play_arrow"
+                  }}</mat-icon>
+                  <span>{{ currentFeed.enabled ? "Disable" : "Enable" }}</span>
                 </button>
-                <button mat-menu-item (click)="clearArticles()" class="delete-action">
+                <button
+                  mat-menu-item
+                  (click)="clearArticles()"
+                  class="delete-action"
+                >
                   <mat-icon>clear_all</mat-icon>
                   <span>Clear Articles</span>
                 </button>
-                <button mat-menu-item (click)="deleteFeed()" class="delete-action">
+                <button
+                  mat-menu-item
+                  (click)="deleteFeed()"
+                  class="delete-action"
+                >
                   <mat-icon>delete</mat-icon>
                   <span>Delete Feed</span>
                 </button>
@@ -139,8 +164,12 @@ import { Feed, Article } from '../../core/models';
               }
               <div class="feed-meta">
                 <mat-chip-set>
-                  <mat-chip [class]="currentFeed.enabled ? 'status-enabled' : 'status-disabled'">
-                    {{ currentFeed.enabled ? 'Enabled' : 'Disabled' }}
+                  <mat-chip
+                    [class]="
+                      currentFeed.enabled ? 'status-enabled' : 'status-disabled'
+                    "
+                  >
+                    {{ currentFeed.enabled ? "Enabled" : "Disabled" }}
                   </mat-chip>
                   <mat-chip>{{ currentFeed.feedType }}</mat-chip>
                   <mat-chip>
@@ -152,7 +181,8 @@ import { Feed, Article } from '../../core/models';
               @if (currentFeed.lastAggregated) {
                 <p class="feed-last-aggregated">
                   <mat-icon>schedule</mat-icon>
-                  Last updated: {{ currentFeed.lastAggregated | date: 'medium' }}
+                  Last updated:
+                  {{ currentFeed.lastAggregated | date: "medium" }}
                 </p>
               }
             </mat-card-content>
@@ -166,7 +196,9 @@ import { Feed, Article } from '../../core/models';
                 aria-label="Fetch new articles from the feed"
                 [attr.aria-busy]="reloadingType() === 'reload'"
               >
-                <mat-icon [class.spinning]="reloadingType() === 'reload'">refresh</mat-icon>
+                <mat-icon [class.spinning]="reloadingType() === 'reload'"
+                  >refresh</mat-icon
+                >
               </button>
               <button
                 mat-icon-button
@@ -177,7 +209,9 @@ import { Feed, Article } from '../../core/models';
                 aria-label="Force reload existing articles"
                 [attr.aria-busy]="reloadingType() === 'force'"
               >
-                <mat-icon [class.spinning]="reloadingType() === 'force'">sync</mat-icon>
+                <mat-icon [class.spinning]="reloadingType() === 'force'"
+                  >sync</mat-icon
+                >
               </button>
             </mat-card-actions>
           </mat-card>
@@ -204,46 +238,83 @@ import { Feed, Article } from '../../core/models';
               <div class="error">
                 <mat-icon>error</mat-icon>
                 <p>{{ articleService.error() }}</p>
-                <button mat-raised-button color="primary" (click)="refreshArticles()">Retry</button>
+                <button
+                  mat-raised-button
+                  color="primary"
+                  (click)="refreshArticles()"
+                >
+                  Retry
+                </button>
               </div>
             }
 
-            @if (articleService.articles().length === 0 && !articleService.loading()) {
+            @if (
+              articleService.articles().length === 0 &&
+              !articleService.loading()
+            ) {
               <div class="state-center empty-state">
                 <mat-icon>article</mat-icon>
                 <h3>No articles found</h3>
                 <p>This feed doesn't have any articles yet.</p>
-                <button mat-raised-button color="primary" routerLink="/feeds">Back to Feeds</button>
+                <button mat-raised-button color="primary" routerLink="/feeds">
+                  Back to Feeds
+                </button>
               </div>
             } @else {
-              @if (articleService.loading() && articleService.articles().length === 0) {
-                <div class="state-center loading" aria-live="polite" aria-busy="true">
+              @if (
+                articleService.loading() &&
+                articleService.articles().length === 0
+              ) {
+                <div
+                  class="state-center loading"
+                  aria-live="polite"
+                  aria-busy="true"
+                >
                   <mat-spinner aria-hidden="true"></mat-spinner>
                   <p>Loading articles...</p>
                 </div>
               }
               <div class="article-list">
                 @for (article of articleService.articles(); track article.id) {
-                  <mat-card class="article-card" [class.unread]="!article.isRead">
+                  <mat-card
+                    class="article-card"
+                    [class.unread]="!article.isRead"
+                  >
                     <div class="article-header">
-                      @if (article.thumbnailUrl && !articleImageErrors[article.id]) {
+                      @if (
+                        article.thumbnailUrl && !articleImageErrors[article.id]
+                      ) {
                         <img
                           [src]="article.thumbnailUrl"
                           [alt]="article.title || article.name"
                           class="article-thumbnail"
                           loading="lazy"
-                          [routerLink]="['/feeds', feed()!.id, 'articles', article.id]"
+                          [routerLink]="[
+                            '/feeds',
+                            feed()!.id,
+                            'articles',
+                            article.id,
+                          ]"
                           (error)="articleImageErrors[article.id] = true"
                         />
                       }
                       <div class="article-info">
-                        <h3 [routerLink]="['/feeds', feed()!.id, 'articles', article.id]">
+                        <h3
+                          [routerLink]="[
+                            '/feeds',
+                            feed()!.id,
+                            'articles',
+                            article.id,
+                          ]"
+                        >
                           {{ article.title || article.name }}
                         </h3>
                         <div class="article-meta">
                           <span class="article-date">
                             <mat-icon>schedule</mat-icon>
-                            {{ article.published || article.date | date: 'short' }}
+                            {{
+                              article.published || article.date | date: "short"
+                            }}
                           </span>
                           @if (article.author) {
                             <span class="article-author">
@@ -256,34 +327,48 @@ import { Feed, Article } from '../../core/models';
                       <div class="article-actions">
                         <button
                           mat-icon-button
-                          [color]="article.read || article.isRead ? 'primary' : ''"
+                          [color]="
+                            article.read || article.isRead ? 'primary' : ''
+                          "
                           (click)="toggleRead(article)"
                           [matTooltip]="
-                            article.read || article.isRead ? 'Mark as unread' : 'Mark as read'
+                            article.read || article.isRead
+                              ? 'Mark as unread'
+                              : 'Mark as read'
                           "
                           [attr.aria-label]="
-                            article.read || article.isRead ? 'Mark as unread' : 'Mark as read'
+                            article.read || article.isRead
+                              ? 'Mark as unread'
+                              : 'Mark as read'
                           "
                           [attr.aria-pressed]="article.read || article.isRead"
                         >
                           <mat-icon>{{
                             article.read || article.isRead
-                              ? 'check_circle'
-                              : 'radio_button_unchecked'
+                              ? "check_circle"
+                              : "radio_button_unchecked"
                           }}</mat-icon>
                         </button>
                         <button
                           mat-icon-button
-                          [color]="article.saved || article.isSaved ? 'accent' : ''"
+                          [color]="
+                            article.saved || article.isSaved ? 'accent' : ''
+                          "
                           (click)="toggleSaved(article)"
-                          [matTooltip]="article.saved || article.isSaved ? 'Unsave' : 'Save'"
+                          [matTooltip]="
+                            article.saved || article.isSaved ? 'Unsave' : 'Save'
+                          "
                           [attr.aria-label]="
-                            article.saved || article.isSaved ? 'Unsave article' : 'Save article'
+                            article.saved || article.isSaved
+                              ? 'Unsave article'
+                              : 'Save article'
                           "
                           [attr.aria-pressed]="article.saved || article.isSaved"
                         >
                           <mat-icon>{{
-                            article.saved || article.isSaved ? 'bookmark' : 'bookmark_border'
+                            article.saved || article.isSaved
+                              ? "bookmark"
+                              : "bookmark_border"
                           }}</mat-icon>
                         </button>
                         <button
@@ -296,13 +381,22 @@ import { Feed, Article } from '../../core/models';
                         <mat-menu #articleMenu="matMenu">
                           <button
                             mat-menu-item
-                            [routerLink]="['/feeds', feed()!.id, 'articles', article.id]"
+                            [routerLink]="[
+                              '/feeds',
+                              feed()!.id,
+                              'articles',
+                              article.id,
+                            ]"
                           >
                             <mat-icon>open_in_new</mat-icon>
                             <span>View Article</span>
                           </button>
                           @if (article.link || article.url) {
-                            <a mat-menu-item [href]="article.link || article.url" target="_blank">
+                            <a
+                              mat-menu-item
+                              [href]="article.link || article.url"
+                              target="_blank"
+                            >
                               <mat-icon>link</mat-icon>
                               <span>Open Original</span>
                             </a>
@@ -364,7 +458,7 @@ import { Feed, Article } from '../../core/models';
       }
 
       .feed-header::before {
-        content: '';
+        content: "";
         position: absolute;
         top: 0;
         left: 0;
@@ -472,7 +566,7 @@ import { Feed, Article } from '../../core/models';
         opacity: 0.75;
         margin: 0 !important;
         word-break: break-all;
-        font-family: 'Courier New', monospace;
+        font-family: "Courier New", monospace;
         background: rgba(0, 0, 0, 0.03);
         padding: 4px 8px;
         border-radius: 4px;
@@ -716,7 +810,7 @@ import { Feed, Article } from '../../core/models';
       }
 
       .article-card.unread::before {
-        content: '';
+        content: "";
         position: absolute;
         left: 0;
         top: 0;
@@ -1066,9 +1160,9 @@ export class FeedDetailComponent implements OnInit, OnDestroy {
   feedError = signal<string | null>(null);
   feedImageError = false;
   articleImageErrors: Record<number, boolean> = {};
-  reloadingType = signal<'reload' | 'force' | null>(null);
+  reloadingType = signal<"reload" | "force" | null>(null);
 
-  searchControl = new FormControl('');
+  searchControl = new FormControl("");
   filterControl = new FormControl<string | null>(null);
   private destroy$ = new Subject<void>();
   hasArticleRoute = signal<boolean>(false);
@@ -1076,8 +1170,8 @@ export class FeedDetailComponent implements OnInit, OnDestroy {
   private checkArticleRoute() {
     const firstChild = this.route.snapshot.firstChild;
     this.hasArticleRoute.set(
-      firstChild?.routeConfig?.path === 'articles/:articleId' ||
-        firstChild?.routeConfig?.path?.includes('articles') === true
+      firstChild?.routeConfig?.path === "articles/:articleId" ||
+        firstChild?.routeConfig?.path?.includes("articles") === true,
     );
   }
 
@@ -1088,8 +1182,8 @@ export class FeedDetailComponent implements OnInit, OnDestroy {
     // Listen for route changes to update article route status
     this.router.events
       .pipe(
-        filter(event => event instanceof NavigationEnd),
-        takeUntil(this.destroy$)
+        filter((event) => event instanceof NavigationEnd),
+        takeUntil(this.destroy$),
       )
       .subscribe(() => {
         this.checkArticleRoute();
@@ -1097,22 +1191,24 @@ export class FeedDetailComponent implements OnInit, OnDestroy {
 
     this.route.params
       .pipe(
-        switchMap(params => {
-          const feedId = Number(params['id']);
+        switchMap((params) => {
+          const feedId = Number(params["id"]);
           this.loadingFeed.set(true);
           this.feedError.set(null);
           return this.feedService.getFeed(feedId).pipe(
-            catchError(error => {
-              this.feedError.set(error.error?.detail || error.message || 'Failed to load feed');
+            catchError((error) => {
+              this.feedError.set(
+                error.error?.detail || error.message || "Failed to load feed",
+              );
               this.loadingFeed.set(false);
               return of(null);
-            })
+            }),
           );
         }),
-        takeUntil(this.destroy$)
+        takeUntil(this.destroy$),
       )
       .subscribe({
-        next: feed => {
+        next: (feed) => {
           this.loadingFeed.set(false);
           if (feed) {
             this.feed.set(feed);
@@ -1121,17 +1217,20 @@ export class FeedDetailComponent implements OnInit, OnDestroy {
             this.loadArticles();
 
             // Check if we should trigger article fetching (from feed creation)
-            const shouldFetch = this.route.snapshot.queryParams['fetch'] === 'true';
+            const shouldFetch =
+              this.route.snapshot.queryParams["fetch"] === "true";
             if (shouldFetch) {
               // Remove query parameter from URL
-              this.router.navigate(['/feeds', feed.id], { replaceUrl: true });
+              this.router.navigate(["/feeds", feed.id], { replaceUrl: true });
               // Trigger article fetching
               this.reloadFeed(false);
             }
           }
         },
-        error: error => {
-          this.feedError.set(error.error?.detail || error.message || 'Failed to load feed');
+        error: (error) => {
+          this.feedError.set(
+            error.error?.detail || error.message || "Failed to load feed",
+          );
           this.loadingFeed.set(false);
         },
       });
@@ -1141,10 +1240,12 @@ export class FeedDetailComponent implements OnInit, OnDestroy {
       .pipe(debounceTime(300), distinctUntilChanged(), takeUntil(this.destroy$))
       .subscribe(() => this.loadArticles());
 
-    this.filterControl.valueChanges.pipe(takeUntil(this.destroy$)).subscribe(() => {
-      // Reset to page 1 when filter changes
-      this.loadArticles(true);
-    });
+    this.filterControl.valueChanges
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => {
+        // Reset to page 1 when filter changes
+        this.loadArticles(true);
+      });
 
     // Auto-refresh articles every 30 seconds
     interval(30000)
@@ -1179,7 +1280,7 @@ export class FeedDetailComponent implements OnInit, OnDestroy {
 
     // Apply read/saved filters
     const filterValue = this.filterControl.value;
-    if (filterValue === 'unread') {
+    if (filterValue === "unread") {
       filters.unreadOnly = true;
     }
     // Note: 'read' and 'saved' filters are not supported by the API yet
@@ -1204,7 +1305,7 @@ export class FeedDetailComponent implements OnInit, OnDestroy {
     };
 
     const filterValue = this.filterControl.value;
-    if (filterValue === 'unread') {
+    if (filterValue === "unread") {
       filters.unreadOnly = true;
     }
     // Note: 'read' and 'saved' filters are not supported by the API yet
@@ -1215,76 +1316,89 @@ export class FeedDetailComponent implements OnInit, OnDestroy {
 
   getFeedIcon(type: string): string {
     const icons: Record<string, string> = {
-      article: 'article',
-      youtube: 'play_circle',
-      podcast: 'podcast',
-      reddit: 'forum',
+      article: "article",
+      youtube: "play_circle",
+      podcast: "podcast",
+      reddit: "forum",
     };
-    return icons[type] || 'rss_feed';
+    return icons[type] || "rss_feed";
   }
 
   reloadFeed(force: boolean = false) {
     const currentFeed = this.feed();
     if (!currentFeed) return;
 
-    this.reloadingType.set(force ? 'force' : 'reload');
+    this.reloadingType.set(force ? "force" : "reload");
 
     this.feedService.reloadFeed(currentFeed.id, force).subscribe({
-      next: response => {
+      next: (response) => {
         this.reloadingType.set(null);
 
         // Check if the operation failed (e.g., feed was disabled)
         if (!response.success) {
           // Show error message with error styling
-          this.snackBar.open(response.message || 'Failed to reload feed', 'Close', {
-            duration: 7000,
-            panelClass: ['error-snackbar'],
-          });
+          this.snackBar.open(
+            response.message || "Failed to reload feed",
+            "Close",
+            {
+              duration: 7000,
+              panelClass: ["error-snackbar"],
+            },
+          );
 
           // Refresh feed data to get updated disabled state
           this.feedService.getFeed(currentFeed.id).subscribe({
-            next: updatedFeed => {
+            next: (updatedFeed) => {
               this.feed.set(updatedFeed);
               // Update breadcrumb with updated feed name
-              this.breadcrumbService.setLabel(`id:${updatedFeed.id}`, updatedFeed.name);
+              this.breadcrumbService.setLabel(
+                `id:${updatedFeed.id}`,
+                updatedFeed.name,
+              );
             },
           });
           this.loadArticles();
           return;
         }
 
-        const action = force ? 'Force reloaded' : 'Reloaded';
+        const action = force ? "Force reloaded" : "Reloaded";
         const articlesAdded = response.articlesAdded ?? 0;
         const articlesUpdated = response.articlesUpdated ?? 0;
         const message = force
           ? `${action} feed: ${articlesUpdated} articles updated, ${articlesAdded} new articles`
           : `${action} feed: ${articlesAdded} new articles`;
 
-        this.snackBar.open(message, 'Close', { duration: 5000 });
+        this.snackBar.open(message, "Close", { duration: 5000 });
 
         // Refresh feed data and articles
         this.feedService.getFeed(currentFeed.id).subscribe({
-          next: updatedFeed => {
+          next: (updatedFeed) => {
             this.feed.set(updatedFeed);
             // Update breadcrumb with updated feed name
-            this.breadcrumbService.setLabel(`id:${updatedFeed.id}`, updatedFeed.name);
+            this.breadcrumbService.setLabel(
+              `id:${updatedFeed.id}`,
+              updatedFeed.name,
+            );
           },
         });
         this.loadArticles();
       },
-      error: error => {
+      error: (error) => {
         this.reloadingType.set(null);
-        this.snackBar.open(`Failed to reload feed: ${error.message}`, 'Close', {
+        this.snackBar.open(`Failed to reload feed: ${error.message}`, "Close", {
           duration: 5000,
-          panelClass: ['error-snackbar'],
+          panelClass: ["error-snackbar"],
         });
 
         // Refresh feed data in case it was disabled
         this.feedService.getFeed(currentFeed.id).subscribe({
-          next: updatedFeed => {
+          next: (updatedFeed) => {
             this.feed.set(updatedFeed);
             // Update breadcrumb with updated feed name
-            this.breadcrumbService.setLabel(`id:${updatedFeed.id}`, updatedFeed.name);
+            this.breadcrumbService.setLabel(
+              `id:${updatedFeed.id}`,
+              updatedFeed.name,
+            );
           },
         });
       },
@@ -1295,21 +1409,30 @@ export class FeedDetailComponent implements OnInit, OnDestroy {
     const currentFeed = this.feed();
     if (!currentFeed) return;
 
-    this.feedService.updateFeed(currentFeed.id, { enabled: !currentFeed.enabled }).subscribe({
-      next: updatedFeed => {
-        this.feed.set(updatedFeed);
-        // Update breadcrumb with updated feed name
-        this.breadcrumbService.setLabel(`id:${updatedFeed.id}`, updatedFeed.name);
-        this.snackBar.open(
-          `Feed ${updatedFeed.enabled ? 'enabled' : 'disabled'} successfully`,
-          'Close',
-          { duration: 3000 }
-        );
-      },
-      error: error => {
-        this.snackBar.open(`Failed to update feed: ${error.message}`, 'Close', { duration: 5000 });
-      },
-    });
+    this.feedService
+      .updateFeed(currentFeed.id, { enabled: !currentFeed.enabled })
+      .subscribe({
+        next: (updatedFeed) => {
+          this.feed.set(updatedFeed);
+          // Update breadcrumb with updated feed name
+          this.breadcrumbService.setLabel(
+            `id:${updatedFeed.id}`,
+            updatedFeed.name,
+          );
+          this.snackBar.open(
+            `Feed ${updatedFeed.enabled ? "enabled" : "disabled"} successfully`,
+            "Close",
+            { duration: 3000 },
+          );
+        },
+        error: (error) => {
+          this.snackBar.open(
+            `Failed to update feed: ${error.message}`,
+            "Close",
+            { duration: 5000 },
+          );
+        },
+      });
   }
 
   clearArticles() {
@@ -1318,39 +1441,52 @@ export class FeedDetailComponent implements OnInit, OnDestroy {
 
     const articleCount = currentFeed.articleCount || 0;
     if (articleCount === 0) {
-      this.snackBar.open('This feed has no articles to clear', 'Close', { duration: 3000 });
+      this.snackBar.open("This feed has no articles to clear", "Close", {
+        duration: 3000,
+      });
       return;
     }
 
     this.confirmationService
       .confirm({
-        title: 'Clear Articles',
-        message: `Are you sure you want to delete all ${articleCount} article${articleCount !== 1 ? 's' : ''} from "${currentFeed.name}"? This action cannot be undone.`,
-        confirmText: 'Clear All',
-        cancelText: 'Cancel',
-        confirmColor: 'warn',
+        title: "Clear Articles",
+        message: `Are you sure you want to delete all ${articleCount} article${articleCount !== 1 ? "s" : ""} from "${currentFeed.name}"? This action cannot be undone.`,
+        confirmText: "Clear All",
+        cancelText: "Cancel",
+        confirmColor: "warn",
       })
-      .subscribe(confirmed => {
+      .subscribe((confirmed) => {
         if (!confirmed) return;
 
         this.feedService.clearFeedArticles(currentFeed.id).subscribe({
-          next: response => {
-            this.snackBar.open(response.message || 'Articles cleared successfully', 'Close', {
-              duration: 5000,
-            });
+          next: (response) => {
+            this.snackBar.open(
+              response.message || "Articles cleared successfully",
+              "Close",
+              {
+                duration: 5000,
+              },
+            );
             // Refresh feed data and articles
             this.feedService.getFeed(currentFeed.id).subscribe({
-              next: updatedFeed => {
+              next: (updatedFeed) => {
                 this.feed.set(updatedFeed);
-                this.breadcrumbService.setLabel(`id:${updatedFeed.id}`, updatedFeed.name);
+                this.breadcrumbService.setLabel(
+                  `id:${updatedFeed.id}`,
+                  updatedFeed.name,
+                );
               },
             });
             this.loadArticles(true);
           },
-          error: error => {
-            this.snackBar.open(`Failed to clear articles: ${error.message}`, 'Close', {
-              duration: 5000,
-            });
+          error: (error) => {
+            this.snackBar.open(
+              `Failed to clear articles: ${error.message}`,
+              "Close",
+              {
+                duration: 5000,
+              },
+            );
           },
         });
       });
@@ -1362,7 +1498,7 @@ export class FeedDetailComponent implements OnInit, OnDestroy {
 
     if (
       !confirm(
-        `Are you sure you want to delete "${currentFeed.name}"? This will also delete all associated articles.`
+        `Are you sure you want to delete "${currentFeed.name}"? This will also delete all associated articles.`,
       )
     ) {
       return;
@@ -1370,11 +1506,15 @@ export class FeedDetailComponent implements OnInit, OnDestroy {
 
     this.feedService.deleteFeed(currentFeed.id).subscribe({
       next: () => {
-        this.snackBar.open(`Deleted ${currentFeed.name}`, 'Close', { duration: 3000 });
-        this.router.navigate(['/feeds']);
+        this.snackBar.open(`Deleted ${currentFeed.name}`, "Close", {
+          duration: 3000,
+        });
+        this.router.navigate(["/feeds"]);
       },
-      error: error => {
-        this.snackBar.open(`Failed to delete feed: ${error.message}`, 'Close', { duration: 5000 });
+      error: (error) => {
+        this.snackBar.open(`Failed to delete feed: ${error.message}`, "Close", {
+          duration: 5000,
+        });
       },
     });
   }
@@ -1382,10 +1522,14 @@ export class FeedDetailComponent implements OnInit, OnDestroy {
   toggleRead(article: Article) {
     const currentRead = article.read || article.isRead || false;
     this.articleService.markRead(article.id, !currentRead).subscribe({
-      error: error => {
-        this.snackBar.open(`Failed to update article: ${error.message}`, 'Close', {
-          duration: 3000,
-        });
+      error: (error) => {
+        this.snackBar.open(
+          `Failed to update article: ${error.message}`,
+          "Close",
+          {
+            duration: 3000,
+          },
+        );
       },
     });
   }
@@ -1393,28 +1537,36 @@ export class FeedDetailComponent implements OnInit, OnDestroy {
   toggleSaved(article: Article) {
     const currentSaved = article.saved || article.isSaved || false;
     this.articleService.markSaved(article.id, !currentSaved).subscribe({
-      error: error => {
-        this.snackBar.open(`Failed to update article: ${error.message}`, 'Close', {
-          duration: 3000,
-        });
+      error: (error) => {
+        this.snackBar.open(
+          `Failed to update article: ${error.message}`,
+          "Close",
+          {
+            duration: 3000,
+          },
+        );
       },
     });
   }
 
   deleteArticle(article: Article) {
-    const title = article.title || article.name || 'this article';
+    const title = article.title || article.name || "this article";
     if (!confirm(`Are you sure you want to delete "${title}"?`)) {
       return;
     }
 
     this.articleService.deleteArticle(article.id).subscribe({
       next: () => {
-        this.snackBar.open(`Deleted article`, 'Close', { duration: 3000 });
+        this.snackBar.open(`Deleted article`, "Close", { duration: 3000 });
       },
-      error: error => {
-        this.snackBar.open(`Failed to delete article: ${error.message}`, 'Close', {
-          duration: 3000,
-        });
+      error: (error) => {
+        this.snackBar.open(
+          `Failed to delete article: ${error.message}`,
+          "Close",
+          {
+            duration: 3000,
+          },
+        );
       },
     });
   }

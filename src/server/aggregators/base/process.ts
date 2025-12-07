@@ -2,12 +2,16 @@
  * Content processing utilities.
  */
 
-import * as cheerio from 'cheerio';
-import type { Element } from 'domhandler';
-import sharp from 'sharp';
-import type { RawArticle } from './types';
-import { extractImageFromUrl, compressImage, extractYouTubeVideoId } from './utils';
-import { logger } from '../../utils/logger';
+import * as cheerio from "cheerio";
+import type { Element } from "domhandler";
+import sharp from "sharp";
+import type { RawArticle } from "./types";
+import {
+  extractImageFromUrl,
+  compressImage,
+  extractYouTubeVideoId,
+} from "./utils";
+import { logger } from "../../utils/logger";
 
 /**
  * Get YouTube proxy URL for embedding.
@@ -34,13 +38,13 @@ export async function standardizeContentFormat(
   baseUrl?: string,
   generateTitleImage: boolean = true,
   addSourceFooter: boolean = true,
-  headerImageUrl?: string
+  headerImageUrl?: string,
 ): Promise<string> {
   if (!baseUrl) {
     baseUrl = article.url;
   }
 
-  logger.debug({ url: article.url }, 'Standardizing content format');
+  logger.debug({ url: article.url }, "Standardizing content format");
 
   try {
     const $ = cheerio.load(content);
@@ -59,9 +63,12 @@ export async function standardizeContentFormat(
             `frameborder="0" ` +
             `allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" ` +
             `allowfullscreen></iframe>` +
-            `</div>`
+            `</div>`,
         );
-        logger.debug({ videoId: articleVideoId }, 'Added YouTube embed for video');
+        logger.debug(
+          { videoId: articleVideoId },
+          "Added YouTube embed for video",
+        );
         // Skip image extraction for YouTube videos
       } else {
         // Find the first URL (link or image)
@@ -69,15 +76,15 @@ export async function standardizeContentFormat(
         let firstElement: cheerio.Cheerio<Element> | null = null;
 
         // First, check for YouTube links in content (they take priority over header images)
-        const firstLink = $('a[href]').first();
+        const firstLink = $("a[href]").first();
         if (firstLink.length > 0) {
-          const linkHref = firstLink.attr('href');
+          const linkHref = firstLink.attr("href");
           if (linkHref) {
             const linkUrl = new URL(linkHref, baseUrl).toString();
             if (extractYouTubeVideoId(linkUrl)) {
               firstUrl = linkUrl;
               firstElement = firstLink;
-              logger.debug({ url: firstUrl }, 'Found YouTube link in content');
+              logger.debug({ url: firstUrl }, "Found YouTube link in content");
             }
           }
         }
@@ -88,45 +95,50 @@ export async function standardizeContentFormat(
           // Resolve relative URLs to absolute URLs
           firstUrl = new URL(headerImageUrl, baseUrl).toString();
           isUsingHeaderImage = true;
-          logger.debug({ url: firstUrl }, 'Using pre-determined header image');
+          logger.debug({ url: firstUrl }, "Using pre-determined header image");
         } else if (!firstUrl) {
           // First, try to find an image
-          const firstImg = $('img').first();
+          const firstImg = $("img").first();
           if (firstImg.length > 0) {
             const imgSrc =
-              firstImg.attr('src') || firstImg.attr('data-src') || firstImg.attr('data-lazy-src');
+              firstImg.attr("src") ||
+              firstImg.attr("data-src") ||
+              firstImg.attr("data-lazy-src");
             if (imgSrc) {
               firstUrl = new URL(imgSrc, baseUrl).toString();
               firstElement = firstImg;
-              logger.debug({ url: firstUrl }, 'Found first image');
+              logger.debug({ url: firstUrl }, "Found first image");
             }
           }
 
           // If no image, try to find first link
           if (!firstUrl && firstLink.length > 0) {
-            const linkHref = firstLink.attr('href');
+            const linkHref = firstLink.attr("href");
             if (linkHref) {
               // Skip invalid URLs (template literals, JavaScript code, etc.)
               if (
-                linkHref.includes('${') ||
-                linkHref.startsWith('javascript:') ||
-                linkHref.startsWith('data:') ||
-                linkHref.trim() === ''
+                linkHref.includes("${") ||
+                linkHref.startsWith("javascript:") ||
+                linkHref.startsWith("data:") ||
+                linkHref.trim() === ""
               ) {
-                logger.debug({ linkHref }, 'Skipping invalid link URL');
+                logger.debug({ linkHref }, "Skipping invalid link URL");
               } else {
                 try {
                   firstUrl = new URL(linkHref, baseUrl).toString();
                   // Additional validation: ensure URL is actually valid (not containing template syntax)
-                  if (!firstUrl.includes('${') && !firstUrl.includes('%7B')) {
+                  if (!firstUrl.includes("${") && !firstUrl.includes("%7B")) {
                     firstElement = firstLink;
-                    logger.debug({ url: firstUrl }, 'Found first link');
+                    logger.debug({ url: firstUrl }, "Found first link");
                   } else {
-                    logger.debug({ firstUrl }, 'Skipping URL with template syntax');
+                    logger.debug(
+                      { firstUrl },
+                      "Skipping URL with template syntax",
+                    );
                     firstUrl = null;
                   }
                 } catch (error) {
-                  logger.debug({ error, linkHref }, 'Failed to parse link URL');
+                  logger.debug({ error, linkHref }, "Failed to parse link URL");
                 }
               }
             }
@@ -135,18 +147,23 @@ export async function standardizeContentFormat(
           // If still no URL, use the article URL itself
           if (!firstUrl) {
             firstUrl = article.url;
-            logger.debug({ url: firstUrl }, 'No URL found in content, using article URL');
+            logger.debug(
+              { url: firstUrl },
+              "No URL found in content, using article URL",
+            );
           }
         }
 
         // Final validation: ensure firstUrl doesn't contain template syntax (including URL-encoded)
         if (
           firstUrl &&
-          (firstUrl.includes('${') || firstUrl.includes('%7B') || firstUrl.includes('%24%7B'))
+          (firstUrl.includes("${") ||
+            firstUrl.includes("%7B") ||
+            firstUrl.includes("%24%7B"))
         ) {
           logger.debug(
             { firstUrl },
-            'Skipping URL with template syntax, using article URL instead'
+            "Skipping URL with template syntax, using article URL instead",
           );
           firstUrl = article.url;
         }
@@ -162,9 +179,9 @@ export async function standardizeContentFormat(
               `frameborder="0" ` +
               `allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" ` +
               `allowfullscreen></iframe>` +
-              `</div>`
+              `</div>`,
           );
-          logger.debug({ videoId }, 'Added YouTube embed for video');
+          logger.debug({ videoId }, "Added YouTube embed for video");
 
           // Remove the original link/image from content
           if (firstElement && firstElement.length > 0) {
@@ -174,7 +191,7 @@ export async function standardizeContentFormat(
             let currentParent = parent;
             while (currentParent.length > 0) {
               const tagName = currentParent.get(0)?.tagName?.toLowerCase();
-              if (tagName === 'body' || tagName === 'html') {
+              if (tagName === "body" || tagName === "html") {
                 break;
               }
               const text = currentParent.text().trim();
@@ -187,26 +204,30 @@ export async function standardizeContentFormat(
                 break;
               }
             }
-            logger.debug('Removed original YouTube link/image from content');
+            logger.debug("Removed original YouTube link/image from content");
           }
         } else {
           // Extract image from the URL or data URI
-          let imageResult: { imageData: Buffer; contentType: string } | null = null;
+          let imageResult: { imageData: Buffer; contentType: string } | null =
+            null;
 
           // Check if the URL is already a data URI (base64 encoded)
-          if (firstUrl.startsWith('data:')) {
-            logger.debug('First image is already a data URI, extracting data');
+          if (firstUrl.startsWith("data:")) {
+            logger.debug("First image is already a data URI, extracting data");
             try {
               // Parse data URI: data:image/png;base64,iVBORw0KG...
-              if (firstUrl.includes(';base64,')) {
-                const [header, encoded] = firstUrl.split(';base64,', 2);
-                let contentType = header.split(':')[1] || 'image/jpeg';
+              if (firstUrl.includes(";base64,")) {
+                const [header, encoded] = firstUrl.split(";base64,", 2);
+                let contentType = header.split(":")[1] || "image/jpeg";
 
                 // CRITICAL: Validate that data URI is actually an image
-                if (!contentType.startsWith('image/')) {
-                  logger.warn({ contentType }, 'Data URI has non-image content type, skipping');
+                if (!contentType.startsWith("image/")) {
+                  logger.warn(
+                    { contentType },
+                    "Data URI has non-image content type, skipping",
+                  );
                 } else {
-                  const imageData = Buffer.from(encoded, 'base64');
+                  const imageData = Buffer.from(encoded, "base64");
 
                   // Additional validation: Try to parse as image with sharp
                   try {
@@ -214,38 +235,44 @@ export async function standardizeContentFormat(
                     imageResult = { imageData, contentType };
                     logger.debug(
                       { contentType, size: imageData.length },
-                      'Extracted valid data URI image'
+                      "Extracted valid data URI image",
                     );
                   } catch (error) {
                     logger.warn(
                       { error, contentType },
-                      'Data URI claims to be image but failed validation'
+                      "Data URI claims to be image but failed validation",
                     );
                   }
                 }
               }
             } catch (error) {
-              logger.error({ error }, 'Failed to parse data URI');
+              logger.error({ error }, "Failed to parse data URI");
             }
           } else {
             // Extract image from regular URL
             // Final safety check: ensure URL is valid before attempting extraction
             if (
               firstUrl &&
-              !firstUrl.includes('${') &&
-              !firstUrl.includes('%7B') &&
-              !firstUrl.includes('%24%7B') &&
-              firstUrl.startsWith('http')
+              !firstUrl.includes("${") &&
+              !firstUrl.includes("%7B") &&
+              !firstUrl.includes("%24%7B") &&
+              firstUrl.startsWith("http")
             ) {
               // If this is a header_image_url, pass flag to skip width/height filtering
-              imageResult = await extractImageFromUrl(firstUrl, isUsingHeaderImage);
+              imageResult = await extractImageFromUrl(
+                firstUrl,
+                isUsingHeaderImage,
+              );
             } else {
-              logger.debug({ firstUrl }, 'Skipping image extraction for invalid URL');
+              logger.debug(
+                { firstUrl },
+                "Skipping image extraction for invalid URL",
+              );
             }
             // Save thumbnail URL for non-data URIs (actual URLs)
             if (imageResult) {
               article.thumbnailUrl = firstUrl;
-              logger.debug({ url: firstUrl }, 'Saved thumbnail URL');
+              logger.debug({ url: firstUrl }, "Saved thumbnail URL");
             }
           }
 
@@ -259,24 +286,28 @@ export async function standardizeContentFormat(
             const outputType = compressed.contentType;
 
             // Convert to base64
-            const imageB64 = compressedData.toString('base64');
+            const imageB64 = compressedData.toString("base64");
             const dataUri = `data:${outputType};base64,${imageB64}`;
 
             // Add image at the top
             contentParts.push(
-              `<p><img src="${dataUri}" alt="Article image" style="max-width: 100%; height: auto;"></p>`
+              `<p><img src="${dataUri}" alt="Article image" style="max-width: 100%; height: auto;"></p>`,
             );
-            logger.debug('Added header image to content');
+            logger.debug("Added header image to content");
 
             // Remove the original image from content if it was an img tag
-            if (firstElement && firstElement.length > 0 && firstElement.get(0)?.tagName === 'img') {
+            if (
+              firstElement &&
+              firstElement.length > 0 &&
+              firstElement.get(0)?.tagName === "img"
+            ) {
               const parent = firstElement.parent();
               firstElement.remove();
               // Remove empty parent containers recursively
               let currentParent = parent;
               while (currentParent.length > 0) {
                 const tagName = currentParent.get(0)?.tagName?.toLowerCase();
-                if (tagName === 'body' || tagName === 'html') {
+                if (tagName === "body" || tagName === "html") {
                   break;
                 }
                 const text = currentParent.text().trim();
@@ -289,7 +320,7 @@ export async function standardizeContentFormat(
                   break;
                 }
               }
-              logger.debug('Removed original image from content');
+              logger.debug("Removed original image from content");
             }
           }
         }
@@ -301,12 +332,14 @@ export async function standardizeContentFormat(
 
     // Add source link at the bottom (float right) if enabled
     if (addSourceFooter) {
-      contentParts.push(`<a href="${article.url}" style="float: right;">Source</a>`);
+      contentParts.push(
+        `<a href="${article.url}" style="float: right;">Source</a>`,
+      );
     }
 
-    return contentParts.join('');
+    return contentParts.join("");
   } catch (error) {
-    logger.error({ error }, 'Error standardizing content format');
+    logger.error({ error }, "Error standardizing content format");
     // Fallback: add source link if enabled
     if (addSourceFooter) {
       return `${content}<a href="${article.url}" style="float: right;">Source</a>`;
@@ -323,7 +356,7 @@ export async function processContent(
   article: RawArticle,
   generateTitleImage: boolean = true,
   addSourceFooter: boolean = true,
-  headerImageUrl?: string
+  headerImageUrl?: string,
 ): Promise<string> {
   // Standardize format (add header image, source link)
   return await standardizeContentFormat(
@@ -332,6 +365,6 @@ export async function processContent(
     article.url,
     generateTitleImage,
     addSourceFooter,
-    headerImageUrl
+    headerImageUrl,
   );
 }

@@ -20,7 +20,7 @@ import type {
   greaderAuthTokens,
   tasks,
   taskExecutions,
-} from './schema';
+} from "./schema";
 
 // Infer types from schema
 export type User = typeof users.$inferSelect;
@@ -57,4 +57,4 @@ export type TaskExecution = typeof taskExecutions.$inferSelect;
 export type TaskExecutionInsert = typeof taskExecutions.$inferInsert;
 
 // Re-export feed type enum
-export type { FeedType } from './schema';
+export type { FeedType } from "./schema";

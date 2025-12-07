@@ -2,15 +2,22 @@
  * Google Reader API tag service.
  */
 
-import { eq, and, or, isNull, inArray, gte, lte, lt, sql } from 'drizzle-orm';
-import { db, articles, feeds, userArticleStates, groups, feedGroups } from '../../db';
-import { logger } from '../../utils/logger';
-import { cache } from '../../utils/cache';
+import { eq, and, or, isNull, inArray, gte, lte, lt, sql } from "drizzle-orm";
+import {
+  db,
+  articles,
+  feeds,
+  userArticleStates,
+  groups,
+  feedGroups,
+} from "../../db";
+import { logger } from "../../utils/logger";
+import { cache } from "../../utils/cache";
 
-const STATE_READ = 'user/-/state/com.google/read';
-const STATE_STARRED = 'user/-/state/com.google/starred';
-const STATE_READING_LIST = 'user/-/state/com.google/reading-list';
-const STATE_KEPT_UNREAD = 'user/-/state/com.google/kept-unread';
+const STATE_READ = "user/-/state/com.google/read";
+const STATE_STARRED = "user/-/state/com.google/starred";
+const STATE_READING_LIST = "user/-/state/com.google/reading-list";
+const STATE_KEPT_UNREAD = "user/-/state/com.google/kept-unread";
 
 /**
  * List tags for a user.
@@ -43,14 +50,16 @@ export async function editTags(
   userId: number,
   itemIds: string[],
   addTag: string,
-  removeTag: string
+  removeTag: string,
 ): Promise<number> {
   if (!itemIds || itemIds.length === 0) {
     return 0;
   }
 
   // Parse item IDs
-  const articleIds = itemIds.map(id => parseItemId(id)).filter(id => id > 0);
+  const articleIds = itemIds
+    .map((id) => parseItemId(id))
+    .filter((id) => id > 0);
 
   if (articleIds.length === 0) {
     return 0;
@@ -65,11 +74,11 @@ export async function editTags(
       and(
         inArray(articles.id, articleIds),
         or(eq(feeds.userId, userId), isNull(feeds.userId)),
-        eq(feeds.enabled, true)
-      )
+        eq(feeds.enabled, true),
+      ),
     );
 
-  const accessibleIds = accessibleArticles.map(a => a.id);
+  const accessibleIds = accessibleArticles.map((a) => a.id);
   if (accessibleIds.length === 0) {
     return 0;
   }
@@ -96,10 +105,13 @@ export async function editTags(
     .select()
     .from(userArticleStates)
     .where(
-      and(eq(userArticleStates.userId, userId), inArray(userArticleStates.articleId, accessibleIds))
+      and(
+        eq(userArticleStates.userId, userId),
+        inArray(userArticleStates.articleId, accessibleIds),
+      ),
     );
 
-  const stateMap = new Map(existingStates.map(s => [s.articleId, s]));
+  const stateMap = new Map(existingStates.map((s) => [s.articleId, s]));
 
   // Prepare updates
   const toCreate: Array<{
@@ -110,14 +122,24 @@ export async function editTags(
     createdAt: Date;
     updatedAt: Date;
   }> = [];
-  const toUpdate: Array<{ id: number; isRead: boolean; isSaved: boolean; updatedAt: Date }> = [];
+  const toUpdate: Array<{
+    id: number;
+    isRead: boolean;
+    isSaved: boolean;
+    updatedAt: Date;
+  }> = [];
   const toDelete: number[] = [];
 
   for (const articleId of accessibleIds) {
     const existing = stateMap.get(articleId);
-    const newIsRead = updates.isRead !== undefined ? updates.isRead : (existing?.isRead ?? false);
+    const newIsRead =
+      updates.isRead !== undefined
+        ? updates.isRead
+        : (existing?.isRead ?? false);
     const newIsSaved =
-      updates.isSaved !== undefined ? updates.isSaved : (existing?.isSaved ?? false);
+      updates.isSaved !== undefined
+        ? updates.isSaved
+        : (existing?.isSaved ?? false);
 
     if (existing) {
       if (!newIsRead && !newIsSaved) {
@@ -153,13 +175,19 @@ export async function editTags(
   for (const update of toUpdate) {
     await db
       .update(userArticleStates)
-      .set({ isRead: update.isRead, isSaved: update.isSaved, updatedAt: update.updatedAt })
+      .set({
+        isRead: update.isRead,
+        isSaved: update.isSaved,
+        updatedAt: update.updatedAt,
+      })
       .where(eq(userArticleStates.id, update.id));
     count += 1;
   }
 
   if (toDelete.length > 0) {
-    await db.delete(userArticleStates).where(inArray(userArticleStates.id, toDelete));
+    await db
+      .delete(userArticleStates)
+      .where(inArray(userArticleStates.id, toDelete));
     count += toDelete.length;
   }
 
@@ -176,7 +204,7 @@ export async function editTags(
 export async function markAllAsRead(
   userId: number,
   streamId: string,
-  timestamp: string
+  timestamp: string,
 ): Promise<number> {
   if (!streamId) {
     return 0;
@@ -196,33 +224,33 @@ export async function markAllAsRead(
   let needsFeedJoin = false;
 
   // Filter by stream
-  if (streamId.startsWith('feed/')) {
+  if (streamId.startsWith("feed/")) {
     const feedId = parseInt(streamId.slice(5), 10);
     if (!isNaN(feedId)) {
       baseConditions.push(eq(articles.feedId, feedId));
     } else {
       return 0;
     }
-  } else if (streamId.startsWith('user/-/label/')) {
+  } else if (streamId.startsWith("user/-/label/")) {
     const labelName = streamId.slice(13);
     needsFeedJoin = true;
-    if (labelName === 'Reddit') {
+    if (labelName === "Reddit") {
       baseConditions.push(
         or(eq(feeds.userId, userId), isNull(feeds.userId)),
         eq(feeds.enabled, true),
-        eq(feeds.feedType, 'reddit')
+        eq(feeds.feedType, "reddit"),
       );
-    } else if (labelName === 'YouTube') {
+    } else if (labelName === "YouTube") {
       baseConditions.push(
         or(eq(feeds.userId, userId), isNull(feeds.userId)),
         eq(feeds.enabled, true),
-        eq(feeds.feedType, 'youtube')
+        eq(feeds.feedType, "youtube"),
       );
-    } else if (labelName === 'Podcasts') {
+    } else if (labelName === "Podcasts") {
       baseConditions.push(
         or(eq(feeds.userId, userId), isNull(feeds.userId)),
         eq(feeds.enabled, true),
-        eq(feeds.feedType, 'podcast')
+        eq(feeds.feedType, "podcast"),
       );
     } else {
       // Get group feeds
@@ -230,7 +258,10 @@ export async function markAllAsRead(
         .select({ id: groups.id })
         .from(groups)
         .where(
-          and(eq(groups.name, labelName), or(eq(groups.userId, userId), isNull(groups.userId)))
+          and(
+            eq(groups.name, labelName),
+            or(eq(groups.userId, userId), isNull(groups.userId)),
+          ),
         )
         .limit(1);
 
@@ -240,7 +271,7 @@ export async function markAllAsRead(
           .from(feedGroups)
           .where(eq(feedGroups.groupId, group.id));
 
-        const feedIds = groupFeedIds.map(g => g.feedId);
+        const feedIds = groupFeedIds.map((g) => g.feedId);
         if (feedIds.length > 0) {
           baseConditions.push(inArray(articles.feedId, feedIds));
         } else {
@@ -255,7 +286,7 @@ export async function markAllAsRead(
     needsFeedJoin = true;
     baseConditions.push(
       or(eq(feeds.userId, userId), isNull(feeds.userId)),
-      eq(feeds.enabled, true)
+      eq(feeds.enabled, true),
     );
   }
 
@@ -266,13 +297,15 @@ export async function markAllAsRead(
 
   // Build query with all conditions
   const baseQuery = db.select({ id: articles.id }).from(articles);
-  
+
   const articleQuery = needsFeedJoin
-    ? baseQuery.innerJoin(feeds, eq(articles.feedId, feeds.id)).where(and(...baseConditions))
+    ? baseQuery
+        .innerJoin(feeds, eq(articles.feedId, feeds.id))
+        .where(and(...baseConditions))
     : baseQuery.where(and(...baseConditions));
-  
+
   const articleIds = await articleQuery;
-  const ids = articleIds.map(a => a.id);
+  const ids = articleIds.map((a) => a.id);
 
   if (ids.length === 0) {
     return 0;
@@ -282,12 +315,17 @@ export async function markAllAsRead(
   const existingStates = await db
     .select()
     .from(userArticleStates)
-    .where(and(eq(userArticleStates.userId, userId), inArray(userArticleStates.articleId, ids)));
+    .where(
+      and(
+        eq(userArticleStates.userId, userId),
+        inArray(userArticleStates.articleId, ids),
+      ),
+    );
 
-  const existingIds = new Set(existingStates.map(s => s.articleId));
+  const existingIds = new Set(existingStates.map((s) => s.articleId));
   const toCreate = ids
-    .filter(id => !existingIds.has(id))
-    .map(id => ({
+    .filter((id) => !existingIds.has(id))
+    .map((id) => ({
       userId,
       articleId: id,
       isRead: true,
@@ -296,7 +334,7 @@ export async function markAllAsRead(
       updatedAt: new Date(),
     }));
 
-  const toUpdate = existingStates.filter(s => !s.isRead).map(s => s.id);
+  const toUpdate = existingStates.filter((s) => !s.isRead).map((s) => s.id);
 
   if (toCreate.length > 0) {
     await db.insert(userArticleStates).values(toCreate).onConflictDoNothing();
@@ -320,7 +358,7 @@ export async function markAllAsRead(
  * Parse item ID from various formats.
  */
 function parseItemId(itemId: string): number {
-  if (itemId.startsWith('tag:google.com,2005:reader/item/')) {
+  if (itemId.startsWith("tag:google.com,2005:reader/item/")) {
     const hexId = itemId.slice(32);
     return parseInt(hexId, 16);
   } else if (itemId.length === 16) {

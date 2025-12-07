@@ -2,21 +2,27 @@
  * Shared header component used across the application.
  */
 
-import { Component, inject, input, output, ChangeDetectionStrategy } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
-import { MatToolbarModule } from '@angular/material/toolbar';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { MatMenuModule } from '@angular/material/menu';
-import { MatDividerModule } from '@angular/material/divider';
-import { MatTooltipModule } from '@angular/material/tooltip';
-import { AuthService } from '../core/services/auth.service';
-import { ThemeService } from '../core/services/theme.service';
-import { KeyboardShortcutsService } from '../core/services/keyboard-shortcuts.service';
+import {
+  Component,
+  inject,
+  input,
+  output,
+  ChangeDetectionStrategy,
+} from "@angular/core";
+import { CommonModule } from "@angular/common";
+import { Router } from "@angular/router";
+import { MatToolbarModule } from "@angular/material/toolbar";
+import { MatButtonModule } from "@angular/material/button";
+import { MatIconModule } from "@angular/material/icon";
+import { MatMenuModule } from "@angular/material/menu";
+import { MatDividerModule } from "@angular/material/divider";
+import { MatTooltipModule } from "@angular/material/tooltip";
+import { AuthService } from "../core/services/auth.service";
+import { ThemeService } from "../core/services/theme.service";
+import { KeyboardShortcutsService } from "../core/services/keyboard-shortcuts.service";
 
 @Component({
-  selector: 'app-header',
+  selector: "app-header",
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
@@ -31,21 +37,41 @@ import { KeyboardShortcutsService } from '../core/services/keyboard-shortcuts.se
   template: `
     <mat-toolbar color="primary" [class]="toolbarClass()">
       @if (showMenuButton()) {
-        <button mat-icon-button (click)="menuToggle.emit()" aria-label="Toggle menu">
+        <button
+          mat-icon-button
+          (click)="menuToggle.emit()"
+          aria-label="Toggle menu"
+        >
           <mat-icon>menu</mat-icon>
         </button>
       }
-      <img src="logo-wordmark.svg" alt="Yana" class="logo logo-wordmark" (click)="navigateToDashboard()" />
-      <img src="logo-icon-only.svg" alt="Yana" class="logo logo-icon-only" (click)="navigateToDashboard()" />
+      <img
+        src="logo-wordmark.svg"
+        alt="Yana"
+        class="logo logo-wordmark"
+        (click)="navigateToDashboard()"
+      />
+      <img
+        src="logo-icon-only.svg"
+        alt="Yana"
+        class="logo logo-icon-only"
+        (click)="navigateToDashboard()"
+      />
       <span class="spacer"></span>
 
       <button
         mat-icon-button
         (click)="toggleTheme()"
-        [matTooltip]="themeService.isDark() ? 'Switch to light mode' : 'Switch to dark mode'"
-        [attr.aria-label]="themeService.isDark() ? 'Switch to light mode' : 'Switch to dark mode'"
+        [matTooltip]="
+          themeService.isDark() ? 'Switch to light mode' : 'Switch to dark mode'
+        "
+        [attr.aria-label]="
+          themeService.isDark() ? 'Switch to light mode' : 'Switch to dark mode'
+        "
       >
-        <mat-icon>{{ themeService.isDark() ? 'light_mode' : 'dark_mode' }}</mat-icon>
+        <mat-icon>{{
+          themeService.isDark() ? "light_mode" : "dark_mode"
+        }}</mat-icon>
       </button>
 
       @if (showKeyboardShortcutsButton()) {
@@ -181,7 +207,7 @@ export class HeaderComponent {
   showMenuButton = input<boolean>(false);
   showKeyboardShortcutsButton = input<boolean>(false);
   showUserMenu = input<boolean>(false);
-  toolbarClass = input<string>('toolbar');
+  toolbarClass = input<string>("toolbar");
   menuToggle = output<void>();
 
   toggleTheme() {
@@ -197,10 +223,10 @@ export class HeaderComponent {
   }
 
   navigateToDashboard() {
-    this.router.navigate(['/']);
+    this.router.navigate(["/"]);
   }
 
   navigateToSettings() {
-    this.router.navigate(['/settings']);
+    this.router.navigate(["/settings"]);
   }
 }

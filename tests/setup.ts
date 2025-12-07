@@ -5,4 +5,3 @@
 
 // Note: DATABASE_URL is set per-test in setupTestDb() to avoid conflicts
 // This file is kept for future global test configuration
-

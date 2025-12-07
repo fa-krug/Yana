@@ -5,15 +5,15 @@
  * with structured JSON output and retry logic.
  */
 
-import axios, { AxiosError } from 'axios';
+import axios, { AxiosError } from "axios";
 import type {
   AIServiceConfig,
   AIServiceError,
   TranslationResult,
   SummaryResult,
   CustomPromptResult,
-} from './ai.service.interface';
-import { logger } from '../utils/logger';
+} from "./ai.service.interface";
+import { logger } from "../utils/logger";
 
 export class AIService {
   private config: AIServiceConfig;
@@ -25,8 +25,11 @@ export class AIService {
   /**
    * Replace base64 images with placeholders to reduce token usage.
    */
-  private replaceBase64ImagesWithPlaceholders(content: string): [string, Map<string, string>] {
-    const pattern = /(<img[^>]*\ssrc=)(["']?)(data:image\/[^;]+;base64,[^"'>\s]+)(\2)/gi;
+  private replaceBase64ImagesWithPlaceholders(
+    content: string,
+  ): [string, Map<string, string>] {
+    const pattern =
+      /(<img[^>]*\ssrc=)(["']?)(data:image\/[^;]+;base64,[^"'>\s]+)(\2)/gi;
 
     const placeholders = new Map<string, string>();
     let placeholderCounter = 0;
@@ -38,11 +41,14 @@ export class AIService {
         placeholders.set(placeholder, base64Data);
         placeholderCounter++;
         return `${prefix}${quoteStart}${placeholder}${quoteEnd}`;
-      }
+      },
     );
 
     if (placeholders.size > 0) {
-      logger.debug({ count: placeholders.size }, 'Replaced base64 images with placeholders');
+      logger.debug(
+        { count: placeholders.size },
+        "Replaced base64 images with placeholders",
+      );
     }
 
     return [contentWithPlaceholders, placeholders];
@@ -53,7 +59,7 @@ export class AIService {
    */
   private restoreBase64ImagesFromPlaceholders(
     content: string,
-    placeholders: Map<string, string>
+    placeholders: Map<string, string>,
   ): string {
     if (placeholders.size === 0) return content;
 
@@ -62,7 +68,10 @@ export class AIService {
       restored = restored.replace(placeholder, base64Data);
     }
 
-    logger.debug({ count: placeholders.size }, 'Restored base64 images from placeholders');
+    logger.debug(
+      { count: placeholders.size },
+      "Restored base64 images from placeholders",
+    );
     return restored;
   }
 
@@ -75,13 +84,13 @@ export class AIService {
     let repaired = content.trim();
 
     // If content starts with { but doesn't end with }, try to close it
-    if (repaired.startsWith('{') && !repaired.endsWith('}')) {
+    if (repaired.startsWith("{") && !repaired.endsWith("}")) {
       const openBraces = (repaired.match(/{/g) || []).length;
       const closeBraces = (repaired.match(/}/g) || []).length;
 
       if (openBraces > closeBraces) {
         // Try to find where a string value might be truncated
-        const lastColon = repaired.lastIndexOf(':');
+        const lastColon = repaired.lastIndexOf(":");
         if (lastColon > 0) {
           const afterColon = repaired.substring(lastColon + 1).trim();
           if (afterColon.startsWith('"') && !afterColon.endsWith('"')) {
@@ -116,12 +125,14 @@ export class AIService {
               // Fallback: just close the string
               const lastQuote = repaired.lastIndexOf('"');
               if (lastQuote > lastColon) {
-                const breakChars = ['>', ' ', '\n'];
+                const breakChars = [">", " ", "\n"];
                 for (const breakChar of breakChars) {
                   const breakPos = repaired.lastIndexOf(breakChar, lastQuote);
                   if (breakPos > lastQuote) {
                     repaired =
-                      repaired.substring(0, breakPos + 1) + '"' + repaired.substring(breakPos + 1);
+                      repaired.substring(0, breakPos + 1) +
+                      '"' +
+                      repaired.substring(breakPos + 1);
                     break;
                   }
                 }
@@ -135,7 +146,7 @@ export class AIService {
 
         // Add missing closing braces
         for (let i = 0; i < openBraces - closeBraces; i++) {
-          repaired += '}';
+          repaired += "}";
         }
       }
     }
@@ -155,11 +166,11 @@ export class AIService {
         strict: boolean;
         schema: Record<string, unknown>;
       };
-    }
+    },
   ): Promise<Record<string, unknown>> {
     const headers = {
       Authorization: `Bearer ${this.config.apiKey}`,
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     };
 
     const payload: Record<string, unknown> = {
@@ -170,29 +181,33 @@ export class AIService {
     };
 
     if (responseFormat) {
-      payload['response_format'] = responseFormat;
+      payload["response_format"] = responseFormat;
     }
 
     let lastError: Error | null = null;
 
     for (let attempt = 0; attempt < this.config.maxRetries; attempt++) {
       try {
-        const response = await axios.post(`${this.config.apiUrl}/chat/completions`, payload, {
-          headers,
-          timeout: this.config.timeout * 1000, // Convert to milliseconds
-        });
+        const response = await axios.post(
+          `${this.config.apiUrl}/chat/completions`,
+          payload,
+          {
+            headers,
+            timeout: this.config.timeout * 1000, // Convert to milliseconds
+          },
+        );
 
         const data = response.data;
         const content = data.choices[0].message.content;
-        const finishReason = data.choices[0].finish_reason || '';
+        const finishReason = data.choices[0].finish_reason || "";
 
-        if (finishReason === 'length') {
+        if (finishReason === "length") {
           logger.warn(
             {
               contentLength: content.length,
               maxTokens: this.config.maxTokens,
             },
-            'AI response was truncated'
+            "AI response was truncated",
           );
         }
 
@@ -201,7 +216,8 @@ export class AIService {
           try {
             return JSON.parse(content) as Record<string, unknown>;
           } catch (jsonError) {
-            const contentPreview = content.length > 500 ? content.substring(0, 500) : content;
+            const contentPreview =
+              content.length > 500 ? content.substring(0, 500) : content;
             logger.warn(
               {
                 attempt: attempt + 1,
@@ -210,17 +226,20 @@ export class AIService {
                 finishReason,
                 contentPreview,
               },
-              'JSON parse error'
+              "JSON parse error",
             );
 
             // Try to repair JSON
             const repairedContent = this.repairJson(content);
             if (repairedContent !== content) {
               try {
-                logger.info('Attempting to parse repaired JSON');
+                logger.info("Attempting to parse repaired JSON");
                 return JSON.parse(repairedContent) as Record<string, unknown>;
               } catch (repairError) {
-                logger.warn({ error: repairError }, 'Repaired JSON still invalid');
+                logger.warn(
+                  { error: repairError },
+                  "Repaired JSON still invalid",
+                );
               }
             }
 
@@ -229,22 +248,22 @@ export class AIService {
             // Retry on JSON parsing errors
             if (attempt < this.config.maxRetries - 1) {
               const delay = this.config.retryDelay * Math.pow(2, attempt);
-              logger.info({ delay }, 'Retrying after delay');
-              await new Promise(resolve => setTimeout(resolve, delay * 1000));
+              logger.info({ delay }, "Retrying after delay");
+              await new Promise((resolve) => setTimeout(resolve, delay * 1000));
               continue;
             }
 
             // Final attempt failed
-            if (finishReason === 'length') {
+            if (finishReason === "length") {
               throw new Error(
                 `Failed to parse JSON response after ${this.config.maxRetries} attempts. ` +
                   `Response was truncated. Consider increasing max_tokens (current: ${this.config.maxTokens}). ` +
-                  `Content preview: ${contentPreview.substring(0, 300)}...`
+                  `Content preview: ${contentPreview.substring(0, 300)}...`,
               );
             } else {
               throw new Error(
                 `Failed to parse JSON response after ${this.config.maxRetries} attempts. ` +
-                  `Content length: ${content.length} chars, finish_reason: ${finishReason}`
+                  `Content length: ${content.length} chars, finish_reason: ${finishReason}`,
               );
             }
           }
@@ -262,7 +281,7 @@ export class AIService {
           const axiosError = error as AxiosError;
           if (axiosError.response?.status === 429) {
             isRateLimit = true;
-            const retryAfterHeader = axiosError.response.headers['retry-after'];
+            const retryAfterHeader = axiosError.response.headers["retry-after"];
             if (retryAfterHeader) {
               retryAfter = parseInt(retryAfterHeader, 10);
             }
@@ -276,18 +295,18 @@ export class AIService {
             error: error instanceof Error ? error.message : String(error),
             isRateLimit,
           },
-          'AI request failed'
+          "AI request failed",
         );
 
         if (attempt < this.config.maxRetries - 1) {
           let delay: number;
           if (isRateLimit && retryAfter) {
             delay = retryAfter;
-            logger.info({ delay }, 'Rate limit hit, waiting for Retry-After');
+            logger.info({ delay }, "Rate limit hit, waiting for Retry-After");
           } else {
             delay = this.config.retryDelay * Math.pow(2, attempt);
           }
-          await new Promise(resolve => setTimeout(resolve, delay * 1000));
+          await new Promise((resolve) => setTimeout(resolve, delay * 1000));
           continue;
         }
         break;
@@ -295,7 +314,7 @@ export class AIService {
     }
 
     throw new Error(
-      `AI request failed after ${this.config.maxRetries} retries: ${lastError?.message}`
+      `AI request failed after ${this.config.maxRetries} retries: ${lastError?.message}`,
     );
   }
 
@@ -305,7 +324,7 @@ export class AIService {
   async translate(
     content: string,
     targetLanguage: string,
-    sourceLanguage: string = 'auto'
+    sourceLanguage: string = "auto",
   ): Promise<string> {
     const systemPrompt = `You are a professional translator. Translate the provided HTML content to the target language.
 
@@ -326,34 +345,37 @@ CRITICAL RULES:
 ${contentWithPlaceholders}`;
 
     const messages = [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userPrompt },
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt },
     ];
 
     const responseFormat = {
-      type: 'json_schema',
+      type: "json_schema",
       json_schema: {
-        name: 'translation_response',
+        name: "translation_response",
         strict: true,
         schema: {
-          type: 'object',
+          type: "object",
           properties: {
             detected_language: {
-              type: 'string',
-              description: 'Detected source language code',
+              type: "string",
+              description: "Detected source language code",
             },
             translated_html: {
-              type: 'string',
-              description: 'Translated HTML content',
+              type: "string",
+              description: "Translated HTML content",
             },
           },
-          required: ['detected_language', 'translated_html'],
+          required: ["detected_language", "translated_html"],
           additionalProperties: false,
         },
       },
     };
 
-    const result = (await this.makeRequest(messages, responseFormat)) as unknown as {
+    const result = (await this.makeRequest(
+      messages,
+      responseFormat,
+    )) as unknown as {
       detected_language: string;
       translated_html: string;
     };
@@ -361,7 +383,7 @@ ${contentWithPlaceholders}`;
     // Restore base64 images
     const translatedHtml = this.restoreBase64ImagesFromPlaceholders(
       result.translated_html,
-      placeholders
+      placeholders,
     );
 
     logger.info(
@@ -369,7 +391,7 @@ ${contentWithPlaceholders}`;
         detectedLanguage: result.detected_language,
         targetLanguage,
       },
-      'Content translated'
+      "Content translated",
     );
 
     return translatedHtml;
@@ -399,37 +421,43 @@ RULES:
 ${contentWithPlaceholders}`;
 
     const messages = [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userPrompt },
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt },
     ];
 
     const responseFormat = {
-      type: 'json_schema',
+      type: "json_schema",
       json_schema: {
-        name: 'summary_response',
+        name: "summary_response",
         strict: true,
         schema: {
-          type: 'object',
+          type: "object",
           properties: {
             summary_html: {
-              type: 'string',
-              description: 'Summary as HTML bullet list',
+              type: "string",
+              description: "Summary as HTML bullet list",
             },
           },
-          required: ['summary_html'],
+          required: ["summary_html"],
           additionalProperties: false,
         },
       },
     };
 
-    const result = (await this.makeRequest(messages, responseFormat)) as unknown as {
+    const result = (await this.makeRequest(
+      messages,
+      responseFormat,
+    )) as unknown as {
       summary_html: string;
     };
 
     // Restore base64 images
-    const summaryHtml = this.restoreBase64ImagesFromPlaceholders(result.summary_html, placeholders);
+    const summaryHtml = this.restoreBase64ImagesFromPlaceholders(
+      result.summary_html,
+      placeholders,
+    );
 
-    logger.info('Content summarized');
+    logger.info("Content summarized");
     return summaryHtml;
   }
 
@@ -458,40 +486,43 @@ Content to process:
 ${contentWithPlaceholders}`;
 
     const messages = [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userPrompt },
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt },
     ];
 
     const responseFormat = {
-      type: 'json_schema',
+      type: "json_schema",
       json_schema: {
-        name: 'custom_prompt_response',
+        name: "custom_prompt_response",
         strict: true,
         schema: {
-          type: 'object',
+          type: "object",
           properties: {
             processed_html: {
-              type: 'string',
-              description: 'Processed HTML content',
+              type: "string",
+              description: "Processed HTML content",
             },
           },
-          required: ['processed_html'],
+          required: ["processed_html"],
           additionalProperties: false,
         },
       },
     };
 
-    const result = (await this.makeRequest(messages, responseFormat)) as unknown as {
+    const result = (await this.makeRequest(
+      messages,
+      responseFormat,
+    )) as unknown as {
       processed_html: string;
     };
 
     // Restore base64 images
     const processedHtml = this.restoreBase64ImagesFromPlaceholders(
       result.processed_html,
-      placeholders
+      placeholders,
     );
 
-    logger.info('Content processed with custom prompt');
+    logger.info("Content processed with custom prompt");
     return processedHtml;
   }
 }
@@ -510,11 +541,11 @@ export function createAIService(userSettings: {
   aiRetryDelay: number;
 }): AIService {
   if (!userSettings.openaiApiKey) {
-    throw new Error('OpenAI API key not configured');
+    throw new Error("OpenAI API key not configured");
   }
 
   return new AIService({
-    apiUrl: userSettings.openaiApiUrl.replace(/\/$/, ''),
+    apiUrl: userSettings.openaiApiUrl.replace(/\/$/, ""),
     apiKey: userSettings.openaiApiKey,
     model: userSettings.aiModel,
     temperature: userSettings.aiTemperature,

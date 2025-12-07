@@ -2,61 +2,78 @@
  * Test database utilities.
  */
 
-import { drizzle } from 'drizzle-orm/better-sqlite3';
-import Database from 'better-sqlite3';
-import * as fs from 'fs';
-import * as path from 'path';
-import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
-import * as schema from '../../src/server/db/schema';
+import * as fs from "fs";
+import * as path from "path";
+import { migrate } from "drizzle-orm/better-sqlite3/migrator";
+import { reconnectDatabase, db, closeDatabase } from "../../src/server/db";
 
-let testDb: Database.Database | null = null;
-let testDrizzle: ReturnType<typeof drizzle> | null = null;
-const TEST_DB_PATH = path.join(__dirname, '../test.db');
+const TEST_DB_PATH = path.join(process.cwd(), "tests", "test.db");
 
 /**
  * Setup test database.
+ * Sets up a fresh test database and runs migrations.
  */
-export function setupTestDb(): ReturnType<typeof drizzle> {
-  // Remove existing test database
-  if (fs.existsSync(TEST_DB_PATH)) {
-    fs.unlinkSync(TEST_DB_PATH);
+export function setupTestDb(): void {
+  // Close any existing database connection first
+  closeDatabase();
+
+  // Set DATABASE_URL to test database before any database operations
+  process.env["DATABASE_URL"] = TEST_DB_PATH;
+
+  // Remove existing test database and related files to ensure clean state
+  // SQLite with WAL mode creates .wal and .shm files that need cleanup
+  const filesToClean = [
+    TEST_DB_PATH,
+    `${TEST_DB_PATH}-wal`,
+    `${TEST_DB_PATH}-shm`,
+  ];
+
+  for (const file of filesToClean) {
+    if (fs.existsSync(file)) {
+      try {
+        fs.unlinkSync(file);
+      } catch (error) {
+        // Ignore errors - file might be locked, will try again
+      }
+    }
   }
 
-  // Create new database
-  const sqlite = new Database(TEST_DB_PATH);
-  const db = drizzle(sqlite, { schema });
+  // Small delay to ensure file system operations complete
+  // This helps avoid "database is locked" errors
+  // Note: In a real async scenario, we'd use a promise, but for sync setup this works
 
-  // Run migrations
-  migrate(db, { migrationsFolder: path.join(__dirname, '../src/server/db/migrations') });
+  // Reconnect to use the test database
+  // This will create a new connection to the test database
+  reconnectDatabase();
 
-  testDb = sqlite;
-  testDrizzle = db;
-
-  return db;
+  // Run migrations on the test database
+  const migrationsFolder = path.resolve(process.cwd(), "src/server/db/migrations");
+  migrate(db, {
+    migrationsFolder,
+  });
 }
 
 /**
  * Teardown test database.
+ * Closes the database connection. The database file will be deleted
+ * in the next setupTestDb() call to ensure clean state.
  */
 export function teardownTestDb(): void {
-  if (testDb) {
-    testDb.close();
-    testDb = null;
-  }
+  // Close the database connection without reconnecting
+  closeDatabase();
 
-  if (fs.existsSync(TEST_DB_PATH)) {
-    fs.unlinkSync(TEST_DB_PATH);
-  }
-
-  testDrizzle = null;
+  // Reset DATABASE_URL
+  delete process.env["DATABASE_URL"];
+  
+  // Don't delete the file here - let setupTestDb() handle it
+  // This avoids "database is locked" errors when the connection
+  // is still open or being used
 }
 
 /**
  * Get test database instance.
+ * Returns the global db instance which should be using the test database.
  */
-export function getTestDb(): ReturnType<typeof drizzle> {
-  if (!testDrizzle) {
-    return setupTestDb();
-  }
-  return testDrizzle;
+export function getTestDb() {
+  return db;
 }

@@ -5,10 +5,10 @@
  * All procedures require superuser access.
  */
 
-import { z } from 'zod';
-import { TRPCError } from '@trpc/server';
-import { router, superuserProcedure } from '../procedures';
-import { getSuperuser } from '../procedures';
+import { z } from "zod";
+import { TRPCError } from "@trpc/server";
+import { router, superuserProcedure } from "../procedures";
+import { getSuperuser } from "../procedures";
 import {
   createUser,
   getUserById,
@@ -16,24 +16,26 @@ import {
   updateUserPassword,
   listUsers,
   updateUser,
-} from '../../services/user.service';
+} from "../../services/user.service";
 import {
   adminUpdateUserSchema,
   adminCreateUserSchema,
   adminChangePasswordSchema,
   adminListUsersSchema,
-} from '../../validation/schemas';
-import { NotFoundError } from '../../errors';
-import { adminTasksRouter } from './admin-tasks.router';
+} from "../../validation/schemas";
+import { NotFoundError } from "../../errors";
+import { adminTasksRouter } from "./admin-tasks.router";
 
 /**
  * Helper to convert date to ISO string.
  */
-const toISOString = (date: Date | number | string | null | undefined): string => {
+const toISOString = (
+  date: Date | number | string | null | undefined,
+): string => {
   if (!date) return new Date().toISOString();
   if (date instanceof Date) return date.toISOString();
-  if (typeof date === 'number') return new Date(date).toISOString();
-  if (typeof date === 'string') return date;
+  if (typeof date === "number") return new Date(date).toISOString();
+  if (typeof date === "string") return date;
   return new Date().toISOString();
 };
 
@@ -45,23 +47,25 @@ export const adminRouter = router({
     /**
      * List all users with filters.
      */
-    list: superuserProcedure.input(adminListUsersSchema).query(async ({ input }) => {
-      const result = await listUsers({
-        page: input.page,
-        limit: input.pageSize,
-        search: input.search,
-        isSuperuser: input.isSuperuser,
-      });
-      // Convert dates to strings
-      return {
-        ...result,
-        items: result.items.map(user => ({
-          ...user,
-          createdAt: toISOString(user.createdAt),
-          updatedAt: toISOString(user.updatedAt),
-        })),
-      };
-    }),
+    list: superuserProcedure
+      .input(adminListUsersSchema)
+      .query(async ({ input }) => {
+        const result = await listUsers({
+          page: input.page,
+          limit: input.pageSize,
+          search: input.search,
+          isSuperuser: input.isSuperuser,
+        });
+        // Convert dates to strings
+        return {
+          ...result,
+          items: result.items.map((user) => ({
+            ...user,
+            createdAt: toISOString(user.createdAt),
+            updatedAt: toISOString(user.updatedAt),
+          })),
+        };
+      }),
 
     /**
      * Get user by ID.
@@ -75,8 +79,8 @@ export const adminRouter = router({
             id: user.id,
             username: user.username,
             email: user.email,
-            firstName: user.firstName || '',
-            lastName: user.lastName || '',
+            firstName: user.firstName || "",
+            lastName: user.lastName || "",
             isSuperuser: user.isSuperuser,
             isStaff: user.isStaff,
             createdAt: toISOString(user.createdAt),
@@ -85,7 +89,7 @@ export const adminRouter = router({
         } catch (error) {
           if (error instanceof NotFoundError) {
             throw new TRPCError({
-              code: 'NOT_FOUND',
+              code: "NOT_FOUND",
               message: error.message,
             });
           }
@@ -96,39 +100,46 @@ export const adminRouter = router({
     /**
      * Create a new user.
      */
-    create: superuserProcedure.input(adminCreateUserSchema).mutation(async ({ input }) => {
-      const { username, email, password, firstName, lastName, isSuperuser } = input;
+    create: superuserProcedure
+      .input(adminCreateUserSchema)
+      .mutation(async ({ input }) => {
+        const { username, email, password, firstName, lastName, isSuperuser } =
+          input;
 
-      const user = await createUser(username, email, password);
+        const user = await createUser(username, email, password);
 
-      // Update additional fields if provided
-      if (firstName !== undefined || lastName !== undefined || isSuperuser !== undefined) {
-        const updateData: {
-          firstName?: string;
-          lastName?: string;
-          isSuperuser?: boolean;
-        } = {};
+        // Update additional fields if provided
+        if (
+          firstName !== undefined ||
+          lastName !== undefined ||
+          isSuperuser !== undefined
+        ) {
+          const updateData: {
+            firstName?: string;
+            lastName?: string;
+            isSuperuser?: boolean;
+          } = {};
 
-        if (firstName !== undefined) updateData.firstName = firstName;
-        if (lastName !== undefined) updateData.lastName = lastName;
-        if (isSuperuser !== undefined) updateData.isSuperuser = isSuperuser;
+          if (firstName !== undefined) updateData.firstName = firstName;
+          if (lastName !== undefined) updateData.lastName = lastName;
+          if (isSuperuser !== undefined) updateData.isSuperuser = isSuperuser;
 
-        await updateUser(user.id, updateData);
-      }
+          await updateUser(user.id, updateData);
+        }
 
-      const updatedUser = await getUserById(user.id);
-      return {
-        id: updatedUser.id,
-        username: updatedUser.username,
-        email: updatedUser.email,
-        firstName: updatedUser.firstName || '',
-        lastName: updatedUser.lastName || '',
-        isSuperuser: updatedUser.isSuperuser,
-        isStaff: updatedUser.isStaff,
-        createdAt: updatedUser.createdAt,
-        updatedAt: updatedUser.updatedAt,
-      };
-    }),
+        const updatedUser = await getUserById(user.id);
+        return {
+          id: updatedUser.id,
+          username: updatedUser.username,
+          email: updatedUser.email,
+          firstName: updatedUser.firstName || "",
+          lastName: updatedUser.lastName || "",
+          isSuperuser: updatedUser.isSuperuser,
+          isStaff: updatedUser.isStaff,
+          createdAt: updatedUser.createdAt,
+          updatedAt: updatedUser.updatedAt,
+        };
+      }),
 
     /**
      * Update user.
@@ -138,7 +149,7 @@ export const adminRouter = router({
         z.object({
           id: z.number().int().positive(),
           data: adminUpdateUserSchema,
-        })
+        }),
       )
       .mutation(async ({ input }) => {
         const { id, data } = input;
@@ -148,9 +159,13 @@ export const adminRouter = router({
         await getUserById(id);
 
         // Update profile fields if provided
-        if (email !== undefined || firstName !== undefined || lastName !== undefined) {
+        if (
+          email !== undefined ||
+          firstName !== undefined ||
+          lastName !== undefined
+        ) {
           await updateUserProfile(id, {
-            email: email || '',
+            email: email || "",
             firstName,
             lastName,
           });
@@ -174,8 +189,8 @@ export const adminRouter = router({
           id: updatedUser.id,
           username: updatedUser.username,
           email: updatedUser.email,
-          firstName: updatedUser.firstName || '',
-          lastName: updatedUser.lastName || '',
+          firstName: updatedUser.firstName || "",
+          lastName: updatedUser.lastName || "",
           isSuperuser: updatedUser.isSuperuser,
           isStaff: updatedUser.isStaff,
           createdAt: updatedUser.createdAt,
@@ -191,7 +206,7 @@ export const adminRouter = router({
         z.object({
           id: z.number().int().positive(),
           newPassword: z.string().min(8),
-        })
+        }),
       )
       .mutation(async ({ input }) => {
         // Check if user exists
@@ -201,7 +216,7 @@ export const adminRouter = router({
 
         return {
           success: true,
-          message: 'Password changed successfully',
+          message: "Password changed successfully",
         };
       }),
 
@@ -219,7 +234,7 @@ export const adminRouter = router({
         // In a real implementation, you'd call deleteUser(input.id)
         return {
           success: true,
-          message: 'User deleted successfully',
+          message: "User deleted successfully",
         };
       }),
   }),

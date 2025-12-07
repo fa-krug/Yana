@@ -1,16 +1,28 @@
-import { Component, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { MatDialogRef, MatDialogModule, MAT_DIALOG_DATA } from '@angular/material/dialog';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { MatButtonModule } from '@angular/material/button';
-import { MatCheckboxModule } from '@angular/material/checkbox';
-import { AdminUsersService, User } from '../../core/services/admin-users.service';
+import { Component, inject } from "@angular/core";
+import { CommonModule } from "@angular/common";
+import {
+  FormBuilder,
+  FormGroup,
+  ReactiveFormsModule,
+  Validators,
+} from "@angular/forms";
+import {
+  MatDialogRef,
+  MatDialogModule,
+  MAT_DIALOG_DATA,
+} from "@angular/material/dialog";
+import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
+import { MatFormFieldModule } from "@angular/material/form-field";
+import { MatInputModule } from "@angular/material/input";
+import { MatButtonModule } from "@angular/material/button";
+import { MatCheckboxModule } from "@angular/material/checkbox";
+import {
+  AdminUsersService,
+  User,
+} from "../../core/services/admin-users.service";
 
 @Component({
-  selector: 'app-user-edit-dialog',
+  selector: "app-user-edit-dialog",
   standalone: true,
   imports: [
     CommonModule,
@@ -30,12 +42,14 @@ import { AdminUsersService, User } from '../../core/services/admin-users.service
           <mat-label>Username</mat-label>
           <input matInput formControlName="username" required />
           @if (
-            userForm.get('username')?.touched && userForm.get('username')?.hasError('required')
+            userForm.get("username")?.touched &&
+            userForm.get("username")?.hasError("required")
           ) {
             <mat-error>Username is required</mat-error>
           }
           @if (
-            userForm.get('username')?.touched && userForm.get('username')?.hasError('minlength')
+            userForm.get("username")?.touched &&
+            userForm.get("username")?.hasError("minlength")
           ) {
             <mat-error>Username must be at least 3 characters</mat-error>
           }
@@ -44,10 +58,16 @@ import { AdminUsersService, User } from '../../core/services/admin-users.service
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>Email</mat-label>
           <input matInput type="email" formControlName="email" required />
-          @if (userForm.get('email')?.touched && userForm.get('email')?.hasError('required')) {
+          @if (
+            userForm.get("email")?.touched &&
+            userForm.get("email")?.hasError("required")
+          ) {
             <mat-error>Email is required</mat-error>
           }
-          @if (userForm.get('email')?.touched && userForm.get('email')?.hasError('email')) {
+          @if (
+            userForm.get("email")?.touched &&
+            userForm.get("email")?.hasError("email")
+          ) {
             <mat-error>Invalid email address</mat-error>
           }
         </mat-form-field>
@@ -121,10 +141,13 @@ export class UserEditDialogComponent {
 
   constructor() {
     this.userForm = this.fb.group({
-      username: [this.data.username, [Validators.required, Validators.minLength(3)]],
+      username: [
+        this.data.username,
+        [Validators.required, Validators.minLength(3)],
+      ],
       email: [this.data.email, [Validators.required, Validators.email]],
-      firstName: [this.data.firstName || ''],
-      lastName: [this.data.lastName || ''],
+      firstName: [this.data.firstName || ""],
+      lastName: [this.data.lastName || ""],
       isSuperuser: [this.data.isSuperuser],
     });
   }
@@ -136,17 +159,19 @@ export class UserEditDialogComponent {
       this.usersService.updateUser(this.data.id, formValue).subscribe({
         next: () => {
           this.loading = false;
-          this.snackBar.open('User updated successfully', 'Close', { duration: 3000 });
+          this.snackBar.open("User updated successfully", "Close", {
+            duration: 3000,
+          });
           this.dialogRef.close(true);
         },
-        error: error => {
+        error: (error) => {
           this.loading = false;
-          const errorMessage = error?.error?.message || 'Failed to update user';
-          this.snackBar.open(errorMessage, 'Close', { duration: 5000 });
+          const errorMessage = error?.error?.message || "Failed to update user";
+          this.snackBar.open(errorMessage, "Close", { duration: 5000 });
         },
       });
     } else {
-      Object.keys(this.userForm.controls).forEach(key => {
+      Object.keys(this.userForm.controls).forEach((key) => {
         this.userForm.get(key)?.markAsTouched();
       });
     }

@@ -2,15 +2,15 @@
  * Confirmation service - shows confirmation dialogs.
  */
 
-import { Injectable, inject } from '@angular/core';
-import { MatDialog } from '@angular/material/dialog';
-import { Observable } from 'rxjs';
+import { Injectable, inject } from "@angular/core";
+import { MatDialog } from "@angular/material/dialog";
+import { Observable } from "rxjs";
 import {
   ConfirmDialogComponent,
   ConfirmDialogData,
-} from '../../shared/components/confirm-dialog.component';
+} from "../../shared/components/confirm-dialog.component";
 
-@Injectable({ providedIn: 'root' })
+@Injectable({ providedIn: "root" })
 export class ConfirmationService {
   private dialog = inject(MatDialog);
 
@@ -20,7 +20,7 @@ export class ConfirmationService {
    */
   confirm(data: ConfirmDialogData): Observable<boolean> {
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
-      width: '400px',
+      width: "400px",
       data,
     });
 
@@ -30,13 +30,16 @@ export class ConfirmationService {
   /**
    * Show a delete confirmation dialog
    */
-  confirmDelete(itemName: string, itemType: string = 'item'): Observable<boolean> {
+  confirmDelete(
+    itemName: string,
+    itemType: string = "item",
+  ): Observable<boolean> {
     return this.confirm({
       title: `Delete ${itemType}`,
       message: `Are you sure you want to delete "${itemName}"? This action cannot be undone.`,
-      confirmText: 'Delete',
-      cancelText: 'Cancel',
-      confirmColor: 'warn',
+      confirmText: "Delete",
+      cancelText: "Cancel",
+      confirmColor: "warn",
     });
   }
 }

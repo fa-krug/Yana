@@ -12,35 +12,44 @@
  */
 
 // Angular core
-import { Component, OnInit, OnDestroy, inject, ChangeDetectionStrategy } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { RouterModule, ActivatedRoute } from '@angular/router';
-import { FormControl, ReactiveFormsModule } from '@angular/forms';
+import {
+  Component,
+  OnInit,
+  OnDestroy,
+  inject,
+  ChangeDetectionStrategy,
+} from "@angular/core";
+import { CommonModule } from "@angular/common";
+import { RouterModule, ActivatedRoute } from "@angular/router";
+import { FormControl, ReactiveFormsModule } from "@angular/forms";
 
 // RxJS
-import { debounceTime, distinctUntilChanged, Subject, takeUntil } from 'rxjs';
+import { debounceTime, distinctUntilChanged, Subject, takeUntil } from "rxjs";
 
 // Angular Material
-import { MatCardModule } from '@angular/material/card';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
-import { MatChipsModule } from '@angular/material/chips';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
-import { MatMenuModule } from '@angular/material/menu';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatCardModule } from "@angular/material/card";
+import { MatButtonModule } from "@angular/material/button";
+import { MatIconModule } from "@angular/material/icon";
+import { MatFormFieldModule } from "@angular/material/form-field";
+import { MatInputModule } from "@angular/material/input";
+import { MatSelectModule } from "@angular/material/select";
+import { MatChipsModule } from "@angular/material/chips";
+import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
+import { MatPaginatorModule, PageEvent } from "@angular/material/paginator";
+import { MatMenuModule } from "@angular/material/menu";
+import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
+import { MatTooltipModule } from "@angular/material/tooltip";
 
 // Application
-import { ArticleService, ArticleFilters } from '../../core/services/article.service';
-import { FeedService } from '../../core/services/feed.service';
-import { Article } from '../../core/models';
+import {
+  ArticleService,
+  ArticleFilters,
+} from "../../core/services/article.service";
+import { FeedService } from "../../core/services/feed.service";
+import { Article } from "../../core/models";
 
 @Component({
-  selector: 'app-article-list',
+  selector: "app-article-list",
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
@@ -97,17 +106,23 @@ import { Article } from '../../core/models';
         <div class="state-center error">
           <mat-icon>error</mat-icon>
           <p>{{ articleService.error() }}</p>
-          <button mat-raised-button color="primary" (click)="refresh()">Retry</button>
+          <button mat-raised-button color="primary" (click)="refresh()">
+            Retry
+          </button>
         </div>
       }
 
-      @if (articleService.articles().length === 0 && !articleService.loading()) {
+      @if (
+        articleService.articles().length === 0 && !articleService.loading()
+      ) {
         <div class="state-center empty-state">
           <mat-icon>article</mat-icon>
           <h2>No articles found</h2>
         </div>
       } @else {
-        @if (articleService.loading() && articleService.articles().length === 0) {
+        @if (
+          articleService.loading() && articleService.articles().length === 0
+        ) {
           <div class="state-center loading" aria-live="polite" aria-busy="true">
             <mat-spinner aria-hidden="true"></mat-spinner>
             <p>Loading articles...</p>
@@ -115,14 +130,19 @@ import { Article } from '../../core/models';
         }
         <div class="article-grid">
           @for (article of articleService.articles(); track article.id) {
-            <mat-card class="article-card card-elevated" [routerLink]="['/articles', article.id]">
+            <mat-card
+              class="article-card card-elevated"
+              [routerLink]="['/articles', article.id]"
+            >
               <mat-card-header>
-                <mat-card-title>{{ article.title || article.name }}</mat-card-title>
+                <mat-card-title>{{
+                  article.title || article.name
+                }}</mat-card-title>
                 <mat-card-subtitle>
                   <div class="article-meta">
                     <span class="article-date">
                       <mat-icon>schedule</mat-icon>
-                      {{ article.published | date: 'short' }}
+                      {{ article.published | date: "short" }}
                     </span>
                     @if (article.author) {
                       <span class="article-author">
@@ -170,23 +190,33 @@ import { Article } from '../../core/models';
                   mat-button
                   [color]="article.read || article.isRead ? 'primary' : ''"
                   (click)="toggleRead($event, article)"
-                  [matTooltip]="article.read || article.isRead ? 'Mark as unread' : 'Mark as read'"
+                  [matTooltip]="
+                    article.read || article.isRead
+                      ? 'Mark as unread'
+                      : 'Mark as read'
+                  "
                 >
                   <mat-icon>{{
-                    article.read || article.isRead ? 'check_circle' : 'radio_button_unchecked'
+                    article.read || article.isRead
+                      ? "check_circle"
+                      : "radio_button_unchecked"
                   }}</mat-icon>
-                  {{ article.read || article.isRead ? 'Read' : 'Unread' }}
+                  {{ article.read || article.isRead ? "Read" : "Unread" }}
                 </button>
                 <button
                   mat-button
                   [color]="article.saved || article.isSaved ? 'accent' : ''"
                   (click)="toggleSaved($event, article)"
-                  [matTooltip]="article.saved || article.isSaved ? 'Unsave' : 'Save'"
+                  [matTooltip]="
+                    article.saved || article.isSaved ? 'Unsave' : 'Save'
+                  "
                 >
                   <mat-icon>{{
-                    article.saved || article.isSaved ? 'bookmark' : 'bookmark_border'
+                    article.saved || article.isSaved
+                      ? "bookmark"
+                      : "bookmark_border"
                   }}</mat-icon>
-                  {{ article.saved || article.isSaved ? 'Saved' : 'Save' }}
+                  {{ article.saved || article.isSaved ? "Saved" : "Save" }}
                 </button>
                 <div class="spacer"></div>
                 @if (article.link) {
@@ -419,9 +449,9 @@ export class ArticleListComponent implements OnInit, OnDestroy {
   route = inject(ActivatedRoute);
   snackBar = inject(MatSnackBar);
 
-  searchControl = new FormControl('');
+  searchControl = new FormControl("");
   feedControl = new FormControl<number | null>(null);
-  readStateControl = new FormControl<'read' | 'unread' | null>(null);
+  readStateControl = new FormControl<"read" | "unread" | null>(null);
 
   private destroy$ = new Subject<void>();
 
@@ -430,24 +460,24 @@ export class ArticleListComponent implements OnInit, OnDestroy {
     this.feedService.loadFeeds().subscribe();
 
     // Load articles from query params
-    this.route.queryParams.subscribe(params => {
+    this.route.queryParams.subscribe((params) => {
       const filters: ArticleFilters = {
-        page: params['page'] ? Number(params['page']) : 1,
-        pageSize: params['page_size'] ? Number(params['page_size']) : 20,
+        page: params["page"] ? Number(params["page"]) : 1,
+        pageSize: params["page_size"] ? Number(params["page_size"]) : 20,
       };
 
-      if (params['search']) {
-        filters.search = params['search'];
-        this.searchControl.setValue(params['search'], { emitEvent: false });
+      if (params["search"]) {
+        filters.search = params["search"];
+        this.searchControl.setValue(params["search"], { emitEvent: false });
       }
 
-      if (params['feed_id']) {
-        filters.feedId = Number(params['feed_id']);
+      if (params["feed_id"]) {
+        filters.feedId = Number(params["feed_id"]);
         this.feedControl.setValue(filters.feedId, { emitEvent: false });
       }
 
-      if (params['read_state']) {
-        filters.readState = params['read_state'] as 'read' | 'unread';
+      if (params["read_state"]) {
+        filters.readState = params["read_state"] as "read" | "unread";
         this.readStateControl.setValue(filters.readState, { emitEvent: false });
       }
 
@@ -462,13 +492,17 @@ export class ArticleListComponent implements OnInit, OnDestroy {
       });
 
     // Watch filter changes
-    this.feedControl.valueChanges.pipe(takeUntil(this.destroy$)).subscribe(() => {
-      this.applyFilters();
-    });
+    this.feedControl.valueChanges
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => {
+        this.applyFilters();
+      });
 
-    this.readStateControl.valueChanges.pipe(takeUntil(this.destroy$)).subscribe(() => {
-      this.applyFilters();
-    });
+    this.readStateControl.valueChanges
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => {
+        this.applyFilters();
+      });
   }
 
   ngOnDestroy() {
@@ -529,14 +563,22 @@ export class ArticleListComponent implements OnInit, OnDestroy {
     const currentRead = article.read ?? article.isRead ?? false;
     this.articleService.markRead(article.id, !currentRead).subscribe({
       next: () => {
-        this.snackBar.open(`Article marked as ${!currentRead ? 'read' : 'unread'}`, 'Close', {
-          duration: 2000,
-        });
+        this.snackBar.open(
+          `Article marked as ${!currentRead ? "read" : "unread"}`,
+          "Close",
+          {
+            duration: 2000,
+          },
+        );
       },
-      error: error => {
-        this.snackBar.open(`Failed to update article: ${error.message}`, 'Close', {
-          duration: 3000,
-        });
+      error: (error) => {
+        this.snackBar.open(
+          `Failed to update article: ${error.message}`,
+          "Close",
+          {
+            duration: 3000,
+          },
+        );
       },
     });
   }
@@ -546,14 +588,22 @@ export class ArticleListComponent implements OnInit, OnDestroy {
     const currentSaved = article.saved ?? article.isSaved ?? false;
     this.articleService.markSaved(article.id, !currentSaved).subscribe({
       next: () => {
-        this.snackBar.open(`Article ${!currentSaved ? 'saved' : 'unsaved'}`, 'Close', {
-          duration: 2000,
-        });
+        this.snackBar.open(
+          `Article ${!currentSaved ? "saved" : "unsaved"}`,
+          "Close",
+          {
+            duration: 2000,
+          },
+        );
       },
-      error: error => {
-        this.snackBar.open(`Failed to update article: ${error.message}`, 'Close', {
-          duration: 3000,
-        });
+      error: (error) => {
+        this.snackBar.open(
+          `Failed to update article: ${error.message}`,
+          "Close",
+          {
+            duration: 3000,
+          },
+        );
       },
     });
   }

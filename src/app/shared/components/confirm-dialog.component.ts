@@ -2,21 +2,25 @@
  * Confirmation dialog component - reusable confirmation dialog.
  */
 
-import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
-import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
+import { Component, inject, ChangeDetectionStrategy } from "@angular/core";
+import {
+  MAT_DIALOG_DATA,
+  MatDialogModule,
+  MatDialogRef,
+} from "@angular/material/dialog";
+import { MatButtonModule } from "@angular/material/button";
+import { MatIconModule } from "@angular/material/icon";
 
 export interface ConfirmDialogData {
   title: string;
   message: string;
   confirmText?: string;
   cancelText?: string;
-  confirmColor?: 'primary' | 'accent' | 'warn';
+  confirmColor?: "primary" | "accent" | "warn";
 }
 
 @Component({
-  selector: 'app-confirm-dialog',
+  selector: "app-confirm-dialog",
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [MatDialogModule, MatButtonModule, MatIconModule],
@@ -30,7 +34,7 @@ export interface ConfirmDialogData {
     </mat-dialog-content>
     <mat-dialog-actions align="end">
       <button mat-button [mat-dialog-close]="false">
-        {{ data.cancelText || 'Cancel' }}
+        {{ data.cancelText || "Cancel" }}
       </button>
       <button
         mat-raised-button
@@ -38,7 +42,7 @@ export interface ConfirmDialogData {
         [mat-dialog-close]="true"
         cdkFocusInitial
       >
-        {{ data.confirmText || 'Confirm' }}
+        {{ data.confirmText || "Confirm" }}
       </button>
     </mat-dialog-actions>
   `,

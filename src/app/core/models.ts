@@ -33,7 +33,7 @@ export interface Feed {
   id: number;
   name: string;
   identifier: string;
-  feedType: 'article' | 'youtube' | 'podcast' | 'reddit';
+  feedType: "article" | "youtube" | "podcast" | "reddit";
   icon?: string;
   aggregator: string;
   enabled: boolean;
@@ -59,7 +59,7 @@ export interface Feed {
 export interface FeedCreateRequest {
   name: string;
   identifier: string;
-  feedType: 'article' | 'youtube' | 'podcast' | 'reddit';
+  feedType: "article" | "youtube" | "podcast" | "reddit";
   aggregator: string;
   icon?: string;
   enabled?: boolean;
@@ -93,7 +93,13 @@ export interface FeedPreviewResponse {
   articles: PreviewArticle[];
   count: number;
   error?: string;
-  errorType?: 'validation' | 'network' | 'parse' | 'authentication' | 'timeout' | 'unknown';
+  errorType?:
+    | "validation"
+    | "network"
+    | "parse"
+    | "authentication"
+    | "timeout"
+    | "unknown";
 }
 
 // Article models
@@ -149,11 +155,11 @@ export interface ArticleDetail extends Article {
 export interface Aggregator {
   id: string;
   name: string;
-  type: 'managed' | 'social' | 'custom';
+  type: "managed" | "social" | "custom";
   description?: string;
   url?: string;
   icon?: string;
-  feedType?: 'article' | 'youtube' | 'podcast' | 'reddit';
+  feedType?: "article" | "youtube" | "podcast" | "reddit";
   enabled: boolean;
   // Frontend-friendly alias
   modulePath?: string;
@@ -166,7 +172,7 @@ export interface AggregatorList {
 }
 
 export interface AggregatorOption {
-  type: 'boolean' | 'integer' | 'float' | 'string' | 'password' | 'choice';
+  type: "boolean" | "integer" | "float" | "string" | "password" | "choice";
   label: string;
   helpText?: string;
   default?: any;
@@ -174,12 +180,12 @@ export interface AggregatorOption {
   min?: number;
   max?: number;
   choices?: string[][];
-  widget?: 'text' | 'textarea' | 'json';
+  widget?: "text" | "textarea" | "json";
 }
 
 export interface AggregatorDetail {
   id: string;
-  identifierType: 'url' | 'string';
+  identifierType: "url" | "string";
   identifierLabel: string;
   identifierDescription: string;
   identifierPlaceholder: string;

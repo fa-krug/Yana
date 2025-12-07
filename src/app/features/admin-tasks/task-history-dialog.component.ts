@@ -2,17 +2,30 @@
  * Task history dialog component.
  */
 
-import { Component, inject, OnInit, signal, ChangeDetectionStrategy } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
-import { MatTableModule } from '@angular/material/table';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatIconModule } from '@angular/material/icon';
-import { MatChipsModule } from '@angular/material/chips';
-import { AdminTasksService, type TaskExecution } from '../../core/services/admin-tasks.service';
+import {
+  Component,
+  inject,
+  OnInit,
+  signal,
+  ChangeDetectionStrategy,
+} from "@angular/core";
+import { CommonModule } from "@angular/common";
+import {
+  MatDialogModule,
+  MatDialogRef,
+  MAT_DIALOG_DATA,
+} from "@angular/material/dialog";
+import { MatTableModule } from "@angular/material/table";
+import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
+import { MatIconModule } from "@angular/material/icon";
+import { MatChipsModule } from "@angular/material/chips";
+import {
+  AdminTasksService,
+  type TaskExecution,
+} from "../../core/services/admin-tasks.service";
 
 @Component({
-  selector: 'app-task-history-dialog',
+  selector: "app-task-history-dialog",
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
@@ -36,13 +49,17 @@ import { AdminTasksService, type TaskExecution } from '../../core/services/admin
         <table mat-table [dataSource]="history()" class="history-table">
           <ng-container matColumnDef="executedAt">
             <th mat-header-cell *matHeaderCellDef>Executed At</th>
-            <td mat-cell *matCellDef="let exec">{{ exec.executedAt | date: 'short' }}</td>
+            <td mat-cell *matCellDef="let exec">
+              {{ exec.executedAt | date: "short" }}
+            </td>
           </ng-container>
 
           <ng-container matColumnDef="status">
             <th mat-header-cell *matHeaderCellDef>Status</th>
             <td mat-cell *matCellDef="let exec">
-              <mat-chip [color]="exec.status === 'success' ? 'primary' : 'warn'">
+              <mat-chip
+                [color]="exec.status === 'success' ? 'primary' : 'warn'"
+              >
                 {{ exec.status }}
               </mat-chip>
             </td>
@@ -51,13 +68,15 @@ import { AdminTasksService, type TaskExecution } from '../../core/services/admin
           <ng-container matColumnDef="duration">
             <th mat-header-cell *matHeaderCellDef>Duration</th>
             <td mat-cell *matCellDef="let exec">
-              {{ exec.duration ? (exec.duration / 1000).toFixed(2) + 's' : '-' }}
+              {{
+                exec.duration ? (exec.duration / 1000).toFixed(2) + "s" : "-"
+              }}
             </td>
           </ng-container>
 
           <ng-container matColumnDef="error">
             <th mat-header-cell *matHeaderCellDef>Error</th>
-            <td mat-cell *matCellDef="let exec">{{ exec.error || '-' }}</td>
+            <td mat-cell *matCellDef="let exec">{{ exec.error || "-" }}</td>
           </ng-container>
 
           <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
@@ -97,7 +116,7 @@ export class TaskHistoryDialogComponent implements OnInit {
   error = signal<string | null>(null);
   history = signal<TaskExecution[]>([]);
 
-  displayedColumns: string[] = ['executedAt', 'status', 'duration', 'error'];
+  displayedColumns: string[] = ["executedAt", "status", "duration", "error"];
 
   ngOnInit() {
     this.loadHistory();
@@ -108,12 +127,12 @@ export class TaskHistoryDialogComponent implements OnInit {
     this.error.set(null);
 
     this.tasksService.getTaskHistory(this.data.taskId, 14).subscribe({
-      next: history => {
+      next: (history) => {
         this.history.set(history);
         this.loading.set(false);
       },
-      error: err => {
-        this.error.set(err.message || 'Failed to load history');
+      error: (err) => {
+        this.error.set(err.message || "Failed to load history");
         this.loading.set(false);
       },
     });

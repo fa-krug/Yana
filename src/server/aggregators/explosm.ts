@@ -5,31 +5,31 @@
  * Extracts only the main comic image from the #comic element.
  */
 
-import { BaseAggregator } from './base/aggregator';
-import type { RawArticle } from './base/types';
-import { fetchFeed, fetchArticleContent } from './base/fetch';
-import { standardizeContentFormat } from './base/process';
-import { sanitizeHtml } from './base/utils';
-import { logger } from '../utils/logger';
-import * as cheerio from 'cheerio';
+import { BaseAggregator } from "./base/aggregator";
+import type { RawArticle } from "./base/types";
+import { fetchFeed, fetchArticleContent } from "./base/fetch";
+import { standardizeContentFormat } from "./base/process";
+import { sanitizeHtml } from "./base/utils";
+import { logger } from "../utils/logger";
+import * as cheerio from "cheerio";
 
 export class ExplosmAggregator extends BaseAggregator {
-  override readonly id = 'explosm';
-  override readonly type: 'managed' | 'custom' | 'social' = 'managed';
-  override readonly name = 'Cyanide & Happiness';
-  override readonly url = 'https://explosm.net/rss.xml';
+  override readonly id = "explosm";
+  override readonly type: "managed" | "custom" | "social" = "managed";
+  override readonly name = "Cyanide & Happiness";
+  override readonly url = "https://explosm.net/rss.xml";
   override readonly description =
-    'Daily webcomic featuring dark humor and stick figure comedy from Explosm Entertainment.';
+    "Daily webcomic featuring dark humor and stick figure comedy from Explosm Entertainment.";
 
-  override readonly waitForSelector = '#comic';
+  override readonly waitForSelector = "#comic";
   override readonly selectorsToRemove = [
     'div[class*="MainComic__LinkContainer"]',
     'div[class*="MainComic__MetaContainer"]',
     'img[loading~="lazy"]',
-    'aside',
-    'script',
-    'style',
-    'iframe',
+    "aside",
+    "script",
+    "style",
+    "iframe",
   ];
 
   async aggregate(articleLimit?: number): Promise<RawArticle[]> {
@@ -39,13 +39,13 @@ export class ExplosmAggregator extends BaseAggregator {
         aggregator: this.id,
         feedId: this.feed?.id,
         articleLimit,
-        step: 'aggregate_start',
+        step: "aggregate_start",
       },
-      `Starting aggregation${articleLimit ? ` (limit: ${articleLimit})` : ''}`
+      `Starting aggregation${articleLimit ? ` (limit: ${articleLimit})` : ""}`,
     );
 
     if (!this.feed) {
-      throw new Error('Feed not initialized');
+      throw new Error("Feed not initialized");
     }
 
     const feedUrl = this.feed.identifier;
@@ -53,9 +53,9 @@ export class ExplosmAggregator extends BaseAggregator {
       {
         feedUrl,
         aggregator: this.id,
-        step: 'fetch_feed_start',
+        step: "fetch_feed_start",
       },
-      'Fetching RSS feed'
+      "Fetching RSS feed",
     );
 
     // Fetch RSS feed
@@ -69,9 +69,9 @@ export class ExplosmAggregator extends BaseAggregator {
         itemCount: feed.items?.length || 0,
         elapsed: feedFetchElapsed,
         aggregator: this.id,
-        step: 'fetch_feed_complete',
+        step: "fetch_feed_complete",
       },
-      'RSS feed fetched, processing items'
+      "RSS feed fetched, processing items",
     );
 
     const articles: RawArticle[] = [];
@@ -86,9 +86,9 @@ export class ExplosmAggregator extends BaseAggregator {
           limitedCount: itemsToProcess.length,
           articleLimit,
           aggregator: this.id,
-          step: 'apply_limit',
+          step: "apply_limit",
         },
-        `Limited to first ${articleLimit} item(s)`
+        `Limited to first ${articleLimit} item(s)`,
       );
     }
 
@@ -96,9 +96,9 @@ export class ExplosmAggregator extends BaseAggregator {
       {
         itemCount: itemsToProcess.length,
         aggregator: this.id,
-        step: 'process_items_start',
+        step: "process_items_start",
       },
-      `Processing ${itemsToProcess.length} feed items`
+      `Processing ${itemsToProcess.length} feed items`,
     );
 
     for (let i = 0; i < itemsToProcess.length; i++) {
@@ -113,16 +113,16 @@ export class ExplosmAggregator extends BaseAggregator {
             title: item.title,
             url: item.link,
             aggregator: this.id,
-            step: 'process_item_start',
+            step: "process_item_start",
           },
-          `Processing item ${i + 1}/${itemsToProcess.length}`
+          `Processing item ${i + 1}/${itemsToProcess.length}`,
         );
 
         const article: RawArticle = {
-          title: item.title || '',
-          url: item.link || '',
+          title: item.title || "",
+          url: item.link || "",
           published: item.pubDate ? new Date(item.pubDate) : new Date(),
-          summary: item.contentSnippet || item.content || '',
+          summary: item.contentSnippet || item.content || "",
           author: item.creator || item.author || undefined,
         };
 
@@ -133,9 +133,9 @@ export class ExplosmAggregator extends BaseAggregator {
               index: i + 1,
               title: article.title,
               aggregator: this.id,
-              step: 'item_skipped',
+              step: "item_skipped",
             },
-            'Item skipped by shouldSkipArticle'
+            "Item skipped by shouldSkipArticle",
           );
           continue;
         }
@@ -148,9 +148,9 @@ export class ExplosmAggregator extends BaseAggregator {
               url: article.url,
               title: article.title,
               aggregator: this.id,
-              step: 'skip_existing',
+              step: "skip_existing",
             },
-            'Skipping existing article (will not fetch content)'
+            "Skipping existing article (will not fetch content)",
           );
           continue;
         }
@@ -162,9 +162,9 @@ export class ExplosmAggregator extends BaseAggregator {
               index: i + 1,
               url: article.url,
               aggregator: this.id,
-              step: 'fetch_content_start',
+              step: "fetch_content_start",
             },
-            'Fetching article content'
+            "Fetching article content",
           );
 
           const contentFetchStart = Date.now();
@@ -180,9 +180,9 @@ export class ExplosmAggregator extends BaseAggregator {
               url: article.url,
               elapsed: contentFetchElapsed,
               aggregator: this.id,
-              step: 'fetch_content_complete',
+              step: "fetch_content_complete",
             },
-            'Article content fetched'
+            "Article content fetched",
           );
 
           // Extract content using custom logic
@@ -196,9 +196,9 @@ export class ExplosmAggregator extends BaseAggregator {
               url: article.url,
               elapsed: extractElapsed,
               aggregator: this.id,
-              step: 'extract_complete',
+              step: "extract_complete",
             },
-            'Content extracted'
+            "Content extracted",
           );
 
           // Sanitize HTML (remove scripts, rename attributes)
@@ -214,7 +214,7 @@ export class ExplosmAggregator extends BaseAggregator {
             article,
             article.url,
             generateTitleImage,
-            addSourceFooter
+            addSourceFooter,
           );
           const processElapsed = Date.now() - processStart;
 
@@ -224,9 +224,9 @@ export class ExplosmAggregator extends BaseAggregator {
               url: article.url,
               elapsed: processElapsed,
               aggregator: this.id,
-              step: 'process_complete',
+              step: "process_complete",
             },
-            'Article processed'
+            "Article processed",
           );
         } catch (error) {
           logger.warn(
@@ -235,12 +235,12 @@ export class ExplosmAggregator extends BaseAggregator {
               url: article.url,
               index: i + 1,
               aggregator: this.id,
-              step: 'fetch_content_failed',
+              step: "fetch_content_failed",
             },
-            'Failed to fetch article content, using summary'
+            "Failed to fetch article content, using summary",
           );
           // Continue with summary if available
-          article.content = article.summary || '';
+          article.content = article.summary || "";
         }
 
         const itemElapsed = Date.now() - itemStart;
@@ -250,9 +250,9 @@ export class ExplosmAggregator extends BaseAggregator {
             title: article.title,
             elapsed: itemElapsed,
             aggregator: this.id,
-            step: 'item_complete',
+            step: "item_complete",
           },
-          `Item ${i + 1} processed`
+          `Item ${i + 1} processed`,
         );
 
         articles.push(article);
@@ -263,9 +263,9 @@ export class ExplosmAggregator extends BaseAggregator {
             item,
             index: i + 1,
             aggregator: this.id,
-            step: 'item_error',
+            step: "item_error",
           },
-          'Error processing feed item'
+          "Error processing feed item",
         );
         continue;
       }
@@ -277,9 +277,9 @@ export class ExplosmAggregator extends BaseAggregator {
         aggregator: this.id,
         articleCount: articles.length,
         totalElapsed,
-        step: 'aggregate_complete',
+        step: "aggregate_complete",
       },
-      `Aggregation complete: ${articles.length} articles`
+      `Aggregation complete: ${articles.length} articles`,
     );
 
     return articles;
@@ -292,19 +292,19 @@ export class ExplosmAggregator extends BaseAggregator {
   private extractContent(html: string, url: string): string {
     try {
       const $ = cheerio.load(html);
-      const comic = $('#comic');
+      const comic = $("#comic");
 
       if (comic.length === 0) {
-        logger.warn({ url }, 'Could not find #comic element');
-        return '';
+        logger.warn({ url }, "Could not find #comic element");
+        return "";
       }
 
       // Create a new container for the extracted content
-      const content = $('<div></div>');
+      const content = $("<div></div>");
       let foundImage = false;
 
       // Find all images in the comic element
-      comic.find('img').each((_, img) => {
+      comic.find("img").each((_, img) => {
         // Skip if already found an image
         if (foundImage) {
           return;
@@ -312,29 +312,29 @@ export class ExplosmAggregator extends BaseAggregator {
 
         // Skip images inside noscript tags
         const $img = $(img);
-        if ($img.closest('noscript').length > 0) {
+        if ($img.closest("noscript").length > 0) {
           return;
         }
 
         // Get image source (try src first, then data-src)
-        const imgSrc = $img.attr('src') || $img.attr('data-src');
-        if (!imgSrc || imgSrc.startsWith('data:')) {
+        const imgSrc = $img.attr("src") || $img.attr("data-src");
+        if (!imgSrc || imgSrc.startsWith("data:")) {
           return;
         }
 
         // Only accept http/https URLs
-        if (!imgSrc.startsWith('http://') && !imgSrc.startsWith('https://')) {
+        if (!imgSrc.startsWith("http://") && !imgSrc.startsWith("https://")) {
           return;
         }
 
         // Create new image element
-        const newImg = $('<img>');
-        newImg.attr('src', imgSrc);
+        const newImg = $("<img>");
+        newImg.attr("src", imgSrc);
 
         // Copy alt text if available
-        const alt = $img.attr('alt');
+        const alt = $img.attr("alt");
         if (alt) {
-          newImg.attr('alt', alt);
+          newImg.attr("alt", alt);
         }
 
         content.append(newImg);
@@ -343,20 +343,23 @@ export class ExplosmAggregator extends BaseAggregator {
 
       // If no valid image was found, use the entire comic element as fallback
       if (!foundImage) {
-        logger.warn({ url }, 'No valid comic image found, using entire comic element');
-        return comic.html() || '';
+        logger.warn(
+          { url },
+          "No valid comic image found, using entire comic element",
+        );
+        return comic.html() || "";
       }
 
-      return content.html() || '';
+      return content.html() || "";
     } catch (error) {
       logger.error(
         {
           error: error instanceof Error ? error : new Error(String(error)),
           url,
         },
-        'Extraction failed'
+        "Extraction failed",
       );
-      return '';
+      return "";
     }
   }
 }

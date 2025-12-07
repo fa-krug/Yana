@@ -4,8 +4,8 @@
  * Provides YouTube video embedding proxy.
  */
 
-import { Router } from 'express';
-import type { Request, Response } from 'express';
+import { Router } from "express";
+import type { Request, Response } from "express";
 
 const router = Router();
 
@@ -13,7 +13,7 @@ const router = Router();
  * GET /api/youtube-proxy
  * YouTube video proxy page for embedding videos
  */
-router.get('/youtube-proxy', (req: Request, res: Response) => {
+router.get("/youtube-proxy", (req: Request, res: Response) => {
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -107,8 +107,8 @@ router.get('/youtube-proxy', (req: Request, res: Response) => {
 </body>
 </html>`;
 
-  res.setHeader('Content-Type', 'text/html');
-  res.setHeader('X-Frame-Options', 'ALLOWALL'); // Allow embedding
+  res.setHeader("Content-Type", "text/html");
+  res.setHeader("X-Frame-Options", "ALLOWALL"); // Allow embedding
   res.send(html);
 });
 

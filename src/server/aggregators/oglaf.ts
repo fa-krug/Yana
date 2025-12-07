@@ -5,13 +5,13 @@
  * Handles the age confirmation page automatically.
  */
 
-import { BaseAggregator } from './base/aggregator';
-import type { RawArticle } from './base/types';
-import { fetchFeed } from './base/fetch';
-import { ContentFetchError } from './base/exceptions';
-import { chromium, type Browser, type Page } from 'playwright';
-import * as cheerio from 'cheerio';
-import { logger } from '../utils/logger';
+import { BaseAggregator } from "./base/aggregator";
+import type { RawArticle } from "./base/types";
+import { fetchFeed } from "./base/fetch";
+import { ContentFetchError } from "./base/exceptions";
+import { chromium, type Browser, type Page } from "playwright";
+import * as cheerio from "cheerio";
+import { logger } from "../utils/logger";
 
 let browser: Browser | null = null;
 
@@ -30,8 +30,11 @@ async function getBrowser(): Promise<Browser> {
 /**
  * Fetch Oglaf comic content, handling the age confirmation page.
  */
-async function fetchOglafContent(url: string, timeout: number = 30000): Promise<string> {
-  logger.info({ url }, 'Fetching Oglaf content');
+async function fetchOglafContent(
+  url: string,
+  timeout: number = 30000,
+): Promise<string> {
+  logger.info({ url }, "Fetching Oglaf content");
 
   const browserInstance = await getBrowser();
   const page: Page = await browserInstance.newPage();
@@ -40,19 +43,24 @@ async function fetchOglafContent(url: string, timeout: number = 30000): Promise<
     await page.setDefaultTimeout(timeout);
 
     // Navigate to URL
-    await page.goto(url, { waitUntil: 'networkidle', timeout });
+    await page.goto(url, { waitUntil: "networkidle", timeout });
 
     // Check if we're on a confirmation page and click the confirm button
     try {
-      const confirmButton = await page.waitForSelector('#confirm', { timeout: 5000 });
+      const confirmButton = await page.waitForSelector("#confirm", {
+        timeout: 5000,
+      });
       if (confirmButton) {
-        logger.debug('Found confirmation page, clicking confirm button');
+        logger.debug("Found confirmation page, clicking confirm button");
         await confirmButton.click();
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState("networkidle");
       }
     } catch (error) {
       // No confirm button or already confirmed
-      logger.debug({ error }, 'No age confirmation needed or already confirmed');
+      logger.debug(
+        { error },
+        "No age confirmation needed or already confirmed",
+      );
     }
 
     // Get the page content
@@ -64,12 +72,12 @@ async function fetchOglafContent(url: string, timeout: number = 30000): Promise<
         error: error instanceof Error ? error : new Error(String(error)),
         url,
       },
-      'Error fetching Oglaf content'
+      "Error fetching Oglaf content",
     );
     throw new ContentFetchError(
       `Failed to fetch Oglaf content from ${url}: ${error instanceof Error ? error.message : String(error)}`,
       undefined,
-      error instanceof Error ? error : undefined
+      error instanceof Error ? error : undefined,
     );
   } finally {
     await page.close();
@@ -82,19 +90,19 @@ async function fetchOglafContent(url: string, timeout: number = 30000): Promise<
 function extractComicImage(html: string, articleUrl: string): string {
   try {
     const $ = cheerio.load(html);
-    let comicImg = $('#strip');
+    let comicImg = $("#strip");
 
     if (comicImg.length === 0) {
-      comicImg = $('.content img, #content img, .comic img').first();
+      comicImg = $(".content img, #content img, .comic img").first();
     }
 
     if (comicImg.length > 0) {
-      const imgSrc = comicImg.attr('src') || '';
-      const altText = comicImg.attr('alt') || 'Oglaf comic';
+      const imgSrc = comicImg.attr("src") || "";
+      const altText = comicImg.attr("alt") || "Oglaf comic";
       return `<img src="${imgSrc}" alt="${altText}">`;
     }
 
-    logger.warn({ url: articleUrl }, 'Could not find comic image');
+    logger.warn({ url: articleUrl }, "Could not find comic image");
     return `<p>Could not extract comic. <a href="${articleUrl}">View on Oglaf</a></p>`;
   } catch (error) {
     logger.error(
@@ -102,19 +110,19 @@ function extractComicImage(html: string, articleUrl: string): string {
         error: error instanceof Error ? error : new Error(String(error)),
         url: articleUrl,
       },
-      'Extraction failed'
+      "Extraction failed",
     );
     return `<p>Could not extract comic. <a href="${articleUrl}">View on Oglaf</a></p>`;
   }
 }
 
 export class OglafAggregator extends BaseAggregator {
-  override readonly id: string = 'oglaf';
-  override readonly type: 'managed' | 'custom' | 'social' = 'managed';
-  override readonly name: string = 'Oglaf';
-  override readonly url: string = 'https://www.oglaf.com/feeds/rss/';
+  override readonly id: string = "oglaf";
+  override readonly type: "managed" | "custom" | "social" = "managed";
+  override readonly name: string = "Oglaf";
+  override readonly url: string = "https://www.oglaf.com/feeds/rss/";
   override readonly description: string =
-    'Oglaf - Adult webcomic featuring fantasy, humor, and occasional NSFW content.';
+    "Oglaf - Adult webcomic featuring fantasy, humor, and occasional NSFW content.";
 
   async aggregate(articleLimit?: number): Promise<RawArticle[]> {
     const aggregateStart = Date.now();
@@ -123,13 +131,13 @@ export class OglafAggregator extends BaseAggregator {
         aggregator: this.id,
         feedId: this.feed?.id,
         articleLimit,
-        step: 'aggregate_start',
+        step: "aggregate_start",
       },
-      `Starting aggregation${articleLimit ? ` (limit: ${articleLimit})` : ''}`
+      `Starting aggregation${articleLimit ? ` (limit: ${articleLimit})` : ""}`,
     );
 
     if (!this.feed) {
-      throw new Error('Feed not initialized');
+      throw new Error("Feed not initialized");
     }
 
     const feedUrl = this.feed.identifier;
@@ -137,9 +145,9 @@ export class OglafAggregator extends BaseAggregator {
       {
         feedUrl,
         aggregator: this.id,
-        step: 'fetch_feed_start',
+        step: "fetch_feed_start",
       },
-      'Fetching RSS feed'
+      "Fetching RSS feed",
     );
 
     // Fetch RSS feed
@@ -153,9 +161,9 @@ export class OglafAggregator extends BaseAggregator {
         itemCount: feed.items?.length || 0,
         elapsed: feedFetchElapsed,
         aggregator: this.id,
-        step: 'fetch_feed_complete',
+        step: "fetch_feed_complete",
       },
-      'RSS feed fetched, processing items'
+      "RSS feed fetched, processing items",
     );
 
     const articles: RawArticle[] = [];
@@ -170,9 +178,9 @@ export class OglafAggregator extends BaseAggregator {
           limitedCount: itemsToProcess.length,
           articleLimit,
           aggregator: this.id,
-          step: 'apply_limit',
+          step: "apply_limit",
         },
-        `Limited to first ${articleLimit} item(s)`
+        `Limited to first ${articleLimit} item(s)`,
       );
     }
 
@@ -180,9 +188,9 @@ export class OglafAggregator extends BaseAggregator {
       {
         itemCount: itemsToProcess.length,
         aggregator: this.id,
-        step: 'process_items_start',
+        step: "process_items_start",
       },
-      `Processing ${itemsToProcess.length} feed items`
+      `Processing ${itemsToProcess.length} feed items`,
     );
 
     for (let i = 0; i < itemsToProcess.length; i++) {
@@ -197,16 +205,16 @@ export class OglafAggregator extends BaseAggregator {
             title: item.title,
             url: item.link,
             aggregator: this.id,
-            step: 'process_item_start',
+            step: "process_item_start",
           },
-          `Processing item ${i + 1}/${itemsToProcess.length}`
+          `Processing item ${i + 1}/${itemsToProcess.length}`,
         );
 
         const article: RawArticle = {
-          title: item.title || '',
-          url: item.link || '',
+          title: item.title || "",
+          url: item.link || "",
           published: item.pubDate ? new Date(item.pubDate) : new Date(),
-          summary: item.contentSnippet || item.content || '',
+          summary: item.contentSnippet || item.content || "",
           author: item.creator || item.author || undefined,
         };
 
@@ -217,9 +225,9 @@ export class OglafAggregator extends BaseAggregator {
               index: i + 1,
               title: article.title,
               aggregator: this.id,
-              step: 'item_skipped',
+              step: "item_skipped",
             },
-            'Item skipped by shouldSkipArticle'
+            "Item skipped by shouldSkipArticle",
           );
           continue;
         }
@@ -232,9 +240,9 @@ export class OglafAggregator extends BaseAggregator {
               url: article.url,
               title: article.title,
               aggregator: this.id,
-              step: 'skip_existing',
+              step: "skip_existing",
             },
-            'Skipping existing article (will not fetch content)'
+            "Skipping existing article (will not fetch content)",
           );
           continue;
         }
@@ -246,9 +254,9 @@ export class OglafAggregator extends BaseAggregator {
               index: i + 1,
               url: article.url,
               aggregator: this.id,
-              step: 'fetch_content_start',
+              step: "fetch_content_start",
             },
-            'Fetching article content'
+            "Fetching article content",
           );
 
           const contentFetchStart = Date.now();
@@ -261,9 +269,9 @@ export class OglafAggregator extends BaseAggregator {
               url: article.url,
               elapsed: contentFetchElapsed,
               aggregator: this.id,
-              step: 'fetch_content_complete',
+              step: "fetch_content_complete",
             },
-            'Article content fetched'
+            "Article content fetched",
           );
 
           // Extract comic image
@@ -277,9 +285,9 @@ export class OglafAggregator extends BaseAggregator {
               url: article.url,
               elapsed: extractElapsed,
               aggregator: this.id,
-              step: 'extract_complete',
+              step: "extract_complete",
             },
-            'Comic image extracted'
+            "Comic image extracted",
           );
 
           article.content = comicImage;
@@ -290,12 +298,12 @@ export class OglafAggregator extends BaseAggregator {
               url: article.url,
               index: i + 1,
               aggregator: this.id,
-              step: 'fetch_content_failed',
+              step: "fetch_content_failed",
             },
-            'Failed to fetch article content, using summary'
+            "Failed to fetch article content, using summary",
           );
           // Continue with summary if available
-          article.content = article.summary || '';
+          article.content = article.summary || "";
         }
 
         const itemElapsed = Date.now() - itemStart;
@@ -305,9 +313,9 @@ export class OglafAggregator extends BaseAggregator {
             title: article.title,
             elapsed: itemElapsed,
             aggregator: this.id,
-            step: 'item_complete',
+            step: "item_complete",
           },
-          `Item ${i + 1} processed`
+          `Item ${i + 1} processed`,
         );
 
         articles.push(article);
@@ -318,9 +326,9 @@ export class OglafAggregator extends BaseAggregator {
             item,
             index: i + 1,
             aggregator: this.id,
-            step: 'item_error',
+            step: "item_error",
           },
-          'Error processing feed item'
+          "Error processing feed item",
         );
         continue;
       }
@@ -332,9 +340,9 @@ export class OglafAggregator extends BaseAggregator {
         aggregator: this.id,
         articleCount: articles.length,
         totalElapsed,
-        step: 'aggregate_complete',
+        step: "aggregate_complete",
       },
-      `Aggregation complete: ${articles.length} articles`
+      `Aggregation complete: ${articles.length} articles`,
     );
 
     return articles;

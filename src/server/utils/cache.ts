@@ -71,11 +71,11 @@ class SimpleCache {
 export const cache = new SimpleCache();
 
 // Cleanup expired entries every 5 minutes
-if (typeof setInterval !== 'undefined') {
+if (typeof setInterval !== "undefined") {
   setInterval(
     () => {
       cache.cleanup();
     },
-    5 * 60 * 1000
+    5 * 60 * 1000,
   );
 }

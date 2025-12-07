@@ -13,7 +13,8 @@
     "db:migrate": "tsx src/server/db/migrate.ts",
     "db:studio": "drizzle-kit studio",
     "db:migrate-data:dry-run": "tsx src/server/scripts/migrateData.ts --dry-run",
-    "icons:generate": "tsx scripts/generate-icons.ts"
+    "icons:generate": "tsx scripts/generate-icons.ts",
+    "prepare": "husky"
   },
   "private": true,
   "packageManager": "npm@11.6.4",
@@ -75,6 +76,7 @@
     "@vitest/browser-playwright": "^4.0.15",
     "@vitest/coverage-v8": "^4.0.15",
     "concurrently": "^9.2.1",
+    "husky": "^9.1.7",
     "jsdom": "^27.2.0",
     "nodemon": "^3.1.11",
     "prettier": "^3.7.4",

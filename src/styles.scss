@@ -1,6 +1,6 @@
 /* You can add global styles to this file, and also import other style files */
-@use 'sass:map';
-@use '@angular/material' as mat;
+@use "sass:map";
+@use "@angular/material" as mat;
 
 @include mat.core();
 
@@ -91,7 +91,12 @@ $dark-mode-primary-palette: (
   ),
 );
 
-$yana-dark-primary: mat.m2-define-palette($dark-mode-primary-palette, 200, 100, 300);
+$yana-dark-primary: mat.m2-define-palette(
+  $dark-mode-primary-palette,
+  200,
+  100,
+  300
+);
 
 // Light theme
 $yana-light-theme: mat.m2-define-light-theme(
@@ -133,7 +138,7 @@ html {
   margin: 0;
   padding: 0;
   overflow-x: hidden;
-  font-family: Roboto, 'Helvetica Neue', sans-serif;
+  font-family: Roboto, "Helvetica Neue", sans-serif;
   width: 100%;
   max-width: 100vw;
   box-sizing: border-box;
@@ -146,7 +151,7 @@ body {
   padding: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  font-family: Roboto, 'Helvetica Neue', sans-serif;
+  font-family: Roboto, "Helvetica Neue", sans-serif;
   width: 100%;
   max-width: 100vw;
   box-sizing: border-box;
@@ -236,7 +241,12 @@ html.dark-theme app-root {
   // Override Material form field colors
   --mdc-outlined-text-field-outline-color: rgba(33, 150, 243, 0.8) !important;
   --mdc-outlined-text-field-focus-outline-color: #2196f3 !important;
-  --mdc-outlined-text-field-label-text-color: rgba(33, 150, 243, 0.9) !important;
+  --mdc-outlined-text-field-label-text-color: rgba(
+    33,
+    150,
+    243,
+    0.9
+  ) !important;
   --mdc-outlined-text-field-focus-label-text-color: #2196f3 !important;
 
   // Override Material filled text field colors
@@ -411,55 +421,55 @@ body:not(.dark-theme) {
   .mat-mdc-unelevated-button[color="primary"]:not(:disabled),
   button[mat-raised-button][color="primary"]:not(:disabled) {
     --mdc-filled-button-label-text-color: white !important;
-    
+
     .mdc-button__label,
     .mat-mdc-button-label {
       color: white !important;
     }
-    
+
     span.mdc-button__label {
       color: white !important;
     }
   }
-  
+
   // All enabled filled buttons (not just primary)
   button.mat-mdc-raised-button:not(:disabled):not([disabled]),
   button.mat-mdc-unelevated-button:not(:disabled):not([disabled]),
   .mat-mdc-raised-button:not(:disabled):not([disabled]),
   .mat-mdc-unelevated-button:not(:disabled):not([disabled]) {
     --mdc-filled-button-label-text-color: white !important;
-    
+
     .mdc-button__label,
     .mat-mdc-button-label,
     span.mdc-button__label {
       color: white !important;
     }
   }
-  
+
   // Outlined buttons - white text when enabled
   button.mat-mdc-outlined-button:not(:disabled):not([disabled]),
   .mat-mdc-outlined-button:not(:disabled):not([disabled]) {
     --mdc-outlined-button-label-text-color: white !important;
-    
+
     .mdc-button__label,
     .mat-mdc-button-label,
     span.mdc-button__label {
       color: white !important;
     }
   }
-  
+
   // Text buttons - white text when enabled
   button.mat-mdc-button:not(:disabled):not([disabled]),
   .mat-mdc-button:not(:disabled):not([disabled]) {
     --mdc-text-button-label-text-color: white !important;
-    
+
     .mdc-button__label,
     .mat-mdc-button-label,
     span.mdc-button__label {
       color: white !important;
     }
   }
-  
+
   // Universal selector for all Material button labels in light mode
   .mdc-button__label:not(:disabled),
   .mat-mdc-button-label:not(:disabled),
@@ -467,7 +477,7 @@ body:not(.dark-theme) {
   .mat-mdc-button-label span {
     color: white !important;
   }
-  
+
   // Target all enabled buttons more broadly - including nested content
   button:not(:disabled):not([disabled]) {
     .mdc-button__label,
@@ -478,7 +488,7 @@ body:not(.dark-theme) {
       color: white !important;
     }
   }
-  
+
   // Target button action/content elements directly (similar to chip structure)
   .mdc-button:not(:disabled):not([disabled]),
   .mat-mdc-button:not(:disabled):not([disabled]) {
@@ -487,14 +497,14 @@ body:not(.dark-theme) {
       color: white !important;
     }
   }
-  
+
   // Specifically target raised/unelevated buttons with any content
   button[mat-raised-button]:not(:disabled):not([disabled]),
   button.mat-mdc-raised-button:not(:disabled):not([disabled]),
   .mat-mdc-raised-button:not(:disabled):not([disabled]),
   button[mat-raised-button][color="primary"]:not(:disabled):not([disabled]) {
     color: white !important;
-    
+
     .mdc-button__label,
     .mat-mdc-button-label,
     span:not(mat-icon),
@@ -502,13 +512,13 @@ body:not(.dark-theme) {
       color: white !important;
     }
   }
-  
+
   // Chip text - white ONLY for status-enabled chips in light mode (NOT gray chips, NOT regular primary chips)
   // Only target chips with status-enabled class, exclude all other primary chips and gray/disabled chips
   mat-chip.mat-mdc-chip.status-enabled:not([disabled]):not(.status-disabled),
   .mat-mdc-chip.status-enabled:not([disabled]):not(.status-disabled) {
     color: white !important;
-    
+
     .mat-mdc-chip-action,
     .mdc-evolution-chip__action,
     .mdc-evolution-chip__cell,
@@ -516,17 +526,22 @@ body:not(.dark-theme) {
       color: white !important;
     }
   }
-  
+
   // Chip action elements - only for status-enabled chips (not gray, not regular primary)
-  mat-chip.status-enabled:not(.status-disabled):not([disabled]) .mat-mdc-chip-action,
-  mat-chip.status-enabled:not(.status-disabled):not([disabled]) .mdc-evolution-chip__action,
-  mat-chip.status-enabled:not(.status-disabled):not([disabled]) .mdc-evolution-chip__cell {
+  mat-chip.status-enabled:not(.status-disabled):not([disabled])
+    .mat-mdc-chip-action,
+  mat-chip.status-enabled:not(.status-disabled):not([disabled])
+    .mdc-evolution-chip__action,
+  mat-chip.status-enabled:not(.status-disabled):not([disabled])
+    .mdc-evolution-chip__cell {
     color: white !important;
   }
 }
 
 // Additional high-specificity overrides for primary buttons in light mode
-:not(.dark-theme) button.mat-mdc-raised-button[color="primary"] .mdc-button__label,
+:not(.dark-theme)
+  button.mat-mdc-raised-button[color="primary"]
+  .mdc-button__label,
 :not(.dark-theme) button[mat-raised-button][color="primary"] .mdc-button__label,
 :not(.dark-theme) .mat-mdc-raised-button[color="primary"] .mdc-button__label {
   color: white !important;
@@ -712,13 +727,17 @@ body:not(.dark-theme) {
 
 // Card gradient bar (top accent)
 .card-gradient-bar::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   height: 4px;
-  background: linear-gradient(90deg, var(--mat-sys-primary), var(--mat-sys-primary-container));
+  background: linear-gradient(
+    90deg,
+    var(--mat-sys-primary),
+    var(--mat-sys-primary-container)
+  );
   opacity: 0;
   transition: opacity 0.3s ease;
 }
@@ -742,7 +761,7 @@ body:not(.dark-theme) {
 
 // Ensure images in article content fit within containers without overflow
 .article-content img,
-[class*='article-content'] img {
+[class*="article-content"] img {
   max-width: 100% !important;
   width: 100% !important;
   height: auto !important;

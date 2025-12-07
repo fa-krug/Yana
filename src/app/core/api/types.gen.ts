@@ -1020,7 +1020,7 @@ export type ApiV1EndpointsAuthAuthStatusData = {
   body?: never;
   path?: never;
   query?: never;
-  url: '/api/v1/auth/status/';
+  url: "/api/v1/auth/status/";
 };
 
 export type ApiV1EndpointsAuthAuthStatusResponses = {
@@ -1037,7 +1037,7 @@ export type ApiV1EndpointsAuthLoginUserData = {
   body: LoginRequest;
   path?: never;
   query?: never;
-  url: '/api/v1/auth/login/';
+  url: "/api/v1/auth/login/";
 };
 
 export type ApiV1EndpointsAuthLoginUserResponses = {
@@ -1054,7 +1054,7 @@ export type ApiV1EndpointsAuthLogoutUserData = {
   body?: never;
   path?: never;
   query?: never;
-  url: '/api/v1/auth/logout/';
+  url: "/api/v1/auth/logout/";
 };
 
 export type ApiV1EndpointsAuthLogoutUserResponses = {
@@ -1085,7 +1085,7 @@ export type ApiV1EndpointsFeedsListFeedsData = {
      */
     page?: number;
   };
-  url: '/api/v1/feeds/';
+  url: "/api/v1/feeds/";
 };
 
 export type ApiV1EndpointsFeedsListFeedsResponses = {
@@ -1102,7 +1102,7 @@ export type ApiV1EndpointsFeedsCreateFeedData = {
   body: FeedCreateRequest;
   path?: never;
   query?: never;
-  url: '/api/v1/feeds/';
+  url: "/api/v1/feeds/";
 };
 
 export type ApiV1EndpointsFeedsCreateFeedResponses = {
@@ -1124,7 +1124,7 @@ export type ApiV1EndpointsFeedsDeleteFeedData = {
     feed_id: number;
   };
   query?: never;
-  url: '/api/v1/feeds/{feed_id}/';
+  url: "/api/v1/feeds/{feed_id}/";
 };
 
 export type ApiV1EndpointsFeedsDeleteFeedResponses = {
@@ -1146,7 +1146,7 @@ export type ApiV1EndpointsFeedsGetFeedData = {
     feed_id: number;
   };
   query?: never;
-  url: '/api/v1/feeds/{feed_id}/';
+  url: "/api/v1/feeds/{feed_id}/";
 };
 
 export type ApiV1EndpointsFeedsGetFeedResponses = {
@@ -1168,7 +1168,7 @@ export type ApiV1EndpointsFeedsUpdateFeedData = {
     feed_id: number;
   };
   query?: never;
-  url: '/api/v1/feeds/{feed_id}/';
+  url: "/api/v1/feeds/{feed_id}/";
 };
 
 export type ApiV1EndpointsFeedsUpdateFeedResponses = {
@@ -1195,7 +1195,7 @@ export type ApiV1EndpointsFeedsReloadFeedData = {
      */
     force?: boolean;
   };
-  url: '/api/v1/feeds/{feed_id}/reload/';
+  url: "/api/v1/feeds/{feed_id}/reload/";
 };
 
 export type ApiV1EndpointsFeedsReloadFeedResponses = {
@@ -1217,7 +1217,7 @@ export type ApiV1EndpointsFeedsClearFeedData = {
     feed_id: number;
   };
   query?: never;
-  url: '/api/v1/feeds/{feed_id}/clear/';
+  url: "/api/v1/feeds/{feed_id}/clear/";
 };
 
 export type ApiV1EndpointsFeedsClearFeedResponses = {
@@ -1252,7 +1252,7 @@ export type ApiV1EndpointsArticlesListArticlesData = {
      */
     page?: number;
   };
-  url: '/api/v1/feeds/{feed_id}/articles/';
+  url: "/api/v1/feeds/{feed_id}/articles/";
 };
 
 export type ApiV1EndpointsArticlesListArticlesResponses = {
@@ -1274,7 +1274,7 @@ export type ApiV1EndpointsArticlesDeleteArticleData = {
     article_id: number;
   };
   query?: never;
-  url: '/api/v1/articles/{article_id}/';
+  url: "/api/v1/articles/{article_id}/";
 };
 
 export type ApiV1EndpointsArticlesDeleteArticleResponses = {
@@ -1305,7 +1305,7 @@ export type ApiV1EndpointsArticlesGetArticleData = {
      */
     unread_only?: boolean;
   };
-  url: '/api/v1/articles/{article_id}/';
+  url: "/api/v1/articles/{article_id}/";
 };
 
 export type ApiV1EndpointsArticlesGetArticleResponses = {
@@ -1327,7 +1327,7 @@ export type ApiV1EndpointsArticlesReloadArticleData = {
     article_id: number;
   };
   query?: never;
-  url: '/api/v1/articles/{article_id}/reload/';
+  url: "/api/v1/articles/{article_id}/reload/";
 };
 
 export type ApiV1EndpointsArticlesReloadArticleResponses = {
@@ -1344,7 +1344,7 @@ export type ApiV1EndpointsArticlesMarkArticlesReadData = {
   body: MarkReadRequest;
   path?: never;
   query?: never;
-  url: '/api/v1/articles/mark-read/';
+  url: "/api/v1/articles/mark-read/";
 };
 
 export type ApiV1EndpointsArticlesMarkArticlesReadResponses = {
@@ -1361,7 +1361,7 @@ export type ApiV1EndpointsArticlesMarkArticlesStarredData = {
   body: MarkStarredRequest;
   path?: never;
   query?: never;
-  url: '/api/v1/articles/mark-starred/';
+  url: "/api/v1/articles/mark-starred/";
 };
 
 export type ApiV1EndpointsArticlesMarkArticlesStarredResponses = {
@@ -1387,7 +1387,7 @@ export type ApiV1EndpointsAggregatorsListAggregatorsData = {
      */
     type?: string;
   };
-  url: '/api/v1/aggregators/';
+  url: "/api/v1/aggregators/";
 };
 
 export type ApiV1EndpointsAggregatorsListAggregatorsResponses = {
@@ -1406,7 +1406,7 @@ export type ApiV1EndpointsAggregatorsListAggregatorsGroupedData = {
   body?: never;
   path?: never;
   query?: never;
-  url: '/api/v1/aggregators/grouped/';
+  url: "/api/v1/aggregators/grouped/";
 };
 
 export type ApiV1EndpointsAggregatorsListAggregatorsGroupedResponses = {
@@ -1423,7 +1423,7 @@ export type ApiV1EndpointsStatisticsGetStatisticsData = {
   body?: never;
   path?: never;
   query?: never;
-  url: '/api/v1/statistics/';
+  url: "/api/v1/statistics/";
 };
 
 export type ApiV1EndpointsStatisticsGetStatisticsResponses = {

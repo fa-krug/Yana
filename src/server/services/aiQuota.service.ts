@@ -4,11 +4,11 @@
  * Tracks AI usage per user with daily and monthly limits.
  */
 
-import { eq } from 'drizzle-orm';
-import { db, userAIQuotas } from '../db';
-import { AIQuotaExceededError } from './ai.service.interface';
-import { logger } from '../utils/logger';
-import type { UserAIQuota } from '../db/types';
+import { eq } from "drizzle-orm";
+import { db, userAIQuotas } from "../db";
+import { AIQuotaExceededError } from "./ai.service.interface";
+import { logger } from "../utils/logger";
+import type { UserAIQuota } from "../db/types";
 
 /**
  * Get user AI quota.
@@ -36,7 +36,7 @@ export async function getUserAIQuota(userId: number): Promise<UserAIQuota> {
  */
 async function createDefaultQuota(userId: number): Promise<UserAIQuota> {
   // Get user settings for default limits
-  const { getUserSettings } = await import('./userSettings.service');
+  const { getUserSettings } = await import("./userSettings.service");
   const settings = await getUserSettings(userId);
 
   const now = new Date();
@@ -69,7 +69,7 @@ async function createDefaultQuota(userId: number): Promise<UserAIQuota> {
     })
     .returning();
 
-  logger.info({ userId }, 'Default AI quota created');
+  logger.info({ userId }, "Default AI quota created");
   return quota;
 }
 
@@ -120,7 +120,9 @@ async function resetQuotaIfNeeded(quota: UserAIQuota): Promise<void> {
  */
 export async function canUseAI(userId: number): Promise<boolean> {
   const quota = await getUserAIQuota(userId);
-  return quota.dailyUsed < quota.dailyLimit && quota.monthlyUsed < quota.monthlyLimit;
+  return (
+    quota.dailyUsed < quota.dailyLimit && quota.monthlyUsed < quota.monthlyLimit
+  );
 }
 
 /**
@@ -131,11 +133,11 @@ export async function incrementAIUsage(userId: number): Promise<void> {
 
   // Check quota
   if (quota.dailyUsed >= quota.dailyLimit) {
-    throw new AIQuotaExceededError('Daily AI quota exceeded');
+    throw new AIQuotaExceededError("Daily AI quota exceeded");
   }
 
   if (quota.monthlyUsed >= quota.monthlyLimit) {
-    throw new AIQuotaExceededError('Monthly AI quota exceeded');
+    throw new AIQuotaExceededError("Monthly AI quota exceeded");
   }
 
   // Increment usage
@@ -149,7 +151,11 @@ export async function incrementAIUsage(userId: number): Promise<void> {
     .where(eq(userAIQuotas.id, quota.id));
 
   logger.info(
-    { userId, dailyUsed: quota.dailyUsed + 1, monthlyUsed: quota.monthlyUsed + 1 },
-    'AI usage incremented'
+    {
+      userId,
+      dailyUsed: quota.dailyUsed + 1,
+      monthlyUsed: quota.monthlyUsed + 1,
+    },
+    "AI usage incremented",
   );
 }

@@ -3,9 +3,9 @@
  * Reads CSRF token from cookies and includes it in request headers.
  */
 
-import { HttpInterceptorFn } from '@angular/common/http';
-import { PLATFORM_ID, inject } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
+import { HttpInterceptorFn } from "@angular/common/http";
+import { PLATFORM_ID, inject } from "@angular/core";
+import { isPlatformBrowser } from "@angular/common";
 
 /**
  * Get CSRF token from cookies.
@@ -14,15 +14,15 @@ import { isPlatformBrowser } from '@angular/common';
  */
 function getCsrfToken(): string | null {
   // Only access document.cookie in browser
-  if (typeof document === 'undefined' || !document.cookie) {
+  if (typeof document === "undefined" || !document.cookie) {
     return null;
   }
 
-  const name = 'csrftoken';
-  const cookies = document.cookie.split(';');
+  const name = "csrftoken";
+  const cookies = document.cookie.split(";");
 
   for (let cookie of cookies) {
-    const [key, value] = cookie.trim().split('=');
+    const [key, value] = cookie.trim().split("=");
     if (key === name) {
       return decodeURIComponent(value);
     }
@@ -38,7 +38,7 @@ export const csrfInterceptor: HttpInterceptorFn = (req, next) => {
   });
 
   // Only add CSRF token for state-changing methods
-  const stateChangingMethods = ['POST', 'PUT', 'PATCH', 'DELETE'];
+  const stateChangingMethods = ["POST", "PUT", "PATCH", "DELETE"];
 
   if (stateChangingMethods.includes(req.method)) {
     const csrfToken = getCsrfToken();
@@ -47,13 +47,13 @@ export const csrfInterceptor: HttpInterceptorFn = (req, next) => {
       // Clone the request and add CSRF token header
       req = req.clone({
         setHeaders: {
-          'X-CSRFToken': csrfToken,
+          "X-CSRFToken": csrfToken,
         },
       });
     } else {
       // Log warning if CSRF token is missing for state-changing requests
       // This helps debug CSRF issues
-      console.warn('CSRF token not found in cookies for', req.method, req.url);
+      console.warn("CSRF token not found in cookies for", req.method, req.url);
     }
   }
 

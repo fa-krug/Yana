@@ -4,20 +4,23 @@
  * Handles user profile and settings endpoints.
  */
 
-import { Router } from 'express';
-import type { Response } from 'express';
-import { asyncHandler } from '../middleware/errorHandler';
-import { requireAuth, loadUser } from '../middleware/auth';
-import { validateBody } from '../utils/validation';
+import { Router } from "express";
+import type { Response } from "express";
+import { asyncHandler } from "../middleware/errorHandler";
+import { requireAuth, loadUser } from "../middleware/auth";
+import { validateBody } from "../utils/validation";
 import {
   updateUserSettingsSchema,
   updateProfileSchema,
   updatePasswordSchema,
-} from '../validation/schemas';
-import { getUserSettings, updateUserSettings } from '../services/userSettings.service';
-import { getUserById, updateUserProfile } from '../services/user.service';
-import { AuthenticationError } from '../errors';
-import type { AuthenticatedRequest } from '../middleware/auth';
+} from "../validation/schemas";
+import {
+  getUserSettings,
+  updateUserSettings,
+} from "../services/userSettings.service";
+import { getUserById, updateUserProfile } from "../services/user.service";
+import { AuthenticationError } from "../errors";
+import type { AuthenticatedRequest } from "../middleware/auth";
 
 const router = Router();
 
@@ -30,20 +33,20 @@ router.use(requireAuth);
  * Get user profile
  */
 router.get(
-  '/profile',
+  "/profile",
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     if (!req.user) {
-      throw new AuthenticationError('User not found in request');
+      throw new AuthenticationError("User not found in request");
     }
 
     const user = await getUserById(req.user.id);
     res.json({
       username: user.username,
-      firstName: user.firstName || '',
-      lastName: user.lastName || '',
+      firstName: user.firstName || "",
+      lastName: user.lastName || "",
       email: user.email,
     });
-  })
+  }),
 );
 
 /**
@@ -51,19 +54,19 @@ router.get(
  * Update user profile
  */
 router.put(
-  '/profile',
+  "/profile",
   validateBody(updateProfileSchema),
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     if (!req.user) {
-      throw new AuthenticationError('User not found in request');
+      throw new AuthenticationError("User not found in request");
     }
 
     const user = await updateUserProfile(req.user.id, req.body);
     res.json({
       success: true,
-      message: 'Profile updated successfully',
+      message: "Profile updated successfully",
     });
-  })
+  }),
 );
 
 /**
@@ -71,15 +74,15 @@ router.put(
  * Get user settings
  */
 router.get(
-  '/settings',
+  "/settings",
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     if (!req.user) {
-      throw new AuthenticationError('User not found in request');
+      throw new AuthenticationError("User not found in request");
     }
 
     const settings = await getUserSettings(req.user.id);
     res.json(settings);
-  })
+  }),
 );
 
 /**
@@ -87,16 +90,16 @@ router.get(
  * Update user settings
  */
 router.put(
-  '/settings',
+  "/settings",
   validateBody(updateUserSettingsSchema),
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     if (!req.user) {
-      throw new AuthenticationError('User not found in request');
+      throw new AuthenticationError("User not found in request");
     }
 
     const settings = await updateUserSettings(req.user.id, req.body);
     res.json(settings);
-  })
+  }),
 );
 
 /**
@@ -104,10 +107,10 @@ router.put(
  * Get Reddit settings
  */
 router.get(
-  '/settings/reddit',
+  "/settings/reddit",
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     if (!req.user) {
-      throw new AuthenticationError('User not found in request');
+      throw new AuthenticationError("User not found in request");
     }
 
     const settings = await getUserSettings(req.user.id);
@@ -117,7 +120,7 @@ router.get(
       clientSecret: settings.redditClientSecret,
       userAgent: settings.redditUserAgent,
     });
-  })
+  }),
 );
 
 /**
@@ -125,26 +128,26 @@ router.get(
  * Update Reddit settings
  */
 router.put(
-  '/settings/reddit',
+  "/settings/reddit",
   validateBody(
     updateUserSettingsSchema.pick({
       redditEnabled: true,
       redditClientId: true,
       redditClientSecret: true,
       redditUserAgent: true,
-    })
+    }),
   ),
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     if (!req.user) {
-      throw new AuthenticationError('User not found in request');
+      throw new AuthenticationError("User not found in request");
     }
 
     await updateUserSettings(req.user.id, req.body);
     res.json({
       success: true,
-      message: 'Reddit settings updated successfully',
+      message: "Reddit settings updated successfully",
     });
-  })
+  }),
 );
 
 /**
@@ -152,10 +155,10 @@ router.put(
  * Get YouTube settings
  */
 router.get(
-  '/settings/youtube',
+  "/settings/youtube",
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     if (!req.user) {
-      throw new AuthenticationError('User not found in request');
+      throw new AuthenticationError("User not found in request");
     }
 
     const settings = await getUserSettings(req.user.id);
@@ -163,7 +166,7 @@ router.get(
       enabled: settings.youtubeEnabled,
       apiKey: settings.youtubeApiKey,
     });
-  })
+  }),
 );
 
 /**
@@ -171,24 +174,24 @@ router.get(
  * Update YouTube settings
  */
 router.put(
-  '/settings/youtube',
+  "/settings/youtube",
   validateBody(
     updateUserSettingsSchema.pick({
       youtubeEnabled: true,
       youtubeApiKey: true,
-    })
+    }),
   ),
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     if (!req.user) {
-      throw new AuthenticationError('User not found in request');
+      throw new AuthenticationError("User not found in request");
     }
 
     await updateUserSettings(req.user.id, req.body);
     res.json({
       success: true,
-      message: 'YouTube settings updated successfully',
+      message: "YouTube settings updated successfully",
     });
-  })
+  }),
 );
 
 /**
@@ -196,10 +199,10 @@ router.put(
  * Get OpenAI settings
  */
 router.get(
-  '/settings/openai',
+  "/settings/openai",
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     if (!req.user) {
-      throw new AuthenticationError('User not found in request');
+      throw new AuthenticationError("User not found in request");
     }
 
     const settings = await getUserSettings(req.user.id);
@@ -217,7 +220,7 @@ router.get(
       maxRetries: settings.aiMaxRetries,
       retryDelay: settings.aiRetryDelay,
     });
-  })
+  }),
 );
 
 /**
@@ -225,7 +228,7 @@ router.get(
  * Update OpenAI settings
  */
 router.put(
-  '/settings/openai',
+  "/settings/openai",
   validateBody(
     updateUserSettingsSchema.pick({
       openaiEnabled: true,
@@ -240,19 +243,19 @@ router.put(
       aiRequestTimeout: true,
       aiMaxRetries: true,
       aiRetryDelay: true,
-    })
+    }),
   ),
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     if (!req.user) {
-      throw new AuthenticationError('User not found in request');
+      throw new AuthenticationError("User not found in request");
     }
 
     await updateUserSettings(req.user.id, req.body);
     res.json({
       success: true,
-      message: 'OpenAI settings updated successfully',
+      message: "OpenAI settings updated successfully",
     });
-  })
+  }),
 );
 
 /**
@@ -260,21 +263,22 @@ router.put(
  * Change user password
  */
 router.post(
-  '/password',
+  "/password",
   validateBody(updatePasswordSchema),
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     if (!req.user) {
-      throw new AuthenticationError('User not found in request');
+      throw new AuthenticationError("User not found in request");
     }
 
     const { current_password, new_password } = req.body;
-    const { updateUserPassword, authenticateUser } = await import('../services/user.service');
+    const { updateUserPassword, authenticateUser } =
+      await import("../services/user.service");
 
     // Verify current password
     try {
       await authenticateUser(req.user.username, current_password);
     } catch (error) {
-      throw new AuthenticationError('Current password is incorrect');
+      throw new AuthenticationError("Current password is incorrect");
     }
 
     // Update password
@@ -282,9 +286,9 @@ router.post(
 
     res.json({
       success: true,
-      message: 'Password changed successfully',
+      message: "Password changed successfully",
     });
-  })
+  }),
 );
 
 export function userRoutes(): Router {

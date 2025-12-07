@@ -4,9 +4,9 @@
  * Provides transaction helpers with rollback on errors and retry logic.
  */
 
-import { db } from './index';
-import { DatabaseError } from '../errors';
-import { logger } from '../utils/logger';
+import { db } from "./index";
+import { DatabaseError } from "../errors";
+import { logger } from "../utils/logger";
 
 /**
  * Execute a function within a database transaction.
@@ -15,7 +15,9 @@ import { logger } from '../utils/logger';
  * @param fn - Function to execute within transaction
  * @returns Result of the function
  */
-export async function withTransaction<T>(fn: (tx: typeof db) => Promise<T>): Promise<T> {
+export async function withTransaction<T>(
+  fn: (tx: typeof db) => Promise<T>,
+): Promise<T> {
   // Note: better-sqlite3 doesn't support async transactions
   // We'll use synchronous transactions with proper error handling
   try {
@@ -23,8 +25,8 @@ export async function withTransaction<T>(fn: (tx: typeof db) => Promise<T>): Pro
     // We'll handle this at the service level
     return await fn(db);
   } catch (error) {
-    logger.error({ error }, 'Transaction failed');
-    throw new DatabaseError('Transaction failed', error as Error);
+    logger.error({ error }, "Transaction failed");
+    throw new DatabaseError("Transaction failed", error as Error);
   }
 }
 
@@ -40,7 +42,7 @@ export async function withTransaction<T>(fn: (tx: typeof db) => Promise<T>): Pro
 export async function retryDbOperation<T>(
   fn: () => Promise<T>,
   maxRetries = 3,
-  delay = 100
+  delay = 100,
 ): Promise<T> {
   let lastError: Error | undefined;
 
@@ -52,10 +54,16 @@ export async function retryDbOperation<T>(
 
       // For SQLite, we don't retry on most errors
       // Only retry on database locked errors
-      if (error instanceof Error && error.message.includes('database is locked')) {
+      if (
+        error instanceof Error &&
+        error.message.includes("database is locked")
+      ) {
         if (attempt < maxRetries) {
-          logger.warn({ attempt, maxRetries, error: error.message }, 'Database locked, retrying');
-          await new Promise(resolve => setTimeout(resolve, delay * attempt));
+          logger.warn(
+            { attempt, maxRetries, error: error.message },
+            "Database locked, retrying",
+          );
+          await new Promise((resolve) => setTimeout(resolve, delay * attempt));
           continue;
         }
       }
@@ -65,7 +73,7 @@ export async function retryDbOperation<T>(
     }
   }
 
-  throw lastError || new Error('Operation failed after retries');
+  throw lastError || new Error("Operation failed after retries");
 }
 
 /**
@@ -76,12 +84,12 @@ export async function retryDbOperation<T>(
 export async function checkDbHealth(): Promise<boolean> {
   try {
     // Simple query to check connection
-    const { getDatabase } = await import('./index');
+    const { getDatabase } = await import("./index");
     const sqlite = getDatabase();
-    sqlite.prepare('SELECT 1').get();
+    sqlite.prepare("SELECT 1").get();
     return true;
   } catch (error) {
-    logger.error({ error }, 'Database health check failed');
+    logger.error({ error }, "Database health check failed");
     return false;
   }
 }

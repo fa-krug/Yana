@@ -4,11 +4,11 @@
  * Handles user settings and API credentials.
  */
 
-import { eq } from 'drizzle-orm';
-import { db, userSettings } from '../db';
-import { NotFoundError } from '../errors';
-import { logger } from '../utils/logger';
-import type { UserSettings, UserSettingsInsert } from '../db/types';
+import { eq } from "drizzle-orm";
+import { db, userSettings } from "../db";
+import { NotFoundError } from "../errors";
+import { logger } from "../utils/logger";
+import type { UserSettings, UserSettingsInsert } from "../db/types";
 
 /**
  * Get user settings by user ID.
@@ -31,7 +31,9 @@ export async function getUserSettings(userId: number): Promise<UserSettings> {
 /**
  * Create default user settings.
  */
-export async function createDefaultUserSettings(userId: number): Promise<UserSettings> {
+export async function createDefaultUserSettings(
+  userId: number,
+): Promise<UserSettings> {
   const now = new Date();
 
   const [settings] = await db
@@ -39,15 +41,15 @@ export async function createDefaultUserSettings(userId: number): Promise<UserSet
     .values({
       userId,
       redditEnabled: false,
-      redditClientId: '',
-      redditClientSecret: '',
-      redditUserAgent: 'Yana/1.0',
+      redditClientId: "",
+      redditClientSecret: "",
+      redditUserAgent: "Yana/1.0",
       youtubeEnabled: false,
-      youtubeApiKey: '',
+      youtubeApiKey: "",
       openaiEnabled: false,
-      openaiApiUrl: 'https://api.openai.com/v1',
-      openaiApiKey: '',
-      aiModel: 'gpt-4o-mini',
+      openaiApiUrl: "https://api.openai.com/v1",
+      openaiApiKey: "",
+      aiModel: "gpt-4o-mini",
       aiTemperature: 0.3,
       aiMaxTokens: 2000,
       aiDefaultDailyLimit: 200,
@@ -61,7 +63,7 @@ export async function createDefaultUserSettings(userId: number): Promise<UserSet
     })
     .returning();
 
-  logger.info({ userId }, 'Default user settings created');
+  logger.info({ userId }, "Default user settings created");
 
   return settings;
 }
@@ -71,7 +73,7 @@ export async function createDefaultUserSettings(userId: number): Promise<UserSet
  */
 export async function updateUserSettings(
   userId: number,
-  updates: Partial<UserSettingsInsert>
+  updates: Partial<UserSettingsInsert>,
 ): Promise<UserSettings> {
   const [updated] = await db
     .update(userSettings)
@@ -85,7 +87,7 @@ export async function updateUserSettings(
     return updateUserSettings(userId, updates);
   }
 
-  logger.info({ userId }, 'User settings updated');
+  logger.info({ userId }, "User settings updated");
 
   return updated;
 }

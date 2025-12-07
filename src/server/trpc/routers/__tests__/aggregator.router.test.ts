@@ -2,17 +2,17 @@
  * Tests for aggregator router.
  */
 
-import { describe, it, expect } from 'vitest';
-import { appRouter } from '../../router';
-import { createContext } from '../../context';
-import type { Request, Response } from 'express';
-import type { Session } from 'express-session';
+import { describe, it, expect } from "vitest";
+import { appRouter } from "../../router";
+import { createContext } from "../../context";
+import type { Request, Response } from "express";
+import type { Session } from "express-session";
 
-describe('Aggregator Router', () => {
+describe("Aggregator Router", () => {
   const createMockContext = async () => {
     const mockReq = {
       session: {
-        id: 'test-session-id',
+        id: "test-session-id",
         cookie: {},
         regenerate: () => {},
         destroy: () => {},
@@ -28,7 +28,7 @@ describe('Aggregator Router', () => {
     return await createContext({ req: mockReq, res: mockRes });
   };
 
-  it('should list all aggregators', async () => {
+  it("should list all aggregators", async () => {
     const ctx = await createMockContext();
     const caller = appRouter.createCaller(ctx);
 
@@ -38,21 +38,21 @@ describe('Aggregator Router', () => {
     expect(result.length).toBeGreaterThan(0);
   });
 
-  it('should return grouped aggregators', async () => {
+  it("should return grouped aggregators", async () => {
     const ctx = await createMockContext();
     const caller = appRouter.createCaller(ctx);
 
     const result = await caller.aggregator.grouped();
 
-    expect(result).toHaveProperty('managed');
-    expect(result).toHaveProperty('social');
-    expect(result).toHaveProperty('custom');
+    expect(result).toHaveProperty("managed");
+    expect(result).toHaveProperty("social");
+    expect(result).toHaveProperty("custom");
     expect(Array.isArray(result.managed)).toBe(true);
     expect(Array.isArray(result.social)).toBe(true);
     expect(Array.isArray(result.custom)).toBe(true);
   });
 
-  it('should get aggregator by id', async () => {
+  it("should get aggregator by id", async () => {
     const ctx = await createMockContext();
     const caller = appRouter.createCaller(ctx);
 
@@ -63,13 +63,13 @@ describe('Aggregator Router', () => {
 
       const result = await caller.aggregator.getById({ id: aggregatorId });
 
-      expect(result).toHaveProperty('id');
-      expect(result).toHaveProperty('identifierType');
-      expect(result).toHaveProperty('options');
+      expect(result).toHaveProperty("id");
+      expect(result).toHaveProperty("identifierType");
+      expect(result).toHaveProperty("options");
     }
   });
 
-  it('should get aggregator options', async () => {
+  it("should get aggregator options", async () => {
     const ctx = await createMockContext();
     const caller = appRouter.createCaller(ctx);
 

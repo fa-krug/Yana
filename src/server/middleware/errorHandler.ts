@@ -5,8 +5,8 @@
  * and detailed logging in development mode.
  */
 
-import type { Request, Response, NextFunction } from 'express';
-import { logger } from '../utils/logger';
+import type { Request, Response, NextFunction } from "express";
+import { logger } from "../utils/logger";
 import {
   ServiceError,
   NotFoundError,
@@ -14,18 +14,23 @@ import {
   ValidationError,
   DatabaseError,
   AuthenticationError,
-} from '../errors';
+} from "../errors";
 
-const isDevelopment = process.env['NODE_ENV'] === 'development';
+const isDevelopment = process.env["NODE_ENV"] === "development";
 
 /**
  * Error handler middleware.
  * Must be added after all routes.
  */
-export function errorHandler(err: Error, req: Request, res: Response, next: NextFunction): void {
+export function errorHandler(
+  err: Error,
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): void {
   // Ensure we have a proper error message
-  const errorMessage = err.message || String(err) || 'Unknown error';
-  const errorName = err.name || 'Error';
+  const errorMessage = err.message || String(err) || "Unknown error";
+  const errorName = err.name || "Error";
 
   // Log the error with full details
   // Check for user property (may exist on authenticated requests)
@@ -43,10 +48,10 @@ export function errorHandler(err: Error, req: Request, res: Response, next: Next
 
   if (err instanceof ServiceError && err.statusCode < 500) {
     // Client errors (4xx) - log as warning
-    logger.warn(logContext, 'Client error');
+    logger.warn(logContext, "Client error");
   } else {
     // Server errors (5xx) - log as error with full details
-    logger.error(logContext, 'Server error');
+    logger.error(logContext, "Server error");
 
     // Log original error for database errors
     if (err instanceof DatabaseError && err.originalError) {
@@ -57,7 +62,7 @@ export function errorHandler(err: Error, req: Request, res: Response, next: Next
               ? err.originalError
               : new Error(String(err.originalError)),
         },
-        'Original database error'
+        "Original database error",
       );
     }
   }
@@ -93,7 +98,11 @@ export function errorHandler(err: Error, req: Request, res: Response, next: Next
 /**
  * 404 handler for unmatched routes.
  */
-export function notFoundHandler(req: Request, res: Response, next: NextFunction): void {
+export function notFoundHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): void {
   const err = new NotFoundError(`Route ${req.method} ${req.path} not found`);
   next(err);
 }
@@ -106,7 +115,7 @@ export function notFoundHandler(req: Request, res: Response, next: NextFunction)
  * @returns Wrapped function
  */
 export function asyncHandler<T extends Request = Request>(
-  fn: (req: T, res: Response, next: NextFunction) => Promise<void>
+  fn: (req: T, res: Response, next: NextFunction) => Promise<void>,
 ) {
   return (req: Request, res: Response, next: NextFunction): void => {
     Promise.resolve(fn(req as T, res, next)).catch(next);

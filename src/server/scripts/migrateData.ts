@@ -8,13 +8,13 @@
  *   tsx src/server/scripts/migrateData.ts [--source-db <path>] [--dry-run]
  */
 
-import Database from 'better-sqlite3';
-import { drizzle } from 'drizzle-orm/better-sqlite3';
-import * as schema from '../db/schema';
-import { logger } from '../utils/logger';
-import * as bcrypt from 'bcrypt';
-import * as path from 'path';
-import * as fs from 'fs';
+import Database from "better-sqlite3";
+import { drizzle } from "drizzle-orm/better-sqlite3";
+import * as schema from "../db/schema";
+import { logger } from "../utils/logger";
+import * as bcrypt from "bcrypt";
+import * as path from "path";
+import * as fs from "fs";
 
 interface MigrationOptions {
   sourceDbPath: string;
@@ -28,13 +28,13 @@ interface MigrationOptions {
 async function migrateUsers(
   sourceDb: Database.Database,
   targetDb: ReturnType<typeof drizzle>,
-  dryRun: boolean
+  dryRun: boolean,
 ): Promise<number> {
-  logger.info('Migrating users...');
+  logger.info("Migrating users...");
 
   const users = sourceDb
     .prepare(
-      'SELECT id, username, email, password, is_superuser, is_staff, is_active, date_joined FROM auth_user'
+      "SELECT id, username, email, password, is_superuser, is_staff, is_active, date_joined FROM auth_user",
     )
     .all() as Array<{
     id: number;
@@ -51,7 +51,7 @@ async function migrateUsers(
 
   for (const user of users) {
     if (dryRun) {
-      logger.info({ username: user.username }, 'Would migrate user (dry-run)');
+      logger.info({ username: user.username }, "Would migrate user (dry-run)");
       migrated++;
       continue;
     }
@@ -69,13 +69,16 @@ async function migrateUsers(
       });
 
       migrated++;
-      logger.debug({ username: user.username }, 'User migrated');
+      logger.debug({ username: user.username }, "User migrated");
     } catch (error) {
-      logger.error({ error, username: user.username }, 'Failed to migrate user');
+      logger.error(
+        { error, username: user.username },
+        "Failed to migrate user",
+      );
     }
   }
 
-  logger.info({ count: migrated }, 'Users migration completed');
+  logger.info({ count: migrated }, "Users migration completed");
   return migrated;
 }
 
@@ -85,13 +88,13 @@ async function migrateUsers(
 async function migrateFeeds(
   sourceDb: Database.Database,
   targetDb: ReturnType<typeof drizzle>,
-  dryRun: boolean
+  dryRun: boolean,
 ): Promise<number> {
-  logger.info('Migrating feeds...');
+  logger.info("Migrating feeds...");
 
   const feeds = sourceDb
     .prepare(
-      'SELECT id, user_id, name, identifier, aggregator, feed_type, enabled, aggregator_options, icon, created_at, updated_at FROM core_feed'
+      "SELECT id, user_id, name, identifier, aggregator, feed_type, enabled, aggregator_options, icon, created_at, updated_at FROM core_feed",
     )
     .all() as Array<{
     id: number;
@@ -111,7 +114,10 @@ async function migrateFeeds(
 
   for (const feed of feeds) {
     if (dryRun) {
-      logger.info({ feedId: feed.id, name: feed.name }, 'Would migrate feed (dry-run)');
+      logger.info(
+        { feedId: feed.id, name: feed.name },
+        "Would migrate feed (dry-run)",
+      );
       migrated++;
       continue;
     }
@@ -123,22 +129,28 @@ async function migrateFeeds(
         name: feed.name,
         identifier: feed.identifier,
         aggregator: feed.aggregator,
-        feedType: feed.feed_type as 'article' | 'youtube' | 'podcast' | 'reddit',
+        feedType: feed.feed_type as
+          | "article"
+          | "youtube"
+          | "podcast"
+          | "reddit",
         enabled: Boolean(feed.enabled),
-        aggregatorOptions: feed.aggregator_options ? JSON.parse(feed.aggregator_options) : null,
+        aggregatorOptions: feed.aggregator_options
+          ? JSON.parse(feed.aggregator_options)
+          : null,
         icon: feed.icon,
         createdAt: new Date(feed.created_at),
         updatedAt: new Date(feed.updated_at),
       });
 
       migrated++;
-      logger.debug({ feedId: feed.id }, 'Feed migrated');
+      logger.debug({ feedId: feed.id }, "Feed migrated");
     } catch (error) {
-      logger.error({ error, feedId: feed.id }, 'Failed to migrate feed');
+      logger.error({ error, feedId: feed.id }, "Failed to migrate feed");
     }
   }
 
-  logger.info({ count: migrated }, 'Feeds migration completed');
+  logger.info({ count: migrated }, "Feeds migration completed");
   return migrated;
 }
 
@@ -148,13 +160,13 @@ async function migrateFeeds(
 async function migrateArticles(
   sourceDb: Database.Database,
   targetDb: ReturnType<typeof drizzle>,
-  dryRun: boolean
+  dryRun: boolean,
 ): Promise<number> {
-  logger.info('Migrating articles...');
+  logger.info("Migrating articles...");
 
   const articles = sourceDb
     .prepare(
-      'SELECT id, feed_id, name, url, date, content, author, external_id, score, thumbnail_url, media_url, duration, view_count, media_type, ai_processed, ai_error, created_at, updated_at FROM core_article'
+      "SELECT id, feed_id, name, url, date, content, author, external_id, score, thumbnail_url, media_url, duration, view_count, media_type, ai_processed, ai_error, created_at, updated_at FROM core_article",
     )
     .all() as Array<{
     id: number;
@@ -181,7 +193,10 @@ async function migrateArticles(
 
   for (const article of articles) {
     if (dryRun) {
-      logger.info({ articleId: article.id, name: article.name }, 'Would migrate article (dry-run)');
+      logger.info(
+        { articleId: article.id, name: article.name },
+        "Would migrate article (dry-run)",
+      );
       migrated++;
       continue;
     }
@@ -210,14 +225,17 @@ async function migrateArticles(
 
       migrated++;
       if (migrated % 100 === 0) {
-        logger.info({ count: migrated }, 'Articles migrated so far...');
+        logger.info({ count: migrated }, "Articles migrated so far...");
       }
     } catch (error) {
-      logger.error({ error, articleId: article.id }, 'Failed to migrate article');
+      logger.error(
+        { error, articleId: article.id },
+        "Failed to migrate article",
+      );
     }
   }
 
-  logger.info({ count: migrated }, 'Articles migration completed');
+  logger.info({ count: migrated }, "Articles migration completed");
   return migrated;
 }
 
@@ -227,13 +245,13 @@ async function migrateArticles(
 async function migrateUserArticleStates(
   sourceDb: Database.Database,
   targetDb: ReturnType<typeof drizzle>,
-  dryRun: boolean
+  dryRun: boolean,
 ): Promise<number> {
-  logger.info('Migrating user article states...');
+  logger.info("Migrating user article states...");
 
   const states = sourceDb
     .prepare(
-      'SELECT id, user_id, article_id, is_read, is_saved, created_at, updated_at FROM core_userarticlestate'
+      "SELECT id, user_id, article_id, is_read, is_saved, created_at, updated_at FROM core_userarticlestate",
     )
     .all() as Array<{
     id: number;
@@ -249,7 +267,10 @@ async function migrateUserArticleStates(
 
   for (const state of states) {
     if (dryRun) {
-      logger.debug({ stateId: state.id }, 'Would migrate user article state (dry-run)');
+      logger.debug(
+        { stateId: state.id },
+        "Would migrate user article state (dry-run)",
+      );
       migrated++;
       continue;
     }
@@ -267,14 +288,20 @@ async function migrateUserArticleStates(
 
       migrated++;
       if (migrated % 1000 === 0) {
-        logger.info({ count: migrated }, 'User article states migrated so far...');
+        logger.info(
+          { count: migrated },
+          "User article states migrated so far...",
+        );
       }
     } catch (error) {
-      logger.error({ error, stateId: state.id }, 'Failed to migrate user article state');
+      logger.error(
+        { error, stateId: state.id },
+        "Failed to migrate user article state",
+      );
     }
   }
 
-  logger.info({ count: migrated }, 'User article states migration completed');
+  logger.info({ count: migrated }, "User article states migration completed");
   return migrated;
 }
 
@@ -284,12 +311,12 @@ async function migrateUserArticleStates(
 async function migrateGroups(
   sourceDb: Database.Database,
   targetDb: ReturnType<typeof drizzle>,
-  dryRun: boolean
+  dryRun: boolean,
 ): Promise<number> {
-  logger.info('Migrating groups...');
+  logger.info("Migrating groups...");
 
   const groups = sourceDb
-    .prepare('SELECT id, user_id, name, created_at, updated_at FROM core_group')
+    .prepare("SELECT id, user_id, name, created_at, updated_at FROM core_group")
     .all() as Array<{
     id: number;
     user_id: number;
@@ -302,7 +329,10 @@ async function migrateGroups(
 
   for (const group of groups) {
     if (dryRun) {
-      logger.info({ groupId: group.id, name: group.name }, 'Would migrate group (dry-run)');
+      logger.info(
+        { groupId: group.id, name: group.name },
+        "Would migrate group (dry-run)",
+      );
       migrated++;
       continue;
     }
@@ -318,11 +348,11 @@ async function migrateGroups(
 
       migrated++;
     } catch (error) {
-      logger.error({ error, groupId: group.id }, 'Failed to migrate group');
+      logger.error({ error, groupId: group.id }, "Failed to migrate group");
     }
   }
 
-  logger.info({ count: migrated }, 'Groups migration completed');
+  logger.info({ count: migrated }, "Groups migration completed");
   return migrated;
 }
 
@@ -332,12 +362,12 @@ async function migrateGroups(
 async function migrateFeedGroups(
   sourceDb: Database.Database,
   targetDb: ReturnType<typeof drizzle>,
-  dryRun: boolean
+  dryRun: boolean,
 ): Promise<number> {
-  logger.info('Migrating feed groups...');
+  logger.info("Migrating feed groups...");
 
   const feedGroups = sourceDb
-    .prepare('SELECT id, feed_id, group_id FROM core_feed_groups')
+    .prepare("SELECT id, feed_id, group_id FROM core_feed_groups")
     .all() as Array<{
     id: number;
     feed_id: number;
@@ -348,7 +378,10 @@ async function migrateFeedGroups(
 
   for (const fg of feedGroups) {
     if (dryRun) {
-      logger.debug({ feedGroupId: fg.id }, 'Would migrate feed group (dry-run)');
+      logger.debug(
+        { feedGroupId: fg.id },
+        "Would migrate feed group (dry-run)",
+      );
       migrated++;
       continue;
     }
@@ -362,11 +395,14 @@ async function migrateFeedGroups(
 
       migrated++;
     } catch (error) {
-      logger.error({ error, feedGroupId: fg.id }, 'Failed to migrate feed group');
+      logger.error(
+        { error, feedGroupId: fg.id },
+        "Failed to migrate feed group",
+      );
     }
   }
 
-  logger.info({ count: migrated }, 'Feed groups migration completed');
+  logger.info({ count: migrated }, "Feed groups migration completed");
   return migrated;
 }
 
@@ -376,13 +412,13 @@ async function migrateFeedGroups(
 async function migrateUserSettings(
   sourceDb: Database.Database,
   targetDb: ReturnType<typeof drizzle>,
-  dryRun: boolean
+  dryRun: boolean,
 ): Promise<number> {
-  logger.info('Migrating user settings...');
+  logger.info("Migrating user settings...");
 
   const settings = sourceDb
     .prepare(
-      'SELECT id, user_id, openai_api_url, openai_api_key, ai_model, ai_temperature, ai_max_tokens, ai_request_timeout, ai_max_retries, ai_retry_delay, ai_default_daily_limit, ai_default_monthly_limit, created_at, updated_at FROM core_usersettings'
+      "SELECT id, user_id, openai_api_url, openai_api_key, ai_model, ai_temperature, ai_max_tokens, ai_request_timeout, ai_max_retries, ai_retry_delay, ai_default_daily_limit, ai_default_monthly_limit, created_at, updated_at FROM core_usersettings",
     )
     .all() as Array<{
     id: number;
@@ -405,7 +441,10 @@ async function migrateUserSettings(
 
   for (const setting of settings) {
     if (dryRun) {
-      logger.info({ userId: setting.user_id }, 'Would migrate user settings (dry-run)');
+      logger.info(
+        { userId: setting.user_id },
+        "Would migrate user settings (dry-run)",
+      );
       migrated++;
       continue;
     }
@@ -430,11 +469,14 @@ async function migrateUserSettings(
 
       migrated++;
     } catch (error) {
-      logger.error({ error, userId: setting.user_id }, 'Failed to migrate user settings');
+      logger.error(
+        { error, userId: setting.user_id },
+        "Failed to migrate user settings",
+      );
     }
   }
 
-  logger.info({ count: migrated }, 'User settings migration completed');
+  logger.info({ count: migrated }, "User settings migration completed");
   return migrated;
 }
 
@@ -442,7 +484,7 @@ async function migrateUserSettings(
  * Main migration function.
  */
 async function migrateData(options: MigrationOptions): Promise<void> {
-  logger.info({ options }, 'Starting data migration');
+  logger.info({ options }, "Starting data migration");
 
   // Check source database exists
   if (!fs.existsSync(options.sourceDbPath)) {
@@ -453,7 +495,8 @@ async function migrateData(options: MigrationOptions): Promise<void> {
   const sourceDb = new Database(options.sourceDbPath, { readonly: true });
 
   // Open target database
-  const targetDbPath = options.targetDbPath || process.env['DATABASE_URL'] || './db.sqlite3';
+  const targetDbPath =
+    options.targetDbPath || process.env["DATABASE_URL"] || "./db.sqlite3";
   const targetDbConnection = new Database(targetDbPath);
   const targetDb = drizzle(targetDbConnection, { schema });
 
@@ -463,16 +506,24 @@ async function migrateData(options: MigrationOptions): Promise<void> {
       users: await migrateUsers(sourceDb, targetDb, options.dryRun),
       feeds: await migrateFeeds(sourceDb, targetDb, options.dryRun),
       articles: await migrateArticles(sourceDb, targetDb, options.dryRun),
-      userArticleStates: await migrateUserArticleStates(sourceDb, targetDb, options.dryRun),
+      userArticleStates: await migrateUserArticleStates(
+        sourceDb,
+        targetDb,
+        options.dryRun,
+      ),
       groups: await migrateGroups(sourceDb, targetDb, options.dryRun),
       feedGroups: await migrateFeedGroups(sourceDb, targetDb, options.dryRun),
-      userSettings: await migrateUserSettings(sourceDb, targetDb, options.dryRun),
+      userSettings: await migrateUserSettings(
+        sourceDb,
+        targetDb,
+        options.dryRun,
+      ),
     };
 
-    logger.info({ results }, 'Data migration completed successfully');
+    logger.info({ results }, "Data migration completed successfully");
 
     if (options.dryRun) {
-      logger.warn('DRY RUN MODE - No data was actually migrated');
+      logger.warn("DRY RUN MODE - No data was actually migrated");
     }
   } finally {
     sourceDb.close();
@@ -484,22 +535,22 @@ async function migrateData(options: MigrationOptions): Promise<void> {
 if (require.main === module) {
   const args = process.argv.slice(2);
   const sourceDbPath =
-    args.find(arg => arg.startsWith('--source-db='))?.split('=')[1] ||
-    args[args.indexOf('--source-db') + 1] ||
-    './backend/db.sqlite3.backup';
-  const dryRun = args.includes('--dry-run');
+    args.find((arg) => arg.startsWith("--source-db="))?.split("=")[1] ||
+    args[args.indexOf("--source-db") + 1] ||
+    "./backend/db.sqlite3.backup";
+  const dryRun = args.includes("--dry-run");
 
   migrateData({
     sourceDbPath,
-    targetDbPath: process.env['DATABASE_URL'] || './db.sqlite3',
+    targetDbPath: process.env["DATABASE_URL"] || "./db.sqlite3",
     dryRun,
   })
     .then(() => {
-      logger.info('Migration script completed');
+      logger.info("Migration script completed");
       process.exit(0);
     })
-    .catch(error => {
-      logger.error({ error }, 'Migration script failed');
+    .catch((error) => {
+      logger.error({ error }, "Migration script failed");
       process.exit(1);
     });
 }

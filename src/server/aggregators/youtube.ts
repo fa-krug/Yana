@@ -53,11 +53,11 @@
  * For a feed with 50 videos: ~3-4 API units per aggregation run.
  */
 
-import { BaseAggregator } from './base/aggregator';
-import type { RawArticle } from './base/types';
-import { logger } from '../utils/logger';
-import axios, { AxiosError } from 'axios';
-import { getUserSettings } from '../services/userSettings.service';
+import { BaseAggregator } from "./base/aggregator";
+import type { RawArticle } from "./base/types";
+import { logger } from "../utils/logger";
+import axios, { AxiosError } from "axios";
+import { getUserSettings } from "../services/userSettings.service";
 
 /**
  * Custom error class for YouTube API errors.
@@ -65,10 +65,10 @@ import { getUserSettings } from '../services/userSettings.service';
 export class YouTubeAPIError extends Error {
   constructor(
     message: string,
-    public override readonly cause?: unknown
+    public override readonly cause?: unknown,
   ) {
     super(message);
-    this.name = 'YouTubeAPIError';
+    this.name = "YouTubeAPIError";
   }
 }
 
@@ -128,8 +128,8 @@ interface YouTubeSearchItem {
  * Get YouTube proxy URL for embedding.
  */
 function getYouTubeProxyUrl(videoId: string): string {
-  const baseUrl = process.env['BASE_URL'] || 'http://localhost:3000';
-  return `${baseUrl.replace(/\/$/, '')}/api/youtube-proxy?v=${encodeURIComponent(videoId)}`;
+  const baseUrl = process.env["BASE_URL"] || "http://localhost:3000";
+  return `${baseUrl.replace(/\/$/, "")}/api/youtube-proxy?v=${encodeURIComponent(videoId)}`;
 }
 
 /**
@@ -151,36 +151,45 @@ function getYouTubeProxyUrl(videoId: string): string {
  */
 async function resolveChannelId(
   identifier: string,
-  apiKey: string
+  apiKey: string,
 ): Promise<{ channelId: string | null; error: string | null }> {
-  if (!apiKey || apiKey.trim() === '') {
-    return { channelId: null, error: 'YouTube API key is not configured in user settings' };
+  if (!apiKey || apiKey.trim() === "") {
+    return {
+      channelId: null,
+      error: "YouTube API key is not configured in user settings",
+    };
   }
 
   identifier = identifier.trim();
 
   if (!identifier) {
-    return { channelId: null, error: 'Channel identifier is required' };
+    return { channelId: null, error: "Channel identifier is required" };
   }
 
   // If it starts with UC and is 24+ chars, assume it's already a channel ID
-  if (identifier.startsWith('UC') && identifier.length >= 24) {
+  if (identifier.startsWith("UC") && identifier.length >= 24) {
     // Validate it exists via API
     try {
-      const response = await axios.get('https://www.googleapis.com/youtube/v3/channels', {
-        params: {
-          part: 'id',
-          id: identifier,
-          key: apiKey,
+      const response = await axios.get(
+        "https://www.googleapis.com/youtube/v3/channels",
+        {
+          params: {
+            part: "id",
+            id: identifier,
+            key: apiKey,
+          },
         },
-      });
+      );
 
       if (response.data.items && response.data.items.length > 0) {
         return { channelId: identifier, error: null };
       }
       return { channelId: null, error: `Channel ID not found: ${identifier}` };
     } catch (error) {
-      logger.error({ error, identifier }, 'YouTube API error resolving channel ID');
+      logger.error(
+        { error, identifier },
+        "YouTube API error resolving channel ID",
+      );
       return {
         channelId: null,
         error: `API error: ${error instanceof Error ? error.message : String(error)}`,
@@ -191,52 +200,52 @@ async function resolveChannelId(
   // Extract handle from URL if it's a URL
   let handle: string | null = null;
   if (
-    identifier.startsWith('http://') ||
-    identifier.startsWith('https://') ||
-    identifier.startsWith('youtube.com') ||
-    identifier.startsWith('www.youtube.com')
+    identifier.startsWith("http://") ||
+    identifier.startsWith("https://") ||
+    identifier.startsWith("youtube.com") ||
+    identifier.startsWith("www.youtube.com")
   ) {
     try {
-      if (!identifier.startsWith('http')) {
+      if (!identifier.startsWith("http")) {
         identifier = `https://${identifier}`;
       }
 
       const url = new URL(identifier);
-      const path = url.pathname.trim().replace(/^\//, '');
+      const path = url.pathname.trim().replace(/^\//, "");
 
       // Remove query parameters and fragments from path
-      const cleanPath = path.split('?')[0].split('#')[0];
+      const cleanPath = path.split("?")[0].split("#")[0];
 
       // Handle @username format (modern handles)
-      if (cleanPath.startsWith('@')) {
-        handle = cleanPath.slice(1).split('/')[0]; // Remove @ and get first part
+      if (cleanPath.startsWith("@")) {
+        handle = cleanPath.slice(1).split("/")[0]; // Remove @ and get first part
       }
       // Handle /c/customname format
-      else if (cleanPath.startsWith('c/') || cleanPath.startsWith('user/')) {
-        handle = cleanPath.split('/')[1].split('?')[0].split('#')[0];
+      else if (cleanPath.startsWith("c/") || cleanPath.startsWith("user/")) {
+        handle = cleanPath.split("/")[1].split("?")[0].split("#")[0];
       }
       // Handle /channel/UC... format
-      else if (cleanPath.startsWith('channel/')) {
-        const channelId = cleanPath.split('/')[1].split('?')[0].split('#')[0];
-        if (channelId.startsWith('UC')) {
+      else if (cleanPath.startsWith("channel/")) {
+        const channelId = cleanPath.split("/")[1].split("?")[0].split("#")[0];
+        if (channelId.startsWith("UC")) {
           return resolveChannelId(channelId, apiKey);
         }
       }
       // Check query parameters for channel_id
-      else if (url.searchParams.has('channel_id')) {
-        const channelId = url.searchParams.get('channel_id');
-        if (channelId && channelId.startsWith('UC')) {
+      else if (url.searchParams.has("channel_id")) {
+        const channelId = url.searchParams.get("channel_id");
+        if (channelId && channelId.startsWith("UC")) {
           return resolveChannelId(channelId, apiKey);
         }
       }
     } catch (error) {
-      logger.error({ error, identifier }, 'Error parsing URL');
+      logger.error({ error, identifier }, "Error parsing URL");
       return {
         channelId: null,
         error: `Invalid URL format: ${error instanceof Error ? error.message : String(error)}`,
       };
     }
-  } else if (identifier.startsWith('@')) {
+  } else if (identifier.startsWith("@")) {
     handle = identifier.slice(1); // Remove @
   } else {
     // Assume it's a handle without @
@@ -248,23 +257,26 @@ async function resolveChannelId(
     try {
       // For modern @handles, forUsername doesn't work. Use search.list instead.
       // Try searching with the handle (with @ prefix for better matching)
-      const searchQuery = handle.startsWith('@') ? handle : `@${handle}`;
+      const searchQuery = handle.startsWith("@") ? handle : `@${handle}`;
 
       // First, try searching for the exact handle
-      const searchResponse = await axios.get('https://www.googleapis.com/youtube/v3/search', {
-        params: {
-          part: 'snippet',
-          q: searchQuery,
-          type: 'channel',
-          maxResults: 10, // Get more results to find the best match
-          key: apiKey,
+      const searchResponse = await axios.get(
+        "https://www.googleapis.com/youtube/v3/search",
+        {
+          params: {
+            part: "snippet",
+            q: searchQuery,
+            type: "channel",
+            maxResults: 10, // Get more results to find the best match
+            key: apiKey,
+          },
         },
-      });
+      );
 
       const searchItems: YouTubeSearchItem[] = searchResponse.data.items || [];
       if (searchItems.length > 0) {
         // Normalize handle for comparison (remove @, lowercase)
-        const normalizedHandle = handle.toLowerCase().replace(/^@/, '');
+        const normalizedHandle = handle.toLowerCase().replace(/^@/, "");
 
         // Look for exact match by customUrl
         for (const item of searchItems) {
@@ -273,14 +285,14 @@ async function resolveChannelId(
             // customUrl can be "@handle" or "handle" or "youtube.com/@handle"
             const customUrlNormalized = customUrl
               .toLowerCase()
-              .replace(/^@/, '')
-              .replace(/^youtube\.com\//, '')
-              .replace(/^\//, '');
+              .replace(/^@/, "")
+              .replace(/^youtube\.com\//, "")
+              .replace(/^\//, "");
             if (customUrlNormalized === normalizedHandle) {
               const channelId = item.id.channelId;
               logger.info(
                 { handle, channelId },
-                'Resolved handle to channel ID via search (exact match by customUrl)'
+                "Resolved handle to channel ID via search (exact match by customUrl)",
               );
               return { channelId, error: null };
             }
@@ -289,13 +301,16 @@ async function resolveChannelId(
 
         // Also check channel title for exact match (some channels don't have customUrl)
         for (const item of searchItems) {
-          const title = (item.snippet?.title || '').toLowerCase();
+          const title = (item.snippet?.title || "").toLowerCase();
           // Sometimes the handle is in the title
-          if (normalizedHandle.includes(title) || title.includes(normalizedHandle)) {
+          if (
+            normalizedHandle.includes(title) ||
+            title.includes(normalizedHandle)
+          ) {
             const channelId = item.id.channelId;
             logger.info(
               { handle, channelId },
-              'Resolved handle to channel ID via search (exact match by title)'
+              "Resolved handle to channel ID via search (exact match by title)",
             );
             return { channelId, error: null };
           }
@@ -305,7 +320,7 @@ async function resolveChannelId(
         const channelId = searchItems[0].id.channelId;
         logger.info(
           { handle, channelId },
-          'Resolved handle to channel ID via search (best match - first result)'
+          "Resolved handle to channel ID via search (best match - first result)",
         );
         return { channelId, error: null };
       }
@@ -313,17 +328,23 @@ async function resolveChannelId(
       // Fallback: Try forUsername for old-style usernames (deprecated but still works for some)
       // This is a last resort as it doesn't work for modern @handles
       try {
-        const response = await axios.get('https://www.googleapis.com/youtube/v3/channels', {
-          params: {
-            part: 'id',
-            forUsername: handle,
-            key: apiKey,
+        const response = await axios.get(
+          "https://www.googleapis.com/youtube/v3/channels",
+          {
+            params: {
+              part: "id",
+              forUsername: handle,
+              key: apiKey,
+            },
           },
-        });
+        );
         const items = response.data.items || [];
         if (items.length > 0) {
           const channelId = items[0].id;
-          logger.info({ handle, channelId }, 'Resolved handle to channel ID via forUsername');
+          logger.info(
+            { handle, channelId },
+            "Resolved handle to channel ID via forUsername",
+          );
           return { channelId, error: null };
         }
       } catch (httpError) {
@@ -333,7 +354,7 @@ async function resolveChannelId(
 
       return { channelId: null, error: `Channel handle not found: @${handle}` };
     } catch (error) {
-      logger.error({ error, handle }, 'Error resolving handle');
+      logger.error({ error, handle }, "Error resolving handle");
       return {
         channelId: null,
         error: `API error: ${error instanceof Error ? error.message : String(error)}`,
@@ -341,7 +362,7 @@ async function resolveChannelId(
     }
   }
 
-  return { channelId: null, error: 'Could not parse channel identifier' };
+  return { channelId: null, error: "Could not parse channel identifier" };
 }
 
 /**
@@ -349,7 +370,7 @@ async function resolveChannelId(
  */
 async function validateYouTubeIdentifier(
   identifier: string,
-  apiKey: string
+  apiKey: string,
 ): Promise<{ valid: boolean; error?: string }> {
   const { channelId, error } = await resolveChannelId(identifier, apiKey);
   if (error) {
@@ -359,18 +380,18 @@ async function validateYouTubeIdentifier(
 }
 
 export class YouTubeAggregator extends BaseAggregator {
-  override readonly id = 'youtube';
-  override readonly type = 'social' as const;
-  override readonly name = 'YouTube Channel';
-  override readonly url = '';
+  override readonly id = "youtube";
+  override readonly type = "social" as const;
+  override readonly name = "YouTube Channel";
+  override readonly url = "";
   override readonly description =
-    'YouTube - Video sharing platform with channels covering various topics.';
+    "YouTube - Video sharing platform with channels covering various topics.";
 
-  override readonly identifierType = 'string' as const;
-  override readonly identifierLabel = 'Channel';
+  override readonly identifierType = "string" as const;
+  override readonly identifierLabel = "Channel";
   override readonly identifierDescription =
     "Enter the YouTube channel handle (e.g., '@mkbhd'), channel ID (UC...), or channel URL.";
-  override readonly identifierPlaceholder = '@mkbhd';
+  override readonly identifierPlaceholder = "@mkbhd";
   override readonly identifierEditable = true;
 
   /**
@@ -378,16 +399,20 @@ export class YouTubeAggregator extends BaseAggregator {
    */
   private async getApiKey(): Promise<string> {
     if (!this.feed?.userId) {
-      throw new YouTubeAPIError('Feed must have a user ID to access YouTube API key');
+      throw new YouTubeAPIError(
+        "Feed must have a user ID to access YouTube API key",
+      );
     }
 
     const settings = await getUserSettings(this.feed.userId);
     if (
       !settings.youtubeEnabled ||
       !settings.youtubeApiKey ||
-      settings.youtubeApiKey.trim() === ''
+      settings.youtubeApiKey.trim() === ""
     ) {
-      throw new YouTubeAPIError('YouTube API key is not configured in user settings');
+      throw new YouTubeAPIError(
+        "YouTube API key is not configured in user settings",
+      );
     }
 
     return settings.youtubeApiKey;
@@ -396,14 +421,19 @@ export class YouTubeAggregator extends BaseAggregator {
   /**
    * Validate YouTube channel identifier.
    */
-  async validateIdentifier(identifier: string): Promise<{ valid: boolean; error?: string }> {
+  async validateIdentifier(
+    identifier: string,
+  ): Promise<{ valid: boolean; error?: string }> {
     try {
       const apiKey = await this.getApiKey();
       return await validateYouTubeIdentifier(identifier, apiKey);
     } catch (error) {
       return {
         valid: false,
-        error: error instanceof Error ? error.message : 'Failed to validate identifier',
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to validate identifier",
       };
     }
   }
@@ -415,20 +445,20 @@ export class YouTubeAggregator extends BaseAggregator {
    */
   normalizeIdentifier(identifier: string): string {
     identifier = identifier.trim();
-    if (identifier.startsWith('UC') && identifier.length >= 24) {
+    if (identifier.startsWith("UC") && identifier.length >= 24) {
       return identifier;
     }
 
     // For now, return as-is - actual normalization happens during aggregation
     // This matches Python behavior where normalization happens in resolve_channel_id
-    if (identifier.startsWith('@')) {
+    if (identifier.startsWith("@")) {
       return identifier;
     }
-    if (identifier.includes('youtube.com') && identifier.includes('/@')) {
-      const atPos = identifier.indexOf('/@');
-      const endPos = identifier.indexOf('/', atPos + 2);
+    if (identifier.includes("youtube.com") && identifier.includes("/@")) {
+      const atPos = identifier.indexOf("/@");
+      const endPos = identifier.indexOf("/", atPos + 2);
       if (endPos === -1) {
-        const queryPos = identifier.indexOf('?', atPos + 2);
+        const queryPos = identifier.indexOf("?", atPos + 2);
         if (queryPos === -1) {
           return identifier.slice(atPos + 1);
         }
@@ -456,7 +486,7 @@ export class YouTubeAggregator extends BaseAggregator {
    */
   async aggregate(articleLimit?: number): Promise<RawArticle[]> {
     if (!this.feed) {
-      throw new YouTubeAPIError('Feed not initialized');
+      throw new YouTubeAPIError("Feed not initialized");
     }
 
     const apiKey = await this.getApiKey();
@@ -465,28 +495,43 @@ export class YouTubeAggregator extends BaseAggregator {
     // Resolve to channel ID
     const { channelId, error } = await resolveChannelId(identifier, apiKey);
     if (error || !channelId) {
-      this.logger.error({ identifier, error }, 'Could not resolve YouTube identifier');
-      throw new YouTubeAPIError(`Invalid YouTube identifier: ${error || 'Unknown error'}`);
+      this.logger.error(
+        { identifier, error },
+        "Could not resolve YouTube identifier",
+      );
+      throw new YouTubeAPIError(
+        `Invalid YouTube identifier: ${error || "Unknown error"}`,
+      );
     }
 
-    this.logger.info({ channelId, feedId: this.feed.id }, 'Fetching videos for YouTube channel');
+    this.logger.info(
+      { channelId, feedId: this.feed.id },
+      "Fetching videos for YouTube channel",
+    );
 
     try {
       // Get channel's uploads playlist ID
-      const channelResponse = await axios.get('https://www.googleapis.com/youtube/v3/channels', {
-        params: {
-          part: 'contentDetails',
-          id: channelId,
-          key: apiKey,
+      const channelResponse = await axios.get(
+        "https://www.googleapis.com/youtube/v3/channels",
+        {
+          params: {
+            part: "contentDetails",
+            id: channelId,
+            key: apiKey,
+          },
         },
-      });
+      );
 
-      if (!channelResponse.data.items || channelResponse.data.items.length === 0) {
+      if (
+        !channelResponse.data.items ||
+        channelResponse.data.items.length === 0
+      ) {
         throw new YouTubeAPIError(`Channel not found: ${channelId}`);
       }
 
       const channel: YouTubeChannel = channelResponse.data.items[0];
-      const uploadsPlaylistId = channel.contentDetails?.relatedPlaylists?.uploads;
+      const uploadsPlaylistId =
+        channel.contentDetails?.relatedPlaylists?.uploads;
 
       let videos: YouTubeVideo[] = [];
 
@@ -494,7 +539,7 @@ export class YouTubeAggregator extends BaseAggregator {
         // Channel has no uploads playlist (rare, but possible)
         this.logger.warn(
           { channelId },
-          'Channel has no uploads playlist. Trying fallback method using search.list.'
+          "Channel has no uploads playlist. Trying fallback method using search.list.",
         );
         // Get max_results from feed settings if available
         const maxResults = articleLimit || this.feed.dailyPostLimit || 50;
@@ -503,18 +548,29 @@ export class YouTubeAggregator extends BaseAggregator {
         // Get videos from uploads playlist
         const maxResults = articleLimit || this.feed.dailyPostLimit || 50;
         try {
-          videos = await this.fetchVideosFromPlaylist(uploadsPlaylistId, maxResults, apiKey);
+          videos = await this.fetchVideosFromPlaylist(
+            uploadsPlaylistId,
+            maxResults,
+            apiKey,
+          );
         } catch (error) {
           // Handle playlist not found or inaccessible - fallback to search
           if (axios.isAxiosError(error)) {
             const axiosError = error as AxiosError;
             const errorDetails = axiosError.message;
-            if (errorDetails.includes('playlistNotFound') || axiosError.response?.status === 404) {
+            if (
+              errorDetails.includes("playlistNotFound") ||
+              axiosError.response?.status === 404
+            ) {
               this.logger.warn(
                 { channelId, playlistId: uploadsPlaylistId, error: axiosError },
-                'Uploads playlist not found or inaccessible. Trying fallback method using search.list.'
+                "Uploads playlist not found or inaccessible. Trying fallback method using search.list.",
               );
-              videos = await this.fetchVideosViaSearch(channelId, maxResults, apiKey);
+              videos = await this.fetchVideosViaSearch(
+                channelId,
+                maxResults,
+                apiKey,
+              );
             } else {
               throw error;
             }
@@ -527,14 +583,14 @@ export class YouTubeAggregator extends BaseAggregator {
       if (videos.length === 0) {
         this.logger.warn(
           { channelId },
-          'No videos found for channel. Channel may have no public videos or may be private.'
+          "No videos found for channel. Channel may have no public videos or may be private.",
         );
         return [];
       }
 
       this.logger.info(
         { channelId, videoCount: videos.length },
-        'Successfully fetched videos for channel'
+        "Successfully fetched videos for channel",
       );
 
       // Convert to RawArticle format
@@ -553,8 +609,8 @@ export class YouTubeAggregator extends BaseAggregator {
           // Replace Z with +00:00 for Date compatibility
           const publishedStr = snippet.publishedAt;
           if (publishedStr) {
-            const dateStr = publishedStr.endsWith('Z')
-              ? publishedStr.slice(0, -1) + '+00:00'
+            const dateStr = publishedStr.endsWith("Z")
+              ? publishedStr.slice(0, -1) + "+00:00"
               : publishedStr;
             published = new Date(dateStr);
           } else {
@@ -563,18 +619,26 @@ export class YouTubeAggregator extends BaseAggregator {
         } catch (error) {
           this.logger.warn(
             { error, publishedAt: snippet.publishedAt },
-            'Failed to parse YouTube date'
+            "Failed to parse YouTube date",
           );
           published = new Date();
         }
 
         // Use current timestamp if feed is configured for it (default: True)
-        const articleDate = this.feed.useCurrentTimestamp ? new Date() : published;
+        const articleDate = this.feed.useCurrentTimestamp
+          ? new Date()
+          : published;
 
         // Extract thumbnail URL
         const thumbnails = snippet.thumbnails;
-        let thumbnailUrl = '';
-        for (const quality of ['maxres', 'standard', 'high', 'medium', 'default'] as const) {
+        let thumbnailUrl = "";
+        for (const quality of [
+          "maxres",
+          "standard",
+          "high",
+          "medium",
+          "default",
+        ] as const) {
           if (thumbnails[quality]) {
             thumbnailUrl = thumbnails[quality].url;
             break;
@@ -589,34 +653,34 @@ export class YouTubeAggregator extends BaseAggregator {
         const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
 
         // Generate HTML content with video description
-        const description = snippet.description || '';
+        const description = snippet.description || "";
         const htmlParts: string[] = [];
 
         // Description
         if (description) {
           // Convert newlines to paragraphs for better formatting
-          const paragraphs = description.split('\n\n');
+          const paragraphs = description.split("\n\n");
           for (const para of paragraphs) {
             const trimmed = para.trim();
             if (trimmed) {
               // Convert single newlines to <br>
-              const withBreaks = trimmed.replace(/\n/g, '<br>');
+              const withBreaks = trimmed.replace(/\n/g, "<br>");
               htmlParts.push(`<p>${withBreaks}</p>`);
             }
           }
         }
 
-        const content = htmlParts.join('\n');
+        const content = htmlParts.join("\n");
 
         articles.push({
-          title: snippet.title || 'Untitled',
+          title: snippet.title || "Untitled",
           url: videoUrl,
           published: articleDate,
           content,
           summary: description,
           thumbnailUrl,
           mediaUrl: getYouTubeProxyUrl(videoId),
-          mediaType: 'video/youtube',
+          mediaType: "video/youtube",
           externalId: videoId,
         });
       }
@@ -629,7 +693,10 @@ export class YouTubeAggregator extends BaseAggregator {
       if (axios.isAxiosError(error)) {
         const axiosError = error as AxiosError;
         const errorMsg = `YouTube API error: ${axiosError.message}`;
-        this.logger.error({ error: axiosError, channelId, feedId: this.feed.id }, errorMsg);
+        this.logger.error(
+          { error: axiosError, channelId, feedId: this.feed.id },
+          errorMsg,
+        );
         throw new YouTubeAPIError(errorMsg, axiosError);
       }
       const errorMsg = `Error fetching YouTube videos: ${error instanceof Error ? error.message : String(error)}`;
@@ -644,7 +711,7 @@ export class YouTubeAggregator extends BaseAggregator {
   private async fetchVideosFromPlaylist(
     playlistId: string,
     maxResults: number,
-    apiKey: string
+    apiKey: string,
   ): Promise<YouTubeVideo[]> {
     const videos: YouTubeVideo[] = [];
     let nextPageToken: string | undefined;
@@ -652,16 +719,16 @@ export class YouTubeAggregator extends BaseAggregator {
     try {
       while (videos.length < maxResults) {
         const playlistResponse = await axios.get(
-          'https://www.googleapis.com/youtube/v3/playlistItems',
+          "https://www.googleapis.com/youtube/v3/playlistItems",
           {
             params: {
-              part: 'snippet,contentDetails',
+              part: "snippet,contentDetails",
               playlistId,
               maxResults: Math.min(50, maxResults - videos.length),
               pageToken: nextPageToken,
               key: apiKey,
             },
-          }
+          },
         );
 
         const items: YouTubePlaylistItem[] = playlistResponse.data.items || [];
@@ -670,16 +737,19 @@ export class YouTubeAggregator extends BaseAggregator {
         }
 
         // Get video IDs
-        const videoIds = items.map(item => item.contentDetails.videoId);
+        const videoIds = items.map((item) => item.contentDetails.videoId);
 
         // Get detailed video information
-        const videosResponse = await axios.get('https://www.googleapis.com/youtube/v3/videos', {
-          params: {
-            part: 'snippet,statistics,contentDetails',
-            id: videoIds.join(','),
-            key: apiKey,
+        const videosResponse = await axios.get(
+          "https://www.googleapis.com/youtube/v3/videos",
+          {
+            params: {
+              part: "snippet,statistics,contentDetails",
+              id: videoIds.join(","),
+              key: apiKey,
+            },
           },
-        });
+        );
 
         videos.push(...(videosResponse.data.items || []));
         nextPageToken = playlistResponse.data.nextPageToken;
@@ -704,7 +774,7 @@ export class YouTubeAggregator extends BaseAggregator {
   private async fetchVideosViaSearch(
     channelId: string,
     maxResults: number,
-    apiKey: string
+    apiKey: string,
   ): Promise<YouTubeVideo[]> {
     const videos: YouTubeVideo[] = [];
     let nextPageToken: string | undefined;
@@ -712,17 +782,20 @@ export class YouTubeAggregator extends BaseAggregator {
     try {
       while (videos.length < maxResults) {
         // Search for videos from this channel
-        const searchResponse = await axios.get('https://www.googleapis.com/youtube/v3/search', {
-          params: {
-            part: 'id',
-            channelId,
-            type: 'video',
-            order: 'date', // Most recent first
-            maxResults: Math.min(50, maxResults - videos.length),
-            pageToken: nextPageToken,
-            key: apiKey,
+        const searchResponse = await axios.get(
+          "https://www.googleapis.com/youtube/v3/search",
+          {
+            params: {
+              part: "id",
+              channelId,
+              type: "video",
+              order: "date", // Most recent first
+              maxResults: Math.min(50, maxResults - videos.length),
+              pageToken: nextPageToken,
+              key: apiKey,
+            },
           },
-        });
+        );
 
         const items = searchResponse.data.items || [];
         if (items.length === 0) {
@@ -730,16 +803,21 @@ export class YouTubeAggregator extends BaseAggregator {
         }
 
         // Get video IDs from search results
-        const videoIds = items.map((item: { id: { videoId: string } }) => item.id.videoId);
+        const videoIds = items.map(
+          (item: { id: { videoId: string } }) => item.id.videoId,
+        );
 
         // Get detailed video information
-        const videosResponse = await axios.get('https://www.googleapis.com/youtube/v3/videos', {
-          params: {
-            part: 'snippet,statistics,contentDetails',
-            id: videoIds.join(','),
-            key: apiKey,
+        const videosResponse = await axios.get(
+          "https://www.googleapis.com/youtube/v3/videos",
+          {
+            params: {
+              part: "snippet,statistics,contentDetails",
+              id: videoIds.join(","),
+              key: apiKey,
+            },
           },
-        });
+        );
 
         videos.push(...(videosResponse.data.items || []));
         nextPageToken = searchResponse.data.nextPageToken;
@@ -750,7 +828,7 @@ export class YouTubeAggregator extends BaseAggregator {
 
       this.logger.info(
         { channelId, videoCount: videos.length },
-        'Fetched videos via search.list for channel'
+        "Fetched videos via search.list for channel",
       );
       return videos;
     } catch (error) {
@@ -758,29 +836,32 @@ export class YouTubeAggregator extends BaseAggregator {
         const axiosError = error as AxiosError;
         const errorDetails = axiosError.message;
         // Check if it's a quota or permission error vs. channel not found
-        if (errorDetails.toLowerCase().includes('quota') || axiosError.response?.status === 403) {
+        if (
+          errorDetails.toLowerCase().includes("quota") ||
+          axiosError.response?.status === 403
+        ) {
           this.logger.error(
             { error: axiosError, channelId },
-            'API quota exceeded or permission denied when fetching videos via search.list for channel'
+            "API quota exceeded or permission denied when fetching videos via search.list for channel",
           );
         } else if (
-          errorDetails.toLowerCase().includes('notfound') ||
+          errorDetails.toLowerCase().includes("notfound") ||
           axiosError.response?.status === 404
         ) {
           this.logger.warn(
             { error: axiosError, channelId },
-            'Channel not found or has no public videos via search.list'
+            "Channel not found or has no public videos via search.list",
           );
         } else {
           this.logger.error(
             { error: axiosError, channelId },
-            'Error fetching videos via search.list for channel'
+            "Error fetching videos via search.list for channel",
           );
         }
       } else {
         this.logger.error(
           { error, channelId },
-          'Error fetching videos via search.list for channel'
+          "Error fetching videos via search.list for channel",
         );
       }
       // Return empty list if search also fails

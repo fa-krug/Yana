@@ -4,32 +4,47 @@
  * Handles user management and authentication.
  */
 
-import bcrypt from 'bcrypt';
-import { eq, and, or, like, desc } from 'drizzle-orm';
-import { db, users } from '../db';
-import { NotFoundError, AuthenticationError, ConflictError } from '../errors';
-import { logger } from '../utils/logger';
-import type { User, UserInsert } from '../db/types';
-import { formatPaginatedResponse, type PaginationParams } from '../middleware/pagination';
+import bcrypt from "bcrypt";
+import { eq, and, or, like, desc } from "drizzle-orm";
+import { db, users } from "../db";
+import { NotFoundError, AuthenticationError, ConflictError } from "../errors";
+import { logger } from "../utils/logger";
+import type { User, UserInsert } from "../db/types";
+import {
+  formatPaginatedResponse,
+  type PaginationParams,
+} from "../middleware/pagination";
 
 const SALT_ROUNDS = 10;
 
 /**
  * Create a new user.
  */
-export async function createUser(username: string, email: string, password: string): Promise<User> {
+export async function createUser(
+  username: string,
+  email: string,
+  password: string,
+): Promise<User> {
   // Check if user already exists
-  const existing = await db.select().from(users).where(eq(users.username, username)).limit(1);
+  const existing = await db
+    .select()
+    .from(users)
+    .where(eq(users.username, username))
+    .limit(1);
 
   if (existing.length > 0) {
-    throw new ConflictError('Username already exists');
+    throw new ConflictError("Username already exists");
   }
 
   // Check if email already exists
-  const existingEmail = await db.select().from(users).where(eq(users.email, email)).limit(1);
+  const existingEmail = await db
+    .select()
+    .from(users)
+    .where(eq(users.email, email))
+    .limit(1);
 
   if (existingEmail.length > 0) {
-    throw new ConflictError('Email already exists');
+    throw new ConflictError("Email already exists");
   }
 
   // Hash password
@@ -47,7 +62,7 @@ export async function createUser(username: string, email: string, password: stri
     })
     .returning();
 
-  logger.info({ userId: newUser.id, username }, 'User created');
+  logger.info({ userId: newUser.id, username }, "User created");
 
   return newUser;
 }
@@ -55,26 +70,36 @@ export async function createUser(username: string, email: string, password: stri
 /**
  * Authenticate user (login).
  */
-export async function authenticateUser(username: string, password: string): Promise<User> {
-  logger.debug({ username }, 'Authenticating user');
+export async function authenticateUser(
+  username: string,
+  password: string,
+): Promise<User> {
+  logger.debug({ username }, "Authenticating user");
 
   // Find user
-  const [user] = await db.select().from(users).where(eq(users.username, username)).limit(1);
+  const [user] = await db
+    .select()
+    .from(users)
+    .where(eq(users.username, username))
+    .limit(1);
 
   if (!user) {
-    logger.warn({ username }, 'Authentication failed: user not found');
-    throw new AuthenticationError('Invalid username or password');
+    logger.warn({ username }, "Authentication failed: user not found");
+    throw new AuthenticationError("Invalid username or password");
   }
 
   // Verify password
   const isValid = await bcrypt.compare(password, user.passwordHash);
 
   if (!isValid) {
-    logger.warn({ userId: user.id, username }, 'Authentication failed: invalid password');
-    throw new AuthenticationError('Invalid username or password');
+    logger.warn(
+      { userId: user.id, username },
+      "Authentication failed: invalid password",
+    );
+    throw new AuthenticationError("Invalid username or password");
   }
 
-  logger.info({ userId: user.id, username }, 'User authenticated successfully');
+  logger.info({ userId: user.id, username }, "User authenticated successfully");
 
   return user;
 }
@@ -95,8 +120,14 @@ export async function getUserById(id: number): Promise<User> {
 /**
  * Get user by username.
  */
-export async function getUserByUsername(username: string): Promise<User | null> {
-  const [user] = await db.select().from(users).where(eq(users.username, username)).limit(1);
+export async function getUserByUsername(
+  username: string,
+): Promise<User | null> {
+  const [user] = await db
+    .select()
+    .from(users)
+    .where(eq(users.username, username))
+    .limit(1);
 
   return user || null;
 }
@@ -104,12 +135,18 @@ export async function getUserByUsername(username: string): Promise<User | null> 
 /**
  * Update user password.
  */
-export async function updateUserPassword(userId: number, newPassword: string): Promise<void> {
+export async function updateUserPassword(
+  userId: number,
+  newPassword: string,
+): Promise<void> {
   const passwordHash = await bcrypt.hash(newPassword, SALT_ROUNDS);
 
-  await db.update(users).set({ passwordHash, updatedAt: new Date() }).where(eq(users.id, userId));
+  await db
+    .update(users)
+    .set({ passwordHash, updatedAt: new Date() })
+    .where(eq(users.id, userId));
 
-  logger.info({ userId }, 'User password updated');
+  logger.info({ userId }, "User password updated");
 }
 
 /**
@@ -117,16 +154,25 @@ export async function updateUserPassword(userId: number, newPassword: string): P
  */
 export async function updateUserProfile(
   userId: number,
-  data: { email: string; firstName?: string; lastName?: string }
+  data: { email: string; firstName?: string; lastName?: string },
 ): Promise<User> {
   // Check if email is already taken by another user
-  const existing = await db.select().from(users).where(eq(users.email, data.email)).limit(1);
+  const existing = await db
+    .select()
+    .from(users)
+    .where(eq(users.email, data.email))
+    .limit(1);
 
   if (existing.length > 0 && existing[0].id !== userId) {
-    throw new ConflictError('Email already exists');
+    throw new ConflictError("Email already exists");
   }
 
-  const updateData: { email: string; firstName?: string; lastName?: string; updatedAt: Date } = {
+  const updateData: {
+    email: string;
+    firstName?: string;
+    lastName?: string;
+    updatedAt: Date;
+  } = {
     email: data.email,
     updatedAt: new Date(),
   };
@@ -145,7 +191,7 @@ export async function updateUserProfile(
     .where(eq(users.id, userId))
     .returning();
 
-  logger.info({ userId, email: data.email }, 'User profile updated');
+  logger.info({ userId, email: data.email }, "User profile updated");
 
   return updatedUser;
 }
@@ -170,8 +216,8 @@ export async function listUsers(options: {
         like(users.username, `%${search}%`),
         like(users.email, `%${search}%`),
         like(users.firstName, `%${search}%`),
-        like(users.lastName, `%${search}%`)
-      )!
+        like(users.lastName, `%${search}%`),
+      )!,
     );
   }
 
@@ -182,7 +228,10 @@ export async function listUsers(options: {
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
   // Get total count
-  const totalResult = await db.select({ count: users.id }).from(users).where(whereClause);
+  const totalResult = await db
+    .select({ count: users.id })
+    .from(users)
+    .where(whereClause);
   const total = totalResult.length;
 
   // Get paginated users
@@ -218,7 +267,7 @@ export async function updateUser(
   data: {
     username?: string;
     isSuperuser?: boolean;
-  }
+  },
 ): Promise<User> {
   // Check if username is already taken by another user
   if (data.username !== undefined) {
@@ -229,7 +278,7 @@ export async function updateUser(
       .limit(1);
 
     if (existing.length > 0 && existing[0].id !== userId) {
-      throw new ConflictError('Username already exists');
+      throw new ConflictError("Username already exists");
     }
   }
 
@@ -255,7 +304,10 @@ export async function updateUser(
     .where(eq(users.id, userId))
     .returning();
 
-  logger.info({ userId, username: data.username, isSuperuser: data.isSuperuser }, 'User updated');
+  logger.info(
+    { userId, username: data.username, isSuperuser: data.isSuperuser },
+    "User updated",
+  );
 
   return updatedUser;
 }

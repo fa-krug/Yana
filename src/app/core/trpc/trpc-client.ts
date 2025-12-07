@@ -4,17 +4,17 @@
  * Creates and configures the tRPC client with HTTP link and session support.
  */
 
-import { createTRPCProxyClient, httpBatchLink } from '@trpc/client';
-import superjson from 'superjson';
+import { createTRPCProxyClient, httpBatchLink } from "@trpc/client";
+import superjson from "superjson";
 // Import AppRouter type from server
 // Note: This import works because both src/app and src/server are in the same src directory
-import type { AppRouter } from '../../../server/trpc/router';
+import type { AppRouter } from "../../../server/trpc/router";
 
 /**
  * Check if we're running in a Node.js environment (SSR).
  */
 function isServerSide(): boolean {
-  return typeof window === 'undefined';
+  return typeof window === "undefined";
 }
 
 /**
@@ -24,13 +24,14 @@ function isServerSide(): boolean {
 function getBaseUrl(): string {
   if (isServerSide()) {
     // In SSR, we need an absolute URL
-    const port = process.env['PORT'] || '3000';
-    const host = process.env['HOST'] || 'localhost';
-    const protocol = process.env['NODE_ENV'] === 'production' ? 'https' : 'http';
+    const port = process.env["PORT"] || "3000";
+    const host = process.env["HOST"] || "localhost";
+    const protocol =
+      process.env["NODE_ENV"] === "production" ? "https" : "http";
     return `${protocol}://${host}:${port}`;
   }
   // In browser, relative URLs work fine
-  return '';
+  return "";
 }
 
 /**
@@ -39,7 +40,7 @@ function getBaseUrl(): string {
  */
 export function createTRPCClient() {
   const baseUrl = getBaseUrl();
-  const url = baseUrl ? `${baseUrl}/trpc` : '/trpc';
+  const url = baseUrl ? `${baseUrl}/trpc` : "/trpc";
 
   return createTRPCProxyClient<AppRouter>({
     links: [
@@ -50,13 +51,13 @@ export function createTRPCClient() {
         fetch: (url, options) => {
           // Ensure URL is absolute in SSR
           const absoluteUrl =
-            typeof url === 'string' && url.startsWith('/') && isServerSide()
+            typeof url === "string" && url.startsWith("/") && isServerSide()
               ? `${baseUrl}${url}`
               : url;
 
           return fetch(absoluteUrl, {
             ...options,
-            credentials: 'include', // Important for session cookies
+            credentials: "include", // Important for session cookies
           });
         },
       }),

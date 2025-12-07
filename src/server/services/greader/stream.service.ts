@@ -2,13 +2,33 @@
  * Google Reader API stream service.
  */
 
-import { eq, and, or, isNull, inArray, desc, asc, gte, lte, lt, sql, notInArray } from 'drizzle-orm';
-import { db, articles, feeds, userArticleStates, groups, feedGroups } from '../../db';
-import { cache } from '../../utils/cache';
+import {
+  eq,
+  and,
+  or,
+  isNull,
+  inArray,
+  desc,
+  asc,
+  gte,
+  lte,
+  lt,
+  sql,
+  notInArray,
+} from "drizzle-orm";
+import {
+  db,
+  articles,
+  feeds,
+  userArticleStates,
+  groups,
+  feedGroups,
+} from "../../db";
+import { cache } from "../../utils/cache";
 
-const STATE_READ = 'user/-/state/com.google/read';
-const STATE_STARRED = 'user/-/state/com.google/starred';
-const STATE_READING_LIST = 'user/-/state/com.google/reading-list';
+const STATE_READ = "user/-/state/com.google/read";
+const STATE_STARRED = "user/-/state/com.google/starred";
+const STATE_READING_LIST = "user/-/state/com.google/reading-list";
 
 /**
  * Get stream contents.
@@ -20,7 +40,7 @@ export async function getStreamContents(
   excludeTag: string,
   limit: number,
   olderThan: string,
-  continuation: string
+  continuation: string,
 ): Promise<{
   id: string;
   updated: number;
@@ -57,8 +77,13 @@ export async function getStreamContents(
     const readIds = await db
       .select({ articleId: userArticleStates.articleId })
       .from(userArticleStates)
-      .where(and(eq(userArticleStates.userId, userId), eq(userArticleStates.isRead, true)));
-    readIdArray = readIds.map(r => r.articleId);
+      .where(
+        and(
+          eq(userArticleStates.userId, userId),
+          eq(userArticleStates.isRead, true),
+        ),
+      );
+    readIdArray = readIds.map((r) => r.articleId);
   }
 
   // Parse timestamp for filtering
@@ -78,7 +103,9 @@ export async function getStreamContents(
 
   // Filter by item IDs
   if (itemIds && itemIds.length > 0) {
-    const parsedIds = itemIds.map(id => parseItemId(id)).filter(id => id > 0);
+    const parsedIds = itemIds
+      .map((id) => parseItemId(id))
+      .filter((id) => id > 0);
 
     if (parsedIds.length > 0) {
       baseConditions.push(inArray(articles.id, parsedIds));
@@ -126,13 +153,15 @@ export async function getStreamContents(
 
   // Order and limit - fetch only what we need for pagination
   const fetchLimit = offset + limit;
-  const allArticles = await articleQuery.orderBy(desc(articles.date)).limit(fetchLimit);
+  const allArticles = await articleQuery
+    .orderBy(desc(articles.date))
+    .limit(fetchLimit);
 
   // Apply pagination
   const paginatedArticles = allArticles.slice(offset, offset + limit);
 
   // Get user states
-  const articleIds = paginatedArticles.map(a => a.id);
+  const articleIds = paginatedArticles.map((a) => a.id);
   const states =
     articleIds.length > 0
       ? await db
@@ -141,15 +170,15 @@ export async function getStreamContents(
           .where(
             and(
               eq(userArticleStates.userId, userId),
-              inArray(userArticleStates.articleId, articleIds)
-            )
+              inArray(userArticleStates.articleId, articleIds),
+            ),
           )
       : [];
 
-  const stateMap = new Map(states.map(s => [s.articleId, s]));
+  const stateMap = new Map(states.map((s) => [s.articleId, s]));
 
   // Build items
-  const items = paginatedArticles.map(article => {
+  const items = paginatedArticles.map((article) => {
     const state = stateMap.get(article.id);
     const categories = [STATE_READING_LIST];
     if (state?.isRead) {
@@ -212,7 +241,7 @@ export async function getStreamItemIds(
   olderThan: string,
   excludeTag: string,
   includeTag: string,
-  reverseOrder: boolean
+  reverseOrder: boolean,
 ): Promise<{ itemRefs: Array<{ id: string }> }> {
   limit = Math.min(limit, 10000);
 
@@ -222,8 +251,13 @@ export async function getStreamItemIds(
     const readIds = await db
       .select({ articleId: userArticleStates.articleId })
       .from(userArticleStates)
-      .where(and(eq(userArticleStates.userId, userId), eq(userArticleStates.isRead, true)));
-    readIdArray = readIds.map(r => r.articleId);
+      .where(
+        and(
+          eq(userArticleStates.userId, userId),
+          eq(userArticleStates.isRead, true),
+        ),
+      );
+    readIdArray = readIds.map((r) => r.articleId);
   }
 
   let starredIdArray: number[] = [];
@@ -231,8 +265,13 @@ export async function getStreamItemIds(
     const starredIds = await db
       .select({ articleId: userArticleStates.articleId })
       .from(userArticleStates)
-      .where(and(eq(userArticleStates.userId, userId), eq(userArticleStates.isSaved, true)));
-    starredIdArray = starredIds.map(s => s.articleId);
+      .where(
+        and(
+          eq(userArticleStates.userId, userId),
+          eq(userArticleStates.isSaved, true),
+        ),
+      );
+    starredIdArray = starredIds.map((s) => s.articleId);
     if (starredIdArray.length === 0) {
       return { itemRefs: [] };
     }
@@ -283,7 +322,7 @@ export async function getStreamItemIds(
   const articleIds = await articleQuery.orderBy(order).limit(limit);
 
   return {
-    itemRefs: articleIds.map(a => ({ id: String(a.id) })),
+    itemRefs: articleIds.map((a) => ({ id: String(a.id) })),
   };
 }
 
@@ -292,7 +331,7 @@ export async function getStreamItemIds(
  */
 export async function getUnreadCount(
   userId: number,
-  includeAll: boolean
+  includeAll: boolean,
 ): Promise<{
   max: number;
   unreadcounts: Array<{
@@ -312,19 +351,26 @@ export async function getUnreadCount(
   const feedStats = await db
     .select({
       feedId: feeds.id,
-      totalArticles: sql<number>`COUNT(${articles.id})`.as('total_articles'),
-      newestDate: sql<number>`MAX(${articles.date})`.as('newest_date'),
+      totalArticles: sql<number>`COUNT(${articles.id})`.as("total_articles"),
+      newestDate: sql<number>`MAX(${articles.date})`.as("newest_date"),
     })
     .from(feeds)
     .leftJoin(articles, eq(articles.feedId, feeds.id))
-    .where(and(or(eq(feeds.userId, userId), isNull(feeds.userId)), eq(feeds.enabled, true)))
+    .where(
+      and(
+        or(eq(feeds.userId, userId), isNull(feeds.userId)),
+        eq(feeds.enabled, true),
+      ),
+    )
     .groupBy(feeds.id);
 
   // Get read article counts per feed using aggregation
   const readCounts = await db
     .select({
       feedId: articles.feedId,
-      readCount: sql<number>`COUNT(${userArticleStates.articleId})`.as('read_count'),
+      readCount: sql<number>`COUNT(${userArticleStates.articleId})`.as(
+        "read_count",
+      ),
     })
     .from(userArticleStates)
     .innerJoin(articles, eq(userArticleStates.articleId, articles.id))
@@ -334,12 +380,14 @@ export async function getUnreadCount(
         eq(userArticleStates.userId, userId),
         eq(userArticleStates.isRead, true),
         or(eq(feeds.userId, userId), isNull(feeds.userId)),
-        eq(feeds.enabled, true)
-      )
+        eq(feeds.enabled, true),
+      ),
     )
     .groupBy(articles.feedId);
 
-  const readCountMap = new Map(readCounts.map(r => [r.feedId, Number(r.readCount) || 0]));
+  const readCountMap = new Map(
+    readCounts.map((r) => [r.feedId, Number(r.readCount) || 0]),
+  );
 
   const unreadCounts: Array<{
     id: string;
@@ -358,7 +406,7 @@ export async function getUnreadCount(
       const newestDate = stat.newestDate ? Number(stat.newestDate) : null;
       const timestampUsec = newestDate
         ? String(Math.floor(newestDate / 1000) * 1000000)
-        : '0';
+        : "0";
       unreadCounts.push({
         id: `feed/${stat.feedId}`,
         count: unreadCount,
@@ -382,7 +430,11 @@ export async function getUnreadCount(
 /**
  * Filter articles by stream ID.
  */
-async function filterArticlesByStream(query: any, streamId: string, userId: number): Promise<any> {
+async function filterArticlesByStream(
+  query: any,
+  streamId: string,
+  userId: number,
+): Promise<any> {
   if (!streamId || streamId === STATE_READING_LIST) {
     return query;
   }
@@ -391,9 +443,14 @@ async function filterArticlesByStream(query: any, streamId: string, userId: numb
     const starredIds = await db
       .select({ articleId: userArticleStates.articleId })
       .from(userArticleStates)
-      .where(and(eq(userArticleStates.userId, userId), eq(userArticleStates.isSaved, true)));
+      .where(
+        and(
+          eq(userArticleStates.userId, userId),
+          eq(userArticleStates.isSaved, true),
+        ),
+      );
 
-    const starredIdSet = new Set(starredIds.map(s => s.articleId));
+    const starredIdSet = new Set(starredIds.map((s) => s.articleId));
     const allArticles = await query;
     return db
       .select()
@@ -401,12 +458,14 @@ async function filterArticlesByStream(query: any, streamId: string, userId: numb
       .where(
         inArray(
           articles.id,
-          allArticles.filter((a: any) => starredIdSet.has(a.id)).map((a: any) => a.id)
-        )
+          allArticles
+            .filter((a: any) => starredIdSet.has(a.id))
+            .map((a: any) => a.id),
+        ),
       );
   }
 
-  if (streamId.startsWith('feed/')) {
+  if (streamId.startsWith("feed/")) {
     const feedId = parseInt(streamId.slice(5), 10);
     if (!isNaN(feedId)) {
       return db
@@ -428,9 +487,9 @@ async function filterArticlesByStream(query: any, streamId: string, userId: numb
     }
   }
 
-  if (streamId.startsWith('user/-/label/')) {
+  if (streamId.startsWith("user/-/label/")) {
     const labelName = streamId.slice(13);
-    if (labelName === 'Reddit') {
+    if (labelName === "Reddit") {
       return db
         .select({
           id: articles.id,
@@ -448,12 +507,12 @@ async function filterArticlesByStream(query: any, streamId: string, userId: numb
         .innerJoin(feeds, eq(articles.feedId, feeds.id))
         .where(
           and(
-            eq(feeds.feedType, 'reddit'),
+            eq(feeds.feedType, "reddit"),
             or(eq(feeds.userId, userId), isNull(feeds.userId)),
-            eq(feeds.enabled, true)
-          )
+            eq(feeds.enabled, true),
+          ),
         );
-    } else if (labelName === 'YouTube') {
+    } else if (labelName === "YouTube") {
       return db
         .select({
           id: articles.id,
@@ -471,12 +530,12 @@ async function filterArticlesByStream(query: any, streamId: string, userId: numb
         .innerJoin(feeds, eq(articles.feedId, feeds.id))
         .where(
           and(
-            eq(feeds.feedType, 'youtube'),
+            eq(feeds.feedType, "youtube"),
             or(eq(feeds.userId, userId), isNull(feeds.userId)),
-            eq(feeds.enabled, true)
-          )
+            eq(feeds.enabled, true),
+          ),
         );
-    } else if (labelName === 'Podcasts') {
+    } else if (labelName === "Podcasts") {
       return db
         .select({
           id: articles.id,
@@ -494,10 +553,10 @@ async function filterArticlesByStream(query: any, streamId: string, userId: numb
         .innerJoin(feeds, eq(articles.feedId, feeds.id))
         .where(
           and(
-            eq(feeds.feedType, 'podcast'),
+            eq(feeds.feedType, "podcast"),
             or(eq(feeds.userId, userId), isNull(feeds.userId)),
-            eq(feeds.enabled, true)
-          )
+            eq(feeds.enabled, true),
+          ),
         );
     } else {
       // Get group feeds
@@ -505,7 +564,10 @@ async function filterArticlesByStream(query: any, streamId: string, userId: numb
         .select({ id: groups.id })
         .from(groups)
         .where(
-          and(eq(groups.name, labelName), or(eq(groups.userId, userId), isNull(groups.userId)))
+          and(
+            eq(groups.name, labelName),
+            or(eq(groups.userId, userId), isNull(groups.userId)),
+          ),
         )
         .limit(1);
 
@@ -515,7 +577,7 @@ async function filterArticlesByStream(query: any, streamId: string, userId: numb
           .from(feedGroups)
           .where(eq(feedGroups.groupId, group.id));
 
-        const feedIds = groupFeedIds.map(g => g.feedId);
+        const feedIds = groupFeedIds.map((g) => g.feedId);
         if (feedIds.length > 0) {
           return db
             .select({
@@ -545,7 +607,7 @@ async function filterArticlesByStream(query: any, streamId: string, userId: numb
  * Parse item ID.
  */
 function parseItemId(itemId: string): number {
-  if (itemId.startsWith('tag:google.com,2005:reader/item/')) {
+  if (itemId.startsWith("tag:google.com,2005:reader/item/")) {
     const hexId = itemId.slice(32);
     return parseInt(hexId, 16);
   } else if (itemId.length === 16) {
@@ -566,31 +628,34 @@ function parseItemId(itemId: string): number {
  * Convert article ID to hex format.
  */
 function toHexId(articleId: number): string {
-  return articleId.toString(16).padStart(16, '0');
+  return articleId.toString(16).padStart(16, "0");
 }
 
 /**
  * Get site URL for a feed.
  */
-function getSiteUrl(article: { feedIdentifier: string; feedType: string }): string {
-  if (article.feedType === 'reddit') {
-    const subreddit = article.feedIdentifier.replace(/^r\//, '');
+function getSiteUrl(article: {
+  feedIdentifier: string;
+  feedType: string;
+}): string {
+  if (article.feedType === "reddit") {
+    const subreddit = article.feedIdentifier.replace(/^r\//, "");
     return `https://www.reddit.com/r/${subreddit}`;
   }
 
-  if (article.feedType === 'youtube') {
+  if (article.feedType === "youtube") {
     const identifier = article.feedIdentifier;
-    if (identifier.startsWith('UC') && identifier.length >= 24) {
+    if (identifier.startsWith("UC") && identifier.length >= 24) {
       return `https://www.youtube.com/channel/${identifier}`;
-    } else if (identifier.startsWith('@')) {
+    } else if (identifier.startsWith("@")) {
       return `https://www.youtube.com/${identifier}`;
     }
-    return 'https://www.youtube.com';
+    return "https://www.youtube.com";
   }
 
   if (
-    article.feedIdentifier.startsWith('http://') ||
-    article.feedIdentifier.startsWith('https://')
+    article.feedIdentifier.startsWith("http://") ||
+    article.feedIdentifier.startsWith("https://")
   ) {
     try {
       const url = new URL(article.feedIdentifier);

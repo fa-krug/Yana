@@ -4,16 +4,17 @@
  * Manages scheduled tasks configuration and execution.
  */
 
-import { getScheduler } from '../scheduler';
+import { getScheduler } from "../scheduler";
 import {
   aggregateAllFeedsTask,
   deleteOldArticlesTask,
   cleanupTaskHistoryTask,
   fetchFeedIconsTask,
-} from '../scheduler/tasks';
-import { logger } from '../utils/logger';
+} from "../scheduler/tasks";
+import { logger } from "../utils/logger";
 
-const AGGREGATION_SCHEDULE = process.env['AGGREGATION_SCHEDULE'] || '*/30 * * * *'; // Every 30 minutes
+const AGGREGATION_SCHEDULE =
+  process.env["AGGREGATION_SCHEDULE"] || "*/30 * * * *"; // Every 30 minutes
 
 let schedulerInitialized = false;
 
@@ -23,7 +24,7 @@ let schedulerInitialized = false;
 export function startScheduler(): void {
   // Prevent duplicate initialization
   if (schedulerInitialized) {
-    logger.warn('Scheduler already initialized, skipping');
+    logger.warn("Scheduler already initialized, skipping");
     return;
   }
 
@@ -31,8 +32,8 @@ export function startScheduler(): void {
 
   // Schedule: Aggregate all feeds
   scheduler.scheduleTask({
-    id: 'aggregate_all_feeds',
-    name: 'Aggregate All Feeds',
+    id: "aggregate_all_feeds",
+    name: "Aggregate All Feeds",
     cronExpression: AGGREGATION_SCHEDULE,
     task: aggregateAllFeedsTask,
     enabled: true,
@@ -40,27 +41,27 @@ export function startScheduler(): void {
 
   // Schedule: Delete old articles (daily at 1 AM)
   scheduler.scheduleTask({
-    id: 'delete_old_articles',
-    name: 'Delete Old Articles',
-    cronExpression: '0 1 * * *',
+    id: "delete_old_articles",
+    name: "Delete Old Articles",
+    cronExpression: "0 1 * * *",
     task: () => deleteOldArticlesTask(2), // 2 months
     enabled: true,
   });
 
   // Schedule: Cleanup task history (daily at 2 AM)
   scheduler.scheduleTask({
-    id: 'cleanup_task_history',
-    name: 'Cleanup Task History',
-    cronExpression: '0 2 * * *',
+    id: "cleanup_task_history",
+    name: "Cleanup Task History",
+    cronExpression: "0 2 * * *",
     task: () => cleanupTaskHistoryTask(7), // 7 days
     enabled: true,
   });
 
   // Schedule: Fetch feed icons (daily at 3 AM)
   scheduler.scheduleTask({
-    id: 'fetch_feed_icons',
-    name: 'Fetch Feed Icons',
-    cronExpression: '0 3 * * *',
+    id: "fetch_feed_icons",
+    name: "Fetch Feed Icons",
+    cronExpression: "0 3 * * *",
     task: fetchFeedIconsTask,
     enabled: true,
   });
@@ -69,7 +70,7 @@ export function startScheduler(): void {
   scheduler.start();
 
   schedulerInitialized = true;
-  logger.info('Scheduler initialized and started');
+  logger.info("Scheduler initialized and started");
 }
 
 /**
@@ -78,7 +79,7 @@ export function startScheduler(): void {
 export function stopScheduler(): void {
   const scheduler = getScheduler();
   scheduler.stop();
-  logger.info('Scheduler stopped');
+  logger.info("Scheduler stopped");
 }
 
 /**
@@ -86,14 +87,19 @@ export function stopScheduler(): void {
  */
 export function getSchedulerStatus(): {
   running: boolean;
-  tasks: Array<{ id: string; name: string; cronExpression: string; enabled: boolean }>;
+  tasks: Array<{
+    id: string;
+    name: string;
+    cronExpression: string;
+    enabled: boolean;
+  }>;
 } {
   const scheduler = getScheduler();
   const tasks = scheduler.listScheduledTasks();
 
   return {
     running: true, // Scheduler is always running if initialized
-    tasks: tasks.map(t => ({
+    tasks: tasks.map((t) => ({
       id: t.id,
       name: t.name,
       cronExpression: t.cronExpression,

@@ -24,22 +24,22 @@ export interface AggregatorOptions {
 
 export interface AggregatorMetadata {
   id: string;
-  type: 'managed' | 'custom' | 'social';
+  type: "managed" | "custom" | "social";
   name: string;
   url: string;
   description: string;
-  identifierType?: 'url' | 'string';
+  identifierType?: "url" | "string";
   identifierLabel?: string;
   identifierDescription?: string;
   identifierPlaceholder?: string;
   identifierChoices?: Array<[string, string]>;
   identifierEditable?: boolean;
-  feedType?: 'article' | 'youtube' | 'podcast' | 'reddit';
+  feedType?: "article" | "youtube" | "podcast" | "reddit";
   icon?: string;
 }
 
 export interface OptionDefinition {
-  type: 'boolean' | 'integer' | 'string' | 'choice' | 'float' | 'password';
+  type: "boolean" | "integer" | "string" | "choice" | "float" | "password";
   label: string;
   helpText?: string;
   default?: boolean | number | string | null;
@@ -47,7 +47,7 @@ export interface OptionDefinition {
   min?: number;
   max?: number;
   choices?: Array<[string, string]>;
-  widget?: 'text' | 'textarea' | 'json';
+  widget?: "text" | "textarea" | "json";
 }
 
 export interface OptionsSchema {

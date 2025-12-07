@@ -4,10 +4,10 @@
  * Sets up tRPC HTTP handler for Express.
  */
 
-import { createExpressMiddleware } from '@trpc/server/adapters/express';
-import { appRouter } from './router';
-import { createContext } from './context';
-import { logger } from '../utils/logger';
+import { createExpressMiddleware } from "@trpc/server/adapters/express";
+import { appRouter } from "./router";
+import { createContext } from "./context";
+import { logger } from "../utils/logger";
 
 /**
  * Create tRPC Express middleware.
@@ -29,26 +29,27 @@ export function createTRPCMiddleware() {
 
       if (input) {
         try {
-          errorContext['input'] = typeof input === 'object' ? JSON.stringify(input) : String(input);
+          errorContext["input"] =
+            typeof input === "object" ? JSON.stringify(input) : String(input);
         } catch {
-          errorContext['input'] = '[Unable to serialize input]';
+          errorContext["input"] = "[Unable to serialize input]";
         }
       }
 
       if (ctx?.req?.session?.id) {
-        errorContext['sessionId'] = ctx.req.session.id;
+        errorContext["sessionId"] = ctx.req.session.id;
       }
 
       if (ctx?.user) {
-        errorContext['userId'] = ctx.user.id;
+        errorContext["userId"] = ctx.user.id;
       }
 
-      if (error.code === 'UNAUTHORIZED') {
-        logger.warn(errorContext, 'tRPC unauthorized error');
-      } else if (error.code === 'INTERNAL_SERVER_ERROR') {
-        logger.error(errorContext, 'tRPC internal server error');
+      if (error.code === "UNAUTHORIZED") {
+        logger.warn(errorContext, "tRPC unauthorized error");
+      } else if (error.code === "INTERNAL_SERVER_ERROR") {
+        logger.error(errorContext, "tRPC internal server error");
       } else {
-        logger.warn(errorContext, 'tRPC error');
+        logger.warn(errorContext, "tRPC error");
       }
     },
   });

@@ -5,14 +5,14 @@
 export class AIServiceError extends Error {
   constructor(message: string) {
     super(message);
-    this.name = 'AIServiceError';
+    this.name = "AIServiceError";
   }
 }
 
 export class AIQuotaExceededError extends AIServiceError {
-  constructor(message: string = 'AI quota exceeded') {
+  constructor(message: string = "AI quota exceeded") {
     super(message);
-    this.name = 'AIQuotaExceededError';
+    this.name = "AIQuotaExceededError";
   }
 }
 

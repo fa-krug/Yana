@@ -2,8 +2,8 @@
  * Worker health checks.
  */
 
-import { getWorkerMetrics } from './monitoring';
-import { logger } from '../utils/logger';
+import { getWorkerMetrics } from "./monitoring";
+import { logger } from "../utils/logger";
 
 /**
  * Get worker health status.
@@ -23,7 +23,7 @@ export async function getWorkerHealth(): Promise<{
       metrics,
     };
   } catch (error) {
-    logger.error({ error }, 'Failed to get worker health');
+    logger.error({ error }, "Failed to get worker health");
     return {
       healthy: false,
       metrics: {

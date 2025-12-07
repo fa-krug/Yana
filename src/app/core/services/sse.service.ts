@@ -5,10 +5,10 @@
  * Uses fetch API to support credentials (cookies) for authentication.
  */
 
-import { Injectable, PLATFORM_ID, inject } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
-import { Observable, Subject, throwError, timer } from 'rxjs';
-import { catchError, retryWhen, delayWhen, takeUntil } from 'rxjs/operators';
+import { Injectable, PLATFORM_ID, inject } from "@angular/core";
+import { isPlatformBrowser } from "@angular/common";
+import { Observable, Subject, throwError, timer } from "rxjs";
+import { catchError, retryWhen, delayWhen, takeUntil } from "rxjs/operators";
 
 export interface SSEEvent {
   event: string;
@@ -16,10 +16,14 @@ export interface SSEEvent {
   id?: string;
 }
 
-export type ConnectionState = 'disconnected' | 'connecting' | 'connected' | 'error';
+export type ConnectionState =
+  | "disconnected"
+  | "connecting"
+  | "connected"
+  | "error";
 
 @Injectable({
-  providedIn: 'root',
+  providedIn: "root",
 })
 export class SSEService {
   private platformId = inject(PLATFORM_ID);
@@ -43,7 +47,7 @@ export class SSEService {
   connect(url: string): Observable<SSEEvent> {
     // Only connect in browser
     if (!isPlatformBrowser(this.platformId)) {
-      return new Observable<SSEEvent>(subscriber => {
+      return new Observable<SSEEvent>((subscriber) => {
         subscriber.complete();
       });
     }
@@ -57,44 +61,53 @@ export class SSEService {
       this.abortController = new AbortController();
       const signal = this.abortController.signal;
 
-      this.connectionState$.next('connecting');
+      this.connectionState$.next("connecting");
       this.reconnectAttempts = 0;
 
       fetch(url, {
-        method: 'GET',
-        credentials: 'include', // CRITICAL: Include cookies for authentication
-        redirect: 'manual', // Don't follow redirects automatically - handle them explicitly
+        method: "GET",
+        credentials: "include", // CRITICAL: Include cookies for authentication
+        redirect: "manual", // Don't follow redirects automatically - handle them explicitly
         headers: {
-          Accept: 'text/event-stream',
-          'Cache-Control': 'no-cache',
+          Accept: "text/event-stream",
+          "Cache-Control": "no-cache",
         },
         signal,
       })
-        .then(response => {
+        .then((response) => {
           // Check for redirects (authentication failures)
           // With redirect: 'manual', we get the actual redirect status
-          if (response.status === 302 || response.status === 301 || response.status === 307 || response.status === 308) {
-            const location = response.headers.get('Location');
-            throw new Error(`Authentication required. Redirected to: ${location || 'login'}`);
+          if (
+            response.status === 302 ||
+            response.status === 301 ||
+            response.status === 307 ||
+            response.status === 308
+          ) {
+            const location = response.headers.get("Location");
+            throw new Error(
+              `Authentication required. Redirected to: ${location || "login"}`,
+            );
           }
 
           // Check for other errors
           if (!response.ok) {
-            throw new Error(`SSE connection failed: ${response.status} ${response.statusText}`);
+            throw new Error(
+              `SSE connection failed: ${response.status} ${response.statusText}`,
+            );
           }
 
           // Check for response body
           if (!response.body) {
-            throw new Error('SSE response has no body');
+            throw new Error("SSE response has no body");
           }
 
-          this.connectionState$.next('connected');
+          this.connectionState$.next("connected");
           this.reconnectAttempts = 0;
 
           // Read the stream
           const reader = response.body.getReader();
           const decoder = new TextDecoder();
-          let buffer = '';
+          let buffer = "";
 
           const readStream = async () => {
             try {
@@ -109,8 +122,8 @@ export class SSEService {
                 buffer += decoder.decode(value, { stream: true });
 
                 // Process complete lines
-                const lines = buffer.split('\n');
-                buffer = lines.pop() || ''; // Keep incomplete line in buffer
+                const lines = buffer.split("\n");
+                buffer = lines.pop() || ""; // Keep incomplete line in buffer
 
                 let currentEvent: Partial<SSEEvent> | null = null;
 
@@ -118,10 +131,13 @@ export class SSEService {
                   const trimmed = line.trim();
 
                   // Skip empty lines and comments
-                  if (!trimmed || trimmed.startsWith(':')) {
-                    if (trimmed === '' && currentEvent) {
+                  if (!trimmed || trimmed.startsWith(":")) {
+                    if (trimmed === "" && currentEvent) {
                       // Empty line = end of event, emit it
-                      if (currentEvent.event && currentEvent.data !== undefined) {
+                      if (
+                        currentEvent.event &&
+                        currentEvent.data !== undefined
+                      ) {
                         subject.next({
                           event: currentEvent.event,
                           data: currentEvent.data,
@@ -134,24 +150,24 @@ export class SSEService {
                   }
 
                   // Parse SSE format
-                  if (trimmed.startsWith('event:')) {
+                  if (trimmed.startsWith("event:")) {
                     currentEvent = { event: trimmed.slice(6).trim() };
-                  } else if (trimmed.startsWith('data:')) {
+                  } else if (trimmed.startsWith("data:")) {
                     const dataStr = trimmed.slice(5).trim();
                     if (!currentEvent) {
-                      currentEvent = { event: 'message' };
+                      currentEvent = { event: "message" };
                     }
                     try {
                       currentEvent.data = JSON.parse(dataStr);
                     } catch {
                       currentEvent.data = dataStr;
                     }
-                  } else if (trimmed.startsWith('id:')) {
+                  } else if (trimmed.startsWith("id:")) {
                     if (!currentEvent) {
                       currentEvent = {};
                     }
                     currentEvent.id = trimmed.slice(3).trim();
-                  } else if (trimmed.startsWith('retry:')) {
+                  } else if (trimmed.startsWith("retry:")) {
                     // Server can suggest retry delay, but we handle it ourselves
                     // Could use this in the future
                   }
@@ -168,29 +184,29 @@ export class SSEService {
           };
 
           // Start reading
-          readStream().catch(error => {
+          readStream().catch((error) => {
             if (!signal.aborted) {
-              console.error('[SSE] Stream read error:', error);
-              this.connectionState$.next('error');
+              console.error("[SSE] Stream read error:", error);
+              this.connectionState$.next("error");
               subject.error(error);
             }
           });
         })
-        .catch(error => {
+        .catch((error) => {
           if (signal.aborted) {
             return; // Intentionally disconnected
           }
 
-          console.error('[SSE] Connection error:', error);
+          console.error("[SSE] Connection error:", error);
 
           // Don't retry on authentication errors
           if (
-            error.message?.includes('Authentication') ||
-            error.message?.includes('redirected') ||
-            error.message?.includes('401') ||
-            error.message?.includes('403')
+            error.message?.includes("Authentication") ||
+            error.message?.includes("redirected") ||
+            error.message?.includes("401") ||
+            error.message?.includes("403")
           ) {
-            this.connectionState$.next('error');
+            this.connectionState$.next("error");
             subject.error(error);
             return;
           }
@@ -199,7 +215,7 @@ export class SSEService {
           if (this.reconnectAttempts < this.maxReconnectAttempts) {
             this.reconnectAttempts++;
             const delay = this.reconnectDelay * this.reconnectAttempts;
-            this.connectionState$.next('connecting');
+            this.connectionState$.next("connecting");
 
             setTimeout(() => {
               if (!signal.aborted) {
@@ -207,8 +223,8 @@ export class SSEService {
               }
             }, delay);
           } else {
-            this.connectionState$.next('error');
-            subject.error(new Error('Max reconnection attempts reached'));
+            this.connectionState$.next("error");
+            subject.error(new Error("Max reconnection attempts reached"));
           }
         });
     };
@@ -217,10 +233,10 @@ export class SSEService {
     connect();
 
     return subject.asObservable().pipe(
-      catchError(error => {
-        console.error('[SSE] Observable error:', error);
+      catchError((error) => {
+        console.error("[SSE] Observable error:", error);
         return throwError(() => error);
-      })
+      }),
     );
   }
 
@@ -232,7 +248,7 @@ export class SSEService {
       this.abortController.abort();
       this.abortController = null;
     }
-    this.connectionState$.next('disconnected');
+    this.connectionState$.next("disconnected");
     this.reconnectAttempts = 0;
   }
 }

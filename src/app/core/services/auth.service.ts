@@ -4,16 +4,22 @@
  * Now uses tRPC for type-safe API calls.
  */
 
-import { Injectable, signal, computed, inject, PLATFORM_ID } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
-import { Router } from '@angular/router';
-import { Observable, from, of } from 'rxjs';
-import { tap, catchError, map } from 'rxjs';
-import { AuthStatus, LoginRequest, LoginResponse, User } from '../models';
-import { TRPCService } from '../trpc/trpc.service';
+import {
+  Injectable,
+  signal,
+  computed,
+  inject,
+  PLATFORM_ID,
+} from "@angular/core";
+import { isPlatformBrowser } from "@angular/common";
+import { Router } from "@angular/router";
+import { Observable, from, of } from "rxjs";
+import { tap, catchError, map } from "rxjs";
+import { AuthStatus, LoginRequest, LoginResponse, User } from "../models";
+import { TRPCService } from "../trpc/trpc.service";
 
 @Injectable({
-  providedIn: 'root',
+  providedIn: "root",
 })
 export class AuthService {
   private trpc = inject(TRPCService);
@@ -31,7 +37,9 @@ export class AuthService {
   readonly loading = this.loadingSignal.asReadonly();
 
   // Computed values
-  readonly isSuperuser = computed(() => this.userSignal()?.isSuperuser ?? false);
+  readonly isSuperuser = computed(
+    () => this.userSignal()?.isSuperuser ?? false,
+  );
   readonly isStaff = computed(() => this.userSignal()?.isStaff ?? false);
 
   constructor() {
@@ -53,7 +61,7 @@ export class AuthService {
 
     this.loadingSignal.set(true);
     return from(this.trpc.client.auth.status.query()).pipe(
-      map(status => ({
+      map((status) => ({
         authenticated: status.authenticated,
         user: status.user
           ? {
@@ -65,21 +73,21 @@ export class AuthService {
             }
           : null,
       })),
-      tap(status => {
+      tap((status) => {
         this.userSignal.set(status.user);
         this.authenticatedSignal.set(status.authenticated);
         this.loadingSignal.set(false);
       }),
-      catchError(error => {
+      catchError((error) => {
         // Only log errors in browser (SSR errors are expected and harmless)
         if (isPlatformBrowser(this.platformId)) {
-          console.error('Auth status check failed:', error);
+          console.error("Auth status check failed:", error);
         }
         this.userSignal.set(null);
         this.authenticatedSignal.set(false);
         this.loadingSignal.set(false);
         return of({ authenticated: false, user: null });
-      })
+      }),
     );
   }
 
@@ -89,10 +97,10 @@ export class AuthService {
    */
   login(
     credentialsOrUsername: LoginRequest | string,
-    password?: string
+    password?: string,
   ): Observable<LoginResponse | null> {
     const credentials: LoginRequest =
-      typeof credentialsOrUsername === 'string'
+      typeof credentialsOrUsername === "string"
         ? { username: credentialsOrUsername, password: password! }
         : credentialsOrUsername;
     this.loadingSignal.set(true);
@@ -100,9 +108,9 @@ export class AuthService {
       this.trpc.client.auth.login.mutate({
         username: credentials.username,
         password: credentials.password,
-      })
+      }),
     ).pipe(
-      map(response => ({
+      map((response) => ({
         success: response.success,
         message: response.message,
         user: response.user
@@ -115,19 +123,19 @@ export class AuthService {
             }
           : null,
       })),
-      tap(response => {
+      tap((response) => {
         if (response.success && response.user) {
           this.userSignal.set(response.user);
           this.authenticatedSignal.set(true);
-          this.router.navigate(['/']);
+          this.router.navigate(["/"]);
         }
         this.loadingSignal.set(false);
       }),
-      catchError(error => {
-        console.error('Login failed:', error);
+      catchError((error) => {
+        console.error("Login failed:", error);
         this.loadingSignal.set(false);
         return of(null);
-      })
+      }),
     );
   }
 
@@ -141,17 +149,17 @@ export class AuthService {
         this.userSignal.set(null);
         this.authenticatedSignal.set(false);
         this.loadingSignal.set(false);
-        this.router.navigate(['/login']);
+        this.router.navigate(["/login"]);
       }),
-      catchError(error => {
-        console.error('Logout failed:', error);
+      catchError((error) => {
+        console.error("Logout failed:", error);
         // Still clear local state even if server request fails
         this.userSignal.set(null);
         this.authenticatedSignal.set(false);
         this.loadingSignal.set(false);
-        this.router.navigate(['/login']);
+        this.router.navigate(["/login"]);
         return of(null);
-      })
+      }),
     );
   }
 }

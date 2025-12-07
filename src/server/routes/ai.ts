@@ -4,8 +4,8 @@
  * Provides AI feature availability status.
  */
 
-import { Router } from 'express';
-import type { Request, Response } from 'express';
+import { Router } from "express";
+import type { Request, Response } from "express";
 
 const router = Router();
 
@@ -13,9 +13,9 @@ const router = Router();
  * GET /api/ai-status
  * Get AI feature availability status
  */
-router.get('/ai-status', (req: Request, res: Response) => {
-  const aiEnabled = process.env['AI_ENABLED'] === 'true';
-  const aiModel = aiEnabled ? process.env['AI_MODEL'] || null : null;
+router.get("/ai-status", (req: Request, res: Response) => {
+  const aiEnabled = process.env["AI_ENABLED"] === "true";
+  const aiModel = aiEnabled ? process.env["AI_MODEL"] || null : null;
 
   res.json({
     ai_enabled: aiEnabled,

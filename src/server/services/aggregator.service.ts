@@ -8,10 +8,13 @@ import {
   getAggregatorById,
   getAllAggregators,
   getAggregatorMetadata,
-} from '../aggregators/registry';
-import type { AggregatorMetadata, OptionsSchema } from '../aggregators/base/types';
-import { NotFoundError } from '../errors';
-import { getUserSettings } from './userSettings.service';
+} from "../aggregators/registry";
+import type {
+  AggregatorMetadata,
+  OptionsSchema,
+} from "../aggregators/base/types";
+import { NotFoundError } from "../errors";
+import { getUserSettings } from "./userSettings.service";
 
 /**
  * Get aggregator metadata.
@@ -47,10 +50,10 @@ export function getAggregatorDetail(id: string): {
     // Return default values if aggregator not found (matching Django behavior)
     return {
       id,
-      identifier_type: 'url',
-      identifier_label: 'Identifier',
-      identifier_description: '',
-      identifier_placeholder: '',
+      identifier_type: "url",
+      identifier_label: "Identifier",
+      identifier_description: "",
+      identifier_placeholder: "",
       identifier_choices: null,
       identifier_editable: false,
       options: {},
@@ -66,23 +69,26 @@ export function getAggregatorDetail(id: string): {
       const optionDef: Record<string, unknown> = {
         type: def.type,
         label: def.label,
-        help_text: def.helpText || '',
+        help_text: def.helpText || "",
         default: def.default ?? null,
         required: def.required || false,
       };
 
       if (def.min !== undefined) {
-        optionDef['min'] = def.min;
+        optionDef["min"] = def.min;
       }
       if (def.max !== undefined) {
-        optionDef['max'] = def.max;
+        optionDef["max"] = def.max;
       }
       if (def.choices) {
         // Convert to list of lists format like Django
-        optionDef['choices'] = def.choices.map(c => [String(c[0]), String(c[1])]);
+        optionDef["choices"] = def.choices.map((c) => [
+          String(c[0]),
+          String(c[1]),
+        ]);
       }
       if (def.widget) {
-        optionDef['widget'] = def.widget;
+        optionDef["widget"] = def.widget;
       }
 
       optionsDict[key] = optionDef;
@@ -91,12 +97,12 @@ export function getAggregatorDetail(id: string): {
 
   return {
     id,
-    identifier_type: metadata?.identifierType || 'url',
-    identifier_label: metadata?.identifierLabel || 'Identifier',
-    identifier_description: metadata?.identifierDescription || '',
-    identifier_placeholder: metadata?.identifierPlaceholder || '',
+    identifier_type: metadata?.identifierType || "url",
+    identifier_label: metadata?.identifierLabel || "Identifier",
+    identifier_description: metadata?.identifierDescription || "",
+    identifier_placeholder: metadata?.identifierPlaceholder || "",
     identifier_choices: metadata?.identifierChoices
-      ? metadata.identifierChoices.map(c => [String(c[0]), String(c[1])])
+      ? metadata.identifierChoices.map((c) => [String(c[0]), String(c[1])])
       : null,
     identifier_editable: metadata?.identifierEditable || false,
     options: optionsDict,
@@ -106,7 +112,9 @@ export function getAggregatorDetail(id: string): {
 /**
  * Get all aggregators, filtered by user settings if userId is provided.
  */
-export async function getAllAggregatorMetadata(userId?: number): Promise<AggregatorMetadata[]> {
+export async function getAllAggregatorMetadata(
+  userId?: number,
+): Promise<AggregatorMetadata[]> {
   const all = getAllAggregators();
 
   // If no user ID provided, return all aggregators
@@ -118,14 +126,14 @@ export async function getAllAggregatorMetadata(userId?: number): Promise<Aggrega
   try {
     const settings = await getUserSettings(userId);
 
-    return all.filter(agg => {
+    return all.filter((agg) => {
       // Filter YouTube aggregator based on user settings
-      if (agg.id === 'youtube') {
-        return settings.youtubeEnabled && settings.youtubeApiKey.trim() !== '';
+      if (agg.id === "youtube") {
+        return settings.youtubeEnabled && settings.youtubeApiKey.trim() !== "";
       }
 
       // Filter Reddit aggregator based on user settings
-      if (agg.id === 'reddit') {
+      if (agg.id === "reddit") {
         // Reddit can work with public API, but if user has credentials configured, require them to be enabled
         // For now, always show Reddit if user is authenticated (it uses public API)
         return true;
@@ -150,9 +158,9 @@ export async function getGroupedAggregatorMetadata(userId?: number): Promise<{
 }> {
   const all = await getAllAggregatorMetadata(userId);
   return {
-    managed: all.filter(a => a.type === 'managed'),
-    social: all.filter(a => a.type === 'social'),
-    custom: all.filter(a => a.type === 'custom'),
+    managed: all.filter((a) => a.type === "managed"),
+    social: all.filter((a) => a.type === "social"),
+    custom: all.filter((a) => a.type === "custom"),
   };
 }
 
@@ -170,7 +178,7 @@ export function getAggregatorOptions(id: string): OptionsSchema | undefined {
 export function validateAggregatorConfig(
   aggregatorId: string,
   identifier: string,
-  options: Record<string, unknown> = {}
+  options: Record<string, unknown> = {},
 ): { valid: boolean; errors: string[] } {
   const errors: string[] = [];
 
@@ -182,8 +190,8 @@ export function validateAggregatorConfig(
   }
 
   // Validate identifier
-  if (!identifier || identifier.trim() === '') {
-    errors.push('Identifier is required');
+  if (!identifier || identifier.trim() === "") {
+    errors.push("Identifier is required");
   }
 
   // Validate options
@@ -195,19 +203,27 @@ export function validateAggregatorConfig(
 
       if (options[key] !== undefined) {
         const value = options[key];
-        if (def.type === 'integer' && typeof value !== 'number') {
+        if (def.type === "integer" && typeof value !== "number") {
           errors.push(`Option '${key}' must be an integer`);
-        } else if (def.type === 'boolean' && typeof value !== 'boolean') {
+        } else if (def.type === "boolean" && typeof value !== "boolean") {
           errors.push(`Option '${key}' must be a boolean`);
-        } else if (def.type === 'string' && typeof value !== 'string') {
+        } else if (def.type === "string" && typeof value !== "string") {
           errors.push(`Option '${key}' must be a string`);
         }
 
-        if (def.min !== undefined && typeof value === 'number' && value < def.min) {
+        if (
+          def.min !== undefined &&
+          typeof value === "number" &&
+          value < def.min
+        ) {
           errors.push(`Option '${key}' must be at least ${def.min}`);
         }
 
-        if (def.max !== undefined && typeof value === 'number' && value > def.max) {
+        if (
+          def.max !== undefined &&
+          typeof value === "number" &&
+          value > def.max
+        ) {
           errors.push(`Option '${key}' must be at most ${def.max}`);
         }
       }

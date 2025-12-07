@@ -4,24 +4,29 @@
  * Webcomic featuring humor about World of Warcraft and gaming culture.
  */
 
-import { BaseAggregator } from './base/aggregator';
-import type { RawArticle } from './base/types';
-import { fetchFeed, fetchArticleContent } from './base/fetch';
-import { standardizeContentFormat } from './base/process';
-import { sanitizeHtml } from './base/utils';
-import { logger } from '../utils/logger';
-import * as cheerio from 'cheerio';
+import { BaseAggregator } from "./base/aggregator";
+import type { RawArticle } from "./base/types";
+import { fetchFeed, fetchArticleContent } from "./base/fetch";
+import { standardizeContentFormat } from "./base/process";
+import { sanitizeHtml } from "./base/utils";
+import { logger } from "../utils/logger";
+import * as cheerio from "cheerio";
 
 export class DarkLegacyAggregator extends BaseAggregator {
-  override readonly id: string = 'dark_legacy';
-  override readonly type: 'managed' | 'custom' | 'social' = 'managed';
-  override readonly name: string = 'Dark Legacy Comics';
-  override readonly url: string = 'https://darklegacycomics.com/feed.xml';
+  override readonly id: string = "dark_legacy";
+  override readonly type: "managed" | "custom" | "social" = "managed";
+  override readonly name: string = "Dark Legacy Comics";
+  override readonly url: string = "https://darklegacycomics.com/feed.xml";
   override readonly description: string =
-    'Webcomic featuring humor about World of Warcraft and gaming culture.';
+    "Webcomic featuring humor about World of Warcraft and gaming culture.";
 
-  override readonly waitForSelector: string = '#gallery';
-  override readonly selectorsToRemove: string[] = ['script', 'style', 'iframe', 'noscript'];
+  override readonly waitForSelector: string = "#gallery";
+  override readonly selectorsToRemove: string[] = [
+    "script",
+    "style",
+    "iframe",
+    "noscript",
+  ];
 
   async aggregate(articleLimit?: number): Promise<RawArticle[]> {
     const aggregateStart = Date.now();
@@ -30,13 +35,13 @@ export class DarkLegacyAggregator extends BaseAggregator {
         aggregator: this.id,
         feedId: this.feed?.id,
         articleLimit,
-        step: 'aggregate_start',
+        step: "aggregate_start",
       },
-      `Starting aggregation${articleLimit ? ` (limit: ${articleLimit})` : ''}`
+      `Starting aggregation${articleLimit ? ` (limit: ${articleLimit})` : ""}`,
     );
 
     if (!this.feed) {
-      throw new Error('Feed not initialized');
+      throw new Error("Feed not initialized");
     }
 
     const feedUrl = this.feed.identifier;
@@ -44,9 +49,9 @@ export class DarkLegacyAggregator extends BaseAggregator {
       {
         feedUrl,
         aggregator: this.id,
-        step: 'fetch_feed_start',
+        step: "fetch_feed_start",
       },
-      'Fetching RSS feed'
+      "Fetching RSS feed",
     );
 
     // Fetch RSS feed
@@ -60,9 +65,9 @@ export class DarkLegacyAggregator extends BaseAggregator {
         itemCount: feed.items?.length || 0,
         elapsed: feedFetchElapsed,
         aggregator: this.id,
-        step: 'fetch_feed_complete',
+        step: "fetch_feed_complete",
       },
-      'RSS feed fetched, processing items'
+      "RSS feed fetched, processing items",
     );
 
     const articles: RawArticle[] = [];
@@ -77,9 +82,9 @@ export class DarkLegacyAggregator extends BaseAggregator {
           limitedCount: itemsToProcess.length,
           articleLimit,
           aggregator: this.id,
-          step: 'apply_limit',
+          step: "apply_limit",
         },
-        `Limited to first ${articleLimit} item(s)`
+        `Limited to first ${articleLimit} item(s)`,
       );
     }
 
@@ -87,9 +92,9 @@ export class DarkLegacyAggregator extends BaseAggregator {
       {
         itemCount: itemsToProcess.length,
         aggregator: this.id,
-        step: 'process_items_start',
+        step: "process_items_start",
       },
-      `Processing ${itemsToProcess.length} feed items`
+      `Processing ${itemsToProcess.length} feed items`,
     );
 
     for (let i = 0; i < itemsToProcess.length; i++) {
@@ -104,16 +109,16 @@ export class DarkLegacyAggregator extends BaseAggregator {
             title: item.title,
             url: item.link,
             aggregator: this.id,
-            step: 'process_item_start',
+            step: "process_item_start",
           },
-          `Processing item ${i + 1}/${itemsToProcess.length}`
+          `Processing item ${i + 1}/${itemsToProcess.length}`,
         );
 
         const article: RawArticle = {
-          title: item.title || '',
-          url: item.link || '',
+          title: item.title || "",
+          url: item.link || "",
           published: item.pubDate ? new Date(item.pubDate) : new Date(),
-          summary: item.contentSnippet || item.content || '',
+          summary: item.contentSnippet || item.content || "",
           author: item.creator || item.author || undefined,
         };
 
@@ -124,9 +129,9 @@ export class DarkLegacyAggregator extends BaseAggregator {
               index: i + 1,
               title: article.title,
               aggregator: this.id,
-              step: 'item_skipped',
+              step: "item_skipped",
             },
-            'Item skipped by shouldSkipArticle'
+            "Item skipped by shouldSkipArticle",
           );
           continue;
         }
@@ -139,9 +144,9 @@ export class DarkLegacyAggregator extends BaseAggregator {
               url: article.url,
               title: article.title,
               aggregator: this.id,
-              step: 'skip_existing',
+              step: "skip_existing",
             },
-            'Skipping existing article (will not fetch content)'
+            "Skipping existing article (will not fetch content)",
           );
           continue;
         }
@@ -153,9 +158,9 @@ export class DarkLegacyAggregator extends BaseAggregator {
               index: i + 1,
               url: article.url,
               aggregator: this.id,
-              step: 'fetch_content_start',
+              step: "fetch_content_start",
             },
-            'Fetching article content'
+            "Fetching article content",
           );
 
           const contentFetchStart = Date.now();
@@ -171,9 +176,9 @@ export class DarkLegacyAggregator extends BaseAggregator {
               url: article.url,
               elapsed: contentFetchElapsed,
               aggregator: this.id,
-              step: 'fetch_content_complete',
+              step: "fetch_content_complete",
             },
-            'Article content fetched'
+            "Article content fetched",
           );
 
           // Extract content using custom logic
@@ -187,9 +192,9 @@ export class DarkLegacyAggregator extends BaseAggregator {
               url: article.url,
               elapsed: extractElapsed,
               aggregator: this.id,
-              step: 'extract_complete',
+              step: "extract_complete",
             },
-            'Content extracted'
+            "Content extracted",
           );
 
           // Sanitize HTML (remove scripts, rename attributes)
@@ -205,7 +210,7 @@ export class DarkLegacyAggregator extends BaseAggregator {
             article,
             article.url,
             generateTitleImage,
-            addSourceFooter
+            addSourceFooter,
           );
 
           article.content = processedContent;
@@ -217,9 +222,9 @@ export class DarkLegacyAggregator extends BaseAggregator {
               url: article.url,
               elapsed: processElapsed,
               aggregator: this.id,
-              step: 'process_complete',
+              step: "process_complete",
             },
-            'Article processed'
+            "Article processed",
           );
         } catch (error) {
           logger.warn(
@@ -228,12 +233,12 @@ export class DarkLegacyAggregator extends BaseAggregator {
               url: article.url,
               index: i + 1,
               aggregator: this.id,
-              step: 'fetch_content_failed',
+              step: "fetch_content_failed",
             },
-            'Failed to fetch article content, using summary'
+            "Failed to fetch article content, using summary",
           );
           // Continue with summary if available
-          article.content = article.summary || '';
+          article.content = article.summary || "";
         }
 
         const itemElapsed = Date.now() - itemStart;
@@ -243,9 +248,9 @@ export class DarkLegacyAggregator extends BaseAggregator {
             title: article.title,
             elapsed: itemElapsed,
             aggregator: this.id,
-            step: 'item_complete',
+            step: "item_complete",
           },
-          `Item ${i + 1} processed`
+          `Item ${i + 1} processed`,
         );
 
         articles.push(article);
@@ -256,9 +261,9 @@ export class DarkLegacyAggregator extends BaseAggregator {
             item,
             index: i + 1,
             aggregator: this.id,
-            step: 'item_error',
+            step: "item_error",
           },
-          'Error processing feed item'
+          "Error processing feed item",
         );
         continue;
       }
@@ -270,9 +275,9 @@ export class DarkLegacyAggregator extends BaseAggregator {
         aggregator: this.id,
         articleCount: articles.length,
         totalElapsed,
-        step: 'aggregate_complete',
+        step: "aggregate_complete",
       },
-      `Aggregation complete: ${articles.length} articles`
+      `Aggregation complete: ${articles.length} articles`,
     );
 
     return articles;
@@ -285,25 +290,25 @@ export class DarkLegacyAggregator extends BaseAggregator {
   private extractContent(html: string, url: string): string {
     try {
       const $ = cheerio.load(html);
-      const gallery = $('#gallery');
+      const gallery = $("#gallery");
 
       if (gallery.length === 0) {
         logger.warn(
           {
             url,
             aggregator: this.id,
-            step: 'gallery_not_found',
+            step: "gallery_not_found",
           },
-          `Could not find #gallery element in ${url}`
+          `Could not find #gallery element in ${url}`,
         );
         return html; // Fallback to original HTML
       }
 
       // Create a new div to hold the extracted images
-      const contentDiv = $('<div></div>');
+      const contentDiv = $("<div></div>");
 
       // Find all img tags in the gallery
-      const images = gallery.find('img');
+      const images = gallery.find("img");
 
       if (images.length === 0) {
         // If no images found, use the gallery element itself
@@ -311,45 +316,45 @@ export class DarkLegacyAggregator extends BaseAggregator {
           {
             url,
             aggregator: this.id,
-            step: 'no_images_found',
+            step: "no_images_found",
           },
-          'No images found in gallery, using gallery element'
+          "No images found in gallery, using gallery element",
         );
-        return gallery.html() || '';
+        return gallery.html() || "";
       }
 
       // Extract each image
       images.each((_, img) => {
         const $img = $(img);
-        const newImg = $('<img>');
+        const newImg = $("<img>");
 
         // Get src or data-src
-        const imgSrc = $img.attr('src') || $img.attr('data-src');
+        const imgSrc = $img.attr("src") || $img.attr("data-src");
         if (imgSrc) {
-          newImg.attr('src', imgSrc);
+          newImg.attr("src", imgSrc);
         }
 
         // Copy alt text if present
-        const alt = $img.attr('alt');
+        const alt = $img.attr("alt");
         if (alt) {
-          newImg.attr('alt', alt);
+          newImg.attr("alt", alt);
         }
 
         contentDiv.append(newImg);
       });
 
-      const result = contentDiv.html() || '';
+      const result = contentDiv.html() || "";
       if (!result) {
         // Fallback to gallery if no images were successfully extracted
         logger.warn(
           {
             url,
             aggregator: this.id,
-            step: 'extraction_empty',
+            step: "extraction_empty",
           },
-          'Extraction resulted in empty content, using gallery element'
+          "Extraction resulted in empty content, using gallery element",
         );
-        return gallery.html() || '';
+        return gallery.html() || "";
       }
 
       return result;
@@ -359,15 +364,11 @@ export class DarkLegacyAggregator extends BaseAggregator {
           error: error instanceof Error ? error : new Error(String(error)),
           url,
           aggregator: this.id,
-          step: 'extraction_failed',
+          step: "extraction_failed",
         },
-        `Extraction failed for ${url}`
+        `Extraction failed for ${url}`,
       );
       return html; // Fallback to original HTML
     }
   }
 }
-
-
-
-

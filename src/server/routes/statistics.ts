@@ -4,12 +4,12 @@
  * Handles statistics endpoints.
  */
 
-import { Router } from 'express';
-import type { Response } from 'express';
-import { asyncHandler } from '../middleware/errorHandler';
-import { requireAuth, loadUser } from '../middleware/auth';
-import type { AuthenticatedRequest } from '../middleware/auth';
-import { getStatistics } from '../services/statistics.service';
+import { Router } from "express";
+import type { Response } from "express";
+import { asyncHandler } from "../middleware/errorHandler";
+import { requireAuth, loadUser } from "../middleware/auth";
+import type { AuthenticatedRequest } from "../middleware/auth";
+import { getStatistics } from "../services/statistics.service";
 
 const router = Router();
 
@@ -23,11 +23,11 @@ router.use(requireAuth);
  * Cached for 60 seconds per user to reduce database load.
  */
 router.get(
-  '/',
+  "/",
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     const statistics = await getStatistics(req.user!);
     res.json(statistics);
-  })
+  }),
 );
 
 export function statisticsRoutes(): Router {

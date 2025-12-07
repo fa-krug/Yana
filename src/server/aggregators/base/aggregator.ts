@@ -4,12 +4,12 @@
  * All aggregators must extend this class.
  */
 
-import type { Feed, Article } from '../../db/types';
-import type { RawArticle, AggregatorOptions, OptionsSchema } from './types';
-import { logger } from '../../utils/logger';
-import { createLogger } from '../../utils/logger';
-import { db, articles } from '../../db';
-import { eq, and, gte, desc } from 'drizzle-orm';
+import type { Feed, Article } from "../../db/types";
+import type { RawArticle, AggregatorOptions, OptionsSchema } from "./types";
+import { logger } from "../../utils/logger";
+import { createLogger } from "../../utils/logger";
+import { db, articles } from "../../db";
+import { eq, and, gte, desc } from "drizzle-orm";
 
 export abstract class BaseAggregator {
   protected feed: Feed | null = null;
@@ -20,16 +20,16 @@ export abstract class BaseAggregator {
 
   // Required metadata - must be implemented by subclasses
   abstract readonly id: string;
-  abstract readonly type: 'managed' | 'custom' | 'social';
+  abstract readonly type: "managed" | "custom" | "social";
   abstract readonly name: string;
   abstract readonly url: string;
   abstract readonly description: string;
 
   // Optional metadata
-  readonly identifierType: 'url' | 'string' = 'url';
-  readonly identifierLabel: string = 'Feed URL';
-  readonly identifierDescription: string = 'Enter the RSS feed URL';
-  readonly identifierPlaceholder: string = '';
+  readonly identifierType: "url" | "string" = "url";
+  readonly identifierLabel: string = "Feed URL";
+  readonly identifierDescription: string = "Enter the RSS feed URL";
+  readonly identifierPlaceholder: string = "";
   readonly identifierChoices?: Array<[string, string]>;
   readonly identifierEditable: boolean = false;
 
@@ -42,7 +42,11 @@ export abstract class BaseAggregator {
   /**
    * Initialize aggregator with feed and options.
    */
-  initialize(feed: Feed, forceRefresh: boolean = false, options: AggregatorOptions = {}): void {
+  initialize(
+    feed: Feed,
+    forceRefresh: boolean = false,
+    options: AggregatorOptions = {},
+  ): void {
     this.feed = feed;
     this.forceRefresh = forceRefresh;
     this.runtimeOptions = { ...this.getDefaultOptions(), ...options };
@@ -84,7 +88,7 @@ export abstract class BaseAggregator {
    */
   protected async processArticle(article: RawArticle): Promise<string> {
     // Default: return content as-is
-    return article.content || article.summary || '';
+    return article.content || article.summary || "";
   }
 
   /**
@@ -160,7 +164,7 @@ export abstract class BaseAggregator {
           postsToday,
           limit,
         },
-        `Daily quota exhausted for ${sourceName}: ${postsToday}/${limit}`
+        `Daily quota exhausted for ${sourceName}: ${postsToday}/${limit}`,
       );
       return 0; // Quota exhausted
     }
@@ -177,7 +181,7 @@ export abstract class BaseAggregator {
         limit,
         remainingRuns,
       },
-      `Dynamic limit for ${sourceName}: ${dynamicLimit} posts (${postsToday}/${limit} today, ~${remainingRuns} runs left)`
+      `Dynamic limit for ${sourceName}: ${dynamicLimit} posts (${postsToday}/${limit} today, ~${remainingRuns} runs left)`,
     );
 
     return dynamicLimit;
@@ -200,7 +204,12 @@ export abstract class BaseAggregator {
     const result = await db
       .select()
       .from(articles)
-      .where(and(eq(articles.feedId, this.feed.id), gte(articles.createdAt, todayStart)));
+      .where(
+        and(
+          eq(articles.feedId, this.feed.id),
+          gte(articles.createdAt, todayStart),
+        ),
+      );
 
     return result.length;
   }
@@ -235,7 +244,8 @@ export abstract class BaseAggregator {
       // No posts today yet, estimate based on time since midnight
       const todayStart = new Date(now);
       todayStart.setUTCHours(0, 0, 0, 0);
-      const secondsSinceMidnight = (now.getTime() - todayStart.getTime()) / 1000;
+      const secondsSinceMidnight =
+        (now.getTime() - todayStart.getTime()) / 1000;
 
       if (secondsSinceMidnight > 0) {
         secondsSinceLastRun = secondsSinceMidnight;
@@ -275,9 +285,9 @@ export abstract class BaseAggregator {
    */
   protected _getSourceName(): string {
     if (this.feed) {
-      return this.feed.name || 'Unknown Feed';
+      return this.feed.name || "Unknown Feed";
     }
-    return 'Unknown';
+    return "Unknown";
   }
 
   /**
@@ -297,7 +307,12 @@ export abstract class BaseAggregator {
     const result = await db
       .select({ createdAt: articles.createdAt })
       .from(articles)
-      .where(and(eq(articles.feedId, this.feed.id), gte(articles.createdAt, todayStart)))
+      .where(
+        and(
+          eq(articles.feedId, this.feed.id),
+          gte(articles.createdAt, todayStart),
+        ),
+      )
       .orderBy(desc(articles.createdAt))
       .limit(1);
 

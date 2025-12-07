@@ -3,9 +3,9 @@
  * Uses better-sqlite3 for persistent session storage.
  */
 
-import session from 'express-session';
-import Database from 'better-sqlite3';
-import { logger } from '../utils/logger';
+import session from "express-session";
+import Database from "better-sqlite3";
+import { logger } from "../utils/logger";
 
 interface SessionRow {
   sid: string;
@@ -20,10 +20,14 @@ export class SQLiteStore extends session.Store {
   private db: Database.Database;
   private tableName: string;
 
-  constructor(options: { db: Database.Database; tableName?: string; skipTableCreation?: boolean }) {
+  constructor(options: {
+    db: Database.Database;
+    tableName?: string;
+    skipTableCreation?: boolean;
+  }) {
     super();
     this.db = options.db;
-    this.tableName = options.tableName || 'sessions';
+    this.tableName = options.tableName || "sessions";
 
     // Only create table if not managed by migrations
     if (!options.skipTableCreation) {
@@ -33,7 +37,7 @@ export class SQLiteStore extends session.Store {
       this.cleanupExpiredSessions();
       logger.info(
         { tableName: this.tableName },
-        'Session store initialized (table managed by migrations)'
+        "Session store initialized (table managed by migrations)",
       );
     }
   }
@@ -50,23 +54,23 @@ export class SQLiteStore extends session.Store {
           sid TEXT PRIMARY KEY,
           sess TEXT NOT NULL,
           expire INTEGER NOT NULL
-        )`
+        )`,
         )
         .run();
 
       // Create index on expire for efficient cleanup
       this.db
         .prepare(
-          `CREATE INDEX IF NOT EXISTS idx_${this.tableName}_expire ON ${this.tableName}(expire)`
+          `CREATE INDEX IF NOT EXISTS idx_${this.tableName}_expire ON ${this.tableName}(expire)`,
         )
         .run();
 
       // Clean up expired sessions on initialization
       this.cleanupExpiredSessions();
 
-      logger.info({ tableName: this.tableName }, 'Session store initialized');
+      logger.info({ tableName: this.tableName }, "Session store initialized");
     } catch (error) {
-      logger.error({ error }, 'Failed to initialize session store');
+      logger.error({ error }, "Failed to initialize session store");
       throw error;
     }
   }
@@ -76,11 +80,14 @@ export class SQLiteStore extends session.Store {
    */
   override get(
     sid: string,
-    callback: (err?: Error | null, session?: session.SessionData | null) => void
+    callback: (
+      err?: Error | null,
+      session?: session.SessionData | null,
+    ) => void,
   ): void {
     try {
       const stmt = this.db.prepare(
-        `SELECT sess FROM ${this.tableName} WHERE sid = ? AND expire > ?`
+        `SELECT sess FROM ${this.tableName} WHERE sid = ? AND expire > ?`,
       );
       const row = stmt.get(sid, Date.now()) as { sess: string } | undefined;
 
@@ -91,7 +98,10 @@ export class SQLiteStore extends session.Store {
         callback(null, null);
       }
     } catch (error) {
-      logger.error({ error, sid, errorMessage: (error as Error).message }, 'Failed to get session');
+      logger.error(
+        { error, sid, errorMessage: (error as Error).message },
+        "Failed to get session",
+      );
       callback(error as Error);
     }
   }
@@ -102,7 +112,7 @@ export class SQLiteStore extends session.Store {
   override set(
     sid: string,
     sessionData: session.SessionData,
-    callback?: (err?: Error) => void
+    callback?: (err?: Error) => void,
   ): void {
     try {
       const expire = this.getExpireTime(sessionData.cookie);
@@ -116,7 +126,7 @@ export class SQLiteStore extends session.Store {
           const value = sessionData[key as keyof session.SessionData];
 
           // Skip functions and undefined
-          if (typeof value === 'function' || value === undefined) {
+          if (typeof value === "function" || value === undefined) {
             continue;
           }
 
@@ -132,14 +142,17 @@ export class SQLiteStore extends session.Store {
             cleanData[key] = value;
           } catch (e) {
             // Skip non-serializable values
-            logger.debug({ key, error: e }, 'Skipping non-serializable session property');
+            logger.debug(
+              { key, error: e },
+              "Skipping non-serializable session property",
+            );
           }
         }
       }
 
       // Always include cookie data (express-session needs it)
       if (sessionData.cookie) {
-        cleanData['cookie'] = {
+        cleanData["cookie"] = {
           originalMaxAge: sessionData.cookie.originalMaxAge,
           expires: sessionData.cookie.expires?.toISOString(),
           secure: sessionData.cookie.secure,
@@ -152,7 +165,7 @@ export class SQLiteStore extends session.Store {
       const sess = JSON.stringify(cleanData);
 
       const stmt = this.db.prepare(
-        `INSERT OR REPLACE INTO ${this.tableName} (sid, sess, expire) VALUES (?, ?, ?)`
+        `INSERT OR REPLACE INTO ${this.tableName} (sid, sess, expire) VALUES (?, ?, ?)`,
       );
       stmt.run(sid, sess, expire);
 
@@ -168,7 +181,7 @@ export class SQLiteStore extends session.Store {
           sid,
           tableName: this.tableName,
         },
-        'Failed to save session'
+        "Failed to save session",
       );
       if (callback) {
         callback(err);
@@ -181,11 +194,13 @@ export class SQLiteStore extends session.Store {
    */
   override destroy(sid: string, callback?: (err?: Error) => void): void {
     try {
-      const stmt = this.db.prepare(`DELETE FROM ${this.tableName} WHERE sid = ?`);
+      const stmt = this.db.prepare(
+        `DELETE FROM ${this.tableName} WHERE sid = ?`,
+      );
       stmt.run(sid);
       callback?.();
     } catch (error) {
-      logger.error({ error, sid }, 'Failed to destroy session');
+      logger.error({ error, sid }, "Failed to destroy session");
       callback?.(error as Error);
     }
   }
@@ -196,11 +211,13 @@ export class SQLiteStore extends session.Store {
   override touch(
     sid: string,
     sessionData: session.SessionData,
-    callback?: (err?: Error) => void
+    callback?: (err?: Error) => void,
   ): void {
     try {
       const expire = this.getExpireTime(sessionData.cookie);
-      const stmt = this.db.prepare(`UPDATE ${this.tableName} SET expire = ? WHERE sid = ?`);
+      const stmt = this.db.prepare(
+        `UPDATE ${this.tableName} SET expire = ? WHERE sid = ?`,
+      );
       const result = stmt.run(expire, sid);
 
       if (result.changes === 0) {
@@ -210,7 +227,7 @@ export class SQLiteStore extends session.Store {
         callback?.();
       }
     } catch (error) {
-      logger.error({ error, sid }, 'Failed to touch session');
+      logger.error({ error, sid }, "Failed to touch session");
       callback?.(error as Error);
     }
   }
@@ -219,10 +236,15 @@ export class SQLiteStore extends session.Store {
    * Get all sessions (optional, for debugging).
    */
   override all(
-    callback: (err?: Error | null, sessions?: { [sid: string]: session.SessionData } | null) => void
+    callback: (
+      err?: Error | null,
+      sessions?: { [sid: string]: session.SessionData } | null,
+    ) => void,
   ): void {
     try {
-      const stmt = this.db.prepare(`SELECT sid, sess FROM ${this.tableName} WHERE expire > ?`);
+      const stmt = this.db.prepare(
+        `SELECT sid, sess FROM ${this.tableName} WHERE expire > ?`,
+      );
       const rows = stmt.all(Date.now()) as SessionRow[];
 
       const sessions: { [sid: string]: session.SessionData } = {};
@@ -239,10 +261,12 @@ export class SQLiteStore extends session.Store {
   /**
    * Get count of all sessions.
    */
-  override length(callback: (err?: Error | null, length?: number) => void): void {
+  override length(
+    callback: (err?: Error | null, length?: number) => void,
+  ): void {
     try {
       const stmt = this.db.prepare(
-        `SELECT COUNT(*) as count FROM ${this.tableName} WHERE expire > ?`
+        `SELECT COUNT(*) as count FROM ${this.tableName} WHERE expire > ?`,
       );
       const row = stmt.get(Date.now()) as { count: number } | undefined;
       callback(null, row?.count || 0);
@@ -269,13 +293,18 @@ export class SQLiteStore extends session.Store {
    */
   private cleanupExpiredSessions(): void {
     try {
-      const stmt = this.db.prepare(`DELETE FROM ${this.tableName} WHERE expire <= ?`);
+      const stmt = this.db.prepare(
+        `DELETE FROM ${this.tableName} WHERE expire <= ?`,
+      );
       const result = stmt.run(Date.now());
       if (result.changes > 0) {
-        logger.debug({ deleted: result.changes }, 'Cleaned up expired sessions');
+        logger.debug(
+          { deleted: result.changes },
+          "Cleaned up expired sessions",
+        );
       }
     } catch (error) {
-      logger.warn({ error }, 'Failed to cleanup expired sessions');
+      logger.warn({ error }, "Failed to cleanup expired sessions");
     }
   }
 

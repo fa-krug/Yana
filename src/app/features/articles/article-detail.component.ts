@@ -21,34 +21,38 @@ import {
   inject,
   signal,
   ChangeDetectionStrategy,
-} from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { ActivatedRoute, Router, RouterModule } from '@angular/router';
-import { DomSanitizer, SafeHtml, SafeResourceUrl } from '@angular/platform-browser';
+} from "@angular/core";
+import { CommonModule } from "@angular/common";
+import { ActivatedRoute, Router, RouterModule } from "@angular/router";
+import {
+  DomSanitizer,
+  SafeHtml,
+  SafeResourceUrl,
+} from "@angular/platform-browser";
 
 // RxJS
-import { switchMap, tap } from 'rxjs';
+import { switchMap, tap } from "rxjs";
 
 // Angular Material
-import { MatCardModule } from '@angular/material/card';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatChipsModule } from '@angular/material/chips';
-import { MatMenuModule } from '@angular/material/menu';
-import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatCardModule } from "@angular/material/card";
+import { MatButtonModule } from "@angular/material/button";
+import { MatIconModule } from "@angular/material/icon";
+import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
+import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
+import { MatTooltipModule } from "@angular/material/tooltip";
+import { MatChipsModule } from "@angular/material/chips";
+import { MatMenuModule } from "@angular/material/menu";
+import { MatDialog, MatDialogModule } from "@angular/material/dialog";
 
 // Application
-import { ArticleService } from '../../core/services/article.service';
-import { BreadcrumbService } from '../../core/services/breadcrumb.service';
-import { ArticleActionsService } from '../../core/services/article-actions.service';
-import { ArticleDetail } from '../../core/models';
-import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog.component';
+import { ArticleService } from "../../core/services/article.service";
+import { BreadcrumbService } from "../../core/services/breadcrumb.service";
+import { ArticleActionsService } from "../../core/services/article-actions.service";
+import { ArticleDetail } from "../../core/models";
+import { ConfirmDialogComponent } from "../../shared/components/confirm-dialog.component";
 
 @Component({
-  selector: 'app-article-detail',
+  selector: "app-article-detail",
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
@@ -75,7 +79,9 @@ import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog.c
         <div class="state-center error">
           <mat-icon>error</mat-icon>
           <p>{{ error() }}</p>
-          <button mat-raised-button color="primary" (click)="goBack()">Back</button>
+          <button mat-raised-button color="primary" (click)="goBack()">
+            Back
+          </button>
         </div>
       } @else if (article(); as article) {
         <div class="article-toolbar">
@@ -107,30 +113,42 @@ import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog.c
               [color]="article.read ? 'primary' : ''"
               (click)="toggleRead()"
               [matTooltip]="article.read ? 'Mark as unread' : 'Mark as read'"
-              [attr.aria-label]="article.read ? 'Mark as unread' : 'Mark as read'"
+              [attr.aria-label]="
+                article.read ? 'Mark as unread' : 'Mark as read'
+              "
               [attr.aria-pressed]="article.read"
             >
-              <mat-icon>{{ article.read ? 'check_circle' : 'radio_button_unchecked' }}</mat-icon>
+              <mat-icon>{{
+                article.read ? "check_circle" : "radio_button_unchecked"
+              }}</mat-icon>
             </button>
             <button
               mat-icon-button
               [color]="article.saved ? 'accent' : ''"
               (click)="toggleSaved()"
               [matTooltip]="article.saved ? 'Unsave' : 'Save'"
-              [attr.aria-label]="article.saved ? 'Unsave article' : 'Save article'"
+              [attr.aria-label]="
+                article.saved ? 'Unsave article' : 'Save article'
+              "
               [attr.aria-pressed]="article.saved"
             >
-              <mat-icon>{{ article.saved ? 'bookmark' : 'bookmark_border' }}</mat-icon>
+              <mat-icon>{{
+                article.saved ? "bookmark" : "bookmark_border"
+              }}</mat-icon>
             </button>
             <button
               mat-icon-button
               [color]="showRawContent() ? 'primary' : ''"
               (click)="toggleRawContent()"
-              [matTooltip]="showRawContent() ? 'Show rendered' : 'Show raw HTML'"
-              [attr.aria-label]="showRawContent() ? 'Show rendered content' : 'Show raw HTML'"
+              [matTooltip]="
+                showRawContent() ? 'Show rendered' : 'Show raw HTML'
+              "
+              [attr.aria-label]="
+                showRawContent() ? 'Show rendered content' : 'Show raw HTML'
+              "
               [attr.aria-pressed]="showRawContent()"
             >
-              <mat-icon>{{ showRawContent() ? 'article' : 'code' }}</mat-icon>
+              <mat-icon>{{ showRawContent() ? "article" : "code" }}</mat-icon>
             </button>
             <button
               mat-icon-button
@@ -158,7 +176,10 @@ import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog.c
                 </a>
               }
               @if (article.feed && article.feed.id) {
-                <button mat-menu-item [routerLink]="['/feeds', article.feed.id]">
+                <button
+                  mat-menu-item
+                  [routerLink]="['/feeds', article.feed.id]"
+                >
                   <mat-icon>rss_feed</mat-icon>
                   <span>View Feed</span>
                 </button>
@@ -168,7 +189,11 @@ import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog.c
                   <span>View Feed</span>
                 </button>
               }
-              <button mat-menu-item (click)="deleteArticle()" class="delete-action">
+              <button
+                mat-menu-item
+                (click)="deleteArticle()"
+                class="delete-action"
+              >
                 <mat-icon>delete</mat-icon>
                 <span>Delete</span>
               </button>
@@ -195,19 +220,25 @@ import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog.c
             <mat-card-subtitle>
               <div class="article-meta">
                 @if (article.feed && article.feed.id) {
-                  <span class="feed-name" [routerLink]="['/feeds', article.feed.id]">
+                  <span
+                    class="feed-name"
+                    [routerLink]="['/feeds', article.feed.id]"
+                  >
                     <mat-icon>rss_feed</mat-icon>
                     {{ article.feed.name }}
                   </span>
                 } @else if (article.feedName) {
-                  <span class="feed-name" [routerLink]="['/feeds', article.feedId]">
+                  <span
+                    class="feed-name"
+                    [routerLink]="['/feeds', article.feedId]"
+                  >
                     <mat-icon>rss_feed</mat-icon>
                     {{ article.feedName }}
                   </span>
                 }
                 <span class="article-date">
                   <mat-icon>schedule</mat-icon>
-                  {{ article.published | date: 'medium' }}
+                  {{ article.published | date: "medium" }}
                 </span>
                 @if (article.author) {
                   <span class="article-author">
@@ -274,8 +305,13 @@ import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog.c
 
             @if (isRedditVideo()) {
               <div class="media-container">
-                @if (article.mediaUrl && !article.mediaUrl.includes('/embed')) {
-                  <video controls [src]="article.mediaUrl || ''" playsinline preload="metadata">
+                @if (article.mediaUrl && !article.mediaUrl.includes("/embed")) {
+                  <video
+                    controls
+                    [src]="article.mediaUrl || ''"
+                    playsinline
+                    preload="metadata"
+                  >
                     Your browser does not support the video element.
                   </video>
                 } @else {
@@ -308,14 +344,20 @@ import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog.c
 
         <div class="article-navigation">
           @if (article.prevId) {
-            <button mat-raised-button [routerLink]="getArticleRoute(article.prevId)">
+            <button
+              mat-raised-button
+              [routerLink]="getArticleRoute(article.prevId)"
+            >
               <mat-icon>navigate_before</mat-icon>
               Previous Article
             </button>
           }
           <div class="spacer"></div>
           @if (article.nextId) {
-            <button mat-raised-button [routerLink]="getArticleRoute(article.nextId)">
+            <button
+              mat-raised-button
+              [routerLink]="getArticleRoute(article.nextId)"
+            >
               Next Article
               <mat-icon>navigate_next</mat-icon>
             </button>
@@ -545,7 +587,7 @@ import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog.c
         background-color: #f5f5f5;
         padding: 2px 6px;
         border-radius: 3px;
-        font-family: 'Courier New', monospace;
+        font-family: "Courier New", monospace;
         word-wrap: break-word;
         overflow-wrap: break-word;
       }
@@ -597,7 +639,7 @@ import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog.c
         overflow-x: auto;
         white-space: pre-wrap;
         word-wrap: break-word;
-        font-family: 'Courier New', 'Monaco', 'Menlo', monospace;
+        font-family: "Courier New", "Monaco", "Menlo", monospace;
         font-size: 14px;
         line-height: 1.5;
         color: rgba(0, 0, 0, 0.87);
@@ -914,26 +956,29 @@ export class ArticleDetailComponent implements OnInit, OnDestroy {
   ngOnInit() {
     this.route.params
       .pipe(
-        switchMap(params => {
+        switchMap((params) => {
           // Support both route structures: /articles/:id and /feeds/:feedId/articles/:articleId
-          const articleId = Number(params['articleId'] || params['id']);
-          const feedIdParam = params['feedId'] || params['id']; // For breadcrumb key
-          const articleIdParam = params['articleId'] || params['id']; // For breadcrumb key
+          const articleId = Number(params["articleId"] || params["id"]);
+          const feedIdParam = params["feedId"] || params["id"]; // For breadcrumb key
+          const articleIdParam = params["articleId"] || params["id"]; // For breadcrumb key
 
           this.loading.set(true);
           this.error.set(null);
           return this.articleService.getArticle(articleId).pipe(
-            tap(article => {
+            tap((article) => {
               // Mark as read when viewing
               if (!article.isRead && !article.read) {
                 this.articleService.markRead(article.id, true).subscribe();
               }
 
               // Redirect to new route structure if using old route
-              if (!params['feedId'] && article.feedId) {
-                this.router.navigate(['/feeds', article.feedId, 'articles', article.id], {
-                  replaceUrl: true,
-                });
+              if (!params["feedId"] && article.feedId) {
+                this.router.navigate(
+                  ["/feeds", article.feedId, "articles", article.id],
+                  {
+                    replaceUrl: true,
+                  },
+                );
                 return;
               }
 
@@ -941,26 +986,32 @@ export class ArticleDetailComponent implements OnInit, OnDestroy {
               // Article breadcrumb is handled automatically by BreadcrumbService
               if (article.feed?.id) {
                 const feedId = article.feed.id.toString();
-                this.breadcrumbService.setLabel(`id:${feedId}`, article.feed.name);
+                this.breadcrumbService.setLabel(
+                  `id:${feedId}`,
+                  article.feed.name,
+                );
               } else if (article.feedId) {
                 const feedId = article.feedId.toString();
                 if (article.feedName) {
-                  this.breadcrumbService.setLabel(`id:${feedId}`, article.feedName);
+                  this.breadcrumbService.setLabel(
+                    `id:${feedId}`,
+                    article.feedName,
+                  );
                 }
               }
-            })
+            }),
           );
-        })
+        }),
       )
       .subscribe({
-        next: article => {
+        next: (article) => {
           this.article.set(article);
           this.loading.set(false);
           // Register actions for keyboard shortcuts
           this.registerArticleActions();
         },
-        error: error => {
-          this.error.set(error.message || 'Failed to load article');
+        error: (error) => {
+          this.error.set(error.message || "Failed to load article");
           this.loading.set(false);
         },
       });
@@ -1010,15 +1061,15 @@ export class ArticleDetailComponent implements OnInit, OnDestroy {
       openOriginal: () => {
         const article = this.article();
         if (article?.link) {
-          window.open(article.link, '_blank');
+          window.open(article.link, "_blank");
         }
       },
       viewFeed: () => {
         const article = this.article();
         if (article?.feed?.id) {
-          this.router.navigate(['/feeds', article.feed.id]);
+          this.router.navigate(["/feeds", article.feed.id]);
         } else if (article?.feedId) {
-          this.router.navigate(['/feeds', article.feedId]);
+          this.router.navigate(["/feeds", article.feedId]);
         }
       },
     });
@@ -1028,81 +1079,87 @@ export class ArticleDetailComponent implements OnInit, OnDestroy {
     const currentArticle = this.article();
     const feedId = currentArticle?.feed?.id || currentArticle?.feedId;
     if (feedId) {
-      return ['/feeds', feedId.toString(), 'articles', articleId.toString()];
+      return ["/feeds", feedId.toString(), "articles", articleId.toString()];
     }
     // Fallback to old route if feed not available
-    return ['/articles', articleId.toString()];
+    return ["/articles", articleId.toString()];
   }
 
   getSafeContent(): SafeHtml {
-    const content = this.article()?.content || '';
+    const content = this.article()?.content || "";
     // Add lazy loading to all images in content
-    const contentWithLazyImages = content.replace(/<img([^>]*?)>/gi, (match, attributes) => {
-      // Check if loading attribute already exists
-      if (/loading\s*=/i.test(attributes)) {
-        return match; // Already has loading attribute
-      }
-      // Add loading="lazy" if not present
-      return `<img${attributes} loading="lazy">`;
-    });
-    return this.sanitizer.sanitize(1, contentWithLazyImages) || '';
+    const contentWithLazyImages = content.replace(
+      /<img([^>]*?)>/gi,
+      (match, attributes) => {
+        // Check if loading attribute already exists
+        if (/loading\s*=/i.test(attributes)) {
+          return match; // Already has loading attribute
+        }
+        // Add loading="lazy" if not present
+        return `<img${attributes} loading="lazy">`;
+      },
+    );
+    return this.sanitizer.sanitize(1, contentWithLazyImages) || "";
   }
 
   getRawContent(): string {
-    return this.article()?.content || '';
+    return this.article()?.content || "";
   }
 
   toggleRawContent() {
-    this.showRawContent.update(value => !value);
+    this.showRawContent.update((value) => !value);
   }
 
   isYouTubeVideo(): boolean {
     const currentArticle = this.article();
     if (!currentArticle) return false;
-    const feedType = currentArticle.feed?.feedType || (currentArticle.feedId ? '' : '');
-    return feedType === 'youtube' && !!currentArticle.mediaUrl;
+    const feedType =
+      currentArticle.feed?.feedType || (currentArticle.feedId ? "" : "");
+    return feedType === "youtube" && !!currentArticle.mediaUrl;
   }
 
   isPodcast(): boolean {
     const currentArticle = this.article();
     if (!currentArticle) return false;
-    const feedType = currentArticle.feed?.feedType || (currentArticle.feedId ? '' : '');
-    return feedType === 'podcast' && !!currentArticle.mediaUrl;
+    const feedType =
+      currentArticle.feed?.feedType || (currentArticle.feedId ? "" : "");
+    return feedType === "podcast" && !!currentArticle.mediaUrl;
   }
 
   isRedditVideo(): boolean {
     const currentArticle = this.article();
     if (!currentArticle) return false;
-    const feedType = currentArticle.feed?.feedType || (currentArticle.feedId ? '' : '');
+    const feedType =
+      currentArticle.feed?.feedType || (currentArticle.feedId ? "" : "");
     // Check if it's a Reddit feed with a video URL (HLS or embed)
     return (
-      feedType === 'reddit' &&
+      feedType === "reddit" &&
       !!currentArticle.mediaUrl &&
-      (currentArticle.mediaUrl.includes('v.redd.it') ||
-        currentArticle.mediaUrl.includes('HLSPlaylist.m3u8') ||
-        currentArticle.mediaUrl.includes('/embed'))
+      (currentArticle.mediaUrl.includes("v.redd.it") ||
+        currentArticle.mediaUrl.includes("HLSPlaylist.m3u8") ||
+        currentArticle.mediaUrl.includes("/embed"))
     );
   }
 
   getYouTubeEmbedUrl(): SafeResourceUrl {
     const article = this.article();
-    if (!article?.mediaUrl) return '';
+    if (!article?.mediaUrl) return "";
 
     // Extract video ID from mediaUrl
     const videoIdMatch = article.mediaUrl.match(
-      /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&?/]+)/
+      /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&?/]+)/,
     );
-    if (!videoIdMatch) return '';
+    if (!videoIdMatch) return "";
 
     const videoId = videoIdMatch[1];
     return this.sanitizer.bypassSecurityTrustResourceUrl(
-      `https://www.youtube.com/embed/${videoId}`
+      `https://www.youtube.com/embed/${videoId}`,
     );
   }
 
   getSafeRedditEmbedUrl(): SafeResourceUrl {
     const article = this.article();
-    if (!article?.mediaUrl) return '';
+    if (!article?.mediaUrl) return "";
 
     // Return the embed URL as-is (it's already in the correct format from backend)
     return this.sanitizer.bypassSecurityTrustResourceUrl(article.mediaUrl);
@@ -1114,9 +1171,9 @@ export class ArticleDetailComponent implements OnInit, OnDestroy {
     const secs = seconds % 60;
 
     if (hours > 0) {
-      return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+      return `${hours}:${minutes.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
     }
-    return `${minutes}:${secs.toString().padStart(2, '0')}`;
+    return `${minutes}:${secs.toString().padStart(2, "0")}`;
   }
 
   formatNumber(num: number): string {
@@ -1130,12 +1187,20 @@ export class ArticleDetailComponent implements OnInit, OnDestroy {
     const currentRead = article.read ?? article.isRead ?? false;
     this.articleService.markRead(article.id, !currentRead).subscribe({
       next: () => {
-        this.article.set({ ...article, read: !currentRead, isRead: !currentRead });
-      },
-      error: error => {
-        this.snackBar.open(`Failed to update article: ${error.message}`, 'Close', {
-          duration: 3000,
+        this.article.set({
+          ...article,
+          read: !currentRead,
+          isRead: !currentRead,
         });
+      },
+      error: (error) => {
+        this.snackBar.open(
+          `Failed to update article: ${error.message}`,
+          "Close",
+          {
+            duration: 3000,
+          },
+        );
       },
     });
   }
@@ -1147,12 +1212,20 @@ export class ArticleDetailComponent implements OnInit, OnDestroy {
     const currentSaved = article.saved ?? article.isSaved ?? false;
     this.articleService.markSaved(article.id, !currentSaved).subscribe({
       next: () => {
-        this.article.set({ ...article, saved: !currentSaved, isSaved: !currentSaved });
-      },
-      error: error => {
-        this.snackBar.open(`Failed to update article: ${error.message}`, 'Close', {
-          duration: 3000,
+        this.article.set({
+          ...article,
+          saved: !currentSaved,
+          isSaved: !currentSaved,
         });
+      },
+      error: (error) => {
+        this.snackBar.open(
+          `Failed to update article: ${error.message}`,
+          "Close",
+          {
+            duration: 3000,
+          },
+        );
       },
     });
   }
@@ -1161,28 +1234,32 @@ export class ArticleDetailComponent implements OnInit, OnDestroy {
     const article = this.article();
     if (!article) return;
 
-    const title = article.title || article.name || 'this article';
+    const title = article.title || article.name || "this article";
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       data: {
-        title: 'Delete Article',
+        title: "Delete Article",
         message: `Are you sure you want to delete "${title}"?`,
-        confirmText: 'Delete',
-        cancelText: 'Cancel',
-        confirmColor: 'warn',
+        confirmText: "Delete",
+        cancelText: "Cancel",
+        confirmColor: "warn",
       },
     });
 
-    dialogRef.afterClosed().subscribe(result => {
+    dialogRef.afterClosed().subscribe((result) => {
       if (result) {
         this.articleService.deleteArticle(article.id).subscribe({
           next: () => {
-            this.snackBar.open('Article deleted', 'Close', { duration: 3000 });
+            this.snackBar.open("Article deleted", "Close", { duration: 3000 });
             this.goBack();
           },
-          error: error => {
-            this.snackBar.open(`Failed to delete article: ${error.message}`, 'Close', {
-              duration: 3000,
-            });
+          error: (error) => {
+            this.snackBar.open(
+              `Failed to delete article: ${error.message}`,
+              "Close",
+              {
+                duration: 3000,
+              },
+            );
           },
         });
       }
@@ -1192,11 +1269,11 @@ export class ArticleDetailComponent implements OnInit, OnDestroy {
   goBack() {
     const article = this.article();
     if (article?.feed?.id) {
-      this.router.navigate(['/feeds', article.feed.id]);
+      this.router.navigate(["/feeds", article.feed.id]);
     } else if (article?.feedId) {
-      this.router.navigate(['/feeds', article.feedId]);
+      this.router.navigate(["/feeds", article.feedId]);
     } else {
-      this.router.navigate(['/']);
+      this.router.navigate(["/"]);
     }
   }
 
@@ -1206,60 +1283,66 @@ export class ArticleDetailComponent implements OnInit, OnDestroy {
 
     this.reloading.set(true);
     this.articleService.refreshArticle(article.id).subscribe({
-      next: response => {
+      next: (response) => {
         if (response.success && response.taskId) {
           // Poll for task completion
           this.articleService.pollTaskStatus(response.taskId).subscribe({
-            next: taskResult => {
-              if (taskResult.status === 'completed') {
+            next: (taskResult) => {
+              if (taskResult.status === "completed") {
                 // Task completed, fetch the updated article
                 this.articleService.getArticle(article.id).subscribe({
-                  next: refreshedArticle => {
+                  next: (refreshedArticle) => {
                     this.article.set(refreshedArticle);
                     this.reloading.set(false);
-                    this.snackBar.open('Article reloaded successfully', 'Close', {
-                      duration: 2000,
-                    });
+                    this.snackBar.open(
+                      "Article reloaded successfully",
+                      "Close",
+                      {
+                        duration: 2000,
+                      },
+                    );
                   },
-                  error: error => {
+                  error: (error) => {
                     this.reloading.set(false);
                     this.snackBar.open(
-                      `Failed to fetch reloaded article: ${error.message || 'Unknown error'}`,
-                      'Close',
-                      { duration: 3000 }
+                      `Failed to fetch reloaded article: ${error.message || "Unknown error"}`,
+                      "Close",
+                      { duration: 3000 },
                     );
                   },
                 });
-              } else if (taskResult.status === 'failed') {
+              } else if (taskResult.status === "failed") {
                 // Task failed
                 this.reloading.set(false);
                 this.snackBar.open(
-                  `Article reload failed: ${taskResult.error || 'Unknown error'}`,
-                  'Close',
-                  { duration: 3000 }
+                  `Article reload failed: ${taskResult.error || "Unknown error"}`,
+                  "Close",
+                  { duration: 3000 },
                 );
               }
             },
-            error: error => {
+            error: (error) => {
               this.reloading.set(false);
               this.snackBar.open(
-                `Failed to check reload status: ${error.message || 'Unknown error'}`,
-                'Close',
-                { duration: 3000 }
+                `Failed to check reload status: ${error.message || "Unknown error"}`,
+                "Close",
+                { duration: 3000 },
               );
             },
           });
         } else {
           this.reloading.set(false);
-          this.snackBar.open('Failed to start article refresh', 'Close', { duration: 3000 });
+          this.snackBar.open("Failed to start article refresh", "Close", {
+            duration: 3000,
+          });
         }
       },
-      error: error => {
+      error: (error) => {
         this.reloading.set(false);
         this.snackBar.open(
-          `Failed to refresh article: ${error.message || 'Unknown error'}`,
-          'Close',
-          { duration: 3000 }
+          `Failed to refresh article: ${error.message || "Unknown error"}`,
+          "Close",
+          { duration: 3000 },
         );
       },
     });

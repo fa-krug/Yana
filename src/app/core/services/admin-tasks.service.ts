@@ -5,12 +5,18 @@
  * Manages SSE connection for real-time updates.
  */
 
-import { Injectable, inject, signal, computed, PLATFORM_ID } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
-import { Observable, from, of, shareReplay, Subject } from 'rxjs';
-import { map, catchError, takeUntil } from 'rxjs/operators';
-import { TRPCService } from '../trpc/trpc.service';
-import { SSEService, type SSEEvent } from './sse.service';
+import {
+  Injectable,
+  inject,
+  signal,
+  computed,
+  PLATFORM_ID,
+} from "@angular/core";
+import { isPlatformBrowser } from "@angular/common";
+import { Observable, from, of, shareReplay, Subject } from "rxjs";
+import { map, catchError, takeUntil } from "rxjs/operators";
+import { TRPCService } from "../trpc/trpc.service";
+import { SSEService, type SSEEvent } from "./sse.service";
 
 export interface ScheduledTask {
   id: string;
@@ -27,7 +33,7 @@ export interface ScheduledTaskDetails extends ScheduledTask {
 export interface TaskExecution {
   id: number;
   executedAt: string;
-  status: 'success' | 'failed';
+  status: "success" | "failed";
   error: string | null;
   duration: number | null;
 }
@@ -35,7 +41,7 @@ export interface TaskExecution {
 export interface Task {
   id: number;
   type: string;
-  status: 'pending' | 'running' | 'completed' | 'failed';
+  status: "pending" | "running" | "completed" | "failed";
   payload: Record<string, unknown>;
   result: Record<string, unknown> | null;
   error: string | null;
@@ -48,7 +54,7 @@ export interface Task {
 }
 
 export interface TaskFilters {
-  status?: ('pending' | 'running' | 'completed' | 'failed')[];
+  status?: ("pending" | "running" | "completed" | "failed")[];
   type?: string[];
   dateFrom?: string;
   dateTo?: string;
@@ -73,7 +79,10 @@ export interface TaskMetrics {
   running: number;
   completed: number;
   failed: number;
-  byType: Record<string, { count: number; status: 'pending' | 'running' | 'completed' | 'failed' }>;
+  byType: Record<
+    string,
+    { count: number; status: "pending" | "running" | "completed" | "failed" }
+  >;
 }
 
 export interface WorkerPoolStatus {
@@ -89,7 +98,7 @@ export interface SchedulerStatus {
 }
 
 @Injectable({
-  providedIn: 'root',
+  providedIn: "root",
 })
 export class AdminTasksService {
   private trpc = inject(TRPCService);
@@ -128,13 +137,13 @@ export class AdminTasksService {
 
   enableTask(id: string): Observable<void> {
     return from(this.trpc.client.admin.tasks.enableTask.mutate({ id })).pipe(
-      map(() => undefined)
+      map(() => undefined),
     );
   }
 
   disableTask(id: string): Observable<void> {
     return from(this.trpc.client.admin.tasks.disableTask.mutate({ id })).pipe(
-      map(() => undefined)
+      map(() => undefined),
     );
   }
 
@@ -143,7 +152,9 @@ export class AdminTasksService {
   }
 
   getTaskHistory(id: string, days: number = 14): Observable<TaskExecution[]> {
-    return from(this.trpc.client.admin.tasks.getTaskHistory.query({ id, days }));
+    return from(
+      this.trpc.client.admin.tasks.getTaskHistory.query({ id, days }),
+    );
   }
 
   /**
@@ -152,7 +163,7 @@ export class AdminTasksService {
 
   listTasks(
     filters?: TaskFilters,
-    pagination?: Pagination
+    pagination?: Pagination,
   ): Observable<PaginatedTasks> {
     return from(
       this.trpc.client.admin.tasks.listTasks.query({
@@ -162,7 +173,7 @@ export class AdminTasksService {
         type: filters?.type,
         dateFrom: filters?.dateFrom,
         dateTo: filters?.dateTo,
-      })
+      }),
     );
   }
 
@@ -172,7 +183,7 @@ export class AdminTasksService {
 
   cancelTask(id: number): Observable<void> {
     return from(this.trpc.client.admin.tasks.cancelTask.mutate({ id })).pipe(
-      map(() => undefined)
+      map(() => undefined),
     );
   }
 
@@ -181,9 +192,9 @@ export class AdminTasksService {
   }
 
   clearHistory(days: number = 14): Observable<number> {
-    return from(this.trpc.client.admin.tasks.clearHistory.mutate({ days })).pipe(
-      map(response => response.deleted)
-    );
+    return from(
+      this.trpc.client.admin.tasks.clearHistory.mutate({ days }),
+    ).pipe(map((response) => response.deleted));
   }
 
   /**
@@ -192,28 +203,38 @@ export class AdminTasksService {
 
   getMetrics(): Observable<TaskMetrics> {
     return from(this.trpc.client.admin.tasks.getMetrics.query()).pipe(
-      map(metrics => {
+      map((metrics) => {
         this.metricsSignal.set(metrics);
         return metrics;
-      })
+      }),
     );
   }
 
   getWorkerPoolStatus(): Observable<WorkerPoolStatus> {
     // Skip during SSR
     if (!isPlatformBrowser(this.platformId)) {
-      return of({ running: false, workerCount: 0, activeWorkers: 0, queueDepth: 0 });
+      return of({
+        running: false,
+        workerCount: 0,
+        activeWorkers: 0,
+        queueDepth: 0,
+      });
     }
 
     return from(this.trpc.client.admin.tasks.getWorkerPoolStatus.query()).pipe(
-      map(status => {
+      map((status) => {
         this.workerPoolStatusSignal.set(status);
         return status;
       }),
-      catchError(error => {
-        console.error('Failed to load worker pool status:', error);
-        return of({ running: false, workerCount: 0, activeWorkers: 0, queueDepth: 0 });
-      })
+      catchError((error) => {
+        console.error("Failed to load worker pool status:", error);
+        return of({
+          running: false,
+          workerCount: 0,
+          activeWorkers: 0,
+          queueDepth: 0,
+        });
+      }),
     );
   }
 
@@ -224,27 +245,27 @@ export class AdminTasksService {
     }
 
     return from(this.trpc.client.admin.tasks.getSchedulerStatus.query()).pipe(
-      map(status => {
+      map((status) => {
         this.schedulerStatusSignal.set(status);
         return status;
       }),
-      catchError(error => {
-        console.error('Failed to load scheduler status:', error);
+      catchError((error) => {
+        console.error("Failed to load scheduler status:", error);
         return of({ running: false, scheduledTasks: 0 });
-      })
+      }),
     );
   }
 
   /**
    * SSE Connection for Real-time Updates
-   * 
+   *
    * Uses a shared connection pattern - only one connection is maintained
    * and shared among all subscribers.
    */
   connectSSE(): Observable<SSEEvent> {
     // Only connect in browser
     if (!isPlatformBrowser(this.platformId)) {
-      return new Observable<SSEEvent>(subscriber => {
+      return new Observable<SSEEvent>((subscriber) => {
         subscriber.complete();
       });
     }
@@ -260,10 +281,9 @@ export class AdminTasksService {
     const url = `${baseUrl}/api/admin/tasks/events`;
 
     // Create shared connection with replay
-    this.sseConnection$ = this.sseService.connect(url).pipe(
-      shareReplay(1),
-      takeUntil(this.sseDestroy$)
-    );
+    this.sseConnection$ = this.sseService
+      .connect(url)
+      .pipe(shareReplay(1), takeUntil(this.sseDestroy$));
 
     this.sseSubscribers = 1;
 
@@ -276,7 +296,7 @@ export class AdminTasksService {
    */
   disconnectSSE(): void {
     this.sseSubscribers = Math.max(0, this.sseSubscribers - 1);
-    
+
     if (this.sseSubscribers <= 0) {
       this.sseDestroy$.next();
       this.sseService.disconnect();

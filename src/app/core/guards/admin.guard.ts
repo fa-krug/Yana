@@ -3,12 +3,12 @@
  * Requires superuser access.
  */
 
-import { inject, PLATFORM_ID } from '@angular/core';
-import { isPlatformServer } from '@angular/common';
-import { Router, CanActivateFn } from '@angular/router';
-import { of } from 'rxjs';
-import { map, take, catchError } from 'rxjs/operators';
-import { AuthService } from '../services/auth.service';
+import { inject, PLATFORM_ID } from "@angular/core";
+import { isPlatformServer } from "@angular/common";
+import { Router, CanActivateFn } from "@angular/router";
+import { of } from "rxjs";
+import { map, take, catchError } from "rxjs/operators";
+import { AuthService } from "../services/auth.service";
 
 export const adminGuard: CanActivateFn = (route, state) => {
   const platformId = inject(PLATFORM_ID);
@@ -34,9 +34,9 @@ export const adminGuard: CanActivateFn = (route, state) => {
         return true;
       }
       // Redirect to dashboard if not admin
-      return router.createUrlTree(['/'], {
+      return router.createUrlTree(["/"], {
         queryParams: { returnUrl: state.url },
       });
-    })
+    }),
   );
 };

@@ -29,9 +29,7 @@
   "dataGroups": [
     {
       "name": "api-requests",
-      "urls": [
-        "/api/**"
-      ],
+      "urls": ["/api/**"],
       "cacheConfig": {
         "strategy": "freshness",
         "maxAge": "0u",

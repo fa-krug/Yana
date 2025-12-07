@@ -9,24 +9,27 @@ import {
   inject,
   signal,
   ChangeDetectionStrategy,
-} from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { Subject, takeUntil } from 'rxjs';
-import { MatCardModule } from '@angular/material/card';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { MatTableModule } from '@angular/material/table';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatSlideToggleModule } from '@angular/material/slide-toggle';
-import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { MatDialog, MatDialogModule } from '@angular/material/dialog';
-import { MatChipsModule } from '@angular/material/chips';
-import { AdminTasksService, type ScheduledTask } from '../../core/services/admin-tasks.service';
-import { TaskHistoryDialogComponent } from './task-history-dialog.component';
+} from "@angular/core";
+import { CommonModule } from "@angular/common";
+import { Subject, takeUntil } from "rxjs";
+import { MatCardModule } from "@angular/material/card";
+import { MatButtonModule } from "@angular/material/button";
+import { MatIconModule } from "@angular/material/icon";
+import { MatTableModule } from "@angular/material/table";
+import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
+import { MatSlideToggleModule } from "@angular/material/slide-toggle";
+import { MatTooltipModule } from "@angular/material/tooltip";
+import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
+import { MatDialog, MatDialogModule } from "@angular/material/dialog";
+import { MatChipsModule } from "@angular/material/chips";
+import {
+  AdminTasksService,
+  type ScheduledTask,
+} from "../../core/services/admin-tasks.service";
+import { TaskHistoryDialogComponent } from "./task-history-dialog.component";
 
 @Component({
-  selector: 'app-tasks-list',
+  selector: "app-tasks-list",
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
@@ -46,7 +49,12 @@ import { TaskHistoryDialogComponent } from './task-history-dialog.component';
     <div class="tasks-list-container animate-fade-in">
       <div class="header">
         <h1>Scheduled Tasks</h1>
-        <button mat-raised-button color="primary" (click)="loadTasks()" [disabled]="loading()">
+        <button
+          mat-raised-button
+          color="primary"
+          (click)="loadTasks()"
+          [disabled]="loading()"
+        >
           <mat-icon>refresh</mat-icon>
           Refresh
         </button>
@@ -60,13 +68,18 @@ import { TaskHistoryDialogComponent } from './task-history-dialog.component';
         <mat-card class="error-card">
           <mat-card-content>
             <p>{{ error() }}</p>
-            <button mat-raised-button color="primary" (click)="loadTasks()">Retry</button>
+            <button mat-raised-button color="primary" (click)="loadTasks()">
+              Retry
+            </button>
           </mat-card-content>
         </mat-card>
       } @else if (tasks().length === 0) {
         <mat-card class="empty-card">
           <mat-card-content>
-            <p>No scheduled tasks found. Tasks should be registered when the scheduler starts.</p>
+            <p>
+              No scheduled tasks found. Tasks should be registered when the
+              scheduler starts.
+            </p>
           </mat-card-content>
         </mat-card>
       } @else {
@@ -162,7 +175,7 @@ import { TaskHistoryDialogComponent } from './task-history-dialog.component';
         background: rgba(0, 0, 0, 0.05);
         padding: 4px 8px;
         border-radius: 4px;
-        font-family: 'Courier New', monospace;
+        font-family: "Courier New", monospace;
         font-size: 0.875rem;
       }
 
@@ -192,7 +205,7 @@ export class TasksListComponent implements OnInit, OnDestroy {
   toggling = signal(false);
   triggering = signal<Set<string>>(new Set());
 
-  displayedColumns: string[] = ['name', 'cron', 'enabled', 'actions'];
+  displayedColumns: string[] = ["name", "cron", "enabled", "actions"];
 
   ngOnInit() {
     this.loadTasks();
@@ -208,12 +221,12 @@ export class TasksListComponent implements OnInit, OnDestroy {
     this.error.set(null);
 
     this.tasksService.getScheduledTasks().subscribe({
-      next: tasks => {
+      next: (tasks) => {
         this.tasks.set(tasks);
         this.loading.set(false);
       },
-      error: err => {
-        this.error.set(err.message || 'Failed to load scheduled tasks');
+      error: (err) => {
+        this.error.set(err.message || "Failed to load scheduled tasks");
         this.loading.set(false);
       },
     });
@@ -222,16 +235,24 @@ export class TasksListComponent implements OnInit, OnDestroy {
   toggleTask(id: string, enabled: boolean) {
     this.toggling.set(true);
 
-    const action = enabled ? this.tasksService.enableTask(id) : this.tasksService.disableTask(id);
+    const action = enabled
+      ? this.tasksService.enableTask(id)
+      : this.tasksService.disableTask(id);
 
     action.subscribe({
       next: () => {
-        this.snackBar.open(`Task ${enabled ? 'enabled' : 'disabled'}`, 'Close', { duration: 3000 });
+        this.snackBar.open(
+          `Task ${enabled ? "enabled" : "disabled"}`,
+          "Close",
+          { duration: 3000 },
+        );
         this.loadTasks();
         this.toggling.set(false);
       },
-      error: err => {
-        this.snackBar.open(err.message || 'Failed to toggle task', 'Close', { duration: 5000 });
+      error: (err) => {
+        this.snackBar.open(err.message || "Failed to toggle task", "Close", {
+          duration: 5000,
+        });
         this.toggling.set(false);
         this.loadTasks(); // Reload to reset state
       },
@@ -245,13 +266,17 @@ export class TasksListComponent implements OnInit, OnDestroy {
 
     this.tasksService.triggerTask(id).subscribe({
       next: () => {
-        this.snackBar.open('Task triggered successfully', 'Close', { duration: 3000 });
+        this.snackBar.open("Task triggered successfully", "Close", {
+          duration: 3000,
+        });
         const updated = this.triggering();
         updated.delete(id);
         this.triggering.set(new Set(updated));
       },
-      error: err => {
-        this.snackBar.open(err.message || 'Failed to trigger task', 'Close', { duration: 5000 });
+      error: (err) => {
+        this.snackBar.open(err.message || "Failed to trigger task", "Close", {
+          duration: 5000,
+        });
         const updated = this.triggering();
         updated.delete(id);
         this.triggering.set(new Set(updated));
@@ -261,7 +286,7 @@ export class TasksListComponent implements OnInit, OnDestroy {
 
   viewHistory(id: string) {
     this.dialog.open(TaskHistoryDialogComponent, {
-      width: '800px',
+      width: "800px",
       data: { taskId: id },
     });
   }

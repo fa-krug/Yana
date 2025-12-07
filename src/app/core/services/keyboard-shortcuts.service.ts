@@ -2,14 +2,14 @@
  * Keyboard shortcuts service - manages global keyboard shortcuts.
  */
 
-import { Injectable, inject } from '@angular/core';
-import { Router } from '@angular/router';
-import { MatDialog } from '@angular/material/dialog';
-import { HotkeysService } from '@ngneat/hotkeys';
-import { KeyboardShortcutsDialogComponent } from '../../shared/components/keyboard-shortcuts-dialog.component';
-import { ArticleActionsService } from './article-actions.service';
+import { Injectable, inject } from "@angular/core";
+import { Router } from "@angular/router";
+import { MatDialog } from "@angular/material/dialog";
+import { HotkeysService } from "@ngneat/hotkeys";
+import { KeyboardShortcutsDialogComponent } from "../../shared/components/keyboard-shortcuts-dialog.component";
+import { ArticleActionsService } from "./article-actions.service";
 
-@Injectable({ providedIn: 'root' })
+@Injectable({ providedIn: "root" })
 export class KeyboardShortcutsService {
   private hotkeys = inject(HotkeysService);
   private router = inject(Router);
@@ -23,42 +23,42 @@ export class KeyboardShortcutsService {
     // Navigation shortcuts
     this.hotkeys
       .addShortcut({
-        keys: 'g d',
-        description: 'Go to Dashboard',
+        keys: "g d",
+        description: "Go to Dashboard",
         preventDefault: true,
       })
       .subscribe(() => {
-        this.router.navigate(['/']);
+        this.router.navigate(["/"]);
       });
 
     this.hotkeys
       .addShortcut({
-        keys: 'g f',
-        description: 'Go to Feeds',
+        keys: "g f",
+        description: "Go to Feeds",
         preventDefault: true,
       })
       .subscribe(() => {
-        this.router.navigate(['/feeds']);
+        this.router.navigate(["/feeds"]);
       });
 
     this.hotkeys
       .addShortcut({
-        keys: 'c',
-        description: 'Create Feed',
+        keys: "c",
+        description: "Create Feed",
         preventDefault: true,
         allowIn: [],
       })
       .subscribe(() => {
-        if (this.router.url.startsWith('/feeds') && !this.isArticlePage()) {
-          this.router.navigate(['/feeds/create']);
+        if (this.router.url.startsWith("/feeds") && !this.isArticlePage()) {
+          this.router.navigate(["/feeds/create"]);
         }
       });
 
     // Refresh shortcuts
     this.hotkeys
       .addShortcut({
-        keys: 'r',
-        description: 'Refresh current view',
+        keys: "r",
+        description: "Refresh current view",
         preventDefault: true,
         allowIn: [],
       })
@@ -69,8 +69,8 @@ export class KeyboardShortcutsService {
     // Article navigation shortcuts (only on article pages)
     this.hotkeys
       .addShortcut({
-        keys: 'j',
-        description: 'Next article',
+        keys: "j",
+        description: "Next article",
         preventDefault: true,
         allowIn: [],
       })
@@ -83,8 +83,8 @@ export class KeyboardShortcutsService {
 
     this.hotkeys
       .addShortcut({
-        keys: 'k',
-        description: 'Previous article',
+        keys: "k",
+        description: "Previous article",
         preventDefault: true,
         allowIn: [],
       })
@@ -97,8 +97,8 @@ export class KeyboardShortcutsService {
 
     this.hotkeys
       .addShortcut({
-        keys: 'ArrowRight',
-        description: 'Next article',
+        keys: "ArrowRight",
+        description: "Next article",
         preventDefault: true,
         allowIn: [],
       })
@@ -111,8 +111,8 @@ export class KeyboardShortcutsService {
 
     this.hotkeys
       .addShortcut({
-        keys: 'ArrowLeft',
-        description: 'Previous article',
+        keys: "ArrowLeft",
+        description: "Previous article",
         preventDefault: true,
         allowIn: [],
       })
@@ -126,8 +126,8 @@ export class KeyboardShortcutsService {
     // Article action shortcuts
     this.hotkeys
       .addShortcut({
-        keys: 'u',
-        description: 'Toggle read/unread',
+        keys: "u",
+        description: "Toggle read/unread",
         preventDefault: true,
         allowIn: [],
       })
@@ -140,8 +140,8 @@ export class KeyboardShortcutsService {
 
     this.hotkeys
       .addShortcut({
-        keys: 's',
-        description: 'Toggle save/unsave',
+        keys: "s",
+        description: "Toggle save/unsave",
         preventDefault: true,
         allowIn: [],
       })
@@ -154,8 +154,8 @@ export class KeyboardShortcutsService {
 
     this.hotkeys
       .addShortcut({
-        keys: 'v',
-        description: 'Toggle raw HTML view',
+        keys: "v",
+        description: "Toggle raw HTML view",
         preventDefault: true,
         allowIn: [],
       })
@@ -168,8 +168,8 @@ export class KeyboardShortcutsService {
 
     this.hotkeys
       .addShortcut({
-        keys: 'b',
-        description: 'Go back',
+        keys: "b",
+        description: "Go back",
         preventDefault: true,
         allowIn: [],
       })
@@ -182,8 +182,8 @@ export class KeyboardShortcutsService {
 
     this.hotkeys
       .addShortcut({
-        keys: 'escape',
-        description: 'Go back (on article page)',
+        keys: "escape",
+        description: "Go back (on article page)",
         preventDefault: true,
         allowIn: [],
       })
@@ -196,8 +196,8 @@ export class KeyboardShortcutsService {
 
     this.hotkeys
       .addShortcut({
-        keys: 'o',
-        description: 'Open original link',
+        keys: "o",
+        description: "Open original link",
         preventDefault: true,
         allowIn: [],
       })
@@ -210,8 +210,8 @@ export class KeyboardShortcutsService {
 
     this.hotkeys
       .addShortcut({
-        keys: 'g r',
-        description: 'View feed (on article page)',
+        keys: "g r",
+        description: "View feed (on article page)",
         preventDefault: true,
       })
       .subscribe(() => {
@@ -224,8 +224,8 @@ export class KeyboardShortcutsService {
     // Help shortcut
     this.hotkeys
       .addShortcut({
-        keys: '?',
-        description: 'Show keyboard shortcuts',
+        keys: "?",
+        description: "Show keyboard shortcuts",
         preventDefault: true,
       })
       .subscribe(() => {
@@ -238,7 +238,10 @@ export class KeyboardShortcutsService {
    */
   private isArticlePage(): boolean {
     const url = this.router.url;
-    return url.includes('/articles/') || (url.includes('/feeds/') && url.includes('/articles/'));
+    return (
+      url.includes("/articles/") ||
+      (url.includes("/feeds/") && url.includes("/articles/"))
+    );
   }
 
   /**
@@ -246,8 +249,8 @@ export class KeyboardShortcutsService {
    */
   showHelp(): void {
     this.dialog.open(KeyboardShortcutsDialogComponent, {
-      width: '600px',
-      maxWidth: '90vw',
+      width: "600px",
+      maxWidth: "90vw",
     });
   }
 }

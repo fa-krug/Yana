@@ -12,27 +12,32 @@
  */
 
 // Angular core
-import { Component, inject, signal, ChangeDetectionStrategy } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router, ActivatedRoute } from '@angular/router';
+import {
+  Component,
+  inject,
+  signal,
+  ChangeDetectionStrategy,
+} from "@angular/core";
+import { CommonModule } from "@angular/common";
+import { FormBuilder, ReactiveFormsModule, Validators } from "@angular/forms";
+import { Router, ActivatedRoute } from "@angular/router";
 
 // Angular Material
-import { MatCardModule } from '@angular/material/card';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { MatButtonModule } from '@angular/material/button';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { MatIconModule } from '@angular/material/icon';
+import { MatCardModule } from "@angular/material/card";
+import { MatFormFieldModule } from "@angular/material/form-field";
+import { MatInputModule } from "@angular/material/input";
+import { MatButtonModule } from "@angular/material/button";
+import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
+import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
+import { MatIconModule } from "@angular/material/icon";
 
 // Application
-import { HeaderComponent } from '../../layouts/header.component';
-import { AuthService } from '../../core/services/auth.service';
-import { LoginResponse } from '../../core/models';
+import { HeaderComponent } from "../../layouts/header.component";
+import { AuthService } from "../../core/services/auth.service";
+import { LoginResponse } from "../../core/models";
 
 @Component({
-  selector: 'app-login',
+  selector: "app-login",
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
@@ -58,14 +63,23 @@ import { LoginResponse } from '../../core/models';
           </mat-card-header>
 
           <mat-card-content>
-            <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="login-form">
+            <form
+              [formGroup]="loginForm"
+              (ngSubmit)="onSubmit()"
+              class="login-form"
+            >
               <mat-form-field appearance="outline" class="full-width">
                 <mat-label>Username</mat-label>
                 <mat-icon matPrefix>person</mat-icon>
-                <input matInput formControlName="username" autocomplete="username" required />
+                <input
+                  matInput
+                  formControlName="username"
+                  autocomplete="username"
+                  required
+                />
                 @if (
-                  loginForm.get('username')?.hasError('required') &&
-                  loginForm.get('username')?.touched
+                  loginForm.get("username")?.hasError("required") &&
+                  loginForm.get("username")?.touched
                 ) {
                   <mat-error>Username is required</mat-error>
                 }
@@ -82,8 +96,8 @@ import { LoginResponse } from '../../core/models';
                   required
                 />
                 @if (
-                  loginForm.get('password')?.hasError('required') &&
-                  loginForm.get('password')?.touched
+                  loginForm.get("password")?.hasError("required") &&
+                  loginForm.get("password")?.touched
                 ) {
                   <mat-error>Password is required</mat-error>
                 }
@@ -147,15 +161,23 @@ import { LoginResponse } from '../../core/models';
       }
 
       .login-container::before {
-        content: '';
+        content: "";
         position: absolute;
         top: 0;
         left: 0;
         right: 0;
         bottom: 0;
         background:
-          radial-gradient(circle at 20% 50%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
-          radial-gradient(circle at 80% 80%, rgba(255, 255, 255, 0.1) 0%, transparent 50%);
+          radial-gradient(
+            circle at 20% 50%,
+            rgba(255, 255, 255, 0.1) 0%,
+            transparent 50%
+          ),
+          radial-gradient(
+            circle at 80% 80%,
+            rgba(255, 255, 255, 0.1) 0%,
+            transparent 50%
+          );
         pointer-events: none;
       }
 
@@ -380,11 +402,11 @@ export class LoginComponent {
   private snackBar = inject(MatSnackBar);
 
   loading = this.authService.loading;
-  errorMessage = signal<string>('');
+  errorMessage = signal<string>("");
 
   loginForm = this.fb.nonNullable.group({
-    username: ['', Validators.required],
-    password: ['', Validators.required],
+    username: ["", Validators.required],
+    password: ["", Validators.required],
   });
 
   onSubmit() {
@@ -392,24 +414,24 @@ export class LoginComponent {
       return;
     }
 
-    this.errorMessage.set('');
+    this.errorMessage.set("");
     const credentials = this.loginForm.getRawValue();
 
     this.authService.login(credentials).subscribe({
       next: (response: LoginResponse | null) => {
         if (response?.success) {
-          this.snackBar.open('Login successful!', 'Close', { duration: 3000 });
+          this.snackBar.open("Login successful!", "Close", { duration: 3000 });
 
           // Get return URL from query params or default to '/'
-          const returnUrl = this.route.snapshot.queryParams['returnUrl'] || '/';
+          const returnUrl = this.route.snapshot.queryParams["returnUrl"] || "/";
           this.router.navigateByUrl(returnUrl);
         } else {
-          this.errorMessage.set(response?.message || 'Login failed');
+          this.errorMessage.set(response?.message || "Login failed");
         }
       },
       error: (error: unknown) => {
-        console.error('Login error:', error);
-        this.errorMessage.set('Invalid username or password');
+        console.error("Login error:", error);
+        this.errorMessage.set("Invalid username or password");
       },
     });
   }

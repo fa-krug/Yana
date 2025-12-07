@@ -2,19 +2,38 @@
  * Task details dialog component.
  */
 
-import { Component, inject, OnInit, signal, ChangeDetectionStrategy } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatIconModule } from '@angular/material/icon';
-import { MatChipsModule } from '@angular/material/chips';
-import { AdminTasksService, type Task } from '../../core/services/admin-tasks.service';
+import {
+  Component,
+  inject,
+  OnInit,
+  signal,
+  ChangeDetectionStrategy,
+} from "@angular/core";
+import { CommonModule } from "@angular/common";
+import {
+  MatDialogModule,
+  MatDialogRef,
+  MAT_DIALOG_DATA,
+} from "@angular/material/dialog";
+import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
+import { MatIconModule } from "@angular/material/icon";
+import { MatChipsModule } from "@angular/material/chips";
+import {
+  AdminTasksService,
+  type Task,
+} from "../../core/services/admin-tasks.service";
 
 @Component({
-  selector: 'app-task-details-dialog',
+  selector: "app-task-details-dialog",
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, MatDialogModule, MatProgressSpinnerModule, MatIconModule, MatChipsModule],
+  imports: [
+    CommonModule,
+    MatDialogModule,
+    MatProgressSpinnerModule,
+    MatIconModule,
+    MatChipsModule,
+  ],
   template: `
     <h2 mat-dialog-title>Task Details</h2>
     <mat-dialog-content>
@@ -36,7 +55,9 @@ import { AdminTasksService, type Task } from '../../core/services/admin-tasks.se
           </div>
           <div class="detail-row">
             <span class="label">Status:</span>
-            <mat-chip [color]="getStatusColor(t.status)">{{ t.status }}</mat-chip>
+            <mat-chip [color]="getStatusColor(t.status)">{{
+              t.status
+            }}</mat-chip>
           </div>
           <div class="detail-row">
             <span class="label">Retries:</span>
@@ -44,18 +65,18 @@ import { AdminTasksService, type Task } from '../../core/services/admin-tasks.se
           </div>
           <div class="detail-row">
             <span class="label">Created:</span>
-            <span class="value">{{ t.createdAt | date: 'short' }}</span>
+            <span class="value">{{ t.createdAt | date: "short" }}</span>
           </div>
           @if (t.startedAt) {
             <div class="detail-row">
               <span class="label">Started:</span>
-              <span class="value">{{ t.startedAt | date: 'short' }}</span>
+              <span class="value">{{ t.startedAt | date: "short" }}</span>
             </div>
           }
           @if (t.completedAt) {
             <div class="detail-row">
               <span class="label">Completed:</span>
-              <span class="value">{{ t.completedAt | date: 'short' }}</span>
+              <span class="value">{{ t.completedAt | date: "short" }}</span>
             </div>
           }
           @if (t.error) {
@@ -157,12 +178,12 @@ export class TaskDetailsDialogComponent implements OnInit {
     this.error.set(null);
 
     this.tasksService.getTaskDetails(this.data.taskId).subscribe({
-      next: task => {
+      next: (task) => {
         this.task.set(task);
         this.loading.set(false);
       },
-      error: err => {
-        this.error.set(err.message || 'Failed to load task details');
+      error: (err) => {
+        this.error.set(err.message || "Failed to load task details");
         this.loading.set(false);
       },
     });
@@ -172,16 +193,16 @@ export class TaskDetailsDialogComponent implements OnInit {
     return JSON.stringify(obj, null, 2);
   }
 
-  getStatusColor(status: string): 'primary' | 'accent' | 'warn' {
+  getStatusColor(status: string): "primary" | "accent" | "warn" {
     switch (status) {
-      case 'completed':
-        return 'primary';
-      case 'running':
-        return 'accent';
-      case 'failed':
-        return 'warn';
+      case "completed":
+        return "primary";
+      case "running":
+        return "accent";
+      case "failed":
+        return "warn";
       default:
-        return 'primary';
+        return "primary";
     }
   }
 

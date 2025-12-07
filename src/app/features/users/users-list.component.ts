@@ -18,36 +18,40 @@ import {
   inject,
   signal,
   ChangeDetectionStrategy,
-} from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { FormControl, ReactiveFormsModule } from '@angular/forms';
-import { debounceTime, distinctUntilChanged, Subject, takeUntil } from 'rxjs';
+} from "@angular/core";
+import { CommonModule } from "@angular/common";
+import { FormControl, ReactiveFormsModule } from "@angular/forms";
+import { debounceTime, distinctUntilChanged, Subject, takeUntil } from "rxjs";
 
 // Angular Material
-import { MatCardModule } from '@angular/material/card';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
-import { MatTableModule } from '@angular/material/table';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
-import { MatMenuModule } from '@angular/material/menu';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { MatDialog, MatDialogModule } from '@angular/material/dialog';
-import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatCheckboxModule } from '@angular/material/checkbox';
-import { MatChipsModule } from '@angular/material/chips';
+import { MatCardModule } from "@angular/material/card";
+import { MatButtonModule } from "@angular/material/button";
+import { MatIconModule } from "@angular/material/icon";
+import { MatFormFieldModule } from "@angular/material/form-field";
+import { MatInputModule } from "@angular/material/input";
+import { MatSelectModule } from "@angular/material/select";
+import { MatTableModule } from "@angular/material/table";
+import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
+import { MatPaginatorModule, PageEvent } from "@angular/material/paginator";
+import { MatMenuModule } from "@angular/material/menu";
+import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
+import { MatDialog, MatDialogModule } from "@angular/material/dialog";
+import { MatTooltipModule } from "@angular/material/tooltip";
+import { MatCheckboxModule } from "@angular/material/checkbox";
+import { MatChipsModule } from "@angular/material/chips";
 
 // Application
-import { AdminUsersService, User, PaginatedUsers } from '../../core/services/admin-users.service';
-import { UserEditDialogComponent } from './user-edit-dialog.component';
-import { UserCreateDialogComponent } from './user-create-dialog.component';
-import { AdminChangePasswordDialogComponent } from './admin-change-password-dialog.component';
+import {
+  AdminUsersService,
+  User,
+  PaginatedUsers,
+} from "../../core/services/admin-users.service";
+import { UserEditDialogComponent } from "./user-edit-dialog.component";
+import { UserCreateDialogComponent } from "./user-create-dialog.component";
+import { AdminChangePasswordDialogComponent } from "./admin-change-password-dialog.component";
 
 @Component({
-  selector: 'app-users-list',
+  selector: "app-users-list",
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
@@ -118,8 +122,8 @@ import { AdminChangePasswordDialogComponent } from './admin-change-password-dial
               <td mat-cell *matCellDef="let user">
                 {{
                   user.firstName || user.lastName
-                    ? (user.firstName + ' ' + user.lastName).trim()
-                    : '-'
+                    ? (user.firstName + " " + user.lastName).trim()
+                    : "-"
                 }}
               </td>
             </ng-container>
@@ -145,7 +149,11 @@ import { AdminChangePasswordDialogComponent } from './admin-change-password-dial
             <ng-container matColumnDef="actions">
               <th mat-header-cell *matHeaderCellDef>Actions</th>
               <td mat-cell *matCellDef="let user">
-                <button mat-icon-button [matMenuTriggerFor]="menu" [matTooltip]="'User actions'">
+                <button
+                  mat-icon-button
+                  [matMenuTriggerFor]="menu"
+                  [matTooltip]="'User actions'"
+                >
                   <mat-icon>more_vert</mat-icon>
                 </button>
                 <mat-menu #menu="matMenu">
@@ -153,7 +161,10 @@ import { AdminChangePasswordDialogComponent } from './admin-change-password-dial
                     <mat-icon>edit</mat-icon>
                     <span>Edit</span>
                   </button>
-                  <button mat-menu-item (click)="openChangePasswordDialog(user)">
+                  <button
+                    mat-menu-item
+                    (click)="openChangePasswordDialog(user)"
+                  >
                     <mat-icon>lock</mat-icon>
                     <span>Change Password</span>
                   </button>
@@ -280,13 +291,20 @@ export class UsersListComponent implements OnInit, OnDestroy {
   private dialog = inject(MatDialog);
   private destroy$ = new Subject<void>();
 
-  searchControl = new FormControl('');
+  searchControl = new FormControl("");
   superuserControl = new FormControl<boolean | null>(null);
 
   loading = signal(false);
   usersData = signal<PaginatedUsers | null>(null);
 
-  displayedColumns: string[] = ['username', 'email', 'name', 'isSuperuser', 'createdAt', 'actions'];
+  displayedColumns: string[] = [
+    "username",
+    "email",
+    "name",
+    "isSuperuser",
+    "createdAt",
+    "actions",
+  ];
 
   ngOnInit(): void {
     // Debounce search input
@@ -297,9 +315,11 @@ export class UsersListComponent implements OnInit, OnDestroy {
       });
 
     // Reload when filter changes
-    this.superuserControl.valueChanges.pipe(takeUntil(this.destroy$)).subscribe(() => {
-      this.loadUsers();
-    });
+    this.superuserControl.valueChanges
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => {
+        this.loadUsers();
+      });
 
     this.loadUsers();
   }
@@ -320,12 +340,12 @@ export class UsersListComponent implements OnInit, OnDestroy {
     };
 
     this.usersService.listUsers(params).subscribe({
-      next: data => {
+      next: (data) => {
         this.usersData.set(data);
         this.loading.set(false);
       },
-      error: error => {
-        this.snackBar.open('Failed to load users', 'Close', { duration: 3000 });
+      error: (error) => {
+        this.snackBar.open("Failed to load users", "Close", { duration: 3000 });
         this.loading.set(false);
       },
     });
@@ -337,10 +357,10 @@ export class UsersListComponent implements OnInit, OnDestroy {
 
   openCreateDialog(): void {
     const dialogRef = this.dialog.open(UserCreateDialogComponent, {
-      width: '600px',
+      width: "600px",
     });
 
-    dialogRef.afterClosed().subscribe(result => {
+    dialogRef.afterClosed().subscribe((result) => {
       if (result) {
         this.loadUsers();
       }
@@ -349,11 +369,11 @@ export class UsersListComponent implements OnInit, OnDestroy {
 
   openEditDialog(user: User): void {
     const dialogRef = this.dialog.open(UserEditDialogComponent, {
-      width: '600px',
+      width: "600px",
       data: user,
     });
 
-    dialogRef.afterClosed().subscribe(result => {
+    dialogRef.afterClosed().subscribe((result) => {
       if (result) {
         this.loadUsers();
       }
@@ -362,13 +382,15 @@ export class UsersListComponent implements OnInit, OnDestroy {
 
   openChangePasswordDialog(user: User): void {
     const dialogRef = this.dialog.open(AdminChangePasswordDialogComponent, {
-      width: '500px',
+      width: "500px",
       data: { userId: user.id, username: user.username },
     });
 
-    dialogRef.afterClosed().subscribe(result => {
+    dialogRef.afterClosed().subscribe((result) => {
       if (result) {
-        this.snackBar.open('Password changed successfully', 'Close', { duration: 3000 });
+        this.snackBar.open("Password changed successfully", "Close", {
+          duration: 3000,
+        });
       }
     });
   }
@@ -377,8 +399,8 @@ export class UsersListComponent implements OnInit, OnDestroy {
     const date = new Date(dateString);
     return (
       date.toLocaleDateString() +
-      ' ' +
-      date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      " " +
+      date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
     );
   }
 }

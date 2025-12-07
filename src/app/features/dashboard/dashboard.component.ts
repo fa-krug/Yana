@@ -2,19 +2,25 @@
  * Dashboard component displaying statistics and quick actions.
  */
 
-import { Component, inject, OnInit, OnDestroy, ChangeDetectionStrategy } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { RouterModule, Router } from '@angular/router';
-import { MatCardModule } from '@angular/material/card';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatGridListModule } from '@angular/material/grid-list';
-import { StatisticsService } from '../../core/services/statistics.service';
-import { interval, Subject, takeUntil } from 'rxjs';
+import {
+  Component,
+  inject,
+  OnInit,
+  OnDestroy,
+  ChangeDetectionStrategy,
+} from "@angular/core";
+import { CommonModule } from "@angular/common";
+import { RouterModule, Router } from "@angular/router";
+import { MatCardModule } from "@angular/material/card";
+import { MatButtonModule } from "@angular/material/button";
+import { MatIconModule } from "@angular/material/icon";
+import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
+import { MatGridListModule } from "@angular/material/grid-list";
+import { StatisticsService } from "../../core/services/statistics.service";
+import { interval, Subject, takeUntil } from "rxjs";
 
 @Component({
-  selector: 'app-dashboard',
+  selector: "app-dashboard",
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
@@ -38,7 +44,9 @@ import { interval, Subject, takeUntil } from 'rxjs';
         <mat-card class="error-card">
           <mat-card-content>
             <p>{{ statisticsService.error() }}</p>
-            <button mat-raised-button color="primary" (click)="refresh()">Retry</button>
+            <button mat-raised-button color="primary" (click)="refresh()">
+              Retry
+            </button>
           </mat-card-content>
         </mat-card>
       } @else if (statisticsService.statistics(); as stats) {
@@ -133,7 +141,12 @@ import { interval, Subject, takeUntil } from 'rxjs';
                 <mat-icon>headphones</mat-icon>
                 <span>{{ stats.podcastFeeds }} Podcasts</span>
               </div>
-              <div class="feed-type" (click)="navigateToFeeds('reddit')" role="button" tabindex="0">
+              <div
+                class="feed-type"
+                (click)="navigateToFeeds('reddit')"
+                role="button"
+                tabindex="0"
+              >
                 <mat-icon>forum</mat-icon>
                 <span>{{ stats.redditFeeds }} Reddit</span>
               </div>
@@ -148,7 +161,11 @@ import { interval, Subject, takeUntil } from 'rxjs';
           </mat-card-header>
           <mat-card-content>
             <div class="actions">
-              <button mat-raised-button color="primary" routerLink="/feeds/create">
+              <button
+                mat-raised-button
+                color="primary"
+                routerLink="/feeds/create"
+              >
                 <mat-icon>add</mat-icon>
                 Create Feed
               </button>
@@ -460,6 +477,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   navigateToFeeds(type: string) {
-    this.router.navigate(['/feeds'], { queryParams: { type } });
+    this.router.navigate(["/feeds"], { queryParams: { type } });
   }
 }

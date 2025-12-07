@@ -39,7 +39,9 @@
         >
           Save Profile
         </button>
-        <button mat-raised-button (click)="openChangePasswordDialog()">Change Password</button>
+        <button mat-raised-button (click)="openChangePasswordDialog()">
+          Change Password
+        </button>
       </mat-card-actions>
     </mat-card>
 
@@ -47,20 +49,30 @@
     <mat-card class="settings-card">
       <mat-card-header>
         <mat-card-title>Reddit Integration</mat-card-title>
-        <mat-card-subtitle>Configure Reddit API credentials to enable Reddit feeds</mat-card-subtitle>
+        <mat-card-subtitle
+          >Configure Reddit API credentials to enable Reddit
+          feeds</mat-card-subtitle
+        >
       </mat-card-header>
       <mat-card-content>
         <form [formGroup]="redditForm">
-          <mat-checkbox formControlName="enabled" class="full-width"> Enable Reddit Integration </mat-checkbox>
+          <mat-checkbox formControlName="enabled" class="full-width">
+            Enable Reddit Integration
+          </mat-checkbox>
 
-          @if (redditForm.get('enabled')?.value) {
+          @if (redditForm.get("enabled")?.value) {
             <div class="credentials-section">
               <mat-form-field appearance="outline" class="full-width">
                 <mat-label>Client ID</mat-label>
                 <input matInput formControlName="clientId" required />
-                @if (redditForm.get('clientId')?.hasError('server')) {
-                  <mat-error>{{ redditForm.get('clientId')?.getError('server') }}</mat-error>
-                } @else if (redditForm.get('clientId')?.touched && redditForm.get('clientId')?.hasError('required')) {
+                @if (redditForm.get("clientId")?.hasError("server")) {
+                  <mat-error>{{
+                    redditForm.get("clientId")?.getError("server")
+                  }}</mat-error>
+                } @else if (
+                  redditForm.get("clientId")?.touched &&
+                  redditForm.get("clientId")?.hasError("required")
+                ) {
                   <mat-error>Client ID is required</mat-error>
                 }
               </mat-form-field>
@@ -69,7 +81,11 @@
                 <mat-label>Client Secret</mat-label>
                 <input
                   matInput
-                  [type]="redditForm.get('clientSecret')?.value === '••••••••' ? 'text' : 'password'"
+                  [type]="
+                    redditForm.get('clientSecret')?.value === '••••••••'
+                      ? 'text'
+                      : 'password'
+                  "
                   formControlName="clientSecret"
                   required
                   [placeholder]="
@@ -78,22 +94,32 @@
                       : ''
                   "
                 />
-                @if (redditForm.get('clientSecret')?.hasError('server')) {
-                  <mat-error>{{ redditForm.get('clientSecret')?.getError('server') }}</mat-error>
+                @if (redditForm.get("clientSecret")?.hasError("server")) {
+                  <mat-error>{{
+                    redditForm.get("clientSecret")?.getError("server")
+                  }}</mat-error>
                 } @else if (
-                  redditForm.get('clientSecret')?.touched && redditForm.get('clientSecret')?.hasError('required')
+                  redditForm.get("clientSecret")?.touched &&
+                  redditForm.get("clientSecret")?.hasError("required")
                 ) {
                   <mat-error>Client Secret is required</mat-error>
-                } @else if (redditForm.get('clientSecret')?.value === '••••••••') {
-                  <mat-hint>Leave unchanged to keep existing secret, or enter a new value</mat-hint>
+                } @else if (
+                  redditForm.get("clientSecret")?.value === "••••••••"
+                ) {
+                  <mat-hint
+                    >Leave unchanged to keep existing secret, or enter a new
+                    value</mat-hint
+                  >
                 }
               </mat-form-field>
 
               <mat-form-field appearance="outline" class="full-width">
                 <mat-label>User Agent</mat-label>
                 <input matInput formControlName="userAgent" />
-                @if (redditForm.get('userAgent')?.hasError('server')) {
-                  <mat-error>{{ redditForm.get('userAgent')?.getError('server') }}</mat-error>
+                @if (redditForm.get("userAgent")?.hasError("server")) {
+                  <mat-error>{{
+                    redditForm.get("userAgent")?.getError("server")
+                  }}</mat-error>
                 }
               </mat-form-field>
 
@@ -102,7 +128,9 @@
                 <ol>
                   <li>
                     Go to
-                    <a href="https://www.reddit.com/prefs/apps" target="_blank">Reddit Apps</a>
+                    <a href="https://www.reddit.com/prefs/apps" target="_blank"
+                      >Reddit Apps</a
+                    >
                   </li>
                   <li>Click "create another app..."</li>
                   <li>Select "script" as app type</li>
@@ -118,7 +146,12 @@
         </form>
       </mat-card-content>
       <mat-card-actions>
-        <button mat-raised-button color="primary" (click)="updateRedditSettings()" [disabled]="loading()">
+        <button
+          mat-raised-button
+          color="primary"
+          (click)="updateRedditSettings()"
+          [disabled]="loading()"
+        >
           Save Reddit Settings
         </button>
       </mat-card-actions>
@@ -128,31 +161,50 @@
     <mat-card class="settings-card">
       <mat-card-header>
         <mat-card-title>YouTube Integration</mat-card-title>
-        <mat-card-subtitle>Configure YouTube API key to enable YouTube channel feeds</mat-card-subtitle>
+        <mat-card-subtitle
+          >Configure YouTube API key to enable YouTube channel
+          feeds</mat-card-subtitle
+        >
       </mat-card-header>
       <mat-card-content>
         <form [formGroup]="youtubeForm">
-          <mat-checkbox formControlName="enabled" class="full-width"> Enable YouTube Integration </mat-checkbox>
+          <mat-checkbox formControlName="enabled" class="full-width">
+            Enable YouTube Integration
+          </mat-checkbox>
 
-          @if (youtubeForm.get('enabled')?.value) {
+          @if (youtubeForm.get("enabled")?.value) {
             <div class="credentials-section">
               <mat-form-field appearance="outline" class="full-width">
                 <mat-label>API Key</mat-label>
                 <input
                   matInput
-                  [type]="youtubeForm.get('apiKey')?.value === '••••••••' ? 'text' : 'password'"
+                  [type]="
+                    youtubeForm.get('apiKey')?.value === '••••••••'
+                      ? 'text'
+                      : 'password'
+                  "
                   formControlName="apiKey"
                   required
                   [placeholder]="
-                    youtubeForm.get('apiKey')?.value === '••••••••' ? 'API key is set (enter new value to change)' : ''
+                    youtubeForm.get('apiKey')?.value === '••••••••'
+                      ? 'API key is set (enter new value to change)'
+                      : ''
                   "
                 />
-                @if (youtubeForm.get('apiKey')?.hasError('server')) {
-                  <mat-error>{{ youtubeForm.get('apiKey')?.getError('server') }}</mat-error>
-                } @else if (youtubeForm.get('apiKey')?.touched && youtubeForm.get('apiKey')?.hasError('required')) {
+                @if (youtubeForm.get("apiKey")?.hasError("server")) {
+                  <mat-error>{{
+                    youtubeForm.get("apiKey")?.getError("server")
+                  }}</mat-error>
+                } @else if (
+                  youtubeForm.get("apiKey")?.touched &&
+                  youtubeForm.get("apiKey")?.hasError("required")
+                ) {
                   <mat-error>API Key is required</mat-error>
-                } @else if (youtubeForm.get('apiKey')?.value === '••••••••') {
-                  <mat-hint>Leave unchanged to keep existing key, or enter a new value</mat-hint>
+                } @else if (youtubeForm.get("apiKey")?.value === "••••••••") {
+                  <mat-hint
+                    >Leave unchanged to keep existing key, or enter a new
+                    value</mat-hint
+                  >
                 }
               </mat-form-field>
 
@@ -161,7 +213,11 @@
                 <ol>
                   <li>
                     Go to
-                    <a href="https://console.cloud.google.com/apis/credentials" target="_blank">Google Cloud Console</a>
+                    <a
+                      href="https://console.cloud.google.com/apis/credentials"
+                      target="_blank"
+                      >Google Cloud Console</a
+                    >
                   </li>
                   <li>Create a new project or select existing</li>
                   <li>Enable "YouTube Data API v3"</li>
@@ -174,7 +230,12 @@
         </form>
       </mat-card-content>
       <mat-card-actions>
-        <button mat-raised-button color="primary" (click)="updateYouTubeSettings()" [disabled]="loading()">
+        <button
+          mat-raised-button
+          color="primary"
+          (click)="updateYouTubeSettings()"
+          [disabled]="loading()"
+        >
           Save YouTube Settings
         </button>
       </mat-card-actions>
@@ -184,24 +245,35 @@
     <mat-card class="settings-card">
       <mat-card-header>
         <mat-card-title>OpenAI Integration</mat-card-title>
-        <mat-card-subtitle>Configure OpenAI API for AI-powered features (translation, summarization)</mat-card-subtitle>
+        <mat-card-subtitle
+          >Configure OpenAI API for AI-powered features (translation,
+          summarization)</mat-card-subtitle
+        >
       </mat-card-header>
       <mat-card-content>
         <form [formGroup]="openaiForm">
-          <mat-checkbox formControlName="enabled" class="full-width"> Enable OpenAI Integration </mat-checkbox>
+          <mat-checkbox formControlName="enabled" class="full-width">
+            Enable OpenAI Integration
+          </mat-checkbox>
 
-          @if (openaiForm.get('enabled')?.value) {
+          @if (openaiForm.get("enabled")?.value) {
             <div class="credentials-section">
               <mat-form-field appearance="outline" class="full-width">
                 <mat-label>API URL</mat-label>
                 <input matInput formControlName="apiUrl" required />
-                @if (openaiForm.get('apiUrl')?.hasError('server')) {
-                  <mat-error>{{ openaiForm.get('apiUrl')?.getError('server') }}</mat-error>
-                } @else if (openaiForm.get('apiUrl')?.touched && openaiForm.get('apiUrl')?.hasError('required')) {
+                @if (openaiForm.get("apiUrl")?.hasError("server")) {
+                  <mat-error>{{
+                    openaiForm.get("apiUrl")?.getError("server")
+                  }}</mat-error>
+                } @else if (
+                  openaiForm.get("apiUrl")?.touched &&
+                  openaiForm.get("apiUrl")?.hasError("required")
+                ) {
                   <mat-error>API URL is required</mat-error>
                 } @else {
                   <mat-hint
-                    >For OpenAI use https://api.openai.com/v1, or use compatible API (Ollama, LM Studio)</mat-hint
+                    >For OpenAI use https://api.openai.com/v1, or use compatible
+                    API (Ollama, LM Studio)</mat-hint
                   >
                 }
               </mat-form-field>
@@ -210,19 +282,33 @@
                 <mat-label>API Key</mat-label>
                 <input
                   matInput
-                  [type]="openaiForm.get('apiKey')?.value === '••••••••' ? 'text' : 'password'"
+                  [type]="
+                    openaiForm.get('apiKey')?.value === '••••••••'
+                      ? 'text'
+                      : 'password'
+                  "
                   formControlName="apiKey"
                   required
                   [placeholder]="
-                    openaiForm.get('apiKey')?.value === '••••••••' ? 'API key is set (enter new value to change)' : ''
+                    openaiForm.get('apiKey')?.value === '••••••••'
+                      ? 'API key is set (enter new value to change)'
+                      : ''
                   "
                 />
-                @if (openaiForm.get('apiKey')?.hasError('server')) {
-                  <mat-error>{{ openaiForm.get('apiKey')?.getError('server') }}</mat-error>
-                } @else if (openaiForm.get('apiKey')?.touched && openaiForm.get('apiKey')?.hasError('required')) {
+                @if (openaiForm.get("apiKey")?.hasError("server")) {
+                  <mat-error>{{
+                    openaiForm.get("apiKey")?.getError("server")
+                  }}</mat-error>
+                } @else if (
+                  openaiForm.get("apiKey")?.touched &&
+                  openaiForm.get("apiKey")?.hasError("required")
+                ) {
                   <mat-error>API Key is required</mat-error>
-                } @else if (openaiForm.get('apiKey')?.value === '••••••••') {
-                  <mat-hint>Leave unchanged to keep existing key, or enter a new value</mat-hint>
+                } @else if (openaiForm.get("apiKey")?.value === "••••••••") {
+                  <mat-hint
+                    >Leave unchanged to keep existing key, or enter a new
+                    value</mat-hint
+                  >
                 }
               </mat-form-field>
 
@@ -234,7 +320,14 @@
 
               <mat-form-field appearance="outline" class="full-width">
                 <mat-label>Temperature</mat-label>
-                <input matInput type="number" formControlName="temperature" step="0.1" min="0" max="2" />
+                <input
+                  matInput
+                  type="number"
+                  formControlName="temperature"
+                  step="0.1"
+                  min="0"
+                  max="2"
+                />
                 <mat-hint>0.0-2.0 (lower = more deterministic)</mat-hint>
               </mat-form-field>
 
@@ -255,20 +348,42 @@
 
               <mat-form-field appearance="outline" class="full-width">
                 <mat-label>Request Timeout (seconds)</mat-label>
-                <input matInput type="number" formControlName="requestTimeout" min="10" max="600" />
-                <mat-hint>Timeout for AI API requests (default: 120 seconds)</mat-hint>
+                <input
+                  matInput
+                  type="number"
+                  formControlName="requestTimeout"
+                  min="10"
+                  max="600"
+                />
+                <mat-hint
+                  >Timeout for AI API requests (default: 120 seconds)</mat-hint
+                >
               </mat-form-field>
 
               <mat-form-field appearance="outline" class="full-width">
                 <mat-label>Max Retries</mat-label>
-                <input matInput type="number" formControlName="maxRetries" min="1" max="10" />
+                <input
+                  matInput
+                  type="number"
+                  formControlName="maxRetries"
+                  min="1"
+                  max="10"
+                />
                 <mat-hint>Maximum number of retry attempts on failure</mat-hint>
               </mat-form-field>
 
               <mat-form-field appearance="outline" class="full-width">
                 <mat-label>Retry Delay (seconds)</mat-label>
-                <input matInput type="number" formControlName="retryDelay" min="1" max="60" />
-                <mat-hint>Base delay between retries (exponential backoff)</mat-hint>
+                <input
+                  matInput
+                  type="number"
+                  formControlName="retryDelay"
+                  min="1"
+                  max="60"
+                />
+                <mat-hint
+                  >Base delay between retries (exponential backoff)</mat-hint
+                >
               </mat-form-field>
 
               <div class="help-text">
@@ -276,7 +391,11 @@
                 <ol>
                   <li>
                     Go to
-                    <a href="https://platform.openai.com/api-keys" target="_blank">OpenAI API Keys</a>
+                    <a
+                      href="https://platform.openai.com/api-keys"
+                      target="_blank"
+                      >OpenAI API Keys</a
+                    >
                   </li>
                   <li>Sign up or log in</li>
                   <li>Click "Create new secret key"</li>
@@ -284,8 +403,8 @@
                   <li>Add billing information to your OpenAI account</li>
                 </ol>
                 <p>
-                  <strong>Note:</strong> You can also use OpenAI-compatible APIs like Ollama or LM Studio by changing
-                  the API URL.
+                  <strong>Note:</strong> You can also use OpenAI-compatible APIs
+                  like Ollama or LM Studio by changing the API URL.
                 </p>
               </div>
             </div>
@@ -293,7 +412,12 @@
         </form>
       </mat-card-content>
       <mat-card-actions>
-        <button mat-raised-button color="primary" (click)="updateOpenAISettings()" [disabled]="loading()">
+        <button
+          mat-raised-button
+          color="primary"
+          (click)="updateOpenAISettings()"
+          [disabled]="loading()"
+        >
           Save OpenAI Settings
         </button>
       </mat-card-actions>

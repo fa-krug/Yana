@@ -4,9 +4,9 @@
  * Provides session-based authentication middleware.
  */
 
-import type { Request, Response, NextFunction } from 'express';
-import type { Session, SessionData } from 'express-session';
-import { AuthenticationError, PermissionDeniedError } from '../errors';
+import type { Request, Response, NextFunction } from "express";
+import type { Session, SessionData } from "express-session";
+import { AuthenticationError, PermissionDeniedError } from "../errors";
 
 /**
  * Express session with user ID.
@@ -34,11 +34,15 @@ export interface AuthenticatedRequest extends Request {
  * Require authentication middleware.
  * Ensures user is logged in.
  */
-export function requireAuth(req: Request, res: Response, next: NextFunction): void {
+export function requireAuth(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): void {
   const session = req.session as Session & SessionWithUser;
 
   if (!session.userId) {
-    return next(new AuthenticationError('Authentication required'));
+    return next(new AuthenticationError("Authentication required"));
   }
 
   next();
@@ -48,15 +52,19 @@ export function requireAuth(req: Request, res: Response, next: NextFunction): vo
  * Require superuser middleware.
  * Ensures user is a superuser.
  */
-export function requireSuperuser(req: Request, res: Response, next: NextFunction): void {
+export function requireSuperuser(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): void {
   const session = req.session as Session & SessionWithUser;
 
   if (!session.userId) {
-    return next(new AuthenticationError('Authentication required'));
+    return next(new AuthenticationError("Authentication required"));
   }
 
   if (!session.isSuperuser) {
-    return next(new PermissionDeniedError('Superuser access required'));
+    return next(new PermissionDeniedError("Superuser access required"));
   }
 
   next();
@@ -66,13 +74,17 @@ export function requireSuperuser(req: Request, res: Response, next: NextFunction
  * Load user from session.
  * Populates req.user with user information.
  */
-export async function loadUser(req: Request, res: Response, next: NextFunction): Promise<void> {
+export async function loadUser(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
   const authReq = req as AuthenticatedRequest;
   const session = authReq.session;
 
   if (session.userId) {
     try {
-      const { getUserById } = await import('../services/user.service');
+      const { getUserById } = await import("../services/user.service");
       const user = await getUserById(session.userId);
       authReq.user = {
         id: user.id,
@@ -95,6 +107,10 @@ export async function loadUser(req: Request, res: Response, next: NextFunction):
  * Optional authentication middleware.
  * Loads user if authenticated, but doesn't require it.
  */
-export async function optionalAuth(req: Request, res: Response, next: NextFunction): Promise<void> {
+export async function optionalAuth(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
   await loadUser(req, res, next);
 }

@@ -2,18 +2,18 @@
  * Theme service - manages dark/light theme.
  */
 
-import { Injectable, signal, effect, PLATFORM_ID, inject } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
+import { Injectable, signal, effect, PLATFORM_ID, inject } from "@angular/core";
+import { isPlatformBrowser } from "@angular/common";
 
-export type Theme = 'light' | 'dark';
+export type Theme = "light" | "dark";
 
-@Injectable({ providedIn: 'root' })
+@Injectable({ providedIn: "root" })
 export class ThemeService {
   private platformId = inject(PLATFORM_ID);
   private themeSignal = signal<Theme>(this.getStoredTheme());
 
   readonly theme = this.themeSignal.asReadonly();
-  readonly isDark = () => this.themeSignal() === 'dark';
+  readonly isDark = () => this.themeSignal() === "dark";
 
   constructor() {
     // Only run in browser
@@ -25,8 +25,8 @@ export class ThemeService {
       effect(() => {
         const theme = this.themeSignal();
         this.applyTheme(theme);
-        if (typeof localStorage !== 'undefined') {
-          localStorage.setItem('theme', theme);
+        if (typeof localStorage !== "undefined") {
+          localStorage.setItem("theme", theme);
         }
       });
     }
@@ -36,7 +36,7 @@ export class ThemeService {
    * Toggle between light and dark theme
    */
   toggle(): void {
-    this.themeSignal.set(this.isDark() ? 'light' : 'dark');
+    this.themeSignal.set(this.isDark() ? "light" : "dark");
   }
 
   /**
@@ -52,11 +52,11 @@ export class ThemeService {
    */
   private getStoredTheme(): Theme {
     if (!isPlatformBrowser(this.platformId)) {
-      return 'light'; // Default for SSR
+      return "light"; // Default for SSR
     }
 
-    if (typeof localStorage !== 'undefined') {
-      const stored = localStorage.getItem('theme') as Theme | null;
+    if (typeof localStorage !== "undefined") {
+      const stored = localStorage.getItem("theme") as Theme | null;
       if (stored) {
         return stored;
       }
@@ -64,14 +64,14 @@ export class ThemeService {
 
     // Check system preference
     if (
-      typeof window !== 'undefined' &&
+      typeof window !== "undefined" &&
       window.matchMedia &&
-      window.matchMedia('(prefers-color-scheme: dark)').matches
+      window.matchMedia("(prefers-color-scheme: dark)").matches
     ) {
-      return 'dark';
+      return "dark";
     }
 
-    return 'light';
+    return "light";
   }
 
   /**
@@ -79,15 +79,18 @@ export class ThemeService {
    * Only works in browser
    */
   private applyTheme(theme: Theme): void {
-    if (!isPlatformBrowser(this.platformId) || typeof document === 'undefined') {
+    if (
+      !isPlatformBrowser(this.platformId) ||
+      typeof document === "undefined"
+    ) {
       return;
     }
 
     const html = document.documentElement;
-    if (theme === 'dark') {
-      html.classList.add('dark-theme');
+    if (theme === "dark") {
+      html.classList.add("dark-theme");
     } else {
-      html.classList.remove('dark-theme');
+      html.classList.remove("dark-theme");
     }
   }
 }

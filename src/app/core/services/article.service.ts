@@ -3,24 +3,35 @@
  * Now uses tRPC for type-safe API calls.
  */
 
-import { Injectable, inject, signal, computed } from '@angular/core';
-import { Observable, from, of, expand, EMPTY, reduce, switchMap, timer, filter, take } from 'rxjs';
-import { tap, catchError, map, retry } from 'rxjs';
-import { Article, ArticleDetail, PaginatedResponse } from '../models';
-import { TRPCService } from '../trpc/trpc.service';
+import { Injectable, inject, signal, computed } from "@angular/core";
+import {
+  Observable,
+  from,
+  of,
+  expand,
+  EMPTY,
+  reduce,
+  switchMap,
+  timer,
+  filter,
+  take,
+} from "rxjs";
+import { tap, catchError, map, retry } from "rxjs";
+import { Article, ArticleDetail, PaginatedResponse } from "../models";
+import { TRPCService } from "../trpc/trpc.service";
 
 export interface ArticleFilters {
   feedId?: number;
   read?: boolean;
   saved?: boolean;
   unreadOnly?: boolean;
-  readState?: 'read' | 'unread' | null;
+  readState?: "read" | "unread" | null;
   search?: string;
   page?: number;
   pageSize?: number;
 }
 
-@Injectable({ providedIn: 'root' })
+@Injectable({ providedIn: "root" })
 export class ArticleService {
   private trpc = inject(TRPCService);
 
@@ -37,12 +48,16 @@ export class ArticleService {
   readonly totalCount = this.totalCountSignal.asReadonly();
   readonly currentPage = this.currentPageSignal.asReadonly();
   readonly pageSize = this.pageSizeSignal.asReadonly();
-  readonly totalPages = computed(() => Math.ceil(this.totalCountSignal() / this.pageSizeSignal()));
+  readonly totalPages = computed(() =>
+    Math.ceil(this.totalCountSignal() / this.pageSizeSignal()),
+  );
 
   /**
    * Load articles with optional filters
    */
-  loadArticles(filters: ArticleFilters = {}): Observable<PaginatedResponse<Article>> {
+  loadArticles(
+    filters: ArticleFilters = {},
+  ): Observable<PaginatedResponse<Article>> {
     this.loadingSignal.set(true);
     this.errorSignal.set(null);
 
@@ -54,15 +69,20 @@ export class ArticleService {
         isRead: filters.read,
         isSaved: filters.saved,
         search: filters.search,
-      })
+      }),
     ).pipe(
-      map(response => ({
-        items: (response.items || []).map(article => {
-          let summary = article.content ? article.content.substring(0, 200) : undefined;
+      map((response) => ({
+        items: (response.items || []).map((article) => {
+          let summary = article.content
+            ? article.content.substring(0, 200)
+            : undefined;
           // Remove base64 images from summary
           if (summary) {
-            summary = summary.replace(/<img[^>]*src\s*=\s*["']data:image\/[^"']*["'][^>]*>/gi, '');
-            summary = summary.replace(/<img[^>]*>/gi, '');
+            summary = summary.replace(
+              /<img[^>]*src\s*=\s*["']data:image\/[^"']*["'][^>]*>/gi,
+              "",
+            );
+            summary = summary.replace(/<img[^>]*>/gi, "");
           }
           return {
             ...article,
@@ -88,19 +108,19 @@ export class ArticleService {
         pageSize: response.pageSize || 20,
         pages: response.pages || 0,
       })),
-      tap(response => {
+      tap((response) => {
         this.articlesSignal.set(response.items || []);
         this.totalCountSignal.set(response.count || 0);
         this.currentPageSignal.set(response.page || 1);
         this.pageSizeSignal.set(response.pageSize || 20);
         this.loadingSignal.set(false);
       }),
-      catchError(error => {
-        console.error('Error loading articles:', error);
-        this.errorSignal.set(error.message || 'Failed to load articles');
+      catchError((error) => {
+        console.error("Error loading articles:", error);
+        this.errorSignal.set(error.message || "Failed to load articles");
         this.loadingSignal.set(false);
         return of({ items: [], count: 0, page: 1, pageSize: 20, pages: 0 });
-      })
+      }),
     );
   }
 
@@ -109,13 +129,18 @@ export class ArticleService {
    */
   getArticle(id: number): Observable<ArticleDetail> {
     return from(this.trpc.client.article.getById.query({ id })).pipe(
-      map(article => {
+      map((article) => {
         // Map backend properties to frontend aliases
-        let summary = article.content ? article.content.substring(0, 200) : undefined;
+        let summary = article.content
+          ? article.content.substring(0, 200)
+          : undefined;
         // Remove base64 images from summary
         if (summary) {
-          summary = summary.replace(/<img[^>]*src\s*=\s*["']data:image\/[^"']*["'][^>]*>/gi, '');
-          summary = summary.replace(/<img[^>]*>/gi, '');
+          summary = summary.replace(
+            /<img[^>]*src\s*=\s*["']data:image\/[^"']*["'][^>]*>/gi,
+            "",
+          );
+          summary = summary.replace(/<img[^>]*>/gi, "");
         }
         return {
           ...article,
@@ -130,10 +155,10 @@ export class ArticleService {
           feed: {
             id: article.feedId,
             name: article.feedName,
-            feedType: '', // This would need to come from the feed endpoint if needed
+            feedType: "", // This would need to come from the feed endpoint if needed
           },
         } as ArticleDetail;
-      })
+      }),
     );
   }
 
@@ -145,12 +170,12 @@ export class ArticleService {
       this.trpc.client.article.markRead.mutate({
         articleIds: [id],
         isRead: read,
-      })
+      }),
     ).pipe(
       tap(() => {
         // Update article in local state
         const articles = this.articlesSignal();
-        const index = articles.findIndex(a => a.id === id);
+        const index = articles.findIndex((a) => a.id === id);
         if (index !== -1) {
           const newArticles = [...articles];
           newArticles[index] = {
@@ -161,7 +186,7 @@ export class ArticleService {
           this.articlesSignal.set(newArticles);
         }
       }),
-      map(() => undefined)
+      map(() => undefined),
     );
   }
 
@@ -173,12 +198,12 @@ export class ArticleService {
       this.trpc.client.article.markSaved.mutate({
         articleIds: [id],
         isSaved: saved,
-      })
+      }),
     ).pipe(
       tap(() => {
         // Update article in local state
         const articles = this.articlesSignal();
-        const index = articles.findIndex(a => a.id === id);
+        const index = articles.findIndex((a) => a.id === id);
         if (index !== -1) {
           const newArticles = [...articles];
           newArticles[index] = {
@@ -189,7 +214,7 @@ export class ArticleService {
           this.articlesSignal.set(newArticles);
         }
       }),
-      map(() => undefined)
+      map(() => undefined),
     );
   }
 
@@ -201,10 +226,10 @@ export class ArticleService {
       tap(() => {
         // Remove article from local state
         const articles = this.articlesSignal();
-        this.articlesSignal.set(articles.filter(a => a.id !== id));
+        this.articlesSignal.set(articles.filter((a) => a.id !== id));
         this.totalCountSignal.set(this.totalCountSignal() - 1);
       }),
-      map(() => undefined)
+      map(() => undefined),
     );
   }
 
@@ -222,10 +247,10 @@ export class ArticleService {
    */
   refreshArticle(id: number): Observable<{ success: boolean; taskId: number }> {
     return from(this.trpc.client.article.reload.mutate({ id })).pipe(
-      map(response => ({
+      map((response) => ({
         success: response.success || false,
         taskId: response.taskId || 0,
-      }))
+      })),
     );
   }
 
@@ -236,20 +261,25 @@ export class ArticleService {
   pollTaskStatus(
     taskId: number,
     maxAttempts: number = 60,
-    intervalMs: number = 1000
+    intervalMs: number = 1000,
   ): Observable<{ status: string; error?: string }> {
     let attempts = 0;
 
-    const checkTask = (): Observable<{ status: string; error?: string } | null> => {
+    const checkTask = (): Observable<{
+      status: string;
+      error?: string;
+    } | null> => {
       attempts++;
       if (attempts > maxAttempts) {
-        throw new Error('Task polling timeout: maximum attempts reached');
+        throw new Error("Task polling timeout: maximum attempts reached");
       }
 
-      return from(this.trpc.client.article.getTaskStatus.query({ taskId })).pipe(
+      return from(
+        this.trpc.client.article.getTaskStatus.query({ taskId }),
+      ).pipe(
         retry({ count: 3, delay: 500 }),
-        map(task => {
-          if (task.status === 'completed' || task.status === 'failed') {
+        map((task) => {
+          if (task.status === "completed" || task.status === "failed") {
             return { status: task.status, error: task.error || undefined };
           }
           // Task still pending or running
@@ -258,13 +288,13 @@ export class ArticleService {
         catchError(() => {
           // If task not found or other error, continue polling
           return of(null);
-        })
+        }),
       );
     };
 
     // Start with immediate check, then poll at intervals using expand
     return checkTask().pipe(
-      expand(taskResult => {
+      expand((taskResult) => {
         if (taskResult !== null) {
           // Task completed or failed, stop polling
           return EMPTY;
@@ -272,34 +302,38 @@ export class ArticleService {
         // Continue polling after interval
         return timer(intervalMs).pipe(switchMap(() => checkTask()));
       }),
-      filter(task => task !== null),
+      filter((task) => task !== null),
       take(1),
-      map(task => {
+      map((task) => {
         if (!task) {
-          throw new Error('Task polling ended without completion');
+          throw new Error("Task polling ended without completion");
         }
         return task;
-      })
+      }),
     );
   }
 
   /**
    * Mark all articles in a feed as read
    */
-  markAllReadInFeed(feedId: number): Observable<{ count: number; message: string }> {
+  markAllReadInFeed(
+    feedId: number,
+  ): Observable<{ count: number; message: string }> {
     const pageSize = 100; // Use a large page size to minimize requests
 
     // Fetch all article IDs by paginating through all pages
-    const fetchAllArticleIds = (page: number = 1): Observable<PaginatedResponse<Article>> => {
+    const fetchAllArticleIds = (
+      page: number = 1,
+    ): Observable<PaginatedResponse<Article>> => {
       return from(
         this.trpc.client.article.list.query({
           feedId,
           page,
           pageSize,
-        })
+        }),
       ).pipe(
-        map(response => ({
-          items: (response.items || []).map(article => ({
+        map((response) => ({
+          items: (response.items || []).map((article) => ({
             ...article,
             thumbnailUrl: article.thumbnailUrl ?? undefined,
             mediaUrl: article.mediaUrl ?? undefined,
@@ -315,13 +349,13 @@ export class ArticleService {
           page: response.page || 1,
           pageSize: response.pageSize || 20,
           pages: response.pages || 0,
-        }))
+        })),
       );
     };
 
     // Use expand to paginate through all pages
     return fetchAllArticleIds(1).pipe(
-      expand(response => {
+      expand((response) => {
         // If there are more pages, fetch the next page
         if (response.pages !== undefined && response.page < response.pages) {
           return fetchAllArticleIds(response.page + 1);
@@ -330,28 +364,28 @@ export class ArticleService {
       }),
       // Collect all article IDs from all pages
       reduce((acc: number[], response: PaginatedResponse<Article>) => {
-        return [...acc, ...(response.items || []).map(a => a.id)];
+        return [...acc, ...(response.items || []).map((a) => a.id)];
       }, []),
       // Mark all articles as read
-      switchMap(articleIds => {
+      switchMap((articleIds) => {
         if (articleIds.length === 0) {
-          return of({ count: 0, message: 'No articles to mark as read' });
+          return of({ count: 0, message: "No articles to mark as read" });
         }
 
         return from(
           this.trpc.client.article.markRead.mutate({
             articleIds: articleIds,
             isRead: true,
-          })
+          }),
         ).pipe(
-          map(result => ({
+          map((result) => ({
             count: articleIds.length,
-            message: 'Articles marked as read',
+            message: "Articles marked as read",
           })),
           tap(() => {
             // Update local state for articles in current view
             const articles = this.articlesSignal();
-            const updatedArticles = articles.map(article => {
+            const updatedArticles = articles.map((article) => {
               if (articleIds.includes(article.id)) {
                 return {
                   ...article,
@@ -362,13 +396,13 @@ export class ArticleService {
               return article;
             });
             this.articlesSignal.set(updatedArticles);
-          })
+          }),
         );
       }),
-      catchError(error => {
-        console.error('Error marking all articles as read:', error);
+      catchError((error) => {
+        console.error("Error marking all articles as read:", error);
         throw error;
-      })
+      }),
     );
   }
 }

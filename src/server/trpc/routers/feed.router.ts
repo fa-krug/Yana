@@ -4,10 +4,10 @@
  * Handles feed management endpoints.
  */
 
-import { z } from 'zod';
-import { TRPCError } from '@trpc/server';
-import { router, protectedProcedure } from '../procedures';
-import { getAuthenticatedUser } from '../procedures';
+import { z } from "zod";
+import { TRPCError } from "@trpc/server";
+import { router, protectedProcedure } from "../procedures";
+import { getAuthenticatedUser } from "../procedures";
 import {
   listFeeds,
   getFeed,
@@ -20,15 +20,18 @@ import {
   getFeedAggregatorMetadata,
   getFeedArticleCount,
   getFeedUnreadCount,
-} from '../../services/feed.service';
-import { listArticles, enrichArticleData } from '../../services/article.service';
+} from "../../services/feed.service";
+import {
+  listArticles,
+  enrichArticleData,
+} from "../../services/article.service";
 import {
   createFeedSchema,
   updateFeedSchema,
   articleListSchema,
   idParamSchema,
-} from '../../validation/schemas';
-import { NotFoundError, PermissionDeniedError } from '../../errors';
+} from "../../validation/schemas";
+import { NotFoundError, PermissionDeniedError } from "../../errors";
 
 /**
  * Feed list input schema.
@@ -37,18 +40,20 @@ const feedListInputSchema = z.object({
   page: z.number().int().positive().default(1),
   pageSize: z.number().int().positive().max(100).default(20),
   search: z.string().nullish(),
-  feedType: z.enum(['article', 'youtube', 'podcast', 'reddit']).nullish(),
+  feedType: z.enum(["article", "youtube", "podcast", "reddit"]).nullish(),
   enabled: z.boolean().nullish(),
 });
 
 /**
  * Helper to convert date to ISO string.
  */
-const toISOString = (date: Date | number | string | null | undefined): string => {
+const toISOString = (
+  date: Date | number | string | null | undefined,
+): string => {
   if (!date) return new Date().toISOString();
   if (date instanceof Date) return date.toISOString();
-  if (typeof date === 'number') return new Date(date).toISOString();
-  if (typeof date === 'string') return date;
+  if (typeof date === "number") return new Date(date).toISOString();
+  if (typeof date === "string") return date;
   return new Date().toISOString();
 };
 
@@ -61,7 +66,9 @@ const formatFeed = (feed: any) => {
     icon: feed.icon ?? undefined,
     createdAt: toISOString(feed.createdAt),
     updatedAt: toISOString(feed.updatedAt),
-    lastAggregated: feed.lastAggregated ? toISOString(feed.lastAggregated) : undefined,
+    lastAggregated: feed.lastAggregated
+      ? toISOString(feed.lastAggregated)
+      : undefined,
   };
 };
 
@@ -72,37 +79,39 @@ export const feedRouter = router({
   /**
    * List feeds with pagination and filters, including article counts.
    */
-  list: protectedProcedure.input(feedListInputSchema).query(async ({ input, ctx }) => {
-    const user = getAuthenticatedUser(ctx);
-    const result = await listFeeds(user, {
-      search: input.search ?? undefined,
-      feedType: input.feedType ?? undefined,
-      enabled: input.enabled ?? undefined,
-      page: input.page,
-      pageSize: input.pageSize,
-    });
+  list: protectedProcedure
+    .input(feedListInputSchema)
+    .query(async ({ input, ctx }) => {
+      const user = getAuthenticatedUser(ctx);
+      const result = await listFeeds(user, {
+        search: input.search ?? undefined,
+        feedType: input.feedType ?? undefined,
+        enabled: input.enabled ?? undefined,
+        page: input.page,
+        pageSize: input.pageSize,
+      });
 
-    // Enrich feeds with article counts (matching Django behavior)
-    const enrichedFeeds = await Promise.all(
-      result.feeds.map(async feed => {
-        const articleCount = await getFeedArticleCount(feed.id);
-        const unreadCount = await getFeedUnreadCount(feed.id, user.id);
-        return formatFeed({
-          ...feed,
-          articleCount: articleCount,
-          unreadCount: unreadCount,
-        });
-      })
-    );
+      // Enrich feeds with article counts (matching Django behavior)
+      const enrichedFeeds = await Promise.all(
+        result.feeds.map(async (feed) => {
+          const articleCount = await getFeedArticleCount(feed.id);
+          const unreadCount = await getFeedUnreadCount(feed.id, user.id);
+          return formatFeed({
+            ...feed,
+            articleCount: articleCount,
+            unreadCount: unreadCount,
+          });
+        }),
+      );
 
-    return {
-      items: enrichedFeeds,
-      count: result.total,
-      page: input.page,
-      pageSize: input.pageSize,
-      pages: Math.ceil(result.total / input.pageSize),
-    };
-  }),
+      return {
+        items: enrichedFeeds,
+        count: result.total,
+        page: input.page,
+        pageSize: input.pageSize,
+        pages: Math.ceil(result.total / input.pageSize),
+      };
+    }),
 
   /**
    * Get feed details with aggregator metadata and counts.
@@ -130,13 +139,13 @@ export const feedRouter = router({
       } catch (error) {
         if (error instanceof NotFoundError) {
           throw new TRPCError({
-            code: 'NOT_FOUND',
+            code: "NOT_FOUND",
             message: error.message,
           });
         }
         if (error instanceof PermissionDeniedError) {
           throw new TRPCError({
-            code: 'FORBIDDEN',
+            code: "FORBIDDEN",
             message: error.message,
           });
         }
@@ -147,11 +156,13 @@ export const feedRouter = router({
   /**
    * Create new feed.
    */
-  create: protectedProcedure.input(createFeedSchema).mutation(async ({ input, ctx }) => {
-    const user = getAuthenticatedUser(ctx);
-    const feed = await createFeed(user, input);
-    return formatFeed(feed);
-  }),
+  create: protectedProcedure
+    .input(createFeedSchema)
+    .mutation(async ({ input, ctx }) => {
+      const user = getAuthenticatedUser(ctx);
+      const feed = await createFeed(user, input);
+      return formatFeed(feed);
+    }),
 
   /**
    * Update feed.
@@ -161,7 +172,7 @@ export const feedRouter = router({
       z.object({
         id: z.number().int().positive(),
         data: updateFeedSchema,
-      })
+      }),
     )
     .mutation(async ({ input, ctx }) => {
       const user = getAuthenticatedUser(ctx);
@@ -171,13 +182,13 @@ export const feedRouter = router({
       } catch (error) {
         if (error instanceof NotFoundError) {
           throw new TRPCError({
-            code: 'NOT_FOUND',
+            code: "NOT_FOUND",
             message: error.message,
           });
         }
         if (error instanceof PermissionDeniedError) {
           throw new TRPCError({
-            code: 'FORBIDDEN',
+            code: "FORBIDDEN",
             message: error.message,
           });
         }
@@ -198,13 +209,13 @@ export const feedRouter = router({
       } catch (error) {
         if (error instanceof NotFoundError) {
           throw new TRPCError({
-            code: 'NOT_FOUND',
+            code: "NOT_FOUND",
             message: error.message,
           });
         }
         if (error instanceof PermissionDeniedError) {
           throw new TRPCError({
-            code: 'FORBIDDEN',
+            code: "FORBIDDEN",
             message: error.message,
           });
         }
@@ -215,10 +226,12 @@ export const feedRouter = router({
   /**
    * Preview feed (test aggregation).
    */
-  preview: protectedProcedure.input(createFeedSchema).mutation(async ({ input, ctx }) => {
-    const user = getAuthenticatedUser(ctx);
-    return await previewFeed(user, input);
-  }),
+  preview: protectedProcedure
+    .input(createFeedSchema)
+    .mutation(async ({ input, ctx }) => {
+      const user = getAuthenticatedUser(ctx);
+      return await previewFeed(user, input);
+    }),
 
   /**
    * Reload feed (trigger aggregation).
@@ -228,7 +241,7 @@ export const feedRouter = router({
       z.object({
         id: z.number().int().positive(),
         force: z.boolean().default(false),
-      })
+      }),
     )
     .mutation(async ({ input, ctx }) => {
       const user = getAuthenticatedUser(ctx);
@@ -237,13 +250,13 @@ export const feedRouter = router({
       } catch (error) {
         if (error instanceof NotFoundError) {
           throw new TRPCError({
-            code: 'NOT_FOUND',
+            code: "NOT_FOUND",
             message: error.message,
           });
         }
         if (error instanceof PermissionDeniedError) {
           throw new TRPCError({
-            code: 'FORBIDDEN',
+            code: "FORBIDDEN",
             message: error.message,
           });
         }
@@ -260,17 +273,17 @@ export const feedRouter = router({
       const user = getAuthenticatedUser(ctx);
       try {
         await clearFeedArticles(input.id, user);
-        return { success: true, message: 'Articles cleared' };
+        return { success: true, message: "Articles cleared" };
       } catch (error) {
         if (error instanceof NotFoundError) {
           throw new TRPCError({
-            code: 'NOT_FOUND',
+            code: "NOT_FOUND",
             message: error.message,
           });
         }
         if (error instanceof PermissionDeniedError) {
           throw new TRPCError({
-            code: 'FORBIDDEN',
+            code: "FORBIDDEN",
             message: error.message,
           });
         }
@@ -290,7 +303,7 @@ export const feedRouter = router({
         search: z.string().optional(),
         isRead: z.boolean().optional(),
         isSaved: z.boolean().optional(),
-      })
+      }),
     )
     .query(async ({ input, ctx }) => {
       const user = getAuthenticatedUser(ctx);
@@ -305,7 +318,7 @@ export const feedRouter = router({
 
       // Enrich articles with computed fields and convert dates
       const enrichedArticles = await Promise.all(
-        result.articles.map(async article => {
+        result.articles.map(async (article) => {
           const enrichment = await enrichArticleData(article, user);
           return {
             id: article.id,
@@ -340,7 +353,7 @@ export const feedRouter = router({
             link: article.url,
             summary: undefined,
           };
-        })
+        }),
       );
 
       return {

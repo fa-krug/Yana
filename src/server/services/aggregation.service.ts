@@ -4,40 +4,44 @@
  * Handles feed and article aggregation using task queue.
  */
 
-import { eq, and } from 'drizzle-orm';
-import { db, feeds, articles } from '../db';
-import { getAggregatorById } from '../aggregators/registry';
-import { enqueueTask } from './taskQueue.service';
-import { logger } from '../utils/logger';
-import { NotFoundError } from '../errors';
-import type { Feed, Article, User } from '../db/types';
-import type { RawArticle } from '../aggregators/base/types';
+import { eq, and } from "drizzle-orm";
+import { db, feeds, articles } from "../db";
+import { getAggregatorById } from "../aggregators/registry";
+import { enqueueTask } from "./taskQueue.service";
+import { logger } from "../utils/logger";
+import { NotFoundError } from "../errors";
+import type { Feed, Article, User } from "../db/types";
+import type { RawArticle } from "../aggregators/base/types";
 
 /**
  * Aggregate a single feed.
  */
 export async function aggregateFeed(
   feedId: number,
-  forceRefresh: boolean = false
+  forceRefresh: boolean = false,
 ): Promise<{ taskId: number }> {
   // Verify feed exists
-  const [feed] = await db.select().from(feeds).where(eq(feeds.id, feedId)).limit(1);
+  const [feed] = await db
+    .select()
+    .from(feeds)
+    .where(eq(feeds.id, feedId))
+    .limit(1);
 
   if (!feed) {
     throw new NotFoundError(`Feed with id ${feedId} not found`);
   }
 
   if (!feed.enabled) {
-    throw new Error('Feed is disabled');
+    throw new Error("Feed is disabled");
   }
 
   // Enqueue aggregation task
-  const task = await enqueueTask('aggregate_feed', {
+  const task = await enqueueTask("aggregate_feed", {
     feedId,
     forceRefresh,
   });
 
-  logger.info({ feedId, taskId: task.id }, 'Feed aggregation enqueued');
+  logger.info({ feedId, taskId: task.id }, "Feed aggregation enqueued");
 
   return { taskId: task.id };
 }
@@ -46,11 +50,14 @@ export async function aggregateFeed(
  * Aggregate all enabled feeds.
  */
 export async function aggregateAllFeeds(): Promise<{ taskIds: number[] }> {
-  const enabledFeeds = await db.select().from(feeds).where(eq(feeds.enabled, true));
+  const enabledFeeds = await db
+    .select()
+    .from(feeds)
+    .where(eq(feeds.enabled, true));
 
   const taskIds: number[] = [];
-  const { tasks } = await import('../db');
-  const { inArray } = await import('drizzle-orm');
+  const { tasks } = await import("../db");
+  const { inArray } = await import("drizzle-orm");
 
   // Get all existing pending/running aggregate_feed tasks
   const existingTasks = await db
@@ -58,16 +65,19 @@ export async function aggregateAllFeeds(): Promise<{ taskIds: number[] }> {
     .from(tasks)
     .where(
       and(
-        eq(tasks.type, 'aggregate_feed'),
-        inArray(tasks.status, ['pending', 'running'])
-      )
+        eq(tasks.type, "aggregate_feed"),
+        inArray(tasks.status, ["pending", "running"]),
+      ),
     );
 
   // Build a map of existing feedIds
   const existingFeedIds = new Set<number>();
   for (const task of existingTasks) {
     try {
-      const payload = typeof task.payload === 'string' ? JSON.parse(task.payload) : task.payload;
+      const payload =
+        typeof task.payload === "string"
+          ? JSON.parse(task.payload)
+          : task.payload;
       if (payload.feedId) {
         existingFeedIds.add(payload.feedId as number);
       }
@@ -79,23 +89,29 @@ export async function aggregateAllFeeds(): Promise<{ taskIds: number[] }> {
   for (const feed of enabledFeeds) {
     // Skip if there's already a pending/running task for this feed
     if (existingFeedIds.has(feed.id)) {
-      logger.debug({ feedId: feed.id }, 'Feed aggregation already queued, skipping');
+      logger.debug(
+        { feedId: feed.id },
+        "Feed aggregation already queued, skipping",
+      );
       continue;
     }
 
     try {
-      const task = await enqueueTask('aggregate_feed', {
+      const task = await enqueueTask("aggregate_feed", {
         feedId: feed.id,
         forceRefresh: false,
       });
       taskIds.push(task.id);
       existingFeedIds.add(feed.id); // Track newly created tasks
     } catch (error) {
-      logger.error({ error, feedId: feed.id }, 'Failed to enqueue feed aggregation');
+      logger.error(
+        { error, feedId: feed.id },
+        "Failed to enqueue feed aggregation",
+      );
     }
   }
 
-  logger.info({ count: taskIds.length }, 'All feeds aggregation enqueued');
+  logger.info({ count: taskIds.length }, "All feeds aggregation enqueued");
 
   return { taskIds };
 }
@@ -105,9 +121,13 @@ export async function aggregateAllFeeds(): Promise<{ taskIds: number[] }> {
  */
 export async function processFeedAggregation(
   feedId: number,
-  forceRefresh: boolean
+  forceRefresh: boolean,
 ): Promise<{ articlesCreated: number; articlesUpdated: number }> {
-  const [feed] = await db.select().from(feeds).where(eq(feeds.id, feedId)).limit(1);
+  const [feed] = await db
+    .select()
+    .from(feeds)
+    .where(eq(feeds.id, feedId))
+    .limit(1);
 
   if (!feed) {
     throw new NotFoundError(`Feed with id ${feedId} not found`);
@@ -126,21 +146,25 @@ export async function processFeedAggregation(
       .select({ url: articles.url })
       .from(articles)
       .where(eq(articles.feedId, feed.id));
-    existingUrls = new Set(existingArticles.map(a => a.url));
+    existingUrls = new Set(existingArticles.map((a) => a.url));
     logger.debug(
       { feedId, existingCount: existingUrls.size },
-      'Loaded existing article URLs to skip content fetching'
+      "Loaded existing article URLs to skip content fetching",
     );
   }
 
   // Initialize aggregator
-  aggregator.initialize(feed, forceRefresh, feed.aggregatorOptions as Record<string, unknown>);
+  aggregator.initialize(
+    feed,
+    forceRefresh,
+    feed.aggregatorOptions as Record<string, unknown>,
+  );
 
   // Set existing URLs so aggregator can skip fetching content for them
   if (
     existingUrls &&
-    'setExistingUrls' in aggregator &&
-    typeof aggregator.setExistingUrls === 'function'
+    "setExistingUrls" in aggregator &&
+    typeof aggregator.setExistingUrls === "function"
   ) {
     aggregator.setExistingUrls(existingUrls);
   }
@@ -148,19 +172,19 @@ export async function processFeedAggregation(
   // Calculate dynamic daily limit if aggregator supports it
   let articleLimit: number | undefined = undefined;
   if (
-    'getDynamicFetchLimit' in aggregator &&
-    typeof aggregator.getDynamicFetchLimit === 'function'
+    "getDynamicFetchLimit" in aggregator &&
+    typeof aggregator.getDynamicFetchLimit === "function"
   ) {
     try {
       articleLimit = await aggregator.getDynamicFetchLimit(forceRefresh);
       logger.debug(
         { feedId, articleLimit, forceRefresh },
-        'Calculated dynamic daily limit for aggregation'
+        "Calculated dynamic daily limit for aggregation",
       );
     } catch (error) {
       logger.warn(
         { error, feedId },
-        'Failed to calculate dynamic daily limit, proceeding without limit'
+        "Failed to calculate dynamic daily limit, proceeding without limit",
       );
     }
   }
@@ -178,16 +202,23 @@ export async function processFeedAggregation(
       const [existing] = await db
         .select()
         .from(articles)
-        .where(and(eq(articles.url, rawArticle.url), eq(articles.feedId, feed.id)))
+        .where(
+          and(eq(articles.url, rawArticle.url), eq(articles.feedId, feed.id)),
+        )
         .limit(1);
 
       // Collect thumbnail if missing
       let thumbnailUrl = rawArticle.thumbnailUrl;
       if (!thumbnailUrl) {
-        const { extractThumbnailUrlFromPage } = await import('../aggregators/base/utils');
-        thumbnailUrl = (await extractThumbnailUrlFromPage(rawArticle.url)) || undefined;
+        const { extractThumbnailUrlFromPage } =
+          await import("../aggregators/base/utils");
+        thumbnailUrl =
+          (await extractThumbnailUrlFromPage(rawArticle.url)) || undefined;
         if (thumbnailUrl) {
-          logger.debug({ url: rawArticle.url, thumbnailUrl }, 'Extracted thumbnail URL during aggregation');
+          logger.debug(
+            { url: rawArticle.url, thumbnailUrl },
+            "Extracted thumbnail URL during aggregation",
+          );
         }
       }
 
@@ -198,7 +229,7 @@ export async function processFeedAggregation(
             .update(articles)
             .set({
               name: rawArticle.title,
-              content: rawArticle.content || '',
+              content: rawArticle.content || "",
               date: rawArticle.published,
               author: rawArticle.author || null,
               externalId: rawArticle.externalId || null,
@@ -224,7 +255,7 @@ export async function processFeedAggregation(
         name: rawArticle.title,
         url: rawArticle.url,
         date: rawArticle.published,
-        content: rawArticle.content || '',
+        content: rawArticle.content || "",
         author: rawArticle.author || null,
         externalId: rawArticle.externalId || null,
         score: rawArticle.score || null,
@@ -234,19 +265,22 @@ export async function processFeedAggregation(
         viewCount: rawArticle.viewCount || null,
         mediaType: rawArticle.mediaType || null,
         aiProcessed: false,
-        aiError: '',
+        aiError: "",
         createdAt: new Date(),
         updatedAt: new Date(),
       });
 
       articlesCreated++;
     } catch (error) {
-      logger.error({ error, url: rawArticle.url }, 'Failed to save article');
+      logger.error({ error, url: rawArticle.url }, "Failed to save article");
       continue;
     }
   }
 
-  logger.info({ feedId, articlesCreated, articlesUpdated }, 'Feed aggregation completed');
+  logger.info(
+    { feedId, articlesCreated, articlesUpdated },
+    "Feed aggregation completed",
+  );
 
   return { articlesCreated, articlesUpdated };
 }
@@ -254,20 +288,26 @@ export async function processFeedAggregation(
 /**
  * Reload a single article.
  */
-export async function reloadArticle(articleId: number): Promise<{ taskId: number }> {
+export async function reloadArticle(
+  articleId: number,
+): Promise<{ taskId: number }> {
   // Verify article exists
-  const [article] = await db.select().from(articles).where(eq(articles.id, articleId)).limit(1);
+  const [article] = await db
+    .select()
+    .from(articles)
+    .where(eq(articles.id, articleId))
+    .limit(1);
 
   if (!article) {
     throw new NotFoundError(`Article with id ${articleId} not found`);
   }
 
   // Enqueue reload task
-  const task = await enqueueTask('aggregate_article', {
+  const task = await enqueueTask("aggregate_article", {
     articleId,
   });
 
-  logger.info({ articleId, taskId: task.id }, 'Article reload enqueued');
+  logger.info({ articleId, taskId: task.id }, "Article reload enqueued");
 
   return { taskId: task.id };
 }
@@ -276,16 +316,24 @@ export async function reloadArticle(articleId: number): Promise<{ taskId: number
  * Process article reload (called by worker).
  */
 export async function processArticleReload(articleId: number): Promise<void> {
-  const [article] = await db.select().from(articles).where(eq(articles.id, articleId)).limit(1);
+  const [article] = await db
+    .select()
+    .from(articles)
+    .where(eq(articles.id, articleId))
+    .limit(1);
 
   if (!article) {
     throw new NotFoundError(`Article with id ${articleId} not found`);
   }
 
-  const [feed] = await db.select().from(feeds).where(eq(feeds.id, article.feedId)).limit(1);
+  const [feed] = await db
+    .select()
+    .from(feeds)
+    .where(eq(feeds.id, article.feedId))
+    .limit(1);
 
   if (!feed) {
-    throw new NotFoundError('Feed not found');
+    throw new NotFoundError("Feed not found");
   }
 
   // Get aggregator
@@ -295,18 +343,22 @@ export async function processArticleReload(articleId: number): Promise<void> {
   }
 
   // Initialize aggregator
-  aggregator.initialize(feed, true, feed.aggregatorOptions as Record<string, unknown>);
+  aggregator.initialize(
+    feed,
+    true,
+    feed.aggregatorOptions as Record<string, unknown>,
+  );
 
   // Fetch article content
-  const { fetchArticleContent } = await import('../aggregators/base/fetch');
+  const { fetchArticleContent } = await import("../aggregators/base/fetch");
   const html = await fetchArticleContent(article.url, {
     timeout: aggregator.fetchTimeout,
     waitForSelector: aggregator.waitForSelector,
   });
 
   // Extract and process content
-  const { extractContent } = await import('../aggregators/base/extract');
-  const { processContent } = await import('../aggregators/base/process');
+  const { extractContent } = await import("../aggregators/base/extract");
+  const { processContent } = await import("../aggregators/base/process");
 
   const extracted = extractContent(html, {
     selectorsToRemove: aggregator.selectorsToRemove,
@@ -332,10 +384,15 @@ export async function processArticleReload(articleId: number): Promise<void> {
   // Collect thumbnail if missing
   let thumbnailUrl = rawArticle.thumbnailUrl;
   if (!thumbnailUrl) {
-    const { extractThumbnailUrlFromPage } = await import('../aggregators/base/utils');
-    thumbnailUrl = (await extractThumbnailUrlFromPage(article.url)) || undefined;
+    const { extractThumbnailUrlFromPage } =
+      await import("../aggregators/base/utils");
+    thumbnailUrl =
+      (await extractThumbnailUrlFromPage(article.url)) || undefined;
     if (thumbnailUrl) {
-      logger.debug({ articleId, thumbnailUrl }, 'Extracted thumbnail URL during reload');
+      logger.debug(
+        { articleId, thumbnailUrl },
+        "Extracted thumbnail URL during reload",
+      );
     }
   }
 
@@ -349,5 +406,5 @@ export async function processArticleReload(articleId: number): Promise<void> {
     })
     .where(eq(articles.id, articleId));
 
-  logger.info({ articleId }, 'Article reloaded');
+  logger.info({ articleId }, "Article reloaded");
 }

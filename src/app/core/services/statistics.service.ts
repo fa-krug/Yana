@@ -3,15 +3,15 @@
  * Now uses tRPC for type-safe API calls.
  */
 
-import { Injectable, inject, signal, PLATFORM_ID } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
-import { from, of } from 'rxjs';
-import { tap, catchError } from 'rxjs';
-import { Statistics } from '../models';
-import { TRPCService } from '../trpc/trpc.service';
+import { Injectable, inject, signal, PLATFORM_ID } from "@angular/core";
+import { isPlatformBrowser } from "@angular/common";
+import { from, of } from "rxjs";
+import { tap, catchError } from "rxjs";
+import { Statistics } from "../models";
+import { TRPCService } from "../trpc/trpc.service";
 
 @Injectable({
-  providedIn: 'root',
+  providedIn: "root",
 })
 export class StatisticsService {
   private trpc = inject(TRPCService);
@@ -41,19 +41,19 @@ export class StatisticsService {
     this.errorSignal.set(null);
 
     return from(this.trpc.client.statistics.get.query()).pipe(
-      tap(stats => {
+      tap((stats) => {
         this.statisticsSignal.set(stats);
         this.loadingSignal.set(false);
       }),
-      catchError(error => {
+      catchError((error) => {
         // Only log errors in browser (SSR errors are expected and harmless)
         if (isPlatformBrowser(this.platformId)) {
-          console.error('Failed to load statistics:', error);
-          this.errorSignal.set('Failed to load statistics');
+          console.error("Failed to load statistics:", error);
+          this.errorSignal.set("Failed to load statistics");
         }
         this.loadingSignal.set(false);
         return of(null);
-      })
+      }),
     );
   }
 

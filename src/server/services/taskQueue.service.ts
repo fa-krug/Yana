@@ -4,14 +4,18 @@
  * Manages DB-based task queue for background processing.
  */
 
-import { eq, and, asc, desc, inArray, gte, lte, sql } from 'drizzle-orm';
-import { db, tasks } from '../db';
-import { logger } from '../utils/logger';
-import type { Task, TaskInsert } from '../db/types';
-import { getEventEmitter } from './eventEmitter.service';
+import { eq, and, asc, desc, inArray, gte, lte, sql } from "drizzle-orm";
+import { db, tasks } from "../db";
+import { logger } from "../utils/logger";
+import type { Task, TaskInsert } from "../db/types";
+import { getEventEmitter } from "./eventEmitter.service";
 
-export type TaskStatus = 'pending' | 'running' | 'completed' | 'failed';
-export type TaskType = 'aggregate_feed' | 'aggregate_article' | 'fetch_icon' | string;
+export type TaskStatus = "pending" | "running" | "completed" | "failed";
+export type TaskType =
+  | "aggregate_feed"
+  | "aggregate_article"
+  | "fetch_icon"
+  | string;
 
 export type TaskFilters = {
   status?: TaskStatus[];
@@ -41,13 +45,13 @@ export type TaskDetails = Task;
 export async function enqueueTask(
   type: TaskType,
   payload: Record<string, unknown>,
-  maxRetries: number = 3
+  maxRetries: number = 3,
 ): Promise<Task> {
   const [task] = await db
     .insert(tasks)
     .values({
       type,
-      status: 'pending',
+      status: "pending",
       payload: JSON.stringify(payload),
       retries: 0,
       maxRetries,
@@ -56,10 +60,10 @@ export async function enqueueTask(
     })
     .returning();
 
-  logger.info({ taskId: task.id, type }, 'Task enqueued');
+  logger.info({ taskId: task.id, type }, "Task enqueued");
 
   // Emit event for real-time updates
-  getEventEmitter().emit('task-created', {
+  getEventEmitter().emit("task-created", {
     taskId: task.id,
     type,
     status: task.status,
@@ -75,7 +79,7 @@ export async function getNextTask(): Promise<Task | null> {
   const [task] = await db
     .select()
     .from(tasks)
-    .where(eq(tasks.status, 'pending'))
+    .where(eq(tasks.status, "pending"))
     .orderBy(asc(tasks.createdAt))
     .limit(1);
 
@@ -85,16 +89,16 @@ export async function getNextTask(): Promise<Task | null> {
   await db
     .update(tasks)
     .set({
-      status: 'running',
+      status: "running",
       startedAt: new Date(),
       updatedAt: new Date(),
     })
     .where(eq(tasks.id, task.id));
 
   // Emit event for real-time updates
-  getEventEmitter().emit('task-updated', {
+  getEventEmitter().emit("task-updated", {
     taskId: task.id,
-    status: 'running',
+    status: "running",
   });
 
   return task;
@@ -107,7 +111,7 @@ export async function updateTaskStatus(
   id: number,
   status: TaskStatus,
   result?: Record<string, unknown>,
-  error?: string
+  error?: string,
 ): Promise<void> {
   const updateData: Partial<TaskInsert> = {
     status,
@@ -122,16 +126,16 @@ export async function updateTaskStatus(
     updateData.error = error;
   }
 
-  if (status === 'completed' || status === 'failed') {
+  if (status === "completed" || status === "failed") {
     updateData.completedAt = new Date();
   }
 
   await db.update(tasks).set(updateData).where(eq(tasks.id, id));
 
-  logger.info({ taskId: id, status }, 'Task status updated');
+  logger.info({ taskId: id, status }, "Task status updated");
 
   // Emit event for real-time updates
-  getEventEmitter().emit('task-updated', {
+  getEventEmitter().emit("task-updated", {
     taskId: id,
     status,
     result,
@@ -148,14 +152,17 @@ export async function retryTask(id: number): Promise<Task | null> {
   if (!task) return null;
 
   if (task.retries >= task.maxRetries) {
-    logger.warn({ taskId: id, retries: task.retries }, 'Task exceeded max retries');
+    logger.warn(
+      { taskId: id, retries: task.retries },
+      "Task exceeded max retries",
+    );
     return null;
   }
 
   const [updated] = await db
     .update(tasks)
     .set({
-      status: 'pending',
+      status: "pending",
       retries: task.retries + 1,
       error: null,
       updatedAt: new Date(),
@@ -163,13 +170,13 @@ export async function retryTask(id: number): Promise<Task | null> {
     .where(eq(tasks.id, id))
     .returning();
 
-  logger.info({ taskId: id, retries: updated.retries }, 'Task retried');
+  logger.info({ taskId: id, retries: updated.retries }, "Task retried");
 
   // Emit event for real-time updates
   if (updated) {
-    getEventEmitter().emit('task-updated', {
+    getEventEmitter().emit("task-updated", {
       taskId: id,
-      status: 'pending',
+      status: "pending",
       retries: updated.retries,
     });
   }
@@ -188,7 +195,10 @@ export async function getTask(id: number): Promise<Task | null> {
 /**
  * Get tasks by status.
  */
-export async function getTasksByStatus(status: TaskStatus, limit: number = 100): Promise<Task[]> {
+export async function getTasksByStatus(
+  status: TaskStatus,
+  limit: number = 100,
+): Promise<Task[]> {
   return await db
     .select()
     .from(tasks)
@@ -202,7 +212,7 @@ export async function getTasksByStatus(status: TaskStatus, limit: number = 100):
  */
 export async function listTasks(
   filters: TaskFilters = {},
-  pagination: Pagination = { page: 1, limit: 20 }
+  pagination: Pagination = { page: 1, limit: 20 },
 ): Promise<PaginatedTasks> {
   const { page, limit } = pagination;
   const offset = (page - 1) * limit;
@@ -271,27 +281,27 @@ export async function cancelTask(id: number): Promise<void> {
     throw new Error(`Task ${id} not found`);
   }
 
-  if (task.status !== 'pending' && task.status !== 'running') {
+  if (task.status !== "pending" && task.status !== "running") {
     throw new Error(`Cannot cancel task with status ${task.status}`);
   }
 
   await db
     .update(tasks)
     .set({
-      status: 'failed',
-      error: 'Cancelled by admin',
+      status: "failed",
+      error: "Cancelled by admin",
       updatedAt: new Date(),
       completedAt: new Date(),
     })
     .where(eq(tasks.id, id));
 
-  logger.info({ taskId: id }, 'Task cancelled');
+  logger.info({ taskId: id }, "Task cancelled");
 
   // Emit event for real-time updates
-  getEventEmitter().emit('task-updated', {
+  getEventEmitter().emit("task-updated", {
     taskId: id,
-    status: 'failed',
-    error: 'Cancelled by admin',
+    status: "failed",
+    error: "Cancelled by admin",
   });
 }
 
@@ -306,7 +316,12 @@ export async function clearTaskHistory(days: number): Promise<number> {
   const countResult = await db
     .select({ count: sql<number>`count(*)` })
     .from(tasks)
-    .where(and(lte(tasks.createdAt, cutoffDate), inArray(tasks.status, ['completed', 'failed'])));
+    .where(
+      and(
+        lte(tasks.createdAt, cutoffDate),
+        inArray(tasks.status, ["completed", "failed"]),
+      ),
+    );
 
   const countBefore = countResult[0]?.count || 0;
 
@@ -316,9 +331,14 @@ export async function clearTaskHistory(days: number): Promise<number> {
 
   await db
     .delete(tasks)
-    .where(and(lte(tasks.createdAt, cutoffDate), inArray(tasks.status, ['completed', 'failed'])));
+    .where(
+      and(
+        lte(tasks.createdAt, cutoffDate),
+        inArray(tasks.status, ["completed", "failed"]),
+      ),
+    );
 
-  logger.info({ days, deletedCount: countBefore }, 'Task history cleared');
+  logger.info({ days, deletedCount: countBefore }, "Task history cleared");
 
   return countBefore;
 }

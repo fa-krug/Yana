@@ -4,39 +4,39 @@
  * Specialized aggregator for Caschys Blog (German tech blog).
  */
 
-import { FullWebsiteAggregator } from './full_website';
-import type { RawArticle } from './base/types';
-import { fetchArticleContent } from './base/fetch';
-import { extractContent } from './base/extract';
-import { standardizeContentFormat } from './base/process';
-import { sanitizeHtml } from './base/utils';
-import { logger } from '../utils/logger';
+import { FullWebsiteAggregator } from "./full_website";
+import type { RawArticle } from "./base/types";
+import { fetchArticleContent } from "./base/fetch";
+import { extractContent } from "./base/extract";
+import { standardizeContentFormat } from "./base/process";
+import { sanitizeHtml } from "./base/utils";
+import { logger } from "../utils/logger";
 
 export class CaschysBlogAggregator extends FullWebsiteAggregator {
-  override readonly id = 'caschys_blog';
-  override readonly type: 'managed' | 'custom' | 'social' = 'managed';
-  override readonly name = 'Caschys Blog';
-  override readonly url = 'https://stadt-bremerhaven.de/feed/';
+  override readonly id = "caschys_blog";
+  override readonly type: "managed" | "custom" | "social" = "managed";
+  override readonly name = "Caschys Blog";
+  override readonly url = "https://stadt-bremerhaven.de/feed/";
   override readonly description =
-    'Caschys Blog - German technology blog covering tech news and reviews.';
+    "Caschys Blog - German technology blog covering tech news and reviews.";
 
-  override readonly waitForSelector = '.entry-inner';
+  override readonly waitForSelector = ".entry-inner";
   override readonly selectorsToRemove = [
-    '.aawp',
-    '.aawp-disclaimer',
-    'script',
-    'style',
-    'iframe',
-    'noscript',
-    'svg',
+    ".aawp",
+    ".aawp-disclaimer",
+    "script",
+    "style",
+    "iframe",
+    "noscript",
+    "svg",
   ];
 
   override readonly identifierEditable = false;
 
   protected override shouldSkipArticle(article: RawArticle): boolean {
     // Skip articles marked as advertisements (Anzeige)
-    if (article.title.includes('(Anzeige)')) {
-      logger.info({ title: article.title }, 'Skipping advertisement');
+    if (article.title.includes("(Anzeige)")) {
+      logger.info({ title: article.title }, "Skipping advertisement");
       return true;
     }
 
@@ -45,7 +45,7 @@ export class CaschysBlogAggregator extends FullWebsiteAggregator {
 
   override async aggregate(articleLimit?: number): Promise<RawArticle[]> {
     if (!this.feed) {
-      throw new Error('Feed not initialized');
+      throw new Error("Feed not initialized");
     }
 
     // Call parent aggregate to get base articles
@@ -61,9 +61,9 @@ export class CaschysBlogAggregator extends FullWebsiteAggregator {
               url: article.url,
               title: article.title,
               aggregator: this.id,
-              step: 'skip_existing',
+              step: "skip_existing",
             },
-            'Skipping existing article (will not fetch content)'
+            "Skipping existing article (will not fetch content)",
           );
           continue;
         }
@@ -77,12 +77,15 @@ export class CaschysBlogAggregator extends FullWebsiteAggregator {
         // Extract content from .entry-inner element
         const extracted = extractContent(html, {
           selectorsToRemove: this.selectorsToRemove,
-          contentSelector: '.entry-inner',
+          contentSelector: ".entry-inner",
         });
 
         if (!extracted || extracted.trim().length === 0) {
-          logger.warn({ url: article.url }, 'Could not find .entry-inner content, using summary');
-          article.content = article.summary || '';
+          logger.warn(
+            { url: article.url },
+            "Could not find .entry-inner content, using summary",
+          );
+          article.content = article.summary || "";
           continue;
         }
 
@@ -97,12 +100,15 @@ export class CaschysBlogAggregator extends FullWebsiteAggregator {
           article,
           article.url,
           generateTitleImage,
-          addSourceFooter
+          addSourceFooter,
         );
       } catch (error) {
-        logger.error({ error, url: article.url }, 'Error processing Caschys Blog article');
+        logger.error(
+          { error, url: article.url },
+          "Error processing Caschys Blog article",
+        );
         // Continue with summary if available
-        article.content = article.summary || '';
+        article.content = article.summary || "";
       }
     }
 

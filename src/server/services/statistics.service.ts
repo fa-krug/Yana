@@ -4,10 +4,10 @@
  * Handles statistics calculation for dashboard.
  */
 
-import { eq, and, or, isNull, sql, gte, inArray } from 'drizzle-orm';
-import { db, articles, feeds, userArticleStates } from '../db';
-import type { UserInfo } from './article.service';
-import { cache } from '../utils/cache';
+import { eq, and, or, isNull, sql, gte, inArray } from "drizzle-orm";
+import { db, articles, feeds, userArticleStates } from "../db";
+import type { UserInfo } from "./article.service";
+import { cache } from "../utils/cache";
 
 /**
  * Statistics data structure.
@@ -45,7 +45,7 @@ export async function getStatistics(user: UserInfo): Promise<Statistics> {
     .from(feeds)
     .where(or(eq(feeds.userId, user.id), isNull(feeds.userId)));
 
-  const feedIds = accessibleFeeds.map(f => f.id);
+  const feedIds = accessibleFeeds.map((f) => f.id);
 
   if (feedIds.length === 0) {
     return {
@@ -68,7 +68,7 @@ export async function getStatistics(user: UserInfo): Promise<Statistics> {
       acc[feed.feedType] = (acc[feed.feedType] || 0) + 1;
       return acc;
     },
-    {} as Record<string, number>
+    {} as Record<string, number>,
   );
 
   // Get total article count
@@ -88,13 +88,14 @@ export async function getStatistics(user: UserInfo): Promise<Statistics> {
       and(
         eq(userArticleStates.userId, user.id),
         eq(userArticleStates.isRead, true),
-        inArray(articles.feedId, feedIds)
-      )
+        inArray(articles.feedId, feedIds),
+      ),
     );
 
   const readCount = readArticlesResult[0]?.count || 0;
   const totalUnread = totalArticles - readCount;
-  const readPercentage = totalArticles > 0 ? Math.round((readCount / totalArticles) * 100) : 0;
+  const readPercentage =
+    totalArticles > 0 ? Math.round((readCount / totalArticles) * 100) : 0;
 
   // Get articles from today (start of day)
   const today = new Date();
@@ -124,10 +125,10 @@ export async function getStatistics(user: UserInfo): Promise<Statistics> {
     totalArticles,
     totalUnread,
     readPercentage,
-    articleFeeds: feedTypeCounts['article'] || 0,
-    videoFeeds: feedTypeCounts['youtube'] || 0,
-    podcastFeeds: feedTypeCounts['podcast'] || 0,
-    redditFeeds: feedTypeCounts['reddit'] || 0,
+    articleFeeds: feedTypeCounts["article"] || 0,
+    videoFeeds: feedTypeCounts["youtube"] || 0,
+    podcastFeeds: feedTypeCounts["podcast"] || 0,
+    redditFeeds: feedTypeCounts["reddit"] || 0,
     articlesToday,
     articlesThisWeek,
   };

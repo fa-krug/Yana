@@ -4,17 +4,21 @@
  * Handles feed management endpoints.
  */
 
-import { Router } from 'express';
-import type { Request, Response } from 'express';
-import { asyncHandler } from '../middleware/errorHandler';
-import { requireAuth, loadUser } from '../middleware/auth';
-import { validateBody, validateParams, validateQuery } from '../utils/validation';
+import { Router } from "express";
+import type { Request, Response } from "express";
+import { asyncHandler } from "../middleware/errorHandler";
+import { requireAuth, loadUser } from "../middleware/auth";
+import {
+  validateBody,
+  validateParams,
+  validateQuery,
+} from "../utils/validation";
 import {
   createFeedSchema,
   updateFeedSchema,
   articleListSchema,
   idParamSchema,
-} from '../validation/schemas';
+} from "../validation/schemas";
 import {
   listFeeds,
   getFeed,
@@ -27,10 +31,13 @@ import {
   getFeedAggregatorMetadata,
   getFeedArticleCount,
   getFeedUnreadCount,
-} from '../services/feed.service';
-import { listArticles } from '../services/article.service';
-import { parsePagination, formatPaginatedResponse } from '../middleware/pagination';
-import type { AuthenticatedRequest } from '../middleware/auth';
+} from "../services/feed.service";
+import { listArticles } from "../services/article.service";
+import {
+  parsePagination,
+  formatPaginatedResponse,
+} from "../middleware/pagination";
+import type { AuthenticatedRequest } from "../middleware/auth";
 
 const router = Router();
 
@@ -43,13 +50,13 @@ router.use(requireAuth);
  * List feeds with pagination and filters, including article counts
  */
 router.get(
-  '/',
+  "/",
   validateQuery(
     articleListSchema.pick({ page: true, pageSize: true }).extend({
       search: articleListSchema.shape.search,
       feedType: articleListSchema.shape.feedType,
       enabled: articleListSchema.shape.isRead, // Reuse schema
-    })
+    }),
   ),
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     const pagination = parsePagination(req);
@@ -58,13 +65,13 @@ router.get(
     const result = await listFeeds(req.user!, {
       search: search as string | undefined,
       feedType: feedType as string | undefined,
-      enabled: enabled !== undefined ? enabled === 'true' : undefined,
+      enabled: enabled !== undefined ? enabled === "true" : undefined,
       ...pagination,
     });
 
     // Enrich feeds with article counts (matching Django behavior)
     const enrichedFeeds = await Promise.all(
-      result.feeds.map(async feed => {
+      result.feeds.map(async (feed) => {
         const articleCount = await getFeedArticleCount(feed.id);
         const unreadCount = await getFeedUnreadCount(feed.id, req.user!.id);
         return {
@@ -72,11 +79,11 @@ router.get(
           articleCount: articleCount,
           unreadCount: unreadCount,
         };
-      })
+      }),
     );
 
     res.json(formatPaginatedResponse(enrichedFeeds, result.total, pagination));
-  })
+  }),
 );
 
 /**
@@ -84,7 +91,7 @@ router.get(
  * Get feed details with aggregator metadata and counts
  */
 router.get(
-  '/:id',
+  "/:id",
   validateParams(idParamSchema),
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     const { id } = req.params;
@@ -106,7 +113,7 @@ router.get(
     };
 
     res.json(response);
-  })
+  }),
 );
 
 /**
@@ -114,12 +121,12 @@ router.get(
  * Create new feed
  */
 router.post(
-  '/',
+  "/",
   validateBody(createFeedSchema),
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     const feed = await createFeed(req.user!, req.body);
     res.status(201).json(feed);
-  })
+  }),
 );
 
 /**
@@ -127,14 +134,14 @@ router.post(
  * Update feed
  */
 router.patch(
-  '/:id',
+  "/:id",
   validateParams(idParamSchema),
   validateBody(updateFeedSchema),
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     const { id } = req.params;
     const feed = await updateFeed(parseInt(id), req.user!, req.body);
     res.json(feed);
-  })
+  }),
 );
 
 /**
@@ -142,13 +149,13 @@ router.patch(
  * Delete feed
  */
 router.delete(
-  '/:id',
+  "/:id",
   validateParams(idParamSchema),
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     const { id } = req.params;
     await deleteFeed(parseInt(id), req.user!);
     res.status(204).send();
-  })
+  }),
 );
 
 /**
@@ -156,12 +163,12 @@ router.delete(
  * Preview feed (test aggregation)
  */
 router.post(
-  '/preview',
+  "/preview",
   validateBody(createFeedSchema),
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     const result = await previewFeed(req.user!, req.body);
     res.json(result);
-  })
+  }),
 );
 
 /**
@@ -169,14 +176,14 @@ router.post(
  * Reload feed (trigger aggregation)
  */
 router.post(
-  '/:id/reload',
+  "/:id/reload",
   validateParams(idParamSchema),
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     const { id } = req.params;
-    const force = (req.query['force'] as string) === 'true';
+    const force = (req.query["force"] as string) === "true";
     const result = await reloadFeed(parseInt(id), req.user!, force);
     res.json(result);
-  })
+  }),
 );
 
 /**
@@ -184,13 +191,13 @@ router.post(
  * Clear all articles from feed
  */
 router.post(
-  '/:id/clear',
+  "/:id/clear",
   validateParams(idParamSchema),
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     const { id } = req.params;
     await clearFeedArticles(parseInt(id), req.user!);
-    res.json({ success: true, message: 'Articles cleared' });
-  })
+    res.json({ success: true, message: "Articles cleared" });
+  }),
 );
 
 /**
@@ -198,8 +205,10 @@ router.post(
  * List articles for a feed
  */
 router.get(
-  '/:feedId/articles',
-  validateParams(idParamSchema.extend({ feedId: articleListSchema.shape.feedId })),
+  "/:feedId/articles",
+  validateParams(
+    idParamSchema.extend({ feedId: articleListSchema.shape.feedId }),
+  ),
   validateQuery(articleListSchema),
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     const { feedId } = req.params;
@@ -209,13 +218,15 @@ router.get(
     const result = await listArticles(req.user!, {
       feedId: parseInt(feedId),
       search: search as string | undefined,
-      isRead: isRead !== undefined ? isRead === 'true' : undefined,
-      isSaved: isSaved !== undefined ? isSaved === 'true' : undefined,
+      isRead: isRead !== undefined ? isRead === "true" : undefined,
+      isSaved: isSaved !== undefined ? isSaved === "true" : undefined,
       ...pagination,
     });
 
-    res.json(formatPaginatedResponse(result.articles, result.total, pagination));
-  })
+    res.json(
+      formatPaginatedResponse(result.articles, result.total, pagination),
+    );
+  }),
 );
 
 export function feedRoutes(): Router {

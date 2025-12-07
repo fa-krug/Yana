@@ -9,25 +9,31 @@ import {
   inject,
   signal,
   ChangeDetectionStrategy,
-} from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { Subject, interval, takeUntil } from 'rxjs';
-import { MatCardModule } from '@angular/material/card';
-import { MatIconModule } from '@angular/material/icon';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatChipsModule } from '@angular/material/chips';
+} from "@angular/core";
+import { CommonModule } from "@angular/common";
+import { Subject, interval, takeUntil } from "rxjs";
+import { MatCardModule } from "@angular/material/card";
+import { MatIconModule } from "@angular/material/icon";
+import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
+import { MatChipsModule } from "@angular/material/chips";
 import {
   AdminTasksService,
   type TaskMetrics,
   type WorkerPoolStatus,
   type SchedulerStatus,
-} from '../../core/services/admin-tasks.service';
+} from "../../core/services/admin-tasks.service";
 
 @Component({
-  selector: 'app-metrics',
+  selector: "app-metrics",
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, MatCardModule, MatIconModule, MatProgressSpinnerModule, MatChipsModule],
+  imports: [
+    CommonModule,
+    MatCardModule,
+    MatIconModule,
+    MatProgressSpinnerModule,
+    MatChipsModule,
+  ],
   template: `
     <div class="metrics-container animate-fade-in">
       <h1>Task Metrics</h1>
@@ -40,7 +46,9 @@ import {
         <mat-card class="error-card">
           <mat-card-content>
             <p>{{ error() }}</p>
-            <button mat-raised-button color="primary" (click)="loadMetrics()">Retry</button>
+            <button mat-raised-button color="primary" (click)="loadMetrics()">
+              Retry
+            </button>
           </mat-card-content>
         </mat-card>
       } @else {
@@ -55,12 +63,13 @@ import {
               <div class="status-grid">
                 <div class="status-item">
                   <span class="label">Status:</span>
-                  <mat-chip 
+                  <mat-chip
                     [color]="status.running ? 'primary' : 'warn'"
                     [class.status-badge]="true"
                     [class.status-running]="status.running"
-                    [class.status-stopped]="!status.running">
-                    {{ status.running ? 'Running' : 'Stopped' }}
+                    [class.status-stopped]="!status.running"
+                  >
+                    {{ status.running ? "Running" : "Stopped" }}
                   </mat-chip>
                 </div>
                 <div class="status-item">
@@ -83,12 +92,13 @@ import {
               <div class="status-grid">
                 <div class="status-item">
                   <span class="label">Status:</span>
-                  <mat-chip 
+                  <mat-chip
                     [color]="status.running ? 'primary' : 'warn'"
                     [class.status-badge]="true"
                     [class.status-running]="status.running"
-                    [class.status-stopped]="!status.running">
-                    {{ status.running ? 'Running' : 'Stopped' }}
+                    [class.status-stopped]="!status.running"
+                  >
+                    {{ status.running ? "Running" : "Stopped" }}
                   </mat-chip>
                 </div>
                 <div class="status-item">
@@ -159,7 +169,9 @@ import {
                   <h3>By Type</h3>
                   <div class="type-list">
                     @for (type of getTypeKeys(m.byType); track type) {
-                      <mat-chip> {{ type }}: {{ m.byType[type].count }} </mat-chip>
+                      <mat-chip>
+                        {{ type }}: {{ m.byType[type].count }}
+                      </mat-chip>
                     }
                   </div>
                 </div>
@@ -336,19 +348,19 @@ export class MetricsComponent implements OnInit, OnDestroy {
       .connectSSE()
       .pipe(takeUntil(this.destroy$))
       .subscribe({
-        next: event => {
+        next: (event) => {
           // Refresh metrics on relevant events
           if (
-            event.event === 'task-updated' ||
-            event.event === 'task-created' ||
-            event.event === 'metrics-updated' ||
-            event.event === 'worker-status-changed'
+            event.event === "task-updated" ||
+            event.event === "task-created" ||
+            event.event === "metrics-updated" ||
+            event.event === "worker-status-changed"
           ) {
             this.loadMetrics();
           }
         },
-        error: err => {
-          console.error('SSE connection error:', err);
+        error: (err) => {
+          console.error("SSE connection error:", err);
         },
       });
   }
@@ -364,36 +376,38 @@ export class MetricsComponent implements OnInit, OnDestroy {
     this.error.set(null);
 
     this.tasksService.getMetrics().subscribe({
-      next: metrics => {
+      next: (metrics) => {
         this.metrics.set(metrics);
         this.loading.set(false);
       },
-      error: err => {
-        this.error.set(err.message || 'Failed to load metrics');
+      error: (err) => {
+        this.error.set(err.message || "Failed to load metrics");
         this.loading.set(false);
       },
     });
 
     this.tasksService.getWorkerPoolStatus().subscribe({
-      next: status => {
+      next: (status) => {
         this.workerPoolStatus.set(status);
       },
-      error: err => {
-        console.error('Failed to load worker pool status:', err);
+      error: (err) => {
+        console.error("Failed to load worker pool status:", err);
       },
     });
 
     this.tasksService.getSchedulerStatus().subscribe({
-      next: status => {
+      next: (status) => {
         this.schedulerStatus.set(status);
       },
-      error: err => {
-        console.error('Failed to load scheduler status:', err);
+      error: (err) => {
+        console.error("Failed to load scheduler status:", err);
       },
     });
   }
 
-  getTypeKeys(byType: Record<string, { count: number; status: string }>): string[] {
+  getTypeKeys(
+    byType: Record<string, { count: number; status: string }>,
+  ): string[] {
     return Object.keys(byType);
   }
 }

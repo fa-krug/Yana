@@ -5,11 +5,11 @@
  * Requires superuser authentication.
  */
 
-import { Router, type Request, type Response } from 'express';
-import { asyncHandler } from '../middleware/errorHandler';
-import { loadUser, requireAuth, requireSuperuser } from '../middleware/auth';
-import { getEventEmitter } from '../services/eventEmitter.service';
-import { logger } from '../utils/logger';
+import { Router, type Request, type Response } from "express";
+import { asyncHandler } from "../middleware/errorHandler";
+import { loadUser, requireAuth, requireSuperuser } from "../middleware/auth";
+import { getEventEmitter } from "../services/eventEmitter.service";
+import { logger } from "../utils/logger";
 
 const router = Router();
 
@@ -18,7 +18,7 @@ const router = Router();
  * GET /api/admin/tasks/events
  */
 router.get(
-  '/events',
+  "/events",
   loadUser,
   requireAuth,
   requireSuperuser,
@@ -27,16 +27,18 @@ router.get(
 
     // IMPORTANT: Don't send response headers after this point - SSE needs to keep connection open
     // Set SSE headers BEFORE any writes
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
-    res.setHeader('Connection', 'keep-alive');
-    res.setHeader('X-Accel-Buffering', 'no'); // Disable nginx buffering
-    res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+    res.setHeader("X-Accel-Buffering", "no"); // Disable nginx buffering
+    res.setHeader("Access-Control-Allow-Origin", req.headers.origin || "*");
+    res.setHeader("Access-Control-Allow-Credentials", "true");
 
     // Send initial connection event
     res.write(`event: connected\n`);
-    res.write(`data: ${JSON.stringify({ message: 'Connected to task events stream', timestamp: new Date().toISOString() })}\n\n`);
+    res.write(
+      `data: ${JSON.stringify({ message: "Connected to task events stream", timestamp: new Date().toISOString() })}\n\n`,
+    );
 
     // Subscribe to events
     const eventEmitter = getEventEmitter();
@@ -45,13 +47,13 @@ router.get(
         res.write(`event: ${event}\n`);
         res.write(`data: ${JSON.stringify(data)}\n\n`);
       } catch (error) {
-        logger.error({ error, event }, 'Error sending SSE event');
+        logger.error({ error, event }, "Error sending SSE event");
         unsubscribe();
       }
     });
 
     // Handle client disconnect
-    req.on('close', () => {
+    req.on("close", () => {
       unsubscribe();
       res.end();
     });
@@ -68,10 +70,10 @@ router.get(
     }, 30000); // 30 seconds
 
     // Clean up on disconnect
-    req.on('close', () => {
+    req.on("close", () => {
       clearInterval(heartbeatInterval);
     });
-  })
+  }),
 );
 
 export function adminTasksSSERoutes(): Router {
