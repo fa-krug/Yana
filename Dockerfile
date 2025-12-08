@@ -4,13 +4,22 @@
 # =============================================================================
 
 # Build stage - compile Angular app and TypeScript
-FROM node:23-slim AS builder
+FROM mcr.microsoft.com/playwright:v1.57.0-noble AS builder
 
 WORKDIR /app
 
 ENV DEBIAN_FRONTEND=noninteractive \
     NODE_ENV=production \
-    DATABASE_URL=/tmp/build-db.sqlite3
+    DATABASE_URL=/tmp/build-db.sqlite3 \
+    PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 \
+    PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+
+# Install build dependencies for native modules (better-sqlite3, bcrypt)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 \
+    make \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
 
 # Copy package files for layer caching
 COPY package*.json ./
@@ -36,11 +45,13 @@ RUN npx esbuild src/server/db/migrate.ts --bundle --platform=node --format=esm -
 # =============================================================================
 # Production dependencies stage - separate for better caching
 # =============================================================================
-FROM node:23-slim AS deps
+FROM mcr.microsoft.com/playwright:v1.57.0-noble AS deps
 
 WORKDIR /app
 
-ENV DEBIAN_FRONTEND=noninteractive
+ENV DEBIAN_FRONTEND=noninteractive \
+    PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 \
+    PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
 # Install build dependencies for native modules (better-sqlite3, bcrypt)
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -53,9 +64,7 @@ COPY package*.json ./
 
 # Install production deps only
 # --ignore-scripts skips prepare script (husky) which requires dev deps
-# Then rebuild native modules that need compilation
-RUN npm ci --omit=dev --ignore-scripts && \
-    npm rebuild better-sqlite3 bcrypt
+RUN npm ci --omit=dev --ignore-scripts
 
 # =============================================================================
 # Runtime Stage - Use Playwright base image (includes Chromium)
