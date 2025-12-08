@@ -64,7 +64,7 @@
           },
           "configurations": {
             "production": {
-              "baseHref": "/static/",
+              "baseHref": "/",
               "budgets": [
                 {
                   "type": "initial",
