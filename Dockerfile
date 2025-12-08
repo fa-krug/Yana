@@ -81,22 +81,22 @@ ENV NODE_ENV=production \
 RUN apt-get update && apt-get install -y --no-install-recommends tini \
     && rm -rf /var/lib/apt/lists/* \
     && mkdir -p /app/data \
-    && chown -R nodejs:root /app
+    && chown -R pwuser:root /app
 
 # Copy production dependencies
-COPY --from=deps --chown=nodejs:root /app/node_modules ./node_modules
-COPY --from=deps --chown=nodejs:root /app/package*.json ./
+COPY --from=deps --chown=pwuser:root /app/node_modules ./node_modules
+COPY --from=deps --chown=pwuser:root /app/package*.json ./
 
 # Copy built application files
-COPY --from=builder --chown=nodejs:root /app/dist ./dist
-COPY --from=builder --chown=nodejs:root /app/docker-entrypoint.sh ./
+COPY --from=builder --chown=pwuser:root /app/dist ./dist
+COPY --from=builder --chown=pwuser:root /app/docker-entrypoint.sh ./
 
 # Copy database migrations (migrate.ts expects ./src/server/db/migrations)
-COPY --from=builder --chown=nodejs:root /app/src/server/db/migrations ./src/server/db/migrations
+COPY --from=builder --chown=pwuser:root /app/src/server/db/migrations ./src/server/db/migrations
 
 RUN chmod +x ./docker-entrypoint.sh
 
-USER nodejs
+USER pwuser
 
 EXPOSE 3000
 
