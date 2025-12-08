@@ -388,14 +388,9 @@ export async function updateFeed(
     await setFeedGroups(id, user.id, groupIds);
   }
 
-  // Queue icon fetch if icon is not set or if identifier changed (to refresh icon)
-  const identifierChanged =
-    feedData.identifier !== undefined &&
-    feedData.identifier !== existingFeed.identifier;
-  if (!updated.icon || identifierChanged) {
-    const { queueIconFetch } = await import("./icon.service");
-    await queueIconFetch(id, identifierChanged);
-  }
+  // Always queue icon fetch when saving a feed to ensure it's up-to-date
+  const { queueIconFetch } = await import("./icon.service");
+  await queueIconFetch(id, true);
 
   logger.info({ feedId: id, userId: user.id, groupIds }, "Feed updated");
 
