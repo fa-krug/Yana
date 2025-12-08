@@ -24,6 +24,8 @@ export function setupSecurity(app: Express): void {
               // Allow 'unsafe-inline' for Angular component styles and event handlers
               // Angular generates inline styles and scripts at runtime
               scriptSrc: ["'self'", "'unsafe-inline'"],
+              // Allow inline event handlers (onclick, onload, etc.) used by Angular/libraries
+              scriptSrcAttr: ["'unsafe-inline'"],
               styleSrc: ["'self'", "'unsafe-inline'"],
               fontSrc: ["'self'", "data:"],
               imgSrc: ["'self'", "data:", "https:"],
