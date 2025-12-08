@@ -45,9 +45,6 @@ const PORT = process.env["PORT"] || 3000;
 const NODE_ENV = process.env["NODE_ENV"] || "development";
 const isDevelopment = NODE_ENV === "development";
 
-// Trust proxy (for production behind reverse proxy like Cloudflare)
-// Use 'true' to trust all proxies, which is needed for Cloudflare's multiple proxy hops
-// This ensures Express correctly detects HTTPS from X-Forwarded-Proto header
 app.set("trust proxy", true);
 
 // CORS configuration (for development)
@@ -111,10 +108,7 @@ app.use(
     store: getSessionStore(),
     cookie: {
       httpOnly: true,
-      // Use secure cookies in production (requires HTTPS)
-      // With trust proxy: true set above, Express will detect HTTPS from X-Forwarded-Proto
-      // and set req.secure = true, allowing secure cookies to be set
-      secure: !isDevelopment,
+      secure: !isDevelopment, // Secure cookies in production (requires HTTPS)
       sameSite: "lax",
       maxAge: 14 * 24 * 60 * 60 * 1000, // 2 weeks
     },

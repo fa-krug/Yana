@@ -69,6 +69,7 @@ export const authRouter = router({
             protocol: ctx.req.protocol,
             secure: ctx.req.secure,
             xForwardedProto: ctx.req.headers?.["x-forwarded-proto"],
+            cfVisitor: ctx.req.headers?.["cf-visitor"],
           },
           "Login attempt started",
         );
