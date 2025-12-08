@@ -314,8 +314,93 @@ export async function getStreamItemIds(
     .innerJoin(feeds, eq(articles.feedId, feeds.id))
     .where(and(...baseConditions));
 
-  // Filter by stream
-  articleQuery = await filterArticlesByStream(articleQuery, streamId, userId);
+  // Filter by stream (skip for reading list as it doesn't need filtering)
+  // Special handling for starred stream - handle it directly to maintain query structure
+  if (streamId && streamId !== STATE_READING_LIST) {
+    if (streamId === STATE_STARRED) {
+      // Handle starred stream directly to maintain id-only select structure
+      // Reuse starredIdArray if already populated from includeTag, otherwise fetch it
+      let starredArticleIds: number[];
+      if (starredIdArray.length > 0) {
+        starredArticleIds = starredIdArray;
+      } else {
+        const starredIds = await db
+          .select({ articleId: userArticleStates.articleId })
+          .from(userArticleStates)
+          .where(
+            and(
+              eq(userArticleStates.userId, userId),
+              eq(userArticleStates.isSaved, true),
+            ),
+          );
+        starredArticleIds = starredIds.map((s) => s.articleId);
+      }
+
+      if (starredArticleIds.length === 0) {
+        // Return empty result
+        return { itemRefs: [] };
+      }
+
+      // Get accessible feed IDs for access control
+      const accessibleFeeds = await db
+        .select({ id: feeds.id })
+        .from(feeds)
+        .where(
+          and(
+            or(eq(feeds.userId, userId), isNull(feeds.userId)),
+            eq(feeds.enabled, true),
+          ),
+        );
+      const accessibleFeedIds = accessibleFeeds.map((f) => f.id);
+
+      if (accessibleFeedIds.length === 0) {
+        return { itemRefs: [] };
+      }
+
+      // Build query with only id field to match the base query structure
+      // Preserve read exclusion and timestamp filters from baseConditions
+      const starredConditions = [
+        inArray(articles.id, starredArticleIds),
+        inArray(articles.feedId, accessibleFeedIds),
+      ];
+
+      // Add read exclusion if present (baseConditions[2] if it exists)
+      if (readIdArray.length > 0) {
+        starredConditions.push(notInArray(articles.id, readIdArray));
+      }
+
+      // Add timestamp filter if present (last condition if timestampDate exists)
+      if (timestampDate) {
+        starredConditions.push(lt(articles.date, timestampDate));
+      }
+
+      articleQuery = db
+        .select({ id: articles.id })
+        .from(articles)
+        .innerJoin(feeds, eq(articles.feedId, feeds.id))
+        .where(and(...starredConditions));
+    } else {
+      articleQuery = await filterArticlesByStream(
+        articleQuery,
+        streamId,
+        userId,
+      );
+
+      // Debug: Check if query builder is valid
+      if (!articleQuery || typeof articleQuery.orderBy !== "function") {
+        console.error("Invalid query builder after filterArticlesByStream:", {
+          type: typeof articleQuery,
+          hasOrderBy: typeof articleQuery?.orderBy,
+          keys: articleQuery ? Object.keys(articleQuery) : [],
+          constructor: articleQuery?.constructor?.name,
+          streamId,
+        });
+        throw new Error(
+          `Invalid query builder returned from filterArticlesByStream for stream: ${streamId}`,
+        );
+      }
+    }
+  }
 
   // Order and limit
   const order = reverseOrder ? asc(articles.date) : desc(articles.date);
@@ -440,6 +525,7 @@ async function filterArticlesByStream(
   }
 
   if (streamId === STATE_STARRED) {
+    // Get starred article IDs directly from database
     const starredIds = await db
       .select({ articleId: userArticleStates.articleId })
       .from(userArticleStates)
@@ -449,18 +535,83 @@ async function filterArticlesByStream(
           eq(userArticleStates.isSaved, true),
         ),
       );
+    const starredArticleIds = starredIds.map((s) => s.articleId);
 
-    const starredIdSet = new Set(starredIds.map((s) => s.articleId));
-    const allArticles = await query;
-    return db
-      .select()
-      .from(articles)
+    if (starredArticleIds.length === 0) {
+      // No starred articles, return empty query with full selection
+      // This works for both getStreamContents (needs full) and getStreamItemIds (only uses id)
+      return db
+        .select({
+          id: articles.id,
+          name: articles.name,
+          url: articles.url,
+          date: articles.date,
+          updatedAt: articles.updatedAt,
+          content: articles.content,
+          feedId: articles.feedId,
+          feedName: feeds.name,
+          feedIdentifier: feeds.identifier,
+          feedType: feeds.feedType,
+        })
+        .from(articles)
+        .innerJoin(feeds, eq(articles.feedId, feeds.id))
+        .where(eq(articles.id, -1)); // Impossible condition
+    }
+
+    // Get accessible feed IDs for access control
+    const accessibleFeeds = await db
+      .select({ id: feeds.id })
+      .from(feeds)
       .where(
-        inArray(
-          articles.id,
-          allArticles
-            .filter((a: any) => starredIdSet.has(a.id))
-            .map((a: any) => a.id),
+        and(
+          or(eq(feeds.userId, userId), isNull(feeds.userId)),
+          eq(feeds.enabled, true),
+        ),
+      );
+    const accessibleFeedIds = accessibleFeeds.map((f) => f.id);
+
+    if (accessibleFeedIds.length === 0) {
+      // No accessible feeds, return empty query with full selection
+      return db
+        .select({
+          id: articles.id,
+          name: articles.name,
+          url: articles.url,
+          date: articles.date,
+          updatedAt: articles.updatedAt,
+          content: articles.content,
+          feedId: articles.feedId,
+          feedName: feeds.name,
+          feedIdentifier: feeds.identifier,
+          feedType: feeds.feedType,
+        })
+        .from(articles)
+        .innerJoin(feeds, eq(articles.feedId, feeds.id))
+        .where(eq(articles.id, -1)); // Impossible condition
+    }
+
+    // Build a new query that filters by both starred IDs and accessible feed IDs
+    // Use full selection to work for both getStreamContents and getStreamItemIds
+    // getStreamItemIds will only use the id field, which is fine
+    return db
+      .select({
+        id: articles.id,
+        name: articles.name,
+        url: articles.url,
+        date: articles.date,
+        updatedAt: articles.updatedAt,
+        content: articles.content,
+        feedId: articles.feedId,
+        feedName: feeds.name,
+        feedIdentifier: feeds.identifier,
+        feedType: feeds.feedType,
+      })
+      .from(articles)
+      .innerJoin(feeds, eq(articles.feedId, feeds.id))
+      .where(
+        and(
+          inArray(articles.id, starredArticleIds),
+          inArray(articles.feedId, accessibleFeedIds),
         ),
       );
   }

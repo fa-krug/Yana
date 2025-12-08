@@ -29,7 +29,7 @@ export async function fetchFeed(
   options: { timeout?: number } = {},
 ): Promise<Parser.Output<any>> {
   const startTime = Date.now();
-  const { timeout = 25000 } = options; // Default 25s, leaving 5s buffer for the 30s preview timeout
+  const { timeout = 25000 } = options; // Default 25s for RSS feed fetching
 
   logger.info(
     {
@@ -123,7 +123,8 @@ export async function fetchArticleContent(
       const page = await browserInstance.newPage();
 
       try {
-        await page.goto(url, { waitUntil: "networkidle", timeout });
+        // Always use domcontentloaded for faster, more reliable loading
+        await page.goto(url, { waitUntil: "domcontentloaded", timeout });
 
         if (waitForSelector) {
           await page.waitForSelector(waitForSelector, { timeout });

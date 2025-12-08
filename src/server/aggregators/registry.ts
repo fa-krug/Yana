@@ -38,11 +38,11 @@ function getIconForAggregator(
     // Managed aggregators - use high-resolution local logos
     heise: "/assets/icons/heise-128.png",
     merkur: "/assets/icons/merkur-128.png",
-    tagesschau: "https://www.tagesschau.de/favicon.ico",
-    explosm: "https://www.explosm.net/favicon.ico",
+    tagesschau: "/assets/icons/tagesschau-128.png",
+    explosm: "/assets/icons/explosm-128.png",
     mactechnews: "/assets/icons/mactechnews-128.png",
-    caschys_blog: "https://caschys.blog/favicon.ico",
-    dark_legacy: "https://www.darklegacycomics.com/favicon.ico",
+    caschys_blog: "/assets/icons/caschys_blog-128.png",
+    dark_legacy: "/assets/icons/dark_legacy-128.png",
     oglaf: "/assets/icons/oglaf.jpg",
     mein_mmo: "/assets/icons/mein-mmo-128.png",
 

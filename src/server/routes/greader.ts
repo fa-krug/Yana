@@ -339,8 +339,14 @@ const streamContentsHandler = asyncHandler(
     }
 
     const streamId = (req.params["streamId"] as string) || "";
-    const itemIds =
-      (req.query["i"] as string[]) || (req.body["i"] as string[]) || [];
+    // Ensure itemIds is always an array
+    // For form-urlencoded POST, req.body["i"] might be a string if single value
+    const itemIdsRaw = req.query["i"] || req.body["i"] || [];
+    const itemIds = Array.isArray(itemIdsRaw)
+      ? itemIdsRaw
+      : itemIdsRaw
+        ? [itemIdsRaw]
+        : [];
     const excludeTag =
       (req.query["xt"] as string) || (req.body["xt"] as string) || "";
     const limit = parseInt(

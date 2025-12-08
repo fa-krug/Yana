@@ -480,9 +480,9 @@ export async function previewFeed(
       "Aggregator initialized",
     );
 
-    // Run aggregation with 30 second timeout (matching backend)
+    // Run aggregation with extended timeout for preview
     // For preview, only process the first article
-    const timeoutMs = 30000;
+    const timeoutMs = 120000; // 2 minutes - allows for slow feeds and content fetching
     const articleLimit = 1; // Only process first article for preview
     logger.info(
       {
@@ -504,7 +504,7 @@ export async function previewFeed(
           },
           "Feed preview timeout triggered",
         );
-        reject(new Error("Feed preview timed out after 30 seconds"));
+        reject(new Error("Feed preview timed out after 2 minutes"));
       }, timeoutMs);
     });
 
@@ -545,7 +545,7 @@ export async function previewFeed(
           articles: [],
           count: 0,
           error:
-            "Feed preview timed out after 30 seconds. The feed may be too slow or unavailable.",
+            "Feed preview timed out after 2 minutes. The feed may be too slow or unavailable.",
           errorType: "timeout",
         };
       }

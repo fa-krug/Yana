@@ -3,6 +3,7 @@
  */
 
 import * as cheerio from "cheerio";
+import type { Element } from "domhandler";
 import sharp from "sharp";
 import axios from "axios";
 import { logger } from "../../utils/logger";
@@ -10,6 +11,9 @@ import { logger } from "../../utils/logger";
 // Image compression settings
 const MAX_IMAGE_WIDTH = 600;
 const MAX_IMAGE_HEIGHT = 600;
+// Higher resolution for header images
+export const MAX_HEADER_IMAGE_WIDTH = 1200;
+export const MAX_HEADER_IMAGE_HEIGHT = 1200;
 const JPEG_QUALITY = 65;
 const WEBP_QUALITY = 65;
 const PREFER_WEBP = true;
@@ -138,6 +142,42 @@ async function fetchSingleImage(url: string): Promise<{
 }
 
 /**
+ * Extract image dimensions from HTML attributes and CSS styles.
+ * Returns { width, height } if both are found, null otherwise.
+ */
+function extractImageDimensions(
+  $: cheerio.CheerioAPI,
+  el: Element,
+): { width: number; height: number } | null {
+  // First try HTML attributes
+  const widthAttr = $(el).attr("width");
+  const heightAttr = $(el).attr("height");
+  if (widthAttr && heightAttr) {
+    const w = parseInt(widthAttr, 10);
+    const h = parseInt(heightAttr, 10);
+    if (!isNaN(w) && !isNaN(h)) {
+      return { width: w, height: h };
+    }
+  }
+
+  // Fall back to CSS styles
+  const style = $(el).attr("style");
+  if (style) {
+    const widthMatch = style.match(/width\s*:\s*(\d+)px/i);
+    const heightMatch = style.match(/height\s*:\s*(\d+)px/i);
+    if (widthMatch && heightMatch) {
+      const w = parseInt(widthMatch[1], 10);
+      const h = parseInt(heightMatch[1], 10);
+      if (!isNaN(w) && !isNaN(h)) {
+        return { width: w, height: h };
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
  * Extract an image from a URL using multiple strategies.
  */
 export async function extractImageFromUrl(
@@ -158,11 +198,37 @@ export async function extractImageFromUrl(
     ) {
       logger.debug({ url }, "URL is an image file");
       const result = await fetchSingleImage(url);
-      if (result.imageData) {
-        return {
-          imageData: result.imageData,
-          contentType: result.contentType || "image/jpeg",
-        };
+      if (result.imageData && result.imageData.length > 5000) {
+        // Check dimensions to ensure it's not too small
+        try {
+          const img = sharp(result.imageData);
+          const metadata = await img.metadata();
+          if (
+            metadata.width &&
+            metadata.height &&
+            (metadata.width < 100 || metadata.height < 100)
+          ) {
+            logger.debug(
+              {
+                width: metadata.width,
+                height: metadata.height,
+                url,
+              },
+              "Direct image URL too small, skipping",
+            );
+            return null;
+          }
+          return {
+            imageData: result.imageData,
+            contentType: result.contentType || "image/jpeg",
+          };
+        } catch (error) {
+          // If we can't check dimensions, use file size check only
+          return {
+            imageData: result.imageData,
+            contentType: result.contentType || "image/jpeg",
+          };
+        }
       }
     }
 
@@ -204,11 +270,38 @@ export async function extractImageFromUrl(
       const imageUrl = new URL(ogImage, url).toString();
       logger.debug({ imageUrl }, "Found og:image");
       const result = await fetchSingleImage(imageUrl);
-      if (result.imageData) {
-        return {
-          imageData: result.imageData,
-          contentType: result.contentType || "image/jpeg",
-        };
+      // Check if image is large enough (skip small images)
+      if (result.imageData && result.imageData.length > 5000) {
+        // Also check dimensions if we can get them
+        try {
+          const img = sharp(result.imageData);
+          const metadata = await img.metadata();
+          if (
+            metadata.width &&
+            metadata.height &&
+            (metadata.width < 100 || metadata.height < 100)
+          ) {
+            logger.debug(
+              {
+                width: metadata.width,
+                height: metadata.height,
+                url: imageUrl,
+              },
+              "og:image too small, skipping",
+            );
+          } else {
+            return {
+              imageData: result.imageData,
+              contentType: result.contentType || "image/jpeg",
+            };
+          }
+        } catch (error) {
+          // If we can't check dimensions, use file size check only
+          return {
+            imageData: result.imageData,
+            contentType: result.contentType || "image/jpeg",
+          };
+        }
       }
     }
 
@@ -218,11 +311,38 @@ export async function extractImageFromUrl(
       const imageUrl = new URL(twitterImage, url).toString();
       logger.debug({ imageUrl }, "Found twitter:image");
       const result = await fetchSingleImage(imageUrl);
-      if (result.imageData) {
-        return {
-          imageData: result.imageData,
-          contentType: result.contentType || "image/jpeg",
-        };
+      // Check if image is large enough (skip small images)
+      if (result.imageData && result.imageData.length > 5000) {
+        // Also check dimensions if we can get them
+        try {
+          const img = sharp(result.imageData);
+          const metadata = await img.metadata();
+          if (
+            metadata.width &&
+            metadata.height &&
+            (metadata.width < 100 || metadata.height < 100)
+          ) {
+            logger.debug(
+              {
+                width: metadata.width,
+                height: metadata.height,
+                url: imageUrl,
+              },
+              "twitter:image too small, skipping",
+            );
+          } else {
+            return {
+              imageData: result.imageData,
+              contentType: result.contentType || "image/jpeg",
+            };
+          }
+        } catch (error) {
+          // If we can't check dimensions, use file size check only
+          return {
+            imageData: result.imageData,
+            contentType: result.contentType || "image/jpeg",
+          };
+        }
       }
     }
 
@@ -235,14 +355,22 @@ export async function extractImageFromUrl(
         $(el).attr("data-lazy-src");
       if (!imgSrc) return;
 
-      // Skip small images (likely icons/logos) unless this is a header image
-      if (!isHeaderImage) {
-        const width = $(el).attr("width");
-        const height = $(el).attr("height");
-        if (width && height) {
-          const w = parseInt(width, 10);
-          const h = parseInt(height, 10);
-          if (w < 100 || h < 100) return;
+      // Skip small images (likely icons/logos) - always check size
+      // Small images should only be used as thumbnails, not as header images
+      // Check both HTML attributes and CSS styles
+      const dimensions = extractImageDimensions($, el);
+      if (dimensions) {
+        if (dimensions.width < 100 || dimensions.height < 100) {
+          logger.debug(
+            {
+              width: dimensions.width,
+              height: dimensions.height,
+              src: imgSrc,
+              isHeaderImage,
+            },
+            "Skipping small image (will be used as thumbnail only)",
+          );
+          return;
         }
       }
 
@@ -384,26 +512,42 @@ export async function compressImage(
       return { imageData, contentType };
     }
 
-    // Resize if needed
-    if (metadata.width && metadata.height) {
-      if (metadata.width > maxWidth || metadata.height > maxHeight) {
-        const ratio = Math.min(
-          maxWidth / metadata.width,
-          maxHeight / metadata.height,
-        );
-        const newWidth = Math.round(metadata.width * ratio);
-        const newHeight = Math.round(metadata.height * ratio);
-        img = img.resize(newWidth, newHeight, {
-          kernel: sharp.kernel.lanczos3,
-        });
-        logger.debug(
-          {
-            original: `${metadata.width}x${metadata.height}`,
-            new: `${newWidth}x${newHeight}`,
-          },
-          "Resized image",
-        );
-      }
+    // Never resize images that are smaller than max dimensions
+    // Only resize if image is larger than max dimensions (downsize only)
+    const needsResize =
+      metadata.width &&
+      metadata.height &&
+      (metadata.width > maxWidth || metadata.height > maxHeight);
+
+    if (needsResize) {
+      const ratio = Math.min(
+        maxWidth / metadata.width!,
+        maxHeight / metadata.height!,
+      );
+      const newWidth = Math.round(metadata.width! * ratio);
+      const newHeight = Math.round(metadata.height! * ratio);
+      img = img.resize(newWidth, newHeight, {
+        kernel: sharp.kernel.lanczos3,
+      });
+      logger.debug(
+        {
+          original: `${metadata.width}x${metadata.height}`,
+          new: `${newWidth}x${newHeight}`,
+        },
+        "Resized image (downsized)",
+      );
+    } else if (metadata.width && metadata.height) {
+      // Image is smaller than max dimensions - preserve original size
+      // Don't resize, just process for format conversion if needed
+      logger.debug(
+        {
+          width: metadata.width,
+          height: metadata.height,
+          maxWidth,
+          maxHeight,
+        },
+        "Image smaller than max dimensions, preserving original size",
+      );
     }
 
     // Determine output format

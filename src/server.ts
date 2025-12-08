@@ -45,7 +45,7 @@ const PORT = process.env["PORT"] || 3000;
 const NODE_ENV = process.env["NODE_ENV"] || "development";
 const isDevelopment = NODE_ENV === "development";
 
-app.set("trust proxy", true);
+app.set("trust proxy", 1);
 
 // Middleware to fix HTTPS detection when Traefik forwards wrong X-Forwarded-Proto
 // Cloudflare sends CF-Visitor header with correct scheme, but Traefik may forward X-Forwarded-Proto: http

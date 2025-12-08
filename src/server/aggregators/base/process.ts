@@ -10,6 +10,8 @@ import {
   extractImageFromUrl,
   compressImage,
   extractYouTubeVideoId,
+  MAX_HEADER_IMAGE_WIDTH,
+  MAX_HEADER_IMAGE_HEIGHT,
 } from "./utils";
 import { logger } from "../../utils/logger";
 
@@ -280,8 +282,13 @@ export async function standardizeContentFormat(
           if (imageResult) {
             const { imageData, contentType } = imageResult;
 
-            // Compress the image
-            const compressed = await compressImage(imageData, contentType);
+            // Compress the image with higher resolution for header images
+            const compressed = await compressImage(
+              imageData,
+              contentType,
+              MAX_HEADER_IMAGE_WIDTH,
+              MAX_HEADER_IMAGE_HEIGHT,
+            );
             const compressedData = compressed.imageData;
             const outputType = compressed.contentType;
 

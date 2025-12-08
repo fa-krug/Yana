@@ -1021,19 +1021,10 @@ export class ArticleDetailComponent implements OnInit, OnDestroy {
     // Unregister article actions
     this.articleActions.unregisterActions();
 
-    // Clear feed breadcrumb labels when leaving
-    // Article breadcrumb is handled automatically by BreadcrumbService
-    const currentArticle = this.article();
-    if (currentArticle) {
-      // Clear feed label if it was set
-      if (currentArticle.feed?.id) {
-        const feedId = currentArticle.feed.id.toString();
-        this.breadcrumbService.clearLabel(`id:${feedId}`);
-      } else if (currentArticle.feedId) {
-        const feedId = currentArticle.feedId.toString();
-        this.breadcrumbService.clearLabel(`id:${feedId}`);
-      }
-    }
+    // Don't clear feed breadcrumb labels here. The feed detail component will
+    // set the label when it loads, and will clear it when it's destroyed.
+    // This prevents the label from disappearing when clicking the feed name
+    // in breadcrumbs to navigate from article detail to feed detail.
   }
 
   /**
