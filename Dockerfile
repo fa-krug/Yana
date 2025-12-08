@@ -26,9 +26,9 @@ RUN npm run build
 # Bundle standalone scripts for production (migration, superuser, worker)
 # External dependencies are resolved from node_modules at runtime
 RUN npx esbuild src/server/db/migrate.ts --bundle --platform=node --format=esm --outfile=dist/scripts/migrate.mjs \
-    --external:better-sqlite3 --external:bcrypt --external:drizzle-orm && \
+    --external:better-sqlite3 --external:bcrypt --external:drizzle-orm --external:pino --external:pino-pretty && \
     npx esbuild src/server/scripts/createSuperuser.ts --bundle --platform=node --format=esm --outfile=dist/scripts/createSuperuser.mjs \
-    --external:better-sqlite3 --external:bcrypt --external:drizzle-orm && \
+    --external:better-sqlite3 --external:bcrypt --external:drizzle-orm --external:pino --external:pino-pretty && \
     npx esbuild src/server/workers/worker.ts --bundle --platform=node --format=esm --outfile=dist/scripts/worker.mjs \
     --external:better-sqlite3 --external:bcrypt --external:drizzle-orm --external:playwright --external:playwright-core \
     --external:sharp --external:cheerio --external:rss-parser --external:pino --external:pino-pretty --external:axios
@@ -42,11 +42,20 @@ WORKDIR /app
 
 ENV DEBIAN_FRONTEND=noninteractive
 
+# Install build dependencies for native modules (better-sqlite3, bcrypt)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 \
+    make \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY package*.json ./
 
 # Install production deps only
 # --ignore-scripts skips prepare script (husky) which requires dev deps
-RUN npm ci --omit=dev --ignore-scripts
+# Then rebuild native modules that need compilation
+RUN npm ci --omit=dev --ignore-scripts && \
+    npm rebuild better-sqlite3 bcrypt
 
 # =============================================================================
 # Runtime Stage - Minimal production image
@@ -85,6 +94,9 @@ COPY --from=deps --chown=nodejs:root /app/package*.json ./
 # Copy built application files
 COPY --from=builder --chown=nodejs:root /app/dist ./dist
 COPY --from=builder --chown=nodejs:root /app/docker-entrypoint.sh ./
+
+# Copy database migrations (migrate.ts expects ./src/server/db/migrations)
+COPY --from=builder --chown=nodejs:root /app/src/server/db/migrations ./src/server/db/migrations
 
 RUN chmod +x ./docker-entrypoint.sh
 

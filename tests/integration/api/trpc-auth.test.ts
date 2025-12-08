@@ -41,6 +41,10 @@ describe("tRPC Auth Integration", () => {
 
     app = express();
 
+    // Force supertest to bind on loopback only to avoid sandbox EPERM on 0.0.0.0
+    const originalListen = app.listen.bind(app) as any;
+    app.listen = ((...args: any[]) => originalListen(0, "127.0.0.1")) as any;
+
     // Setup middleware
     app.use(express.json());
     app.use(cookieParser());
