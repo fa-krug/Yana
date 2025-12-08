@@ -58,9 +58,9 @@ RUN npm ci --omit=dev --ignore-scripts && \
     npm rebuild better-sqlite3 bcrypt
 
 # =============================================================================
-# Runtime Stage - Minimal production image
+# Runtime Stage - Use Playwright base image (includes Chromium)
 # =============================================================================
-FROM node:22-slim AS runtime
+FROM mcr.microsoft.com/playwright:v1.57.0-noble AS runtime
 
 WORKDIR /app
 
@@ -70,18 +70,15 @@ LABEL org.opencontainers.image.title="Yana" \
       org.opencontainers.image.source="https://github.com/your-org/yana"
 
 # Set environment variables
-ENV DEBIAN_FRONTEND=noninteractive \
-    NODE_ENV=production \
+# Playwright image has browsers pre-installed in /ms-playwright
+ENV NODE_ENV=production \
     PORT=3000 \
     DATABASE_URL=/app/data/db.sqlite3 \
     PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 \
-    PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium
+    PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
-# Install system dependencies, chromium, and tini in a single layer
-# tini provides proper PID 1 signal handling
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    chromium \
-    tini \
+# Install tini for proper PID 1 signal handling and set up user/dirs
+RUN apt-get update && apt-get install -y --no-install-recommends tini \
     && rm -rf /var/lib/apt/lists/* \
     && useradd -r -u 1001 -g root nodejs \
     && mkdir -p /app/data \
