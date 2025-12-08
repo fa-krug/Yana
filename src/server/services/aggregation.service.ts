@@ -207,17 +207,24 @@ export async function processFeedAggregation(
         )
         .limit(1);
 
-      // Collect thumbnail if missing
-      let thumbnailUrl = rawArticle.thumbnailUrl;
-      if (!thumbnailUrl) {
-        const { extractThumbnailUrlFromPage } =
+      // Collect thumbnail if missing and convert to base64
+      let thumbnailBase64 = rawArticle.thumbnailUrl
+        ? await (
+            await import("../aggregators/base/utils")
+          ).convertThumbnailUrlToBase64(rawArticle.thumbnailUrl)
+        : null;
+
+      if (!thumbnailBase64) {
+        const { extractThumbnailUrlFromPageAndConvertToBase64 } =
           await import("../aggregators/base/utils");
-        thumbnailUrl =
-          (await extractThumbnailUrlFromPage(rawArticle.url)) || undefined;
-        if (thumbnailUrl) {
+        thumbnailBase64 =
+          (await extractThumbnailUrlFromPageAndConvertToBase64(
+            rawArticle.url,
+          )) || null;
+        if (thumbnailBase64) {
           logger.debug(
-            { url: rawArticle.url, thumbnailUrl },
-            "Extracted thumbnail URL during aggregation",
+            { url: rawArticle.url },
+            "Extracted and converted thumbnail to base64 during aggregation",
           );
         }
       }
@@ -234,7 +241,7 @@ export async function processFeedAggregation(
               author: rawArticle.author || null,
               externalId: rawArticle.externalId || null,
               score: rawArticle.score || null,
-              thumbnailUrl: thumbnailUrl || null,
+              thumbnailUrl: thumbnailBase64 || null,
               mediaUrl: rawArticle.mediaUrl || null,
               duration: rawArticle.duration || null,
               viewCount: rawArticle.viewCount || null,
@@ -259,7 +266,7 @@ export async function processFeedAggregation(
         author: rawArticle.author || null,
         externalId: rawArticle.externalId || null,
         score: rawArticle.score || null,
-        thumbnailUrl: thumbnailUrl || null,
+        thumbnailUrl: thumbnailBase64 || null,
         mediaUrl: rawArticle.mediaUrl || null,
         duration: rawArticle.duration || null,
         viewCount: rawArticle.viewCount || null,
@@ -381,17 +388,23 @@ export async function processArticleReload(articleId: number): Promise<void> {
 
   const processed = await processContent(extracted, rawArticle);
 
-  // Collect thumbnail if missing
-  let thumbnailUrl = rawArticle.thumbnailUrl;
-  if (!thumbnailUrl) {
-    const { extractThumbnailUrlFromPage } =
+  // Collect thumbnail if missing and convert to base64
+  let thumbnailBase64 = rawArticle.thumbnailUrl
+    ? await (
+        await import("../aggregators/base/utils")
+      ).convertThumbnailUrlToBase64(rawArticle.thumbnailUrl)
+    : null;
+
+  if (!thumbnailBase64) {
+    const { extractThumbnailUrlFromPageAndConvertToBase64 } =
       await import("../aggregators/base/utils");
-    thumbnailUrl =
-      (await extractThumbnailUrlFromPage(article.url)) || undefined;
-    if (thumbnailUrl) {
+    thumbnailBase64 =
+      (await extractThumbnailUrlFromPageAndConvertToBase64(article.url)) ||
+      null;
+    if (thumbnailBase64) {
       logger.debug(
-        { articleId, thumbnailUrl },
-        "Extracted thumbnail URL during reload",
+        { articleId },
+        "Extracted and converted thumbnail to base64 during reload",
       );
     }
   }
@@ -401,7 +414,7 @@ export async function processArticleReload(articleId: number): Promise<void> {
     .update(articles)
     .set({
       content: processed,
-      thumbnailUrl: thumbnailUrl || null,
+      thumbnailUrl: thumbnailBase64 || null,
       updatedAt: new Date(),
     })
     .where(eq(articles.id, articleId));

@@ -405,8 +405,46 @@ export async function extractImageFromUrl(
 }
 
 /**
+ * Convert a thumbnail URL to a base64 data URI.
+ * Fetches the image and converts it to a data URI format.
+ */
+export async function convertThumbnailUrlToBase64(
+  thumbnailUrl: string | null | undefined,
+): Promise<string | null> {
+  if (!thumbnailUrl) {
+    return null;
+  }
+
+  // If it's already a data URI, return as-is
+  if (thumbnailUrl.startsWith("data:")) {
+    return thumbnailUrl;
+  }
+
+  try {
+    const result = await fetchSingleImage(thumbnailUrl);
+    if (result.imageData && result.contentType) {
+      const base64 = result.imageData.toString("base64");
+      const dataUri = `data:${result.contentType};base64,${base64}`;
+      logger.debug(
+        { url: thumbnailUrl, contentType: result.contentType },
+        "Converted thumbnail URL to base64",
+      );
+      return dataUri;
+    }
+  } catch (error) {
+    logger.warn(
+      { error, url: thumbnailUrl },
+      "Failed to convert thumbnail URL to base64",
+    );
+  }
+
+  return null;
+}
+
+/**
  * Extract thumbnail URL from a web page by fetching it and parsing meta tags.
  * This is a lightweight version that only extracts the URL, not the image data.
+ * @deprecated Use extractThumbnailUrlFromPageAndConvertToBase64 instead for base64 storage
  */
 export async function extractThumbnailUrlFromPage(
   url: string,
@@ -477,6 +515,31 @@ export async function extractThumbnailUrlFromPage(
     return null;
   } catch (error) {
     logger.debug({ error, url }, "Failed to extract thumbnail URL from page");
+    return null;
+  }
+}
+
+/**
+ * Extract thumbnail from a web page and convert it to base64 data URI.
+ * This fetches the image and returns it as a base64 data URI for database storage.
+ */
+export async function extractThumbnailUrlFromPageAndConvertToBase64(
+  url: string,
+): Promise<string | null> {
+  try {
+    // First extract the thumbnail URL
+    const thumbnailUrl = await extractThumbnailUrlFromPage(url);
+    if (!thumbnailUrl) {
+      return null;
+    }
+
+    // Convert to base64
+    return await convertThumbnailUrlToBase64(thumbnailUrl);
+  } catch (error) {
+    logger.debug(
+      { error, url },
+      "Failed to extract and convert thumbnail to base64",
+    );
     return null;
   }
 }

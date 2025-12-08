@@ -128,11 +128,11 @@ import { BreadcrumbComponent } from "../core/components/breadcrumb.component";
   styles: [
     `
       .sidenav-container {
-        min-height: 100vh;
+        height: 100vh !important;
         display: flex;
         flex-direction: column;
-        overflow: visible !important;
-        position: relative;
+        position: relative !important;
+        overflow: hidden !important;
       }
 
       .sidenav {
@@ -140,8 +140,15 @@ import { BreadcrumbComponent } from "../core/components/breadcrumb.component";
         z-index: 1000 !important;
       }
 
-      ::ng-deep .mat-drawer {
+      ::ng-deep .sidenav-container.mat-drawer-container {
+        height: 100vh !important;
+        overflow: hidden !important;
+        position: relative !important;
+      }
+
+      ::ng-deep .sidenav-container .mat-drawer {
         z-index: 1000 !important;
+        position: fixed !important;
       }
 
       ::ng-deep .mat-drawer-backdrop {
@@ -153,12 +160,13 @@ import { BreadcrumbComponent } from "../core/components/breadcrumb.component";
         position: relative !important;
       }
 
-      mat-sidenav-content {
-        display: flex;
+      ::ng-deep .sidenav-container mat-sidenav-content {
+        display: flex !important;
         flex-direction: column;
-        min-height: 100vh;
-        overflow: visible !important;
-        height: auto !important;
+        height: 100vh !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        position: relative !important;
       }
 
       .content-container {

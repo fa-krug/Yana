@@ -271,7 +271,7 @@ export async function standardizeContentFormat(
                 "Skipping image extraction for invalid URL",
               );
             }
-            // Save thumbnail URL for non-data URIs (actual URLs)
+            // Save thumbnail URL (will be converted to base64 by aggregation service)
             if (imageResult) {
               article.thumbnailUrl = firstUrl;
               logger.debug({ url: firstUrl }, "Saved thumbnail URL");
