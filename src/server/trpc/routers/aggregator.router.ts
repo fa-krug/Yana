@@ -42,9 +42,21 @@ export const aggregatorRouter = router({
     const grouped = await getGroupedAggregatorMetadata(userId);
     // Add enabled property to match frontend Aggregator interface
     return {
-      managed: grouped.managed.map((a) => ({ ...a, enabled: true })),
-      social: grouped.social.map((a) => ({ ...a, enabled: true })),
-      custom: grouped.custom.map((a) => ({ ...a, enabled: true })),
+      managed: grouped.managed.map((a) => ({
+        ...a,
+        enabled: true,
+        defaultDailyLimit: a.defaultDailyLimit,
+      })),
+      social: grouped.social.map((a) => ({
+        ...a,
+        enabled: true,
+        defaultDailyLimit: a.defaultDailyLimit,
+      })),
+      custom: grouped.custom.map((a) => ({
+        ...a,
+        enabled: true,
+        defaultDailyLimit: a.defaultDailyLimit,
+      })),
     };
   }),
 

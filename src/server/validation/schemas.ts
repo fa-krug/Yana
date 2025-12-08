@@ -6,6 +6,7 @@
 
 import { z } from "zod";
 import { commonSchemas } from "../utils/validation";
+import { getAggregatorById } from "../aggregators/registry";
 
 // User schemas
 export const createUserSchema = z.object({
@@ -73,7 +74,7 @@ export const taskListSchema = z.object({
 });
 
 // Feed schemas
-export const createFeedSchema = z.object({
+const feedSchemaBase = z.object({
   name: z.string().min(1).max(255),
   identifier: z.string().min(1).max(500),
   feedType: z
@@ -85,7 +86,7 @@ export const createFeedSchema = z.object({
   addSourceFooter: z.boolean().default(true),
   skipDuplicates: z.boolean().default(true),
   useCurrentTimestamp: z.boolean().default(true),
-  dailyPostLimit: z.number().int().default(50),
+  dailyPostLimit: z.number().int().optional(),
   aggregatorOptions: z.record(z.string(), z.unknown()).default({}),
   aiTranslateTo: z.string().max(10).default(""),
   aiSummarize: z.boolean().default(false),
@@ -98,7 +99,23 @@ export const createFeedSchema = z.object({
   groupIds: z.array(z.number().int().positive()).optional(),
 });
 
-export const updateFeedSchema = createFeedSchema.partial();
+export const createFeedSchema = feedSchemaBase.transform((data) => {
+  // Set aggregator-specific default for dailyPostLimit
+  if (data.dailyPostLimit === undefined) {
+    const aggregator = getAggregatorById(data.aggregator);
+    data.dailyPostLimit = aggregator?.defaultDailyLimit ?? 50;
+  }
+  return data;
+});
+
+export const updateFeedSchema = feedSchemaBase.partial().transform((data) => {
+  // Set aggregator-specific default for dailyPostLimit if aggregator is provided
+  if (data.dailyPostLimit === undefined && data.aggregator) {
+    const aggregator = getAggregatorById(data.aggregator);
+    data.dailyPostLimit = aggregator?.defaultDailyLimit ?? 50;
+  }
+  return data;
+});
 
 // Article schemas
 export const markArticlesSchema = z.object({

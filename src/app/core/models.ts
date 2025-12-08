@@ -178,6 +178,7 @@ export interface Aggregator {
   icon?: string;
   feedType?: "article" | "youtube" | "podcast" | "reddit";
   enabled: boolean;
+  defaultDailyLimit?: number;
   // Frontend-friendly alias
   modulePath?: string;
 }

@@ -42,6 +42,7 @@ export class ArticleService {
   private totalCountSignal = signal<number>(0);
   private currentPageSignal = signal<number>(1);
   private pageSizeSignal = signal<number>(20);
+  private currentFeedIdSignal = signal<number | undefined>(undefined);
 
   readonly articles = this.articlesSignal.asReadonly();
   readonly loading = this.loadingSignal.asReadonly();
@@ -62,6 +63,15 @@ export class ArticleService {
     filters: ArticleFilters = {},
     silent: boolean = false,
   ): Observable<PaginatedResponse<Article>> {
+    // Clear articles immediately if feedId changes to prevent showing stale data
+    const previousFeedId = this.currentFeedIdSignal();
+    const newFeedId = filters.feedId;
+    if (previousFeedId !== newFeedId) {
+      this.articlesSignal.set([]);
+      this.totalCountSignal.set(0);
+    }
+    this.currentFeedIdSignal.set(newFeedId);
+
     if (!silent) {
       this.loadingSignal.set(true);
     }

@@ -155,7 +155,7 @@ function getYouTubeProxyUrl(videoId: string): string {
  * 3. If identifier is a handle, uses `search.list` API call
  * 4. Falls back to `channels.list(forUsername=...)` if direct handle lookup fails
  */
-async function resolveChannelId(
+export async function resolveChannelId(
   identifier: string,
   apiKey: string,
 ): Promise<{ channelId: string | null; error: string | null }> {
@@ -517,12 +517,12 @@ export class YouTubeAggregator extends BaseAggregator {
     );
 
     try {
-      // Get channel's uploads playlist ID
+      // Get channel's uploads playlist ID and thumbnail
       const channelResponse = await axios.get(
         "https://www.googleapis.com/youtube/v3/channels",
         {
           params: {
-            part: "contentDetails",
+            part: "contentDetails,snippet",
             id: channelId,
             key: apiKey,
           },
@@ -539,6 +539,19 @@ export class YouTubeAggregator extends BaseAggregator {
       const channel: YouTubeChannel = channelResponse.data.items[0];
       const uploadsPlaylistId =
         channel.contentDetails?.relatedPlaylists?.uploads;
+
+      // Store channel icon URL for later use in aggregation service
+      const snippet = (channelResponse.data.items[0] as any).snippet;
+      if (snippet?.thumbnails) {
+        const thumbnails = snippet.thumbnails;
+        // Get highest quality thumbnail (prefer high quality first)
+        for (const quality of ["high", "medium", "default"] as const) {
+          if (thumbnails[quality]?.url) {
+            (this as any).__channelIconUrl = thumbnails[quality].url;
+            break;
+          }
+        }
+      }
 
       let videos: YouTubeVideo[] = [];
 

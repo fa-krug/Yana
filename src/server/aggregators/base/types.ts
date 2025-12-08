@@ -37,6 +37,7 @@ export interface AggregatorMetadata {
   feedType?: "article" | "youtube" | "podcast" | "reddit";
   icon?: string;
   prefillName?: boolean;
+  defaultDailyLimit?: number;
 }
 
 export interface OptionDefinition {

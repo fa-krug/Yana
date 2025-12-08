@@ -2483,10 +2483,28 @@ export class FeedFormComponent implements OnInit, OnDestroy {
       this.selectedAggregator.set(agg);
 
       // Reset form fields when aggregator changes
-      this.feedFormGroup.patchValue({
+      const currentDailyLimit =
+        this.feedFormGroup.get("daily_post_limit")?.value;
+      const patchValue: any = {
         name: "",
         identifier: "",
-      });
+      };
+
+      // Set aggregator-specific default for daily_post_limit
+      const defaultLimit = agg?.defaultDailyLimit ?? 50;
+      // If it's the old default (50) or undefined, set to aggregator's default
+      if (
+        currentDailyLimit === 50 ||
+        currentDailyLimit === undefined ||
+        currentDailyLimit === null
+      ) {
+        patchValue.daily_post_limit = defaultLimit;
+      } else if (currentDailyLimit === 20 && defaultLimit !== 20) {
+        // If switching from Reddit (20) to another aggregator, use new default
+        patchValue.daily_post_limit = defaultLimit;
+      }
+
+      this.feedFormGroup.patchValue(patchValue);
 
       // Fetch aggregator detail for identifier configuration and options
       this.aggregatorService
@@ -2710,7 +2728,12 @@ export class FeedFormComponent implements OnInit, OnDestroy {
       skipDuplicates: this.feedFormGroup.get("skip_duplicates")?.value ?? true,
       useCurrentTimestamp:
         this.feedFormGroup.get("use_current_timestamp")?.value ?? true,
-      dailyPostLimit: this.feedFormGroup.get("daily_post_limit")?.value || 50,
+      dailyPostLimit:
+        this.feedFormGroup.get("daily_post_limit")?.value ||
+        (() => {
+          const agg = this.selectedAggregator();
+          return agg?.defaultDailyLimit ?? 50;
+        })(),
       aggregatorOptions: aggregatorOptions,
       // Only include AI features for non-managed aggregators
       aiTranslateTo: this.isManagedAggregator()
@@ -3186,7 +3209,12 @@ export class FeedFormComponent implements OnInit, OnDestroy {
       skipDuplicates: this.feedFormGroup.get("skip_duplicates")?.value ?? true,
       useCurrentTimestamp:
         this.feedFormGroup.get("use_current_timestamp")?.value ?? true,
-      dailyPostLimit: this.feedFormGroup.get("daily_post_limit")?.value || 50,
+      dailyPostLimit:
+        this.feedFormGroup.get("daily_post_limit")?.value ||
+        (() => {
+          const agg = this.selectedAggregator();
+          return agg?.defaultDailyLimit ?? 50;
+        })(),
       aggregatorOptions: aggregatorOptions,
       groupIds: groupIds,
       // Only include AI features for non-managed aggregators

@@ -39,6 +39,7 @@ export abstract class BaseAggregator {
   readonly selectorsToRemove: string[] = [];
   readonly waitForSelector?: string;
   readonly fetchTimeout: number = 30000;
+  readonly defaultDailyLimit: number = 50;
 
   /**
    * Initialize aggregator with feed and options.
@@ -275,8 +276,8 @@ export abstract class BaseAggregator {
     if (this.feed && this.feed.dailyPostLimit !== undefined) {
       return this.feed.dailyPostLimit;
     }
-    // Default to 50
-    return 50;
+    // Use aggregator's default
+    return this.defaultDailyLimit;
   }
 
   /**

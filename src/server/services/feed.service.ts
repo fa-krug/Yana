@@ -290,6 +290,18 @@ export async function createFeed(
   // Extract groupIds from data
   const { groupIds, ...feedData } = data;
 
+  // Set aggregator-specific default for dailyPostLimit if not provided
+  if (feedData.dailyPostLimit === undefined && feedData.aggregator) {
+    const aggregator = getAggregatorById(feedData.aggregator);
+    if (aggregator) {
+      feedData.dailyPostLimit = aggregator.defaultDailyLimit;
+    } else {
+      feedData.dailyPostLimit = 50; // Fallback if aggregator not found
+    }
+  } else if (feedData.dailyPostLimit === undefined) {
+    feedData.dailyPostLimit = 50; // Fallback if no aggregator specified
+  }
+
   // Filter out restricted options and AI features for managed aggregators
   const filteredFields = filterManagedFeedData(feedData, feedData.aggregator);
 
@@ -332,6 +344,12 @@ export async function createFeed(
     await setFeedGroups(feed.id, user.id, groupIds);
   }
 
+  // Queue icon fetch if icon is not set
+  if (!feed.icon) {
+    const { queueIconFetch } = await import("./icon.service");
+    await queueIconFetch(feed.id, false);
+  }
+
   logger.info({ feedId: feed.id, userId: user.id, groupIds }, "Feed created");
 
   return feed;
@@ -368,6 +386,15 @@ export async function updateFeed(
   // Update feed groups if provided
   if (groupIds !== undefined) {
     await setFeedGroups(id, user.id, groupIds);
+  }
+
+  // Queue icon fetch if icon is not set or if identifier changed (to refresh icon)
+  const identifierChanged =
+    feedData.identifier !== undefined &&
+    feedData.identifier !== existingFeed.identifier;
+  if (!updated.icon || identifierChanged) {
+    const { queueIconFetch } = await import("./icon.service");
+    await queueIconFetch(id, identifierChanged);
   }
 
   logger.info({ feedId: id, userId: user.id, groupIds }, "Feed updated");
@@ -513,7 +540,15 @@ export async function previewFeed(
       addSourceFooter: filteredData.addSourceFooter ?? true,
       skipDuplicates: false, // Don't skip duplicates during preview (like backend)
       useCurrentTimestamp: filteredData.useCurrentTimestamp ?? true,
-      dailyPostLimit: filteredData.dailyPostLimit ?? 50,
+      dailyPostLimit:
+        filteredData.dailyPostLimit ??
+        (() => {
+          if (filteredData.aggregator) {
+            const aggregator = getAggregatorById(filteredData.aggregator);
+            return aggregator?.defaultDailyLimit ?? 50;
+          }
+          return 50;
+        })(),
       aggregatorOptions:
         (filteredData.aggregatorOptions as Record<string, unknown>) || {},
       aiTranslateTo: filteredData.aiTranslateTo || "",

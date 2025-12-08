@@ -681,6 +681,7 @@ export class RedditAggregator extends BaseAggregator {
   override readonly identifierPlaceholder = "python";
   override readonly identifierEditable = true;
   override readonly prefillName = false;
+  override readonly defaultDailyLimit = 20;
 
   override readonly options = {
     sort_by: {

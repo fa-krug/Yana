@@ -133,22 +133,105 @@ export async function fetchRedditIcon(
 /**
  * Fetch YouTube channel icon.
  */
-export async function fetchYouTubeIcon(
-  identifier: string,
-): Promise<string | null> {
+export async function fetchYouTubeIcon(feed: Feed): Promise<string | null> {
   try {
-    logger.info({ identifier }, "Fetching YouTube icon");
-
-    // Placeholder - will be implemented with YouTube API
-    // For now, return null
-    logger.warn(
-      { identifier },
-      "YouTube icon fetching not yet fully implemented",
+    logger.info(
+      { identifier: feed.identifier, feedId: feed.id },
+      "Fetching YouTube icon",
     );
-    return null;
+
+    // Get API key from user settings
+    if (!feed.userId) {
+      logger.warn(
+        { feedId: feed.id },
+        "Feed has no userId, cannot fetch YouTube icon",
+      );
+      return null;
+    }
+
+    const { getUserSettings } = await import("./userSettings.service");
+    const settings = await getUserSettings(feed.userId);
+
+    if (
+      !settings.youtubeEnabled ||
+      !settings.youtubeApiKey ||
+      settings.youtubeApiKey.trim() === ""
+    ) {
+      logger.warn(
+        { feedId: feed.id },
+        "YouTube API key not configured, cannot fetch icon",
+      );
+      // Return default YouTube favicon as fallback
+      return "https://www.youtube.com/s/desktop/favicon.ico";
+    }
+
+    const apiKey = settings.youtubeApiKey;
+
+    // Resolve channel identifier to channel ID
+    const { resolveChannelId } = await import("../aggregators/youtube");
+    const { channelId, error } = await resolveChannelId(
+      feed.identifier,
+      apiKey,
+    );
+
+    if (error || !channelId) {
+      logger.warn(
+        { identifier: feed.identifier, error },
+        "Could not resolve YouTube channel ID for icon",
+      );
+      // Return default YouTube favicon as fallback
+      return "https://www.youtube.com/s/desktop/favicon.ico";
+    }
+
+    // Fetch channel thumbnail from YouTube API
+    try {
+      const response = await axios.get(
+        "https://www.googleapis.com/youtube/v3/channels",
+        {
+          params: {
+            part: "snippet",
+            id: channelId,
+            key: apiKey,
+          },
+          timeout: 10000,
+        },
+      );
+
+      const items = response.data?.items;
+      if (items && items.length > 0) {
+        const snippet = items[0].snippet;
+        const thumbnails = snippet?.thumbnails;
+
+        if (thumbnails) {
+          // Get highest quality thumbnail (prefer high quality first)
+          for (const quality of ["high", "medium", "default"] as const) {
+            if (thumbnails[quality]?.url) {
+              const iconUrl = thumbnails[quality].url;
+              logger.info(
+                { channelId, iconUrl, quality },
+                "Found YouTube channel icon",
+              );
+              return iconUrl;
+            }
+          }
+        }
+      }
+
+      logger.warn({ channelId }, "No thumbnail found for YouTube channel");
+      // Return default YouTube favicon as fallback
+      return "https://www.youtube.com/s/desktop/favicon.ico";
+    } catch (apiError) {
+      logger.warn(
+        { error: apiError, channelId },
+        "Error fetching YouTube channel thumbnail from API",
+      );
+      // Return default YouTube favicon as fallback
+      return "https://www.youtube.com/s/desktop/favicon.ico";
+    }
   } catch (error) {
-    logger.error({ error, identifier }, "Error fetching YouTube icon");
-    return null;
+    logger.error({ error, feedId: feed.id }, "Error fetching YouTube icon");
+    // Return default YouTube favicon as fallback
+    return "https://www.youtube.com/s/desktop/favicon.ico";
   }
 }
 
@@ -160,7 +243,7 @@ export async function fetchFeedIcon(feed: Feed): Promise<string | null> {
     if (feed.feedType === "reddit") {
       return await fetchRedditIcon(feed.identifier);
     } else if (feed.feedType === "youtube") {
-      return await fetchYouTubeIcon(feed.identifier);
+      return await fetchYouTubeIcon(feed);
     } else {
       // Regular RSS feed
       return await fetchFavicon(feed.identifier);
@@ -174,10 +257,13 @@ export async function fetchFeedIcon(feed: Feed): Promise<string | null> {
 /**
  * Queue icon fetch task (asynchronous).
  */
-export async function queueIconFetch(feedId: number): Promise<void> {
+export async function queueIconFetch(
+  feedId: number,
+  force: boolean = false,
+): Promise<void> {
   try {
-    await enqueueTask("fetch_icon", { feedId });
-    logger.info({ feedId }, "Icon fetch enqueued");
+    await enqueueTask("fetch_icon", { feedId, force });
+    logger.info({ feedId, force }, "Icon fetch enqueued");
   } catch (error) {
     logger.error({ error, feedId }, "Failed to enqueue icon fetch");
   }
@@ -186,7 +272,10 @@ export async function queueIconFetch(feedId: number): Promise<void> {
 /**
  * Process icon fetch (called by worker).
  */
-export async function processIconFetch(feedId: number): Promise<void> {
+export async function processIconFetch(
+  feedId: number,
+  force: boolean = false,
+): Promise<void> {
   const { db, feeds } = await import("../db");
   const { eq } = await import("drizzle-orm");
 
@@ -200,8 +289,8 @@ export async function processIconFetch(feedId: number): Promise<void> {
     throw new Error(`Feed with id ${feedId} not found`);
   }
 
-  // Skip if icon already exists
-  if (feed.icon) {
+  // Skip if icon already exists and not forcing refresh
+  if (feed.icon && !force) {
     logger.debug({ feedId }, "Feed already has icon, skipping");
     return;
   }
@@ -216,7 +305,7 @@ export async function processIconFetch(feedId: number): Promise<void> {
       .set({ icon: iconUrl, updatedAt: new Date() })
       .where(eq(feeds.id, feedId));
 
-    logger.info({ feedId, iconUrl }, "Feed icon updated");
+    logger.info({ feedId, iconUrl, force }, "Feed icon updated");
   } else {
     logger.warn({ feedId }, "No icon found for feed");
   }

@@ -47,8 +47,11 @@ async function processTask(task: TaskMessage["task"]): Promise<void> {
       }
 
       case "fetch_icon": {
-        const { feedId } = task.payload as { feedId: number };
-        await processIconFetch(feedId);
+        const { feedId, force } = task.payload as {
+          feedId: number;
+          force?: boolean;
+        };
+        await processIconFetch(feedId, force || false);
         result = { success: true };
         break;
       }

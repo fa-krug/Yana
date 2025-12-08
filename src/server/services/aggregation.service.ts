@@ -192,7 +192,7 @@ export async function processFeedAggregation(
   // Run aggregation
   const rawArticles = await aggregator.aggregate(articleLimit);
 
-  // Update feed icon if aggregator provides one (e.g., Reddit subreddit icon)
+  // Update feed icon if aggregator provides one (e.g., Reddit subreddit icon, YouTube channel icon)
   if ((aggregator as any).__subredditIconUrl) {
     try {
       const subredditIconUrl = (aggregator as any).__subredditIconUrl;
@@ -215,6 +215,33 @@ export async function processFeedAggregation(
       logger.warn(
         { error, feedId: feed.id },
         "Failed to update feed icon from subreddit",
+      );
+    }
+  }
+
+  // Update feed icon for YouTube channels
+  if ((aggregator as any).__channelIconUrl) {
+    try {
+      const channelIconUrl = (aggregator as any).__channelIconUrl;
+      if (channelIconUrl) {
+        const { convertThumbnailUrlToBase64 } =
+          await import("../aggregators/base/utils");
+        const iconBase64 = await convertThumbnailUrlToBase64(channelIconUrl);
+        if (iconBase64) {
+          await db
+            .update(feeds)
+            .set({ icon: iconBase64 })
+            .where(eq(feeds.id, feed.id));
+          logger.info(
+            { feedId: feed.id },
+            "Updated feed icon from YouTube channel thumbnail",
+          );
+        }
+      }
+    } catch (error) {
+      logger.warn(
+        { error, feedId: feed.id },
+        "Failed to update feed icon from YouTube channel",
       );
     }
   }

@@ -196,7 +196,7 @@ export const feedRouter = router({
     .mutation(async ({ input, ctx }) => {
       const user = getAuthenticatedUser(ctx);
       try {
-        const feed = await updateFeed(input.id, user, input.data);
+        const feed = await updateFeed(input.id, user, input["data"]);
         return await formatFeed(feed, user.id);
       } catch (error) {
         if (error instanceof NotFoundError) {

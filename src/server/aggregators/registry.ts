@@ -127,6 +127,7 @@ export function getAggregatorMetadata(id: string): AggregatorMetadata | null {
       feedType,
       icon,
       prefillName: instance.prefillName,
+      defaultDailyLimit: instance.defaultDailyLimit,
     };
   } catch (error) {
     logger.error(
