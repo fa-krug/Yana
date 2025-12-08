@@ -14,8 +14,6 @@ import {
   errorHandler,
   notFoundHandler,
 } from "../../../src/server/middleware/errorHandler";
-import { db, users } from "../../../src/server/db";
-import { eq } from "drizzle-orm";
 import express from "express";
 import { createTRPCProxyClient, httpLink } from "@trpc/client";
 import superjson from "superjson";
@@ -29,12 +27,6 @@ describe("Auth API Integration (tRPC)", () => {
 
   beforeEach(async () => {
     setupTestDb();
-    // Clean up any existing test users
-    try {
-      await db.delete(users).where(eq(users.username, "testuser"));
-    } catch (error) {
-      // Ignore errors if table doesn't exist yet or user doesn't exist
-    }
     cookies = [];
 
     app = express();
@@ -114,13 +106,7 @@ describe("Auth API Integration (tRPC)", () => {
 
   describe("auth.login", () => {
     it("should login with valid credentials", async () => {
-      // Clean up user if it exists
-      try {
-        await db.delete(users).where(eq(users.username, "testuser"));
-      } catch (error) {
-        // Ignore
-      }
-
+      // Create test user (database is reset in beforeEach)
       await createUser("testuser", "test@example.com", "password");
 
       const result = await trpcClient.auth.login.mutate({
@@ -134,13 +120,7 @@ describe("Auth API Integration (tRPC)", () => {
     });
 
     it("should reject invalid credentials", async () => {
-      // Clean up user if it exists
-      try {
-        await db.delete(users).where(eq(users.username, "testuser"));
-      } catch (error) {
-        // Ignore
-      }
-
+      // Create test user (database is reset in beforeEach)
       await createUser("testuser", "test@example.com", "password");
 
       await expect(
@@ -163,13 +143,7 @@ describe("Auth API Integration (tRPC)", () => {
 
   describe("auth.logout", () => {
     it("should logout successfully", async () => {
-      // Clean up user if it exists
-      try {
-        await db.delete(users).where(eq(users.username, "testuser"));
-      } catch (error) {
-        // Ignore
-      }
-
+      // Create test user (database is reset in beforeEach)
       await createUser("testuser", "test@example.com", "password");
 
       // Login first to establish session

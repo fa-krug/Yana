@@ -22,16 +22,7 @@ describe("Auth Router", () => {
 
   beforeEach(async () => {
     setupTestDb();
-    // Clean up test users - ensure database is ready
-    try {
-      await db.delete(users).where(eq(users.username, "testuser"));
-      // Small delay to ensure cleanup completes
-      await new Promise((resolve) => setTimeout(resolve, 10));
-    } catch (error) {
-      // Ignore errors if table doesn't exist yet
-    }
-
-    // Create test user
+    // Create test user (database is reset in setupTestDb)
     const passwordHash = await bcrypt.hash("testpassword", 10);
     try {
       const [user] = await db
