@@ -14,8 +14,6 @@ import {
   errorHandler,
   notFoundHandler,
 } from "../../../src/server/middleware/errorHandler";
-import { db, users } from "../../../src/server/db";
-import { eq } from "drizzle-orm";
 import { createTRPCProxyClient, httpLink } from "@trpc/client";
 import superjson from "superjson";
 import type { AppRouter } from "../../../src/server/trpc/router";
@@ -27,16 +25,6 @@ describe("tRPC Auth Integration", () => {
 
   beforeEach(async () => {
     setupTestDb();
-    // Clean up any existing test users - ensure database is ready first
-    try {
-      // Wait a bit for database to be ready
-      await new Promise((resolve) => setTimeout(resolve, 50));
-      await db.delete(users).where(eq(users.username, "testuser"));
-      // Wait a bit more to ensure cleanup completes
-      await new Promise((resolve) => setTimeout(resolve, 10));
-    } catch (error) {
-      // Ignore errors if table doesn't exist yet or user doesn't exist
-    }
     cookies = []; // Reset cookies for each test
 
     app = express();
@@ -121,14 +109,7 @@ describe("tRPC Auth Integration", () => {
 
   describe("auth.login", () => {
     it("should login with valid credentials", async () => {
-      // Ensure user doesn't exist first
-      try {
-        await db.delete(users).where(eq(users.username, "testuser"));
-      } catch (error) {
-        // Ignore
-      }
-
-      // Create test user
+      // Create test user (database is reset in beforeEach)
       await createUser("testuser", "test@example.com", "password123");
 
       const result = await trpcClient.auth.login.mutate({
@@ -142,13 +123,7 @@ describe("tRPC Auth Integration", () => {
     });
 
     it("should reject invalid credentials", async () => {
-      // Ensure user doesn't exist first
-      try {
-        await db.delete(users).where(eq(users.username, "testuser"));
-      } catch (error) {
-        // Ignore
-      }
-
+      // Create test user (database is reset in beforeEach)
       await createUser("testuser", "test@example.com", "password123");
 
       await expect(
@@ -171,14 +146,7 @@ describe("tRPC Auth Integration", () => {
 
   describe("auth.logout", () => {
     it("should logout successfully", async () => {
-      // Ensure user doesn't exist first
-      try {
-        await db.delete(users).where(eq(users.username, "testuser"));
-      } catch (error) {
-        // Ignore
-      }
-
-      // Create and login user first
+      // Create and login user first (database is reset in beforeEach)
       await createUser("testuser", "test@example.com", "password123");
 
       // Login first to establish session
