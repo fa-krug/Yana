@@ -4,7 +4,7 @@
 # =============================================================================
 
 # Build stage - compile Angular app and TypeScript
-FROM node:22-slim AS builder
+FROM node:23-slim AS builder
 
 WORKDIR /app
 
@@ -36,7 +36,7 @@ RUN npx esbuild src/server/db/migrate.ts --bundle --platform=node --format=esm -
 # =============================================================================
 # Production dependencies stage - separate for better caching
 # =============================================================================
-FROM node:22-slim AS deps
+FROM node:23-slim AS deps
 
 WORKDIR /app
 
