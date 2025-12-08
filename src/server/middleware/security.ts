@@ -17,7 +17,24 @@ export function setupSecurity(app: Express): void {
   // Helmet for security headers
   app.use(
     helmet({
-      contentSecurityPolicy: !isDevelopment,
+      contentSecurityPolicy: !isDevelopment
+        ? {
+            directives: {
+              defaultSrc: ["'self'"],
+              scriptSrc: ["'self'"],
+              styleSrc: ["'self'"],
+              fontSrc: ["'self'", "data:"],
+              imgSrc: ["'self'", "data:", "https:"],
+              connectSrc: ["'self'"],
+              manifestSrc: ["'self'"],
+              objectSrc: ["'none'"],
+              baseUri: ["'self'"],
+              formAction: ["'self'"],
+              frameAncestors: ["'none'"],
+              upgradeInsecureRequests: [],
+            },
+          }
+        : false,
       crossOriginEmbedderPolicy: false, // Allow embedding for iframes
     }),
   );
