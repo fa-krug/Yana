@@ -1,7 +1,7 @@
 /**
- * Drizzle ORM schema definitions matching Django models.
+ * Drizzle ORM schema definitions.
  *
- * This schema mirrors the Django database structure for migration compatibility.
+ * This schema mirrors the legacy database structure for migration compatibility.
  */
 
 import {
@@ -24,7 +24,7 @@ export const feedTypeEnum = [
 export type FeedType = (typeof feedTypeEnum)[number];
 
 /**
- * Users table (Django auth_user)
+ * Users table
  */
 export const users = sqliteTable(
   "users",

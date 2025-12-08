@@ -33,7 +33,7 @@ export function getAggregatorMetadataById(id: string): AggregatorMetadata {
 export { getAggregatorMetadata };
 
 /**
- * Get aggregator detail including identifier config and options (matching Django format).
+ * Get aggregator detail including identifier config and options.
  */
 export function getAggregatorDetail(id: string): {
   id: string;
@@ -47,7 +47,7 @@ export function getAggregatorDetail(id: string): {
 } {
   const aggregator = getAggregatorById(id);
   if (!aggregator) {
-    // Return default values if aggregator not found (matching Django behavior)
+    // Return default values if aggregator not found
     return {
       id,
       identifier_type: "url",
@@ -62,7 +62,7 @@ export function getAggregatorDetail(id: string): {
 
   const metadata = getAggregatorMetadata(id);
 
-  // Convert options to format matching Django (list of lists for choices)
+  // Convert options to format (list of lists for choices)
   const optionsDict: Record<string, unknown> = {};
   if (aggregator.options) {
     for (const [key, def] of Object.entries(aggregator.options)) {
@@ -81,7 +81,7 @@ export function getAggregatorDetail(id: string): {
         optionDef["max"] = def.max;
       }
       if (def.choices) {
-        // Convert to list of lists format like Django
+        // Convert to list of lists format
         optionDef["choices"] = def.choices.map((c) => [
           String(c[0]),
           String(c[1]),

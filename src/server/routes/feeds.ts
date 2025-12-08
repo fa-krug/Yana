@@ -69,7 +69,7 @@ router.get(
       ...pagination,
     });
 
-    // Enrich feeds with article counts (matching Django behavior)
+    // Enrich feeds with article counts
     const enrichedFeeds = await Promise.all(
       result.feeds.map(async (feed) => {
         const articleCount = await getFeedArticleCount(feed.id);

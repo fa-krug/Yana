@@ -208,7 +208,7 @@ export interface Statistics {
   articlesThisWeek: number;
 }
 
-// Pagination - matches Django Ninja PageNumberPagination format
+// Pagination - matches REST API PageNumberPagination format
 export interface PaginatedResponse<T> {
   items: T[];
   count: number;

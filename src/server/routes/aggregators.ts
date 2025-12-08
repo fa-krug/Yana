@@ -51,7 +51,7 @@ router.get(
 
 /**
  * GET /api/v1/aggregators/:id
- * Get aggregator detail including identifier config and options (matching Django format)
+ * Get aggregator detail including identifier config and options
  */
 router.get(
   "/:id",

@@ -277,7 +277,7 @@ export class ChangePasswordDialogComponent {
   private extractErrorMessage(error: any): string {
     // Try to extract detailed error message from various error response formats
 
-    // Django Ninja validation errors (422) - format: { "detail": [...] }
+    // API validation errors (422) - format: { "detail": [...] }
     if (error?.error?.detail) {
       if (Array.isArray(error.error.detail)) {
         // Format: [{"loc": ["body", "field"], "msg": "message", "type": "type"}]

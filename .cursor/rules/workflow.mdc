@@ -95,7 +95,7 @@ chore: update dependencies
 
 Use scope to indicate the area of the codebase affected:
 - `api`, `api_v1`: API-related changes
-- `core`: Core Django app changes
+- `core`: Core app changes
 - `aggregators`: Aggregator plugin changes
 - `frontend`: Frontend changes
 - `deps`: Dependency updates

@@ -72,7 +72,7 @@ router.get(
 /**
  * GET /api/v1/articles/:id
  * Get article details with navigation and enrichment
- * Auto-marks article as read when viewed (matching Django behavior)
+ * Auto-marks article as read when viewed
  */
 router.get(
   "/:id",
@@ -98,7 +98,7 @@ router.get(
       logger.debug({ articleId }, "Enriching article data");
       const enrichment = await enrichArticleData(article, req.user!);
 
-      // Mark as read automatically when viewing (matching Django behavior)
+      // Mark as read automatically when viewing
       logger.debug({ articleId }, "Marking article as read");
       await markArticleReadOnView(articleId, req.user!);
 

@@ -53,9 +53,9 @@ services:
       # First Run: Create Superuser
       # ============================================
       # Uncomment and set these to create an admin user on first run
-      # - DJANGO_SUPERUSER_USERNAME=admin
-      # - DJANGO_SUPERUSER_EMAIL=admin@example.com
-      # - DJANGO_SUPERUSER_PASSWORD=secure-password-here
+      # - SUPERUSER_USERNAME=admin
+      # - SUPERUSER_EMAIL=admin@example.com
+      # - SUPERUSER_PASSWORD=secure-password-here
       
     volumes:
       # Persist database and application data
@@ -126,9 +126,9 @@ networks:
 # LOG_LEVEL=info
 #
 # Optional for first run:
-# DJANGO_SUPERUSER_USERNAME=admin
-# DJANGO_SUPERUSER_EMAIL=admin@example.com
-# DJANGO_SUPERUSER_PASSWORD=secure-password
+# SUPERUSER_USERNAME=admin
+# SUPERUSER_EMAIL=admin@example.com
+# SUPERUSER_PASSWORD=secure-password
 #
 # ============================================
 # Data Persistence

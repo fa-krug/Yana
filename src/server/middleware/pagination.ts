@@ -38,7 +38,7 @@ export function parsePagination<T extends Request = Request>(
 
 /**
  * Format paginated response.
- * Returns Django Ninja PageNumberPagination compatible format.
+ * Returns REST API PageNumberPagination compatible format.
  */
 export function formatPaginatedResponse<T>(
   data: T[],

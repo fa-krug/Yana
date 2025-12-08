@@ -1,5 +1,5 @@
 /**
- * HTTP interceptor to handle CSRF tokens for Django backend.
+ * HTTP interceptor to handle CSRF tokens.
  * Reads CSRF token from cookies and includes it in request headers.
  */
 
@@ -9,7 +9,7 @@ import { isPlatformBrowser } from "@angular/common";
 
 /**
  * Get CSRF token from cookies.
- * Django sets the CSRF token in a cookie named 'csrftoken'.
+ * The CSRF token is set in a cookie named 'csrftoken'.
  * Returns null on server-side (SSR).
  */
 function getCsrfToken(): string | null {

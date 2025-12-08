@@ -34,9 +34,9 @@ services:
       - LOG_LEVEL=${LOG_LEVEL:-info}
       
       # Optional: Create superuser on first run
-      - DJANGO_SUPERUSER_USERNAME=${DJANGO_SUPERUSER_USERNAME:-}
-      - DJANGO_SUPERUSER_EMAIL=${DJANGO_SUPERUSER_EMAIL:-}
-      - DJANGO_SUPERUSER_PASSWORD=${DJANGO_SUPERUSER_PASSWORD:-}
+      - SUPERUSER_USERNAME=${SUPERUSER_USERNAME:-}
+      - SUPERUSER_EMAIL=${SUPERUSER_EMAIL:-}
+      - SUPERUSER_PASSWORD=${SUPERUSER_PASSWORD:-}
     volumes:
       # Persist database and data
       - yana-data:/app/data
