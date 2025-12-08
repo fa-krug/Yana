@@ -126,6 +126,7 @@ export function getAggregatorMetadata(id: string): AggregatorMetadata | null {
       identifierEditable: instance.identifierEditable,
       feedType,
       icon,
+      prefillName: instance.prefillName,
     };
   } catch (error) {
     logger.error(

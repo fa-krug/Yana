@@ -78,56 +78,65 @@ try {
     process.exit(0);
   }
 
-  // Angular Service Worker uses a different structure
-  // We need to find where it handles fetch events and inject our bypass code
-  // The Angular SW typically has: self.addEventListener('fetch', (event) => { ... })
-  // or uses an internal handler function
+  // PATCHED: Safari bypass for external image requests
+  // Safari has issues with service workers handling external requests, causing 504 errors.
+  // This patch adds a fetch event listener that bypasses external image requests,
+  // allowing the browser to handle them directly without service worker interception.
 
-  // Try multiple patterns to find the fetch handler
-  const patterns = [
-    // Pattern 1: Direct addEventListener with arrow function
-    /(self\.addEventListener\(['"]fetch['"],\s*\([^)]*\)\s*=>\s*\{)/,
-    // Pattern 2: Direct addEventListener with function
-    /(self\.addEventListener\(['"]fetch['"],\s*function\s*\([^)]*\)\s*\{)/,
-    // Pattern 3: Angular SW might wrap it differently
-    /(addEventListener\(['"]fetch['"],\s*\([^)]*\)\s*=>\s*\{)/,
-  ];
-
-  const timeoutHandler = `
-  // PATCHED: Improved timeout handling for external requests in Safari
-  // The dataGroups configuration handles most cases, but this adds extra safety
-  // to ensure external image requests don't cause 504 timeouts in Safari
-  // Note: The Service Worker will still handle and cache these requests when successful
-`;
-
-  let patched = false;
-  for (const pattern of patterns) {
-    if (pattern.test(content)) {
-      content = content.replace(pattern, `$1${timeoutHandler}`);
-      patched = true;
-      break;
+  const safariBypassCode = `
+// PATCHED: Safari bypass for external image requests (prevents 504 errors)
+// Safari has known issues with service workers handling external requests, causing 504 timeouts.
+// Since we removed the external-images dataGroup from ngsw-config.json, Angular's service worker
+// shouldn't handle external requests. This patch adds an extra safety layer to ensure external
+// image requests are never intercepted by the service worker.
+self.addEventListener('fetch', function(event) {
+  try {
+    const url = event.request.url;
+    
+    // Only process GET requests (images are always GET)
+    if (event.request.method !== 'GET') {
+      return;
     }
+    
+    // Check if this is an external request (different origin)
+    let isExternal = false;
+    try {
+      const requestUrl = new URL(url);
+      isExternal = requestUrl.origin !== self.location.origin;
+    } catch (e) {
+      // If URL parsing fails, assume it's external if it starts with http:// or https://
+      isExternal = url.startsWith('http://') || url.startsWith('https://');
+    }
+    
+    if (!isExternal) {
+      return; // Let Angular handle same-origin requests normally
+    }
+    
+    // Check if this is likely an image request
+    const imagePattern = /\\.(jpg|jpeg|png|gif|webp|svg|avif|apng|bmp|ico)(\\?|#|$)/i;
+    const isImage = imagePattern.test(url) ||
+                   event.request.destination === 'image';
+    
+    // For external image requests, explicitly bypass the service worker
+    // by not calling event.respondWith(), allowing the browser to handle it directly
+    // This prevents 504 timeout errors in Safari
+    if (isImage) {
+      // Don't respond - let browser handle it directly
+      // This ensures no service worker interception occurs
+      return;
+    }
+  } catch (e) {
+    // If anything goes wrong, let the browser handle it normally
+    return;
   }
-
-  // If no standard pattern found, try to inject at the very beginning of the file
-  // by wrapping the entire Service Worker code
-  if (!patched) {
-    // Angular Service Worker might be minified or use a different structure
-    // In this case, we'll add a global fetch interceptor before everything else
-    const globalTimeoutHandler = `
-// PATCHED: Improved timeout handling for external requests in Safari
-// The dataGroups configuration in ngsw-config.json handles external images with
-// proper timeout settings. This comment serves as a marker that the Service Worker
-// has been processed and is ready for Safari.
-// The "external-images" dataGroup uses freshness strategy with 5s timeout,
-// which should prevent 504 errors while still allowing caching when successful.
-
+}, true); // Use capture phase to ensure this runs before Angular's handler
 `;
-    // Inject at the beginning of the file (after any initial comments/whitespace)
-    content = globalTimeoutHandler + content;
-    patched = true;
-    console.log("Used global timeout handler method for patching.");
-  }
+
+  // Inject the bypass code at the very beginning of the file
+  // This ensures it runs before Angular's service worker initialization
+  content = safariBypassCode + "\n" + content;
+  patched = true;
+  console.log("Injected Safari bypass for external image requests.");
 
   writeFileSync(SERVICE_WORKER_FILE, content, "utf-8");
   console.log(

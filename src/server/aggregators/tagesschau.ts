@@ -22,6 +22,8 @@ export class TagesschauAggregator extends FullWebsiteAggregator {
   override readonly url = "https://www.tagesschau.de/xml/rss2/";
   override readonly description =
     "Tagesschau.de - German public broadcasting news website providing national and international news coverage.";
+  override readonly prefillName = true;
+  override readonly identifierEditable = false;
 
   override readonly waitForSelector = "p.textabsatz";
   override readonly selectorsToRemove = [

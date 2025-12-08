@@ -19,6 +19,8 @@ export class FeedContentAggregator extends BaseAggregator {
   override readonly url: string = "";
   override readonly description: string =
     "RSS feeds with full content already included in the feed.";
+  override readonly identifierEditable: boolean = true;
+  override readonly prefillName: boolean = false;
 
   async aggregate(articleLimit?: number): Promise<RawArticle[]> {
     const aggregateStart = Date.now();

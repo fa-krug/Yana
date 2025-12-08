@@ -36,6 +36,7 @@ export interface AggregatorMetadata {
   identifierEditable?: boolean;
   feedType?: "article" | "youtube" | "podcast" | "reddit";
   icon?: string;
+  prefillName?: boolean;
 }
 
 export interface OptionDefinition {

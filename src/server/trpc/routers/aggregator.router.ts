@@ -69,6 +69,7 @@ export const aggregatorRouter = router({
           identifierChoices: detail.identifier_choices || undefined,
           identifierEditable: detail.identifier_editable,
           options: detail.options,
+          prefillName: detail.prefill_name,
         };
       } catch (error) {
         if (error instanceof NotFoundError) {

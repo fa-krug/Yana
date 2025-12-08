@@ -644,7 +644,10 @@ import { GroupService } from "../../core/services/group.service";
                           @let option = optionEntry[1];
                           @let fieldName = "option_" + optionKey;
 
-                          @if (option.type === "boolean") {
+                          @if (
+                            feedFormGroup.get(fieldName) &&
+                            option.type === "boolean"
+                          ) {
                             <mat-checkbox [formControlName]="fieldName">
                               {{ option.label }}
                             </mat-checkbox>
@@ -653,7 +656,10 @@ import { GroupService } from "../../core/services/group.service";
                                 {{ option.helpText }}
                               </p>
                             }
-                          } @else if (option.type === "choice") {
+                          } @else if (
+                            feedFormGroup.get(fieldName) &&
+                            option.type === "choice"
+                          ) {
                             <mat-form-field
                               appearance="outline"
                               class="full-width"
@@ -676,7 +682,10 @@ import { GroupService } from "../../core/services/group.service";
                                 <mat-hint>{{ option.helpText }}</mat-hint>
                               }
                             </mat-form-field>
-                          } @else if (option.type === "password") {
+                          } @else if (
+                            feedFormGroup.get(fieldName) &&
+                            option.type === "password"
+                          ) {
                             <mat-form-field
                               appearance="outline"
                               class="full-width"
@@ -692,7 +701,9 @@ import { GroupService } from "../../core/services/group.service";
                               }
                             </mat-form-field>
                           } @else if (
-                            option.type === "integer" || option.type === "float"
+                            feedFormGroup.get(fieldName) &&
+                            (option.type === "integer" ||
+                              option.type === "float")
                           ) {
                             <mat-form-field
                               appearance="outline"
@@ -715,7 +726,7 @@ import { GroupService } from "../../core/services/group.service";
                                 <mat-hint>{{ option.helpText }}</mat-hint>
                               }
                             </mat-form-field>
-                          } @else {
+                          } @else if (feedFormGroup.get(fieldName)) {
                             @let widgetType = option.widget || "text";
                             @if (widgetType === "textarea") {
                               <mat-form-field
@@ -839,7 +850,6 @@ import { GroupService } from "../../core/services/group.service";
                         matStepperPrevious
                         class="back-button"
                       >
-                        <mat-icon>arrow_back</mat-icon>
                         Back to Edit
                       </button>
                       <button
@@ -929,7 +939,6 @@ import { GroupService } from "../../core/services/group.service";
                         [disabled]="creating()"
                         class="back-button"
                       >
-                        <mat-icon>edit</mat-icon>
                         Back to Edit
                       </button>
                       <button
@@ -2485,8 +2494,12 @@ export class FeedFormComponent implements OnInit, OnDestroy {
         .subscribe((detail) => {
           this.aggregatorDetail.set(detail);
 
-          // Set default name from aggregator
-          if (agg && agg.name) {
+          // Set default name from aggregator (if prefillName is enabled)
+          // Skip prefilling if prefillName is explicitly false
+          // Default to true if undefined (backward compatibility)
+          const shouldPrefillName =
+            detail.prefillName === undefined || detail.prefillName === true;
+          if (agg && agg.name && shouldPrefillName) {
             this.feedFormGroup.patchValue({ name: agg.name });
           }
 

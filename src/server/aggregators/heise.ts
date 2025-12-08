@@ -21,6 +21,8 @@ export class HeiseAggregator extends FullWebsiteAggregator {
   override readonly url = "https://www.heise.de/rss/heise.rdf";
   override readonly description =
     "Heise.de - German technology news website covering IT, science, and digital culture.";
+  override readonly prefillName = true;
+  override readonly identifierEditable = false;
 
   override readonly waitForSelector = "#meldung, .StoryContent";
   override readonly selectorsToRemove = [

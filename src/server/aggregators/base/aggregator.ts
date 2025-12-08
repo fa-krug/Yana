@@ -32,6 +32,7 @@ export abstract class BaseAggregator {
   readonly identifierPlaceholder: string = "";
   readonly identifierChoices?: Array<[string, string]>;
   readonly identifierEditable: boolean = false;
+  readonly prefillName: boolean = true;
 
   // Optional configuration
   readonly options?: OptionsSchema;

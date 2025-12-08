@@ -19,6 +19,7 @@ export class CaschysBlogAggregator extends FullWebsiteAggregator {
   override readonly url = "https://stadt-bremerhaven.de/feed/";
   override readonly description =
     "Caschys Blog - German technology blog covering tech news and reviews.";
+  override readonly prefillName = true;
 
   override readonly waitForSelector = ".entry-inner";
   override readonly selectorsToRemove = [

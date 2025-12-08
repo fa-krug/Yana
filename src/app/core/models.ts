@@ -209,6 +209,7 @@ export interface AggregatorDetail {
   identifierChoices?: string[][];
   identifierEditable?: boolean;
   options: Record<string, AggregatorOption>;
+  prefillName?: boolean;
 }
 
 // Statistics models

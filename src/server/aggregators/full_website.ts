@@ -20,6 +20,8 @@ export class FullWebsiteAggregator extends BaseAggregator {
   override readonly url: string = "https://example.com/feed.xml";
   override readonly description: string =
     "Generic aggregator for any RSS feed from news sites and blogs.";
+  override readonly identifierEditable: boolean = true;
+  override readonly prefillName: boolean = false;
 
   override readonly options = {
     exclude_selectors: {

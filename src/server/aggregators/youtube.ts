@@ -399,6 +399,7 @@ export class YouTubeAggregator extends BaseAggregator {
     "Enter the YouTube channel handle (e.g., '@mkbhd'), channel ID (UC...), or channel URL.";
   override readonly identifierPlaceholder = "@mkbhd";
   override readonly identifierEditable = true;
+  override readonly prefillName = false;
 
   /**
    * Get YouTube API key from user settings.

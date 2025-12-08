@@ -241,6 +241,7 @@ export class PodcastAggregator extends BaseAggregator {
   override readonly identifierType = "url" as const;
   override readonly identifierLabel = "Podcast Feed URL";
   override readonly identifierDescription = "RSS feed URL for the podcast";
+  override readonly prefillName = false;
 
   override async aggregate(articleLimit?: number): Promise<RawArticle[]> {
     if (!this.feed) {

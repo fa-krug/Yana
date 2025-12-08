@@ -35,16 +35,6 @@
         "maxAge": "0u",
         "timeout": "0u"
       }
-    },
-    {
-      "name": "external-images",
-      "urls": ["https://**", "http://**"],
-      "cacheConfig": {
-        "strategy": "freshness",
-        "maxAge": "7d",
-        "maxSize": 200,
-        "timeout": "5s"
-      }
     }
   ]
 }

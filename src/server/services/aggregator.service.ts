@@ -44,6 +44,7 @@ export function getAggregatorDetail(id: string): {
   identifier_choices: Array<[string, string]> | null;
   identifier_editable: boolean;
   options: Record<string, unknown>;
+  prefill_name?: boolean;
 } {
   const aggregator = getAggregatorById(id);
   if (!aggregator) {
@@ -57,6 +58,7 @@ export function getAggregatorDetail(id: string): {
       identifier_choices: null,
       identifier_editable: false,
       options: {},
+      prefill_name: true,
     };
   }
 
@@ -106,6 +108,7 @@ export function getAggregatorDetail(id: string): {
       : null,
     identifier_editable: metadata?.identifierEditable || false,
     options: optionsDict,
+    prefill_name: metadata?.prefillName ?? true,
   };
 }
 

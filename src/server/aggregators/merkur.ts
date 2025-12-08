@@ -20,13 +20,14 @@ export class MerkurAggregator extends FullWebsiteAggregator {
   override readonly url = "https://www.merkur.de/rssfeed.rdf";
   override readonly description =
     "Merkur.de - German news website covering regional and national news.";
+  override readonly prefillName = true;
+  override readonly identifierEditable = false;
 
   override readonly identifierType = "url";
   override readonly identifierLabel = "Feed Selection";
   override readonly identifierDescription =
     "Select the Merkur feed to aggregate";
   override readonly identifierPlaceholder = "";
-  override readonly identifierEditable = true;
   override readonly identifierChoices: Array<[string, string]> = [
     ["https://www.merkur.de/rssfeed.rdf", "Main Feed"],
     [

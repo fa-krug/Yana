@@ -181,6 +181,7 @@ export class AggregatorService {
         identifierChoices: detail.identifierChoices,
         identifierEditable: detail.identifierEditable,
         options: detail.options as Record<string, AggregatorOption>,
+        prefillName: detail.prefillName,
       })),
       catchError((error) => {
         console.error("Error loading aggregator detail:", error);
@@ -193,6 +194,7 @@ export class AggregatorService {
           identifierChoices: undefined,
           identifierEditable: false,
           options: {},
+          prefillName: true,
         } as AggregatorDetail);
       }),
     );

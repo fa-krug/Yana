@@ -680,6 +680,7 @@ export class RedditAggregator extends BaseAggregator {
     "Enter the subreddit name (e.g., 'python', 'programming'). You can also use 'r/python' or a full Reddit URL.";
   override readonly identifierPlaceholder = "python";
   override readonly identifierEditable = true;
+  override readonly prefillName = false;
 
   override readonly options = {
     sort_by: {

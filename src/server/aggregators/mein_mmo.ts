@@ -22,6 +22,8 @@ export class MeinMmoAggregator extends FullWebsiteAggregator {
   override readonly url = "https://mein-mmo.de/feed/";
   override readonly description =
     "Mein-MMO.de - German gaming news website covering MMO and online gaming topics.";
+  override readonly prefillName = true;
+  override readonly identifierEditable = false;
 
   override readonly waitForSelector = "div.gp-entry-content";
   override readonly selectorsToRemove = [
