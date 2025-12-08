@@ -145,29 +145,26 @@ export class WorkerPool {
   private spawnWorker(): void {
     let worker: ChildProcess;
     const dirname = getDirname();
-
-    // In both development and production, use tsx to run the TypeScript file directly
-    // In production, source files are in /app/src/server/workers
-    // In development, they're in the actual source location
-    let workerPath: string;
-    if (isDevelopment) {
-      workerPath = path.join(dirname, "worker.ts");
-    } else {
-      // In production, use the source files we copied
-      workerPath = path.join(process.cwd(), "src/server/workers/worker.ts");
-    }
-
-    // Find tsx executable in node_modules
     const projectRoot = process.cwd();
-    const tsxBin = path.join(projectRoot, "node_modules", ".bin", "tsx");
 
-    // Fallback: use npx tsx if local binary doesn't exist
-    if (!fs.existsSync(tsxBin)) {
-      worker = spawn("npx", ["tsx", workerPath], {
-        stdio: ["inherit", "inherit", "inherit", "ipc"],
-      });
+    if (isDevelopment) {
+      // Development: use tsx to run TypeScript directly
+      const workerPath = path.join(dirname, "worker.ts");
+      const tsxBin = path.join(projectRoot, "node_modules", ".bin", "tsx");
+
+      if (fs.existsSync(tsxBin)) {
+        worker = spawn(tsxBin, [workerPath], {
+          stdio: ["inherit", "inherit", "inherit", "ipc"],
+        });
+      } else {
+        worker = spawn("npx", ["tsx", workerPath], {
+          stdio: ["inherit", "inherit", "inherit", "ipc"],
+        });
+      }
     } else {
-      worker = spawn(tsxBin, [workerPath], {
+      // Production: use pre-bundled worker.mjs
+      const workerPath = path.join(projectRoot, "dist/scripts/worker.mjs");
+      worker = fork(workerPath, [], {
         stdio: ["inherit", "inherit", "inherit", "ipc"],
       });
     }

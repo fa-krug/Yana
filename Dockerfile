@@ -3,7 +3,7 @@
 # Strategy: Multi-stage build with layer caching optimization
 # =============================================================================
 
-# Build stage - compile native modules and Angular app
+# Build stage - compile Angular app and TypeScript
 FROM node:22-slim AS builder
 
 WORKDIR /app
@@ -23,7 +23,19 @@ COPY . .
 
 RUN npm run build
 
+# Bundle standalone scripts for production (migration, superuser, worker)
+# External dependencies are resolved from node_modules at runtime
+RUN npx esbuild src/server/db/migrate.ts --bundle --platform=node --format=esm --outfile=dist/scripts/migrate.mjs \
+    --external:better-sqlite3 --external:bcrypt --external:drizzle-orm && \
+    npx esbuild src/server/scripts/createSuperuser.ts --bundle --platform=node --format=esm --outfile=dist/scripts/createSuperuser.mjs \
+    --external:better-sqlite3 --external:bcrypt --external:drizzle-orm && \
+    npx esbuild src/server/workers/worker.ts --bundle --platform=node --format=esm --outfile=dist/scripts/worker.mjs \
+    --external:better-sqlite3 --external:bcrypt --external:drizzle-orm --external:playwright --external:playwright-core \
+    --external:sharp --external:cheerio --external:rss-parser --external:pino --external:pino-pretty --external:axios
+
+# =============================================================================
 # Production dependencies stage - separate for better caching
+# =============================================================================
 FROM node:22-slim AS deps
 
 WORKDIR /app
@@ -43,37 +55,45 @@ FROM node:22-slim AS runtime
 
 WORKDIR /app
 
+# OCI Labels
+LABEL org.opencontainers.image.title="Yana" \
+      org.opencontainers.image.description="Personal feed aggregator with SSR" \
+      org.opencontainers.image.source="https://github.com/your-org/yana"
+
 # Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive \
     NODE_ENV=production \
     PORT=3000 \
     DATABASE_URL=/app/data/db.sqlite3 \
-    PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
     PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 \
-    CHROMIUM_PATH=/usr/bin/chromium
+    PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium
 
-# Copy production dependencies and package files
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/package*.json ./
+# Install system dependencies, chromium, and tini in a single layer
+# tini provides proper PID 1 signal handling
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    chromium \
+    tini \
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd -r -u 1001 -g root nodejs \
+    && mkdir -p /app/data \
+    && chown -R nodejs:root /app
+
+# Copy production dependencies
+COPY --from=deps --chown=nodejs:root /app/node_modules ./node_modules
+COPY --from=deps --chown=nodejs:root /app/package*.json ./
 
 # Copy built application files
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/src/server ./src/server
-COPY --from=builder /app/docker-entrypoint.sh ./
+COPY --from=builder --chown=nodejs:root /app/dist ./dist
+COPY --from=builder --chown=nodejs:root /app/docker-entrypoint.sh ./
 
-# Register chromium with Playwright and create non-root user in single layer
-RUN npx playwright install chromium && \
-    useradd -r -u 1001 nodejs && \
-    mkdir -p /app/data && \
-    chown -R nodejs:nodejs /app && \
-    chmod +x ./docker-entrypoint.sh
+RUN chmod +x ./docker-entrypoint.sh
 
 USER nodejs
 
 EXPOSE 3000
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3000/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+  CMD node -e "const h=require('http');h.get('http://localhost:3000/api/health',r=>{r.on('data',()=>{});r.on('end',()=>process.exit(r.statusCode===200?0:1))}).on('error',()=>process.exit(1))"
 
-ENTRYPOINT ["./docker-entrypoint.sh"]
-CMD ["node", "dist/server/server.mjs"]
+# Use tini as init system for proper signal handling
+ENTRYPOINT ["/usr/bin/tini", "--", "./docker-entrypoint.sh"]
