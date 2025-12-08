@@ -420,7 +420,10 @@ export class LoginComponent {
     this.authService.login(credentials).subscribe({
       next: (response: LoginResponse | null) => {
         if (response?.success) {
-          this.snackBar.open("Login successful!", "Close", { duration: 3000 });
+          this.snackBar.open("Login successful!", "Close", {
+            duration: 3000,
+            panelClass: ["success-snackbar"],
+          });
 
           // Get return URL from query params or default to '/'
           const returnUrl = this.route.snapshot.queryParams["returnUrl"] || "/";

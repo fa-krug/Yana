@@ -1240,7 +1240,10 @@ export class ArticleDetailComponent implements OnInit, OnDestroy {
       if (result) {
         this.articleService.deleteArticle(article.id).subscribe({
           next: () => {
-            this.snackBar.open("Article deleted", "Close", { duration: 3000 });
+            this.snackBar.open("Article deleted", "Close", {
+              duration: 3000,
+              panelClass: ["success-snackbar"],
+            });
             this.goBack();
           },
           error: (error) => {
@@ -1290,6 +1293,7 @@ export class ArticleDetailComponent implements OnInit, OnDestroy {
                       "Close",
                       {
                         duration: 2000,
+                        panelClass: ["success-snackbar"],
                       },
                     );
                   },

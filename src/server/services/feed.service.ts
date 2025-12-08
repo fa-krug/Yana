@@ -599,6 +599,29 @@ export async function previewFeed(
           },
           "Processing article for preview",
         );
+
+        // Collect thumbnail if missing and convert to base64 (same as normal aggregation)
+        let thumbnailBase64 = article.thumbnailUrl
+          ? await (
+              await import("../aggregators/base/utils")
+            ).convertThumbnailUrlToBase64(article.thumbnailUrl)
+          : null;
+
+        if (!thumbnailBase64) {
+          const { extractThumbnailUrlFromPageAndConvertToBase64 } =
+            await import("../aggregators/base/utils");
+          thumbnailBase64 =
+            (await extractThumbnailUrlFromPageAndConvertToBase64(
+              article.url,
+            )) || null;
+          if (thumbnailBase64) {
+            logger.debug(
+              { url: article.url },
+              "Extracted and converted thumbnail to base64 during preview",
+            );
+          }
+        }
+
         previewArticles.push({
           title: article.title,
           content: article.content || article.summary || "",
@@ -606,7 +629,7 @@ export async function previewFeed(
             ? article.published.toISOString()
             : undefined,
           author: article.author,
-          thumbnailUrl: article.thumbnailUrl,
+          thumbnailUrl: thumbnailBase64 || undefined,
           link: article.url,
         });
         logger.debug({ step: "process_article_complete" }, "Article processed");

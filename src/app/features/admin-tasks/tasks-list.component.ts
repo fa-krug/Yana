@@ -268,6 +268,7 @@ export class TasksListComponent implements OnInit, OnDestroy {
       next: () => {
         this.snackBar.open("Task triggered successfully", "Close", {
           duration: 3000,
+          panelClass: ["success-snackbar"],
         });
         const updated = this.triggering();
         updated.delete(id);

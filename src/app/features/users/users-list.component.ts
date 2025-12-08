@@ -390,6 +390,7 @@ export class UsersListComponent implements OnInit, OnDestroy {
       if (result) {
         this.snackBar.open("Password changed successfully", "Close", {
           duration: 3000,
+          panelClass: ["success-snackbar"],
         });
       }
     });

@@ -244,6 +244,7 @@ export class ChangePasswordDialogComponent {
           if (response && response.success) {
             this.snackBar.open("Password changed successfully", "Close", {
               duration: 3000,
+              panelClass: ["success-snackbar"],
             });
             this.dialogRef.close(true);
           } else {

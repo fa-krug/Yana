@@ -568,6 +568,7 @@ export class ArticleListComponent implements OnInit, OnDestroy {
           "Close",
           {
             duration: 2000,
+            panelClass: ["success-snackbar"],
           },
         );
       },
@@ -593,6 +594,7 @@ export class ArticleListComponent implements OnInit, OnDestroy {
           "Close",
           {
             duration: 2000,
+            panelClass: ["success-snackbar"],
           },
         );
       },

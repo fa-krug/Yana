@@ -2317,6 +2317,7 @@ export class FeedFormComponent implements OnInit, OnDestroy {
           this.creating.set(false);
           this.snackBar.open(`Updated feed: ${feed.name}`, "Close", {
             duration: 3000,
+            panelClass: ["success-snackbar"],
           });
           this.router.navigate(["/feeds", feed.id]);
         },
@@ -2338,6 +2339,7 @@ export class FeedFormComponent implements OnInit, OnDestroy {
           this.creating.set(false);
           this.snackBar.open(`Created feed: ${feed.name}`, "Close", {
             duration: 3000,
+            panelClass: ["success-snackbar"],
           });
           this.router.navigate(["/feeds", feed.id], {
             queryParams: { fetch: "true" },

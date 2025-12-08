@@ -161,6 +161,7 @@ export class UserEditDialogComponent {
           this.loading = false;
           this.snackBar.open("User updated successfully", "Close", {
             duration: 3000,
+            panelClass: ["success-snackbar"],
           });
           this.dialogRef.close(true);
         },

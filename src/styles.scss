@@ -604,6 +604,37 @@ body:not(.dark-theme) {
   color: #ffffff !important;
 }
 
+// Success snackbar styling
+.mat-mdc-snack-bar-container.success-snackbar {
+  background-color: #4caf50 !important;
+  color: #ffffff !important;
+}
+
+.mat-mdc-snack-bar-container.success-snackbar .mdc-snackbar__surface {
+  background-color: #4caf50 !important;
+  color: #ffffff !important;
+}
+
+.mat-mdc-snack-bar-container.success-snackbar .mdc-snackbar__label {
+  color: #ffffff !important;
+}
+
+.mat-mdc-snack-bar-container.success-snackbar .mat-mdc-button {
+  color: #ffffff !important;
+}
+
+.dark-theme .mat-mdc-snack-bar-container.success-snackbar {
+  background-color: #388e3c !important;
+  color: #ffffff !important;
+}
+
+.dark-theme
+  .mat-mdc-snack-bar-container.success-snackbar
+  .mdc-snackbar__surface {
+  background-color: #388e3c !important;
+  color: #ffffff !important;
+}
+
 // ========================================
 // GLOBAL UTILITIES & COMMON PATTERNS
 // ========================================

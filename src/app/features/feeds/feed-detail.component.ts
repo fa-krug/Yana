@@ -1368,7 +1368,10 @@ export class FeedDetailComponent implements OnInit, OnDestroy {
           ? `${action} feed: ${articlesUpdated} articles updated, ${articlesAdded} new articles`
           : `${action} feed: ${articlesAdded} new articles`;
 
-        this.snackBar.open(message, "Close", { duration: 5000 });
+        this.snackBar.open(message, "Close", {
+          duration: 5000,
+          panelClass: ["success-snackbar"],
+        });
 
         // Refresh feed data and articles
         this.feedService.getFeed(currentFeed.id).subscribe({
@@ -1422,7 +1425,7 @@ export class FeedDetailComponent implements OnInit, OnDestroy {
           this.snackBar.open(
             `Feed ${updatedFeed.enabled ? "enabled" : "disabled"} successfully`,
             "Close",
-            { duration: 3000 },
+            { duration: 3000, panelClass: ["success-snackbar"] },
           );
         },
         error: (error) => {
@@ -1465,6 +1468,7 @@ export class FeedDetailComponent implements OnInit, OnDestroy {
               "Close",
               {
                 duration: 5000,
+                panelClass: ["success-snackbar"],
               },
             );
             // Refresh feed data and articles
@@ -1508,6 +1512,7 @@ export class FeedDetailComponent implements OnInit, OnDestroy {
       next: () => {
         this.snackBar.open(`Deleted ${currentFeed.name}`, "Close", {
           duration: 3000,
+          panelClass: ["success-snackbar"],
         });
         this.router.navigate(["/feeds"]);
       },
@@ -1557,7 +1562,10 @@ export class FeedDetailComponent implements OnInit, OnDestroy {
 
     this.articleService.deleteArticle(article.id).subscribe({
       next: () => {
-        this.snackBar.open(`Deleted article`, "Close", { duration: 3000 });
+        this.snackBar.open(`Deleted article`, "Close", {
+          duration: 3000,
+          panelClass: ["success-snackbar"],
+        });
       },
       error: (error) => {
         this.snackBar.open(

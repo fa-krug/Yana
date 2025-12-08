@@ -258,6 +258,7 @@ export class UserCreateDialogComponent {
           this.loading = false;
           this.snackBar.open("User created successfully", "Close", {
             duration: 3000,
+            panelClass: ["success-snackbar"],
           });
           this.dialogRef.close(true);
         },

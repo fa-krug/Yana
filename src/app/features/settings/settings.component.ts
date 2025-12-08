@@ -190,6 +190,7 @@ export class SettingsComponent implements OnInit {
           next: () => {
             this.snackBar.open("Profile updated successfully", "Close", {
               duration: 3000,
+              panelClass: ["success-snackbar"],
             });
             this.loading.set(false);
           },
@@ -239,6 +240,7 @@ export class SettingsComponent implements OnInit {
                 "Close",
                 {
                   duration: 3000,
+                  panelClass: ["success-snackbar"],
                 },
               );
             } else {
@@ -400,6 +402,7 @@ export class SettingsComponent implements OnInit {
                 "Close",
                 {
                   duration: 3000,
+                  panelClass: ["success-snackbar"],
                 },
               );
             } else {
@@ -518,6 +521,7 @@ export class SettingsComponent implements OnInit {
                 "Close",
                 {
                   duration: 3000,
+                  panelClass: ["success-snackbar"],
                 },
               );
             } else {

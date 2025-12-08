@@ -979,7 +979,10 @@ export class FeedListComponent implements OnInit, OnDestroy {
           ? `${action} ${feed.name}: ${articlesUpdated} articles updated, ${articlesAdded} new articles`
           : `${action} ${feed.name}: ${articlesAdded} new articles`;
 
-        this.snackBar.open(message, "Close", { duration: 5000 });
+        this.snackBar.open(message, "Close", {
+          duration: 5000,
+          panelClass: ["success-snackbar"],
+        });
         this.loadFeeds();
       },
       error: (error) => {
@@ -1006,6 +1009,7 @@ export class FeedListComponent implements OnInit, OnDestroy {
           "Close",
           {
             duration: 3000,
+            panelClass: ["success-snackbar"],
           },
         );
       },
@@ -1034,6 +1038,7 @@ export class FeedListComponent implements OnInit, OnDestroy {
           next: () => {
             this.snackBar.open(`Deleted ${feed.name}`, "Close", {
               duration: 3000,
+              panelClass: ["success-snackbar"],
             });
           },
           error: (error) => {
@@ -1079,7 +1084,10 @@ export class FeedListComponent implements OnInit, OnDestroy {
               marking.delete(feed.id);
               this.markingAllRead.set(marking);
 
-              this.snackBar.open(result.message, "Close", { duration: 5000 });
+              this.snackBar.open(result.message, "Close", {
+                duration: 5000,
+                panelClass: ["success-snackbar"],
+              });
             },
             error: (error) => {
               const marking = new Set(this.markingAllRead());

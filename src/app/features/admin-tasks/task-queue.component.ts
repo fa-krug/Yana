@@ -402,7 +402,10 @@ export class TaskQueueComponent implements OnInit, OnDestroy {
   cancelTask(id: number) {
     this.tasksService.cancelTask(id).subscribe({
       next: () => {
-        this.snackBar.open("Task cancelled", "Close", { duration: 3000 });
+        this.snackBar.open("Task cancelled", "Close", {
+          duration: 3000,
+          panelClass: ["success-snackbar"],
+        });
         this.loadTasks();
       },
       error: (err) => {
@@ -416,7 +419,10 @@ export class TaskQueueComponent implements OnInit, OnDestroy {
   retryTask(id: number) {
     this.tasksService.retryTask(id).subscribe({
       next: () => {
-        this.snackBar.open("Task retried", "Close", { duration: 3000 });
+        this.snackBar.open("Task retried", "Close", {
+          duration: 3000,
+          panelClass: ["success-snackbar"],
+        });
         this.loadTasks();
       },
       error: (err) => {
