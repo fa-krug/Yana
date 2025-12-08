@@ -10,6 +10,7 @@ import type { RawArticle } from "./base/types";
 import { logger } from "../utils/logger";
 import axios from "axios";
 import { getUserSettings } from "../services/userSettings.service";
+import { standardizeContentFormat } from "./base/process";
 
 interface RedditPost {
   data: {
@@ -75,6 +76,47 @@ interface RedditCommentsResponse {
   data: {
     children: RedditComment[];
   };
+}
+
+interface RedditSubredditInfo {
+  data: {
+    display_name: string;
+    icon_img: string;
+    community_icon: string;
+    header_img: string | null;
+  };
+}
+
+/**
+ * Fetch subreddit information including icon.
+ */
+async function fetchSubredditInfo(
+  subreddit: string,
+  userAgent: string,
+): Promise<{ iconUrl: string | null }> {
+  try {
+    const url = `https://www.reddit.com/r/${subreddit}/about.json`;
+    const response = await axios.get<RedditSubredditInfo>(url, {
+      headers: {
+        "User-Agent": userAgent,
+      },
+      timeout: 10000,
+    });
+
+    const subredditData = response.data.data;
+    // Prefer icon_img, fall back to community_icon
+    const iconUrl =
+      subredditData.icon_img || subredditData.community_icon || null;
+
+    if (iconUrl) {
+      logger.debug({ subreddit, iconUrl }, "Fetched subreddit icon");
+    }
+
+    return { iconUrl };
+  } catch (error) {
+    logger.warn({ error, subreddit }, "Failed to fetch subreddit info");
+    return { iconUrl: null };
+  }
 }
 
 /**
@@ -722,6 +764,13 @@ export class RedditAggregator extends BaseAggregator {
     const commentLimit = this.getOption("comment_limit", 10) as number;
     const userAgent = await this.getUserAgent();
 
+    // Fetch subreddit info to get icon for feed thumbnail
+    const subredditInfo = await fetchSubredditInfo(subreddit, userAgent);
+
+    // Store subreddit icon URL for later use in aggregation service
+    // We'll access it via a property on the aggregator instance
+    (this as any).__subredditIconUrl = subredditInfo.iconUrl;
+
     // Calculate desired article count
     const desiredArticleCount = articleLimit || 25;
 
@@ -760,6 +809,9 @@ export class RedditAggregator extends BaseAggregator {
       const twoMonthsAgo = new Date();
       twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
 
+      // Get feed thumbnail (subreddit icon) for fallback
+      const feedThumbnailUrl = subredditInfo.iconUrl;
+
       for (const post of posts) {
         // Stop if we have enough articles
         if (articles.length >= desiredArticleCount) {
@@ -785,14 +837,38 @@ export class RedditAggregator extends BaseAggregator {
         }
 
         const permalink = `https://reddit.com${postData.permalink}`;
-        const content = await buildPostContent(
+        const rawContent = await buildPostContent(
           postData,
           commentLimit,
           subreddit,
           userAgent,
         );
-        const thumbnailUrl = extractThumbnailUrl(postData);
         const headerImageUrl = extractHeaderImageUrl(postData);
+        const thumbnailUrl = extractThumbnailUrl(postData);
+
+        // Standardize content format (convert header image to base64, add source footer)
+        const generateTitleImage = this.feed?.generateTitleImage ?? true;
+        const addSourceFooter = this.feed?.addSourceFooter ?? true;
+        const content = await standardizeContentFormat(
+          rawContent,
+          {
+            title: postData.title,
+            url: permalink,
+            published: postDate,
+            content: rawContent,
+            summary: postData.selftext || "",
+            author: postData.author,
+            score: postData.score,
+            externalId: postData.id,
+          },
+          permalink,
+          generateTitleImage,
+          addSourceFooter,
+          headerImageUrl ?? undefined,
+        );
+
+        // For article thumbnail: use header image if available, otherwise use thumbnail
+        const articleThumbnailUrl = headerImageUrl || thumbnailUrl || undefined;
 
         // Set media_url for Reddit videos
         let mediaUrl: string | undefined;
@@ -808,7 +884,7 @@ export class RedditAggregator extends BaseAggregator {
           summary: postData.selftext || "",
           author: postData.author,
           score: postData.score,
-          thumbnailUrl: thumbnailUrl || undefined,
+          thumbnailUrl: articleThumbnailUrl,
           mediaUrl,
           externalId: postData.id,
         });

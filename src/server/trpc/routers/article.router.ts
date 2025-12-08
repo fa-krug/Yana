@@ -36,6 +36,7 @@ const articleListInputSchema = z.object({
   pageSize: z.number().int().positive().max(100).default(20),
   feedId: z.number().int().positive().nullish(),
   feedType: z.enum(["article", "youtube", "podcast", "reddit"]).nullish(),
+  groupId: z.number().int().positive().nullish(),
   isRead: z.boolean().nullish(),
   isSaved: z.boolean().nullish(),
   search: z.string().nullish(),
@@ -68,6 +69,7 @@ export const articleRouter = router({
       const result = await listArticles(user, {
         feedId: input.feedId ?? undefined,
         feedType: input.feedType ?? undefined,
+        groupId: input.groupId ?? undefined,
         isRead: input.isRead ?? undefined,
         isSaved: input.isSaved ?? undefined,
         search: input.search ?? undefined,

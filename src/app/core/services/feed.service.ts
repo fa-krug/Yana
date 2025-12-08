@@ -19,6 +19,7 @@ export interface FeedFilters {
   search?: string;
   feedType?: "article" | "youtube" | "podcast" | "reddit";
   enabled?: boolean;
+  groupId?: number;
   page?: number;
   pageSize?: number;
 }
@@ -65,6 +66,7 @@ export class FeedService {
         search: filters.search,
         feedType: filters.feedType,
         enabled: filters.enabled,
+        groupId: filters.groupId,
       }),
     ).pipe(
       map((response) => ({

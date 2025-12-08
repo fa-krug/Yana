@@ -51,10 +51,11 @@ import { MatTooltipModule } from "@angular/material/tooltip";
 
 // Application
 import { FeedService, FeedFilters } from "../../core/services/feed.service";
-import { Feed } from "../../core/models";
+import { Feed, Group } from "../../core/models";
 import { ConfirmDialogComponent } from "../../shared/components/confirm-dialog.component";
 import { ConfirmationService } from "../../core/services/confirmation.service";
 import { ArticleService } from "../../core/services/article.service";
+import { GroupService } from "../../core/services/group.service";
 
 @Component({
   selector: "app-feed-list",
@@ -112,6 +113,16 @@ import { ArticleService } from "../../core/services/article.service";
             <mat-option [value]="null">All</mat-option>
             <mat-option [value]="true">Enabled</mat-option>
             <mat-option [value]="false">Disabled</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="filter-field">
+          <mat-label>Group</mat-label>
+          <mat-select [formControl]="groupControl">
+            <mat-option [value]="null">All Groups</mat-option>
+            @for (group of groupService.groups(); track group.id) {
+              <mat-option [value]="group.id">{{ group.name }}</mat-option>
+            }
           </mat-select>
         </mat-form-field>
       </div>
@@ -217,6 +228,14 @@ import { ArticleService } from "../../core/services/article.service";
                       <mat-icon>article</mat-icon>
                       {{ feed.articleCount || 0 }} articles
                     </mat-chip>
+                    @if (feed.groups && feed.groups.length > 0) {
+                      @for (group of feed.groups; track group.id) {
+                        <mat-chip class="group-chip">
+                          <mat-icon>folder</mat-icon>
+                          {{ group.name }}
+                        </mat-chip>
+                      }
+                    }
                   </mat-chip-set>
                 </div>
                 @if (feed.description) {
@@ -529,6 +548,11 @@ import { ArticleService } from "../../core/services/article.service";
         color: white !important;
       }
 
+      .group-chip {
+        background-color: #2196f3 !important;
+        color: white !important;
+      }
+
       .feed-description {
         color: rgba(0, 0, 0, 0.7);
         font-size: 0.875rem;
@@ -838,6 +862,7 @@ import { ArticleService } from "../../core/services/article.service";
 })
 export class FeedListComponent implements OnInit, OnDestroy {
   feedService = inject(FeedService);
+  groupService = inject(GroupService);
   private snackBar = inject(MatSnackBar);
   private dialog = inject(MatDialog);
   private route = inject(ActivatedRoute);
@@ -847,6 +872,7 @@ export class FeedListComponent implements OnInit, OnDestroy {
   searchControl = new FormControl("");
   typeControl = new FormControl<string | null>(null);
   enabledControl = new FormControl<boolean | null>(null);
+  groupControl = new FormControl<number | null>(null);
 
   imageErrors: Record<number, boolean> = {};
 
@@ -864,6 +890,9 @@ export class FeedListComponent implements OnInit, OnDestroy {
       this.typeControl.setValue(typeParam, { emitEvent: false });
     }
 
+    // Load groups
+    this.groupService.loadGroups().subscribe();
+
     // Load feeds immediately
     this.loadFeeds();
 
@@ -877,6 +906,10 @@ export class FeedListComponent implements OnInit, OnDestroy {
       .subscribe(() => this.loadFeeds());
 
     this.enabledControl.valueChanges
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => this.loadFeeds());
+
+    this.groupControl.valueChanges
       .pipe(takeUntil(this.destroy$))
       .subscribe(() => this.loadFeeds());
 
@@ -900,6 +933,7 @@ export class FeedListComponent implements OnInit, OnDestroy {
       search: this.searchControl.value || undefined,
       feedType: this.typeControl.value as any,
       enabled: this.enabledControl.value ?? undefined,
+      groupId: this.groupControl.value ?? undefined,
       page: this.feedService.currentPage(),
       pageSize: this.feedService.pageSize(),
     };
@@ -916,6 +950,7 @@ export class FeedListComponent implements OnInit, OnDestroy {
       search: this.searchControl.value || undefined,
       feedType: this.typeControl.value as any,
       enabled: this.enabledControl.value ?? undefined,
+      groupId: this.groupControl.value ?? undefined,
       page: event.pageIndex + 1,
       pageSize: event.pageSize,
     };
@@ -961,6 +996,7 @@ export class FeedListComponent implements OnInit, OnDestroy {
             search: this.searchControl.value || undefined,
             feedType: this.typeControl.value as any,
             enabled: this.enabledControl.value ?? undefined,
+            groupId: this.groupControl.value ?? undefined,
             page: this.feedService.currentPage(),
             pageSize: this.feedService.pageSize(),
           };

@@ -22,6 +22,7 @@ import { TRPCService } from "../trpc/trpc.service";
 
 export interface ArticleFilters {
   feedId?: number;
+  groupId?: number;
   read?: boolean;
   saved?: boolean;
   unreadOnly?: boolean;
@@ -71,6 +72,7 @@ export class ArticleService {
         page: filters.page || 1,
         pageSize: filters.pageSize || 20,
         feedId: filters.feedId,
+        groupId: filters.groupId,
         isRead: filters.read,
         isSaved: filters.saved,
         search: filters.search,

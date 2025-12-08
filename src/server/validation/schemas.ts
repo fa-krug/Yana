@@ -95,6 +95,7 @@ export const createFeedSchema = z.object({
     .optional()
     .transform((val) => (val === "" ? null : val)),
   example: z.string().default(""),
+  groupIds: z.array(z.number().int().positive()).optional(),
 });
 
 export const updateFeedSchema = createFeedSchema.partial();
@@ -110,6 +111,7 @@ export const articleListSchema = z.object({
   ...commonSchemas.pagination.shape,
   feedId: z.coerce.number().int().positive().optional(),
   feedType: z.enum(["article", "youtube", "podcast", "reddit"]).optional(),
+  groupId: z.coerce.number().int().positive().optional(),
   isRead: z.coerce.boolean().optional(),
   isSaved: z.coerce.boolean().optional(),
   search: z.string().optional(),

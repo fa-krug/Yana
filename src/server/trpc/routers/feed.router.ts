@@ -21,6 +21,7 @@ import {
   getFeedArticleCount,
   getFeedUnreadCount,
 } from "../../services/feed.service";
+import { getFeedGroups } from "../../services/group.service";
 import {
   listArticles,
   enrichArticleData,
@@ -42,6 +43,7 @@ const feedListInputSchema = z.object({
   search: z.string().nullish(),
   feedType: z.enum(["article", "youtube", "podcast", "reddit"]).nullish(),
   enabled: z.boolean().nullish(),
+  groupId: z.number().int().positive().nullish(),
 });
 
 /**
@@ -60,7 +62,10 @@ const toISOString = (
 /**
  * Convert feed object to API format (null to undefined for icon, dates to strings).
  */
-const formatFeed = (feed: any) => {
+const formatFeed = async (feed: any, userId: number) => {
+  // Get groups for this feed
+  const groups = await getFeedGroups(feed.id, userId).catch(() => []);
+
   return {
     ...feed,
     icon: feed.icon ?? undefined,
@@ -69,6 +74,12 @@ const formatFeed = (feed: any) => {
     lastAggregated: feed.lastAggregated
       ? toISOString(feed.lastAggregated)
       : undefined,
+    groups: groups.map((g) => ({
+      id: g.id,
+      name: g.name,
+      createdAt: toISOString(g.createdAt),
+      updatedAt: toISOString(g.updatedAt),
+    })),
   };
 };
 
@@ -87,20 +98,25 @@ export const feedRouter = router({
         search: input.search ?? undefined,
         feedType: input.feedType ?? undefined,
         enabled: input.enabled ?? undefined,
+        groupId: input.groupId ?? undefined,
         page: input.page,
         pageSize: input.pageSize,
       });
 
-      // Enrich feeds with article counts
+      // Enrich feeds with article counts and groups
       const enrichedFeeds = await Promise.all(
         result.feeds.map(async (feed) => {
           const articleCount = await getFeedArticleCount(feed.id);
           const unreadCount = await getFeedUnreadCount(feed.id, user.id);
-          return formatFeed({
-            ...feed,
-            articleCount: articleCount,
-            unreadCount: unreadCount,
-          });
+          const formatted = await formatFeed(
+            {
+              ...feed,
+              articleCount: articleCount,
+              unreadCount: unreadCount,
+            },
+            user.id,
+          );
+          return formatted;
         }),
       );
 
@@ -130,12 +146,15 @@ export const feedRouter = router({
         const articleCount = await getFeedArticleCount(input.id);
         const unreadCount = await getFeedUnreadCount(input.id, user.id);
 
-        return formatFeed({
-          ...feed,
-          aggregatorMetadata: aggregatorMetadata,
-          articleCount: articleCount,
-          unreadCount: unreadCount,
-        });
+        return await formatFeed(
+          {
+            ...feed,
+            aggregatorMetadata: aggregatorMetadata,
+            articleCount: articleCount,
+            unreadCount: unreadCount,
+          },
+          user.id,
+        );
       } catch (error) {
         if (error instanceof NotFoundError) {
           throw new TRPCError({
@@ -161,7 +180,7 @@ export const feedRouter = router({
     .mutation(async ({ input, ctx }) => {
       const user = getAuthenticatedUser(ctx);
       const feed = await createFeed(user, input);
-      return formatFeed(feed);
+      return await formatFeed(feed, user.id);
     }),
 
   /**
@@ -178,7 +197,7 @@ export const feedRouter = router({
       const user = getAuthenticatedUser(ctx);
       try {
         const feed = await updateFeed(input.id, user, input.data);
-        return formatFeed(feed);
+        return await formatFeed(feed, user.id);
       } catch (error) {
         if (error instanceof NotFoundError) {
           throw new TRPCError({

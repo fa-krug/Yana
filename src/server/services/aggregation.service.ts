@@ -192,6 +192,33 @@ export async function processFeedAggregation(
   // Run aggregation
   const rawArticles = await aggregator.aggregate(articleLimit);
 
+  // Update feed icon if aggregator provides one (e.g., Reddit subreddit icon)
+  if ((aggregator as any).__subredditIconUrl) {
+    try {
+      const subredditIconUrl = (aggregator as any).__subredditIconUrl;
+      if (subredditIconUrl) {
+        const { convertThumbnailUrlToBase64 } =
+          await import("../aggregators/base/utils");
+        const iconBase64 = await convertThumbnailUrlToBase64(subredditIconUrl);
+        if (iconBase64) {
+          await db
+            .update(feeds)
+            .set({ icon: iconBase64 })
+            .where(eq(feeds.id, feed.id));
+          logger.info(
+            { feedId: feed.id },
+            "Updated feed icon from subreddit thumbnail",
+          );
+        }
+      }
+    } catch (error) {
+      logger.warn(
+        { error, feedId: feed.id },
+        "Failed to update feed icon from subreddit",
+      );
+    }
+  }
+
   let articlesCreated = 0;
   let articlesUpdated = 0;
 
@@ -215,8 +242,10 @@ export async function processFeedAggregation(
         : null;
 
       if (!thumbnailBase64) {
-        const { extractThumbnailUrlFromPageAndConvertToBase64 } =
-          await import("../aggregators/base/utils");
+        const {
+          extractThumbnailUrlFromPageAndConvertToBase64,
+          extractBase64ImageFromContent,
+        } = await import("../aggregators/base/utils");
         thumbnailBase64 =
           (await extractThumbnailUrlFromPageAndConvertToBase64(
             rawArticle.url,
@@ -226,6 +255,17 @@ export async function processFeedAggregation(
             { url: rawArticle.url },
             "Extracted and converted thumbnail to base64 during aggregation",
           );
+        } else {
+          // Fallback: try to extract base64 image from content (e.g., header image that was embedded)
+          thumbnailBase64 = rawArticle.content
+            ? extractBase64ImageFromContent(rawArticle.content)
+            : null;
+          if (thumbnailBase64) {
+            logger.debug(
+              { url: rawArticle.url },
+              "Extracted base64 thumbnail from article content",
+            );
+          }
         }
       }
 
@@ -396,8 +436,10 @@ export async function processArticleReload(articleId: number): Promise<void> {
     : null;
 
   if (!thumbnailBase64) {
-    const { extractThumbnailUrlFromPageAndConvertToBase64 } =
-      await import("../aggregators/base/utils");
+    const {
+      extractThumbnailUrlFromPageAndConvertToBase64,
+      extractBase64ImageFromContent,
+    } = await import("../aggregators/base/utils");
     thumbnailBase64 =
       (await extractThumbnailUrlFromPageAndConvertToBase64(article.url)) ||
       null;
@@ -406,6 +448,15 @@ export async function processArticleReload(articleId: number): Promise<void> {
         { articleId },
         "Extracted and converted thumbnail to base64 during reload",
       );
+    } else {
+      // Fallback: try to extract base64 image from content (e.g., header image that was embedded)
+      thumbnailBase64 = extractBase64ImageFromContent(processed);
+      if (thumbnailBase64) {
+        logger.debug(
+          { articleId },
+          "Extracted base64 thumbnail from article content during reload",
+        );
+      }
     }
   }
 

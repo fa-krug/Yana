@@ -5,13 +5,21 @@
  */
 
 import { eq, and, or, isNull, desc, sql, like, inArray } from "drizzle-orm";
-import { db, feeds, articles, userArticleStates } from "../db";
+import {
+  db,
+  feeds,
+  articles,
+  userArticleStates,
+  feedGroups,
+  groups,
+} from "../db";
 import { NotFoundError, PermissionDeniedError } from "../errors";
 import { logger } from "../utils/logger";
 import type { Feed, FeedInsert, User } from "../db/types";
 import { getAggregatorById } from "../aggregators/registry";
 import type { RawArticle } from "../aggregators/base/types";
 import { getAggregatorMetadataById } from "./aggregator.service";
+import { setFeedGroups, getFeedGroups } from "./group.service";
 
 /**
  * Minimal user info needed for feed operations.
@@ -27,11 +35,19 @@ export async function listFeeds(
     search?: string;
     feedType?: string;
     enabled?: boolean;
+    groupId?: number;
     page?: number;
     pageSize?: number;
   } = {},
 ): Promise<{ feeds: Feed[]; total: number }> {
-  const { search, feedType, enabled, page = 1, pageSize = 20 } = filters;
+  const {
+    search,
+    feedType,
+    enabled,
+    groupId,
+    page = 1,
+    pageSize = 20,
+  } = filters;
   const offset = (page - 1) * pageSize;
 
   // Build where conditions
@@ -50,6 +66,40 @@ export async function listFeeds(
 
   if (enabled !== undefined) {
     conditions.push(eq(feeds.enabled, enabled));
+  }
+
+  // If filtering by group, join with feed_groups
+  if (groupId) {
+    // Verify group access
+    const [group] = await db
+      .select()
+      .from(groups)
+      .where(
+        and(
+          eq(groups.id, groupId),
+          or(eq(groups.userId, user.id), isNull(groups.userId)),
+        ),
+      )
+      .limit(1);
+
+    if (!group) {
+      throw new NotFoundError(`Group with id ${groupId} not found`);
+    }
+
+    // Get feed IDs in this group
+    const feedIdsInGroup = await db
+      .select({ feedId: feedGroups.feedId })
+      .from(feedGroups)
+      .where(eq(feedGroups.groupId, groupId));
+
+    const feedIdArray = feedIdsInGroup.map((f) => f.feedId);
+
+    if (feedIdArray.length === 0) {
+      return { feeds: [], total: 0 };
+    }
+
+    // Add feed ID filter
+    conditions.push(inArray(feeds.id, feedIdArray));
   }
 
   const whereClause = and(...conditions);
@@ -235,17 +285,20 @@ function filterManagedFeedData(
  */
 export async function createFeed(
   user: UserInfo,
-  data: FeedInsert,
+  data: FeedInsert & { groupIds?: number[] },
 ): Promise<Feed> {
+  // Extract groupIds from data
+  const { groupIds, ...feedData } = data;
+
   // Filter out restricted options and AI features for managed aggregators
-  const filteredFields = filterManagedFeedData(data, data.aggregator);
+  const filteredFields = filterManagedFeedData(feedData, feedData.aggregator);
 
   // For managed aggregators, always use the aggregator's icon
-  let icon = data.icon;
-  if (data.aggregator) {
+  let icon = feedData.icon;
+  if (feedData.aggregator) {
     const { getAggregatorMetadataById } = await import("./aggregator.service");
     try {
-      const aggregatorMetadata = getAggregatorMetadataById(data.aggregator);
+      const aggregatorMetadata = getAggregatorMetadataById(feedData.aggregator);
       // If aggregator is managed, always use its icon
       if (aggregatorMetadata.type === "managed" && aggregatorMetadata.icon) {
         icon = aggregatorMetadata.icon;
@@ -256,7 +309,7 @@ export async function createFeed(
     } catch (error) {
       // If we can't get aggregator metadata, continue without icon
       logger.warn(
-        { error, aggregator: data.aggregator },
+        { error, aggregator: feedData.aggregator },
         "Failed to get aggregator icon",
       );
     }
@@ -265,7 +318,7 @@ export async function createFeed(
   const [feed] = await db
     .insert(feeds)
     .values({
-      ...data,
+      ...feedData,
       ...filteredFields,
       icon: icon || null,
       userId: user.id,
@@ -274,7 +327,12 @@ export async function createFeed(
     })
     .returning();
 
-  logger.info({ feedId: feed.id, userId: user.id }, "Feed created");
+  // Set feed groups if provided
+  if (groupIds && groupIds.length > 0) {
+    await setFeedGroups(feed.id, user.id, groupIds);
+  }
+
+  logger.info({ feedId: feed.id, userId: user.id, groupIds }, "Feed created");
 
   return feed;
 }
@@ -285,18 +343,21 @@ export async function createFeed(
 export async function updateFeed(
   id: number,
   user: UserInfo,
-  data: Partial<FeedInsert>,
+  data: Partial<FeedInsert> & { groupIds?: number[] },
 ): Promise<Feed> {
   // Check access
   const existingFeed = await getFeed(id, user);
 
+  // Extract groupIds from data
+  const { groupIds, ...feedData } = data;
+
   // Filter out restricted options and AI features for managed aggregators
-  const aggregatorId = data.aggregator || existingFeed.aggregator;
-  const filteredFields = filterManagedFeedData(data, aggregatorId);
+  const aggregatorId = feedData.aggregator || existingFeed.aggregator;
+  const filteredFields = filterManagedFeedData(feedData, aggregatorId);
 
   const [updated] = await db
     .update(feeds)
-    .set({ ...data, ...filteredFields, updatedAt: new Date() })
+    .set({ ...feedData, ...filteredFields, updatedAt: new Date() })
     .where(eq(feeds.id, id))
     .returning();
 
@@ -304,7 +365,12 @@ export async function updateFeed(
     throw new NotFoundError(`Feed with id ${id} not found`);
   }
 
-  logger.info({ feedId: id, userId: user.id }, "Feed updated");
+  // Update feed groups if provided
+  if (groupIds !== undefined) {
+    await setFeedGroups(id, user.id, groupIds);
+  }
+
+  logger.info({ feedId: id, userId: user.id, groupIds }, "Feed updated");
 
   return updated;
 }

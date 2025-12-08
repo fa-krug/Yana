@@ -213,6 +213,23 @@ import { Feed, Article } from "../../core/models";
                   >sync</mat-icon
                 >
               </button>
+              <button
+                mat-icon-button
+                class="mark-all-read-button"
+                [disabled]="
+                  markingAllRead() ||
+                  (currentFeed.articleCount || 0) === 0 ||
+                  !currentFeed.enabled
+                "
+                (click)="markAllAsRead()"
+                matTooltip="Mark all articles as read"
+                aria-label="Mark all articles as read"
+                [attr.aria-busy]="markingAllRead()"
+              >
+                <mat-icon [class.spinning]="markingAllRead()"
+                  >done_all</mat-icon
+                >
+              </button>
             </mat-card-actions>
           </mat-card>
 
@@ -741,6 +758,36 @@ import { Feed, Article } from "../../core/models";
         margin: 0;
       }
 
+      mat-card-actions .mark-all-read-button {
+        color: white;
+        background-color: #4caf50;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+      }
+
+      mat-card-actions .mark-all-read-button:hover {
+        background-color: #45a049;
+      }
+
+      mat-card-actions .mark-all-read-button[disabled] {
+        background-color: rgba(76, 175, 80, 0.5);
+        color: rgba(255, 255, 255, 0.7);
+      }
+
+      mat-card-actions .mark-all-read-button mat-icon {
+        margin: 0;
+        transition: transform 0.3s ease;
+      }
+
+      mat-card-actions .mark-all-read-button mat-icon.spinning {
+        animation: spin 1s linear infinite;
+      }
+
       .articles-section {
         margin-top: 32px;
       }
@@ -1161,6 +1208,7 @@ export class FeedDetailComponent implements OnInit, OnDestroy {
   feedImageError = false;
   articleImageErrors: Record<number, boolean> = {};
   reloadingType = signal<"reload" | "force" | null>(null);
+  markingAllRead = signal<boolean>(false);
 
   searchControl = new FormControl("");
   filterControl = new FormControl<string | null>(null);
@@ -1552,6 +1600,67 @@ export class FeedDetailComponent implements OnInit, OnDestroy {
         );
       },
     });
+  }
+
+  markAllAsRead() {
+    const currentFeed = this.feed();
+    if (!currentFeed) return;
+
+    const articleCount = currentFeed.articleCount || 0;
+    if (articleCount === 0) {
+      this.snackBar.open("No articles to mark as read", "Close", {
+        duration: 3000,
+      });
+      return;
+    }
+
+    this.confirmationService
+      .confirm({
+        title: "Mark All as Read",
+        message: `Are you sure you want to mark all ${articleCount} article${articleCount !== 1 ? "s" : ""} in "${currentFeed.name}" as read?`,
+        confirmText: "Mark All as Read",
+        cancelText: "Cancel",
+        confirmColor: "primary",
+      })
+      .subscribe((confirmed) => {
+        if (confirmed) {
+          this.markingAllRead.set(true);
+
+          this.articleService.markAllReadInFeed(currentFeed.id).subscribe({
+            next: (result) => {
+              this.markingAllRead.set(false);
+
+              this.snackBar.open(result.message, "Close", {
+                duration: 5000,
+                panelClass: ["success-snackbar"],
+              });
+
+              // Refresh the feed to update article count
+              this.feedService.getFeed(currentFeed.id).subscribe({
+                next: (updatedFeed) => {
+                  if (updatedFeed) {
+                    this.feed.set(updatedFeed);
+                  }
+                },
+              });
+
+              // Reload articles to reflect the read state
+              this.loadArticles(true);
+            },
+            error: (error) => {
+              this.markingAllRead.set(false);
+
+              this.snackBar.open(
+                `Failed to mark articles as read: ${error.message}`,
+                "Close",
+                {
+                  duration: 5000,
+                },
+              );
+            },
+          });
+        }
+      });
   }
 
   deleteArticle(article: Article) {

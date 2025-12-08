@@ -69,6 +69,58 @@ export function extractYouTubeVideoId(url: string): string | null {
 }
 
 /**
+ * Convert Reddit preview.redd.it URLs to i.redd.it URLs when possible.
+ * Reddit's i.redd.it CDN is more accessible than preview.redd.it.
+ */
+function convertRedditPreviewUrl(url: string): string {
+  try {
+    // Convert preview.redd.it to i.redd.it
+    if (url.includes("preview.redd.it")) {
+      const urlObj = new URL(url);
+      // Extract the filename from the path
+      const pathParts = urlObj.pathname.split("/");
+      const filename = pathParts[pathParts.length - 1];
+
+      // Build i.redd.it URL (remove query params as they're often signatures)
+      const newUrl = `https://i.redd.it/${filename}`;
+      logger.debug(
+        { original: url, converted: newUrl },
+        "Converting Reddit preview URL",
+      );
+      return newUrl;
+    }
+    return url;
+  } catch (error) {
+    logger.debug({ error, url }, "Failed to convert Reddit preview URL");
+    return url;
+  }
+}
+
+/**
+ * Get appropriate referer header for a URL.
+ * For Reddit URLs, use reddit.com. For others, use the domain of the URL.
+ */
+function getRefererHeader(url: string): string {
+  try {
+    const urlObj = new URL(url);
+
+    // Special handling for Reddit domains
+    if (
+      urlObj.hostname.includes("redd.it") ||
+      urlObj.hostname.includes("reddit.com")
+    ) {
+      return "https://www.reddit.com";
+    }
+
+    // For other domains, use the origin
+    return `${urlObj.protocol}//${urlObj.hostname}`;
+  } catch (error) {
+    logger.debug({ error, url }, "Failed to determine referer");
+    return "https://www.reddit.com"; // Safe fallback
+  }
+}
+
+/**
  * Fetch a single image from URL with validation.
  */
 async function fetchSingleImage(url: string): Promise<{
@@ -77,21 +129,53 @@ async function fetchSingleImage(url: string): Promise<{
   contentType: string | null;
 }> {
   try {
+    // Try converting Reddit preview URLs first
+    let imageUrl = convertRedditPreviewUrl(url);
+    const referer = getRefererHeader(imageUrl);
+
     const headers = {
       "User-Agent":
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
       Accept:
         "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
       "Accept-Language": "en-US,en;q=0.9",
-      Referer: url,
+      Referer: referer,
     };
 
-    const response = await axios.get(url, {
-      headers,
-      responseType: "arraybuffer",
-      timeout: 10000,
-      maxRedirects: 5,
-    });
+    let response;
+    try {
+      response = await axios.get(imageUrl, {
+        headers,
+        responseType: "arraybuffer",
+        timeout: 10000,
+        maxRedirects: 5,
+      });
+    } catch (error) {
+      // If converted URL fails and original was different, try original
+      if (
+        imageUrl !== url &&
+        axios.isAxiosError(error) &&
+        error.response?.status === 403
+      ) {
+        logger.debug(
+          { converted: imageUrl, original: url },
+          "Converted URL failed, trying original",
+        );
+        imageUrl = url;
+        const originalReferer = getRefererHeader(url);
+        response = await axios.get(imageUrl, {
+          headers: {
+            ...headers,
+            Referer: originalReferer,
+          },
+          responseType: "arraybuffer",
+          timeout: 10000,
+          maxRedirects: 5,
+        });
+      } else {
+        throw error;
+      }
+    }
 
     // Determine MIME type
     let contentType = response.headers["content-type"] || "";
@@ -542,6 +626,32 @@ export async function extractThumbnailUrlFromPageAndConvertToBase64(
     );
     return null;
   }
+}
+
+/**
+ * Extract the first base64 data URI image from HTML content.
+ * This is useful when header images are embedded in content but thumbnail conversion failed.
+ */
+export function extractBase64ImageFromContent(content: string): string | null {
+  if (!content) {
+    return null;
+  }
+
+  // Pattern to match data URI images in img src attributes
+  const pattern =
+    /<img[^>]*\ssrc=(["']?)(data:image\/[^;]+;base64,[^"'>\s]+)\1/gi;
+
+  const match = pattern.exec(content);
+  if (match && match[2]) {
+    const dataUri = match[2];
+    // Validate it's actually a data URI
+    if (dataUri.startsWith("data:image/") && dataUri.includes(";base64,")) {
+      logger.debug("Extracted base64 image from content");
+      return dataUri;
+    }
+  }
+
+  return null;
 }
 
 /**

@@ -46,7 +46,8 @@ import {
   ArticleFilters,
 } from "../../core/services/article.service";
 import { FeedService } from "../../core/services/feed.service";
-import { Article } from "../../core/models";
+import { GroupService } from "../../core/services/group.service";
+import { Article, Group } from "../../core/models";
 
 @Component({
   selector: "app-article-list",
@@ -88,6 +89,16 @@ import { Article } from "../../core/models";
             <mat-option [value]="null">All Feeds</mat-option>
             @for (feed of feedService.feeds(); track feed.id) {
               <mat-option [value]="feed.id">{{ feed.name }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="filter-field">
+          <mat-label>Group</mat-label>
+          <mat-select [formControl]="groupControl">
+            <mat-option [value]="null">All Groups</mat-option>
+            @for (group of groupService.groups(); track group.id) {
+              <mat-option [value]="group.id">{{ group.name }}</mat-option>
             }
           </mat-select>
         </mat-form-field>
@@ -432,11 +443,13 @@ import { Article } from "../../core/models";
 export class ArticleListComponent implements OnInit, OnDestroy {
   articleService = inject(ArticleService);
   feedService = inject(FeedService);
+  groupService = inject(GroupService);
   route = inject(ActivatedRoute);
   snackBar = inject(MatSnackBar);
 
   searchControl = new FormControl("");
   feedControl = new FormControl<number | null>(null);
+  groupControl = new FormControl<number | null>(null);
   readStateControl = new FormControl<"read" | "unread" | null>(null);
 
   private destroy$ = new Subject<void>();
@@ -444,6 +457,9 @@ export class ArticleListComponent implements OnInit, OnDestroy {
   ngOnInit() {
     // Load feeds for filter dropdown
     this.feedService.loadFeeds().subscribe();
+
+    // Load groups for filter dropdown
+    this.groupService.loadGroups().subscribe();
 
     // Load articles from query params
     this.route.queryParams.subscribe((params) => {
@@ -467,6 +483,11 @@ export class ArticleListComponent implements OnInit, OnDestroy {
         this.readStateControl.setValue(filters.readState, { emitEvent: false });
       }
 
+      if (params["group_id"]) {
+        filters.groupId = Number(params["group_id"]);
+        this.groupControl.setValue(filters.groupId, { emitEvent: false });
+      }
+
       this.articleService.loadArticles(filters).subscribe();
     });
 
@@ -485,6 +506,12 @@ export class ArticleListComponent implements OnInit, OnDestroy {
       });
 
     this.readStateControl.valueChanges
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => {
+        this.applyFilters();
+      });
+
+    this.groupControl.valueChanges
       .pipe(takeUntil(this.destroy$))
       .subscribe(() => {
         this.applyFilters();
@@ -539,6 +566,11 @@ export class ArticleListComponent implements OnInit, OnDestroy {
     const readState = this.readStateControl.value;
     if (readState) {
       filters.readState = readState;
+    }
+
+    const groupId = this.groupControl.value;
+    if (groupId) {
+      filters.groupId = groupId;
     }
 
     this.articleService.loadArticles(filters).subscribe();

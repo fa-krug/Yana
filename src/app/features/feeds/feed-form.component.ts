@@ -47,6 +47,7 @@ import { MatDividerModule } from "@angular/material/divider";
 import { MatPaginatorModule } from "@angular/material/paginator";
 import { MatChipsModule } from "@angular/material/chips";
 import { MatAutocompleteModule } from "@angular/material/autocomplete";
+import { MatTooltipModule } from "@angular/material/tooltip";
 
 import { FeedService } from "../../core/services/feed.service";
 import { AggregatorService } from "../../core/services/aggregator.service";
@@ -59,7 +60,9 @@ import {
   Feed,
   FeedPreviewResponse,
   PreviewArticle,
+  Group,
 } from "../../core/models";
+import { GroupService } from "../../core/services/group.service";
 
 @Component({
   selector: "app-feed-form",
@@ -83,6 +86,7 @@ import {
     MatPaginatorModule,
     MatChipsModule,
     MatAutocompleteModule,
+    MatTooltipModule,
   ],
   template: `
     <div class="feed-form-container container-sm">
@@ -470,6 +474,108 @@ import {
                       }
                     }
 
+                    <!-- Groups Selection -->
+                    <div class="groups-section">
+                      <h4>Groups</h4>
+                      <p class="section-description">
+                        Organize this feed into groups for easier filtering and
+                        management. Type to search existing groups or create a
+                        new one.
+                      </p>
+
+                      <!-- Selected groups as chips -->
+                      @if (selectedGroupIds().length > 0) {
+                        <div class="selected-groups">
+                          <mat-chip-set>
+                            @for (
+                              groupId of selectedGroupIds();
+                              track groupId
+                            ) {
+                              @let group = getGroupById(groupId);
+                              @if (group) {
+                                <mat-chip
+                                  (removed)="removeGroup(groupId)"
+                                  class="group-chip"
+                                >
+                                  {{ group.name }}
+                                  <button
+                                    matChipRemove
+                                    [attr.aria-label]="'remove ' + group.name"
+                                  >
+                                    <mat-icon>cancel</mat-icon>
+                                  </button>
+                                </mat-chip>
+                              }
+                            }
+                          </mat-chip-set>
+                        </div>
+                      }
+
+                      <!-- Group input with autocomplete -->
+                      <mat-form-field appearance="outline" class="full-width">
+                        <mat-label>Add Group</mat-label>
+                        <input
+                          matInput
+                          [formControl]="groupInputControl"
+                          [matAutocomplete]="groupAuto"
+                          (keydown.enter)="handleGroupInputEnter($event)"
+                        />
+                        <mat-icon matPrefix>search</mat-icon>
+                        @if (creatingGroup()) {
+                          <mat-spinner matSuffix diameter="20"></mat-spinner>
+                        }
+                        <mat-autocomplete
+                          #groupAuto="matAutocomplete"
+                          [displayWith]="displayGroup"
+                          (optionSelected)="onGroupSelected($event)"
+                        >
+                          @for (group of filteredGroups(); track group.id) {
+                            <mat-option [value]="group">
+                              <mat-icon>folder</mat-icon>
+                              <span>{{ group.name }}</span>
+                            </mat-option>
+                          }
+                          @if (
+                            getCreateGroupOption() &&
+                            filteredGroups().length > 0
+                          ) {
+                            <mat-divider></mat-divider>
+                          }
+                          @if (getCreateGroupOption()) {
+                            <mat-option
+                              [value]="null"
+                              (onSelectionChange)="
+                                $event.isUserInput && createGroupFromInput()
+                              "
+                              class="create-option"
+                            >
+                              <mat-icon>add_circle</mat-icon>
+                              <span
+                                >Create new group: "{{
+                                  getCreateGroupOption()
+                                }}"</span
+                              >
+                            </mat-option>
+                          }
+                          @if (
+                            filteredGroups().length === 0 &&
+                            !getCreateGroupOption() &&
+                            groupInputControl.value &&
+                            groupInputControl.value.length > 0
+                          ) {
+                            <mat-option disabled>
+                              No groups found. Type a name and press Enter to
+                              create.
+                            </mat-option>
+                          }
+                        </mat-autocomplete>
+                        <mat-hint
+                          >Type to search existing groups or create a new one.
+                          Press Enter to create.</mat-hint
+                        >
+                      </mat-form-field>
+                    </div>
+
                     <!-- General Feed Options -->
                     <div class="general-options-section">
                       <h4>General Options</h4>
@@ -832,7 +938,6 @@ import {
                         (click)="createFeed()"
                         [disabled]="creating()"
                       >
-                        <mat-icon>{{ isEditMode() ? "save" : "add" }}</mat-icon>
                         {{ isEditMode() ? "Update Feed" : "Create Feed" }}
                       </button>
                     </div>
@@ -1734,6 +1839,67 @@ import {
         margin-bottom: 20px;
       }
 
+      .groups-section {
+        margin-top: 32px;
+        padding-top: 24px;
+        border-top: 1px solid var(--mat-sys-outline-variant);
+      }
+
+      .groups-section h4 {
+        margin: 0 0 12px 0;
+        font-size: 1.125rem;
+        font-weight: 500;
+        color: var(--mat-sys-on-surface);
+      }
+
+      .groups-section .section-description {
+        margin: 0 0 20px 0;
+        font-size: 0.875rem;
+        color: var(--mat-sys-on-surface);
+        opacity: 0.7;
+        line-height: 1.4;
+      }
+
+      .groups-section mat-form-field {
+        margin-bottom: 20px;
+      }
+
+      .selected-groups {
+        margin-bottom: 8px;
+      }
+
+      .selected-groups mat-chip-set {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+      }
+
+      .group-chip {
+        background-color: #2196f3 !important;
+        color: white !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        vertical-align: middle !important;
+      }
+
+      .group-chip mat-icon {
+        color: white !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        vertical-align: middle !important;
+      }
+
+      .create-option {
+        color: var(--mat-sys-primary) !important;
+        font-weight: 500;
+      }
+
+      .create-option mat-icon {
+        color: var(--mat-sys-primary) !important;
+        margin-right: 8px;
+      }
+
       .options-list {
         margin: 8px 0;
         padding-left: 20px;
@@ -2000,6 +2166,7 @@ export class FeedFormComponent implements OnInit, OnDestroy {
   feedService = inject(FeedService);
   aggregatorService = inject(AggregatorService);
   userSettingsService = inject(UserSettingsService);
+  groupService = inject(GroupService);
   private breadcrumbService = inject(BreadcrumbService);
   private trpc = inject(TRPCService);
   private sanitizer = inject(DomSanitizer);
@@ -2039,6 +2206,12 @@ export class FeedFormComponent implements OnInit, OnDestroy {
   searchingChannels = signal<boolean>(false);
   private channelSearchTimeout: any = null;
 
+  // Group selection with autocomplete
+  groupInputControl = new FormControl<string>("");
+  selectedGroupIds = signal<number[]>([]);
+  filteredGroups = signal<Group[]>([]);
+  creatingGroup = signal<boolean>(false);
+
   // Expose Object for template usage
   protected readonly Object = Object;
 
@@ -2062,6 +2235,7 @@ export class FeedFormComponent implements OnInit, OnDestroy {
     ai_translate_to: [""],
     ai_summarize: [false],
     ai_custom_prompt: [""],
+    groupIds: [[]],
   });
 
   ngOnInit() {
@@ -2074,6 +2248,25 @@ export class FeedFormComponent implements OnInit, OnDestroy {
         this.hasOpenAICredentials.set(false);
       },
     });
+
+    // Load groups
+    this.groupService.loadGroups().subscribe({
+      next: (groups) => {
+        this.filteredGroups.set(groups);
+        // Initialize filter
+        this.filterGroups("");
+      },
+    });
+
+    // Set up group input filtering
+    this.groupInputControl.valueChanges
+      .pipe(debounceTime(200), distinctUntilChanged(), takeUntil(this.destroy$))
+      .subscribe((value) => {
+        this.filterGroups(value || "");
+      });
+
+    // Sync selected groups with form when they change
+    // Use a computed or watch pattern - for now, we'll update on selection/removal
 
     // Check if we're in edit mode
     this.route.params.pipe(takeUntil(this.destroy$)).subscribe((params) => {
@@ -2154,6 +2347,14 @@ export class FeedFormComponent implements OnInit, OnDestroy {
               this.aggregatorDetail.set(detail);
               const agg = this.aggregatorService.getAggregator(feed.aggregator);
               this.selectedAggregator.set(agg);
+
+              // Load feed groups
+              this.groupService.getFeedGroups(feed.id).subscribe({
+                next: (groups) => {
+                  const groupIds = groups.map((g) => g.id);
+                  this.selectedGroupIds.set(groupIds);
+                },
+              });
 
               // Populate feed form with existing values
               this.feedFormGroup.patchValue({
@@ -2728,6 +2929,175 @@ export class FeedFormComponent implements OnInit, OnDestroy {
   }
 
   /**
+   * Filter groups based on input value.
+   */
+  filterGroups(searchValue: string): void {
+    const allGroups = this.groupService.groups();
+    if (!searchValue) {
+      this.filteredGroups.set(allGroups);
+      return;
+    }
+
+    const searchLower = searchValue.toLowerCase();
+    const filtered = allGroups.filter(
+      (group) =>
+        group.name.toLowerCase().includes(searchLower) &&
+        !this.selectedGroupIds().includes(group.id),
+    );
+    this.filteredGroups.set(filtered);
+  }
+
+  /**
+   * Get groups that can be created (not already existing).
+   */
+  getCreateGroupOption(): string | null {
+    const inputValue = this.groupInputControl.value?.trim() || "";
+    if (!inputValue || inputValue.length < 1) {
+      return null;
+    }
+
+    // Check if group with this name already exists
+    const allGroups = this.groupService.groups();
+    const exists = allGroups.some(
+      (g) => g.name.toLowerCase() === inputValue.toLowerCase(),
+    );
+
+    // Check if already selected
+    const selectedGroups = this.groupService
+      .groups()
+      .filter((g) => this.selectedGroupIds().includes(g.id));
+    const alreadySelected = selectedGroups.some(
+      (g) => g.name.toLowerCase() === inputValue.toLowerCase(),
+    );
+
+    if (exists || alreadySelected) {
+      return null;
+    }
+
+    return inputValue;
+  }
+
+  /**
+   * Select an existing group.
+   */
+  selectGroup(group: Group): void {
+    if (!group || !group.id || group.id <= 0) {
+      return;
+    }
+    const currentIds = this.selectedGroupIds();
+    if (!currentIds.includes(group.id)) {
+      const newIds = [...currentIds, group.id];
+      this.selectedGroupIds.set(newIds);
+      this.feedFormGroup.patchValue({ groupIds: newIds }, { emitEvent: false });
+    }
+    this.groupInputControl.setValue("");
+    this.filterGroups("");
+  }
+
+  /**
+   * Remove a selected group.
+   */
+  removeGroup(groupId: number): void {
+    const currentIds = this.selectedGroupIds();
+    const newIds = currentIds.filter((id) => id !== groupId);
+    this.selectedGroupIds.set(newIds);
+    this.feedFormGroup.patchValue({ groupIds: newIds }, { emitEvent: false });
+  }
+
+  /**
+   * Create a new group from the input value.
+   */
+  createGroupFromInput(): void {
+    const name = this.getCreateGroupOption();
+    if (!name) {
+      return;
+    }
+
+    this.creatingGroup.set(true);
+    this.groupService.createGroup(name).subscribe({
+      next: (group) => {
+        // Wait for groups to reload, then add to selection
+        this.groupService.loadGroups().subscribe({
+          next: () => {
+            this.creatingGroup.set(false);
+            this.groupInputControl.setValue("");
+            this.filterGroups("");
+            // Add to selection after groups are reloaded
+            this.selectGroup(group);
+            this.snackBar.open(
+              `Created and added group: ${group.name}`,
+              "Close",
+              {
+                duration: 3000,
+              },
+            );
+          },
+          error: () => {
+            // Even if reload fails, still add the group to selection
+            this.creatingGroup.set(false);
+            this.groupInputControl.setValue("");
+            this.filterGroups("");
+            this.selectGroup(group);
+            this.snackBar.open(
+              `Created and added group: ${group.name}`,
+              "Close",
+              {
+                duration: 3000,
+              },
+            );
+          },
+        });
+      },
+      error: (error) => {
+        this.creatingGroup.set(false);
+        this.snackBar.open(
+          `Failed to create group: ${error.message || "Unknown error"}`,
+          "Close",
+          {
+            duration: 5000,
+          },
+        );
+      },
+    });
+  }
+
+  /**
+   * Display function for group autocomplete.
+   */
+  displayGroup(group: Group | null): string {
+    return group ? group.name : "";
+  }
+
+  /**
+   * Handle group option selection from autocomplete.
+   */
+  onGroupSelected(event: any): void {
+    const group = event.option.value;
+    if (group && typeof group === "object" && group.id) {
+      this.selectGroup(group);
+    }
+  }
+
+  /**
+   * Get a group by ID.
+   */
+  getGroupById(groupId: number): Group | undefined {
+    return this.groupService.groups().find((g) => g.id === groupId);
+  }
+
+  /**
+   * Handle Enter key press in group input.
+   */
+  handleGroupInputEnter(event: Event): void {
+    const keyboardEvent = event as KeyboardEvent;
+    keyboardEvent.preventDefault();
+    const createOption = this.getCreateGroupOption();
+    if (createOption) {
+      this.createGroupFromInput();
+    }
+  }
+
+  /**
    * Check if preview article is a YouTube video.
    */
   isYouTubeVideo(article: PreviewArticle): boolean {
@@ -2785,6 +3155,11 @@ export class FeedFormComponent implements OnInit, OnDestroy {
     const agg = this.selectedAggregator();
     const feedType = agg?.feedType || "article";
 
+    // Filter out invalid group IDs (must be positive integers > 0)
+    const groupIds = (this.selectedGroupIds() || []).filter(
+      (id) => typeof id === "number" && Number.isInteger(id) && id > 0,
+    );
+
     const feedData = {
       name: this.feedFormGroup.get("name")?.value!,
       identifier: this.feedFormGroup.get("identifier")?.value!,
@@ -2800,6 +3175,7 @@ export class FeedFormComponent implements OnInit, OnDestroy {
         this.feedFormGroup.get("use_current_timestamp")?.value ?? true,
       dailyPostLimit: this.feedFormGroup.get("daily_post_limit")?.value || 50,
       aggregatorOptions: aggregatorOptions,
+      groupIds: groupIds,
       // Only include AI features for non-managed aggregators
       aiTranslateTo: this.isManagedAggregator()
         ? ""

@@ -12,6 +12,7 @@ import { feedRouter } from "./routers/feed.router";
 import { articleRouter } from "./routers/article.router";
 import { userRouter } from "./routers/user.router";
 import { adminRouter } from "./routers/admin.router";
+import { groupRouter } from "./routers/group.router";
 
 /**
  * Main app router.
@@ -25,6 +26,7 @@ export const appRouter = router({
   article: articleRouter,
   user: userRouter,
   admin: adminRouter,
+  group: groupRouter,
 });
 
 /**

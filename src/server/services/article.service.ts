@@ -16,7 +16,14 @@ import {
   lt,
   gt,
 } from "drizzle-orm";
-import { db, articles, feeds, userArticleStates } from "../db";
+import {
+  db,
+  articles,
+  feeds,
+  userArticleStates,
+  feedGroups,
+  groups,
+} from "../db";
 import { NotFoundError, PermissionDeniedError } from "../errors";
 import { logger } from "../utils/logger";
 import type {
@@ -39,6 +46,7 @@ export async function listArticles(
   filters: {
     feedId?: number;
     feedType?: string;
+    groupId?: number;
     isRead?: boolean;
     isSaved?: boolean;
     search?: string;
@@ -49,6 +57,7 @@ export async function listArticles(
   const {
     feedId,
     feedType,
+    groupId,
     isRead,
     isSaved,
     search,
@@ -69,10 +78,40 @@ export async function listArticles(
   }
 
   // Get accessible feed IDs
-  const accessibleFeeds = await db
+  let accessibleFeeds = await db
     .select({ id: feeds.id })
     .from(feeds)
     .where(and(...feedConditions));
+
+  // If filtering by group, filter feeds by group membership
+  if (groupId) {
+    // Verify group access
+    const [group] = await db
+      .select()
+      .from(groups)
+      .where(
+        and(
+          eq(groups.id, groupId),
+          or(eq(groups.userId, user.id), isNull(groups.userId)),
+        ),
+      )
+      .limit(1);
+
+    if (!group) {
+      throw new NotFoundError(`Group with id ${groupId} not found`);
+    }
+
+    // Get feed IDs in this group
+    const feedIdsInGroup = await db
+      .select({ feedId: feedGroups.feedId })
+      .from(feedGroups)
+      .where(eq(feedGroups.groupId, groupId));
+
+    const groupFeedIds = new Set(feedIdsInGroup.map((f) => f.feedId));
+
+    // Filter accessible feeds to only those in the group
+    accessibleFeeds = accessibleFeeds.filter((f) => groupFeedIds.has(f.id));
+  }
 
   const feedIds = accessibleFeeds.map((f) => f.id);
 

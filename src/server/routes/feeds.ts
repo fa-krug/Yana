@@ -32,6 +32,7 @@ import {
   getFeedArticleCount,
   getFeedUnreadCount,
 } from "../services/feed.service";
+import { getFeedGroups } from "../services/group.service";
 import { listArticles } from "../services/article.service";
 import {
   parsePagination,
@@ -56,28 +57,39 @@ router.get(
       search: articleListSchema.shape.search,
       feedType: articleListSchema.shape.feedType,
       enabled: articleListSchema.shape.isRead, // Reuse schema
+      groupId: articleListSchema.shape.groupId,
     }),
   ),
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     const pagination = parsePagination(req);
-    const { search, feedType, enabled } = req.query;
+    const { search, feedType, enabled, groupId } = req.query;
 
     const result = await listFeeds(req.user!, {
       search: search as string | undefined,
       feedType: feedType as string | undefined,
       enabled: enabled !== undefined ? enabled === "true" : undefined,
+      groupId: groupId ? parseInt(groupId as string, 10) : undefined,
       ...pagination,
     });
 
-    // Enrich feeds with article counts
+    // Enrich feeds with article counts and groups
     const enrichedFeeds = await Promise.all(
       result.feeds.map(async (feed) => {
         const articleCount = await getFeedArticleCount(feed.id);
         const unreadCount = await getFeedUnreadCount(feed.id, req.user!.id);
+        const groups = await getFeedGroups(feed.id, req.user!.id).catch(
+          () => [],
+        );
         return {
           ...feed,
           articleCount: articleCount,
           unreadCount: unreadCount,
+          groups: groups.map((g) => ({
+            id: g.id,
+            name: g.name,
+            createdAt: g.createdAt.toISOString(),
+            updatedAt: g.updatedAt.toISOString(),
+          })),
         };
       }),
     );
@@ -104,12 +116,23 @@ router.get(
     const articleCount = await getFeedArticleCount(parseInt(id));
     const unreadCount = await getFeedUnreadCount(parseInt(id), req.user!.id);
 
+    // Get groups
+    const groups = await getFeedGroups(parseInt(id), req.user!.id).catch(
+      () => [],
+    );
+
     // Build response with camelCase
     const response = {
       ...feed,
       aggregatorMetadata: aggregatorMetadata,
       articleCount: articleCount,
       unreadCount: unreadCount,
+      groups: groups.map((g) => ({
+        id: g.id,
+        name: g.name,
+        createdAt: g.createdAt.toISOString(),
+        updatedAt: g.updatedAt.toISOString(),
+      })),
     };
 
     res.json(response);

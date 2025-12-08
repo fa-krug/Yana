@@ -52,11 +52,12 @@ router.get(
   validateQuery(articleListSchema),
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     const pagination = parsePagination(req);
-    const { feedId, feedType, isRead, isSaved, search } = req.query;
+    const { feedId, feedType, groupId, isRead, isSaved, search } = req.query;
 
     const result = await listArticles(req.user!, {
       feedId: feedId ? parseInt(feedId as string) : undefined,
       feedType: feedType as string | undefined,
+      groupId: groupId ? parseInt(groupId as string, 10) : undefined,
       isRead: isRead !== undefined ? isRead === "true" : undefined,
       isSaved: isSaved !== undefined ? isSaved === "true" : undefined,
       search: search as string | undefined,

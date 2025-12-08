@@ -28,6 +28,15 @@ export interface LoginResponse {
   user: User | null;
 }
 
+// Group models
+export interface Group {
+  id: number;
+  name: string;
+  userId?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // Feed models
 export interface Feed {
   id: number;
@@ -50,6 +59,7 @@ export interface Feed {
   unreadCount?: number;
   description?: string;
   lastAggregated?: string;
+  groups?: Group[];
   // AI features
   aiTranslateTo?: string;
   aiSummarize?: boolean;
@@ -69,10 +79,15 @@ export interface FeedCreateRequest {
   useCurrentTimestamp?: boolean;
   dailyPostLimit?: number;
   aggregatorOptions?: Record<string, any>;
+  groupIds?: number[];
   // AI features
   aiTranslateTo?: string;
   aiSummarize?: boolean;
   aiCustomPrompt?: string;
+}
+
+export interface FeedUpdateRequest extends Partial<FeedCreateRequest> {
+  id: number;
 }
 
 export interface FeedPreviewRequest extends FeedCreateRequest {
