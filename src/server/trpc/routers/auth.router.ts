@@ -63,7 +63,13 @@ export const authRouter = router({
         const { username, password } = input;
 
         logger.info(
-          { username, sessionId: ctx.req.session.id },
+          {
+            username,
+            sessionId: ctx.req.session.id,
+            protocol: ctx.req.protocol,
+            secure: ctx.req.secure,
+            xForwardedProto: ctx.req.headers?.["x-forwarded-proto"],
+          },
           "Login attempt started",
         );
 
@@ -108,7 +114,13 @@ export const authRouter = router({
               reject(errorToReject);
             } else {
               logger.debug(
-                { sessionId: session.id, userId: user.id },
+                {
+                  sessionId: session.id,
+                  userId: user.id,
+                  protocol: ctx.req.protocol,
+                  secure: ctx.req.secure,
+                  cookieSecure: session.cookie.secure,
+                },
                 "Session saved successfully",
               );
               resolve();
