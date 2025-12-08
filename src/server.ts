@@ -47,6 +47,37 @@ const isDevelopment = NODE_ENV === "development";
 
 app.set("trust proxy", true);
 
+// Middleware to fix HTTPS detection when Traefik forwards wrong X-Forwarded-Proto
+// Cloudflare sends CF-Visitor header with correct scheme, but Traefik may forward X-Forwarded-Proto: http
+// This ensures req.secure is set correctly so secure cookies can be set
+app.use((req, res, next) => {
+  // If Express didn't detect HTTPS but CF-Visitor says it's HTTPS, fix it
+  if (!req.secure && !isDevelopment) {
+    const cfVisitor = req.headers["cf-visitor"];
+    if (cfVisitor) {
+      try {
+        const visitor = JSON.parse(
+          Array.isArray(cfVisitor) ? cfVisitor[0] : cfVisitor,
+        );
+        if (visitor.scheme === "https") {
+          // Override req.protocol and req.secure by modifying the connection
+          // This is needed because express-session checks req.secure before setting secure cookies
+          (req as any).connection.encrypted = true;
+          // Also set protocol directly
+          Object.defineProperty(req, "protocol", {
+            value: "https",
+            writable: false,
+            configurable: false,
+          });
+        }
+      } catch {
+        // Ignore JSON parse errors
+      }
+    }
+  }
+  next();
+});
+
 // CORS configuration (for development)
 if (isDevelopment) {
   app.use(
@@ -143,6 +174,22 @@ app.get("/api/health", async (req, res) => {
       database: "error",
     });
   }
+});
+
+// Debug endpoint to check what headers the server receives
+app.get("/api/debug/headers", (req, res) => {
+  res.json({
+    protocol: req.protocol,
+    secure: req.secure,
+    headers: {
+      "x-forwarded-proto": req.headers["x-forwarded-proto"],
+      "cf-visitor": req.headers["cf-visitor"],
+      "x-forwarded-for": req.headers["x-forwarded-for"],
+      "cf-connecting-ip": req.headers["cf-connecting-ip"],
+    },
+    sessionId: req.session?.id,
+    sessionCookie: req.session?.cookie,
+  });
 });
 
 // tRPC API routes - must be synchronous to ensure it's registered before SSR middleware
