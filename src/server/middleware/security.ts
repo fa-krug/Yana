@@ -21,8 +21,10 @@ export function setupSecurity(app: Express): void {
         ? {
             directives: {
               defaultSrc: ["'self'"],
-              scriptSrc: ["'self'"],
-              styleSrc: ["'self'"],
+              // Allow 'unsafe-inline' for Angular component styles and event handlers
+              // Angular generates inline styles and scripts at runtime
+              scriptSrc: ["'self'", "'unsafe-inline'"],
+              styleSrc: ["'self'", "'unsafe-inline'"],
               fontSrc: ["'self'", "data:"],
               imgSrc: ["'self'", "data:", "https:"],
               connectSrc: ["'self'"],
