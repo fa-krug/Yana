@@ -90,7 +90,10 @@ export const createFeedSchema = z.object({
   aiTranslateTo: z.string().max(10).default(""),
   aiSummarize: z.boolean().default(false),
   aiCustomPrompt: z.string().max(500).default(""),
-  icon: z.string().url().optional().nullable(),
+  icon: z
+    .union([z.string().url(), z.literal(""), z.null()])
+    .optional()
+    .transform((val) => (val === "" ? null : val)),
   example: z.string().default(""),
 });
 
