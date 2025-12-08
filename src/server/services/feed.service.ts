@@ -481,16 +481,16 @@ export async function previewFeed(
     );
 
     // Run aggregation with extended timeout for preview
-    // For preview, only process the first article
+    // For preview, we need at least 1 valid article, so we retry with increasing limits
+    // if articles are skipped (AutoModerator, duplicates, old posts, etc.)
     const timeoutMs = 120000; // 2 minutes - allows for slow feeds and content fetching
-    const articleLimit = 1; // Only process first article for preview
+    const articleLimits = [1, 5, 10, 25, 50]; // Progressive limits to try
     logger.info(
       {
         timeout: timeoutMs,
-        articleLimit,
         step: "aggregation_start",
       },
-      `Starting aggregation with ${timeoutMs}ms timeout (limit: ${articleLimit} article)`,
+      `Starting aggregation with ${timeoutMs}ms timeout (will retry with increasing limits until we get at least 1 article)`,
     );
 
     const timeoutPromise = new Promise<never>((_, reject) => {
@@ -508,68 +508,122 @@ export async function previewFeed(
       }, timeoutMs);
     });
 
-    const aggregationStart = Date.now();
-    const aggregationPromise = aggregator.aggregate(articleLimit);
+    let rawArticles: RawArticle[] = [];
+    let lastError: Error | null = null;
 
-    let rawArticles: RawArticle[];
-    try {
+    // Try with increasing limits until we get at least 1 article
+    for (const articleLimit of articleLimits) {
+      const aggregationStart = Date.now();
       logger.debug(
-        { step: "race_start" },
-        "Starting Promise.race between aggregation and timeout",
-      );
-      rawArticles = await Promise.race([aggregationPromise, timeoutPromise]);
-      const aggregationElapsed = Date.now() - aggregationStart;
-      logger.info(
         {
-          articleCount: rawArticles.length,
-          elapsed: aggregationElapsed,
-          step: "aggregation_complete",
+          articleLimit,
+          attempt: articleLimits.indexOf(articleLimit) + 1,
+          totalAttempts: articleLimits.length,
+          step: "aggregation_attempt",
         },
-        `Aggregation completed: ${rawArticles.length} articles`,
+        `Attempting aggregation with limit: ${articleLimit}`,
       );
-    } catch (timeoutError: any) {
-      const aggregationElapsed = Date.now() - aggregationStart;
-      if (timeoutError.message?.includes("timed out")) {
+
+      try {
+        const aggregationPromise = aggregator.aggregate(articleLimit);
+        const attemptArticles = await Promise.race([
+          aggregationPromise,
+          timeoutPromise,
+        ]);
+        const aggregationElapsed = Date.now() - aggregationStart;
+
+        logger.info(
+          {
+            articleLimit,
+            articleCount: attemptArticles.length,
+            elapsed: aggregationElapsed,
+            step: "aggregation_attempt_complete",
+          },
+          `Aggregation attempt completed: ${attemptArticles.length} articles`,
+        );
+
+        // If we got at least 1 article, use it and stop trying
+        if (attemptArticles && attemptArticles.length > 0) {
+          rawArticles = attemptArticles;
+          logger.info(
+            {
+              articleLimit,
+              articleCount: rawArticles.length,
+              step: "aggregation_success",
+            },
+            `Successfully got ${rawArticles.length} article(s) with limit ${articleLimit}`,
+          );
+          break;
+        }
+
+        // If we got 0 articles, try next limit
+        logger.debug(
+          {
+            articleLimit,
+            step: "aggregation_attempt_empty",
+          },
+          `Got 0 articles with limit ${articleLimit}, trying next limit`,
+        );
+      } catch (error: any) {
+        const aggregationElapsed = Date.now() - aggregationStart;
+        lastError = error;
+
+        if (error.message?.includes("timed out")) {
+          logger.warn(
+            {
+              userId: user.id,
+              feedName: data.name,
+              articleLimit,
+              elapsed: aggregationElapsed,
+              totalElapsed: Date.now() - previewStart,
+              step: "timeout_error",
+            },
+            "Feed preview timed out",
+          );
+          return {
+            success: false,
+            articles: [],
+            count: 0,
+            error:
+              "Feed preview timed out after 2 minutes. The feed may be too slow or unavailable.",
+            errorType: "timeout",
+          };
+        }
+
+        // For other errors, log and try next limit
         logger.warn(
           {
-            userId: user.id,
-            feedName: data.name,
+            error,
+            articleLimit,
             elapsed: aggregationElapsed,
-            totalElapsed: Date.now() - previewStart,
-            step: "timeout_error",
+            step: "aggregation_attempt_error",
           },
-          "Feed preview timed out",
+          `Error with limit ${articleLimit}, trying next limit`,
         );
-        return {
-          success: false,
-          articles: [],
-          count: 0,
-          error:
-            "Feed preview timed out after 2 minutes. The feed may be too slow or unavailable.",
-          errorType: "timeout",
-        };
       }
-      throw timeoutError;
     }
 
-    // Check if feed is empty
-    logger.debug(
-      { articleCount: rawArticles?.length || 0, step: "check_empty" },
-      "Checking if feed is empty",
-    );
+    // Check if we still have no articles after all attempts
     if (!rawArticles || rawArticles.length === 0) {
-      logger.warn({ step: "empty_feed" }, "No articles found in feed");
+      logger.warn(
+        {
+          attemptedLimits: articleLimits,
+          lastError: lastError?.message,
+          step: "empty_feed_after_all_attempts",
+        },
+        "No articles found in feed after trying all limits",
+      );
       return {
         success: false,
         articles: [],
         count: 0,
         error:
-          "No articles found in the feed. The feed may be empty or the URL may be incorrect.",
+          "No articles found in the feed. The feed may be empty, all articles were filtered out, or the URL may be incorrect.",
         errorType: "parse",
       };
     }
 
-    // Process articles for preview (already limited to 1 by aggregator)
+    // Process articles for preview (take only the first one for preview display)
     const processStart = Date.now();
     logger.debug(
       {
@@ -586,10 +640,12 @@ export async function previewFeed(
       author?: string;
       thumbnailUrl?: string;
       link: string;
+      mediaUrl?: string;
+      feedType?: "article" | "youtube" | "podcast" | "reddit";
     }> = [];
 
-    // Process all articles returned (should be only 1 due to articleLimit)
-    for (const article of rawArticles) {
+    // Process only the first article for preview (even if we fetched more to find valid ones)
+    for (const article of rawArticles.slice(0, 1)) {
       try {
         logger.debug(
           {
@@ -631,6 +687,13 @@ export async function previewFeed(
           author: article.author,
           thumbnailUrl: thumbnailBase64 || undefined,
           link: article.url,
+          mediaUrl: article.mediaUrl,
+          feedType: tempFeed.feedType as
+            | "article"
+            | "youtube"
+            | "podcast"
+            | "reddit"
+            | undefined,
         });
         logger.debug({ step: "process_article_complete" }, "Article processed");
       } catch (error) {

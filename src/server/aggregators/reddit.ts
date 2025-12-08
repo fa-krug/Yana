@@ -722,15 +722,20 @@ export class RedditAggregator extends BaseAggregator {
     const commentLimit = this.getOption("comment_limit", 10) as number;
     const userAgent = await this.getUserAgent();
 
-    // Calculate limit (Reddit API max is 100)
-    const limit = articleLimit ? Math.min(articleLimit, 100) : 25;
+    // Calculate desired article count
+    const desiredArticleCount = articleLimit || 25;
+
+    // Fetch 2-3x more posts than needed to account for filtering
+    // (AutoModerator posts, old posts, etc.)
+    // Reddit API max is 100
+    const fetchLimit = Math.min(desiredArticleCount * 3, 100);
 
     try {
       // Fetch posts from Reddit JSON API
       const url = `https://www.reddit.com/r/${subreddit}/${sortBy}.json`;
       const response = await axios.get(url, {
         params: {
-          limit,
+          limit: fetchLimit,
         },
         headers: {
           "User-Agent": userAgent,
@@ -746,14 +751,21 @@ export class RedditAggregator extends BaseAggregator {
       }
 
       logger.info(
-        { subreddit, postCount: posts.length },
+        { subreddit, postCount: posts.length, desiredArticleCount },
         "Successfully fetched Reddit posts",
       );
 
       // Convert to RawArticle format
       const articles: RawArticle[] = [];
+      const twoMonthsAgo = new Date();
+      twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
 
       for (const post of posts) {
+        // Stop if we have enough articles
+        if (articles.length >= desiredArticleCount) {
+          break;
+        }
+
         const postData = post.data;
 
         // Skip AutoModerator posts
@@ -764,8 +776,6 @@ export class RedditAggregator extends BaseAggregator {
 
         // Skip if too old (older than 2 months)
         const postDate = new Date(postData.created_utc * 1000);
-        const twoMonthsAgo = new Date();
-        twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
         if (postDate < twoMonthsAgo) {
           logger.debug(
             { postId: postData.id, date: postDate },

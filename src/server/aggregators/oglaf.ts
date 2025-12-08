@@ -85,6 +85,51 @@ async function fetchOglafContent(
 }
 
 /**
+ * Extract the comic image URL from Oglaf page HTML.
+ */
+function extractComicImageUrl(html: string, articleUrl: string): string | null {
+  try {
+    const $ = cheerio.load(html);
+    let comicImg = $("#strip");
+
+    if (comicImg.length === 0) {
+      comicImg = $(".content img, #content img, .comic img").first();
+    }
+
+    if (comicImg.length > 0) {
+      const imgSrc = comicImg.attr("src") || "";
+      // Make sure it's a valid absolute URL
+      if (
+        imgSrc &&
+        (imgSrc.startsWith("http://") || imgSrc.startsWith("https://"))
+      ) {
+        return imgSrc;
+      }
+      // If relative URL, make it absolute
+      if (imgSrc && imgSrc.startsWith("/")) {
+        try {
+          const baseUrl = new URL(articleUrl);
+          return new URL(imgSrc, baseUrl.origin).toString();
+        } catch {
+          return null;
+        }
+      }
+    }
+
+    return null;
+  } catch (error) {
+    logger.error(
+      {
+        error: error instanceof Error ? error : new Error(String(error)),
+        url: articleUrl,
+      },
+      "Failed to extract comic image URL",
+    );
+    return null;
+  }
+}
+
+/**
  * Extract the comic image from Oglaf page HTML.
  */
 function extractComicImage(html: string, articleUrl: string): string {
@@ -274,8 +319,24 @@ export class OglafAggregator extends BaseAggregator {
             "Article content fetched",
           );
 
-          // Extract comic image
+          // Extract comic image URL for thumbnail
           const extractStart = Date.now();
+          const comicImageUrl = extractComicImageUrl(html, article.url);
+          if (comicImageUrl) {
+            article.thumbnailUrl = comicImageUrl;
+            logger.debug(
+              {
+                index: i + 1,
+                url: article.url,
+                thumbnailUrl: comicImageUrl,
+                aggregator: this.id,
+                step: "extract_thumbnail",
+              },
+              "Comic image URL extracted for thumbnail",
+            );
+          }
+
+          // Extract comic image HTML for content
           const comicImage = extractComicImage(html, article.url);
           const extractElapsed = Date.now() - extractStart;
 

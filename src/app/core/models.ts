@@ -86,6 +86,8 @@ export interface PreviewArticle {
   author?: string;
   thumbnailUrl?: string;
   link: string;
+  mediaUrl?: string;
+  feedType?: "article" | "youtube" | "podcast" | "reddit";
 }
 
 export interface FeedPreviewResponse {

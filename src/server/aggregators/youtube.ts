@@ -126,9 +126,15 @@ interface YouTubeSearchItem {
 
 /**
  * Get YouTube proxy URL for embedding.
+ * Uses BASE_URL from environment if set, otherwise defaults to frontend port (4200) in development
+ * or backend port (3000) in production.
  */
 function getYouTubeProxyUrl(videoId: string): string {
-  const baseUrl = process.env["BASE_URL"] || "http://localhost:3000";
+  const baseUrl =
+    process.env["BASE_URL"] ||
+    (process.env["NODE_ENV"] === "development"
+      ? "http://localhost:4200"
+      : "http://localhost:3000");
   return `${baseUrl.replace(/\/$/, "")}/api/youtube-proxy?v=${encodeURIComponent(videoId)}`;
 }
 

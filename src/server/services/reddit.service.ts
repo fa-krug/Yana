@@ -119,3 +119,71 @@ export async function testRedditCredentials(
     return { success: false, errors };
   }
 }
+
+export interface SubredditSearchResult {
+  name: string;
+  displayName: string;
+  title: string;
+  description: string;
+  subscribers: number;
+  over18: boolean;
+}
+
+/**
+ * Search Reddit subreddits using Reddit's public API.
+ * Returns a list of subreddits matching the search query.
+ */
+export async function searchRedditSubreddits(
+  query: string,
+  limit: number = 25,
+): Promise<SubredditSearchResult[]> {
+  try {
+    const url = "https://www.reddit.com/subreddits/search.json";
+    const response = await axios.get(url, {
+      params: {
+        q: query,
+        limit: Math.min(limit, 100), // Reddit API max is 100
+        sort: "relevance",
+      },
+      headers: {
+        "User-Agent": "Yana/1.0",
+      },
+      timeout: 10000,
+    });
+
+    const subreddits: SubredditSearchResult[] = [];
+
+    if (response.data?.data?.children) {
+      for (const child of response.data.data.children) {
+        const data = child.data;
+        if (data?.display_name) {
+          subreddits.push({
+            name: data.display_name,
+            displayName: data.display_name,
+            title: data.title || data.display_name,
+            description: data.public_description || "",
+            subscribers: data.subscribers || 0,
+            over18: data.over18 || false,
+          });
+        }
+      }
+    }
+
+    logger.info(
+      { query, count: subreddits.length },
+      "Successfully searched Reddit subreddits",
+    );
+    return subreddits;
+  } catch (error) {
+    logger.error({ error, query }, "Error searching Reddit subreddits");
+    if (axios.isAxiosError(error)) {
+      if (error.response?.status === 429) {
+        throw new Error("Rate limited by Reddit. Please try again later.");
+      }
+      throw new Error(
+        `Reddit API error: ${error.response?.statusText || error.message}`,
+      );
+    }
+    throw error;
+  }
+}

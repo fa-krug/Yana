@@ -13,6 +13,7 @@ import {
 } from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { Router, RouterModule, ActivatedRoute } from "@angular/router";
+import { DomSanitizer, SafeResourceUrl } from "@angular/platform-browser";
 import {
   FormBuilder,
   FormControl,
@@ -21,7 +22,13 @@ import {
   Validators,
   AbstractControl,
 } from "@angular/forms";
-import { Subject, debounceTime, distinctUntilChanged, takeUntil } from "rxjs";
+import {
+  Subject,
+  debounceTime,
+  distinctUntilChanged,
+  takeUntil,
+  from,
+} from "rxjs";
 import { PageEvent } from "@angular/material/paginator";
 import { MatStepper } from "@angular/material/stepper";
 
@@ -39,11 +46,13 @@ import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
 import { MatDividerModule } from "@angular/material/divider";
 import { MatPaginatorModule } from "@angular/material/paginator";
 import { MatChipsModule } from "@angular/material/chips";
+import { MatAutocompleteModule } from "@angular/material/autocomplete";
 
 import { FeedService } from "../../core/services/feed.service";
 import { AggregatorService } from "../../core/services/aggregator.service";
 import { UserSettingsService } from "../../core/services/user-settings.service";
 import { BreadcrumbService } from "../../core/services/breadcrumb.service";
+import { TRPCService } from "../../core/trpc/trpc.service";
 import {
   Aggregator,
   AggregatorDetail,
@@ -73,6 +82,7 @@ import {
     MatDividerModule,
     MatPaginatorModule,
     MatChipsModule,
+    MatAutocompleteModule,
   ],
   template: `
     <div class="feed-form-container container-sm">
@@ -298,30 +308,166 @@ import {
                         }
                       </mat-form-field>
                     } @else {
-                      <mat-form-field appearance="outline" class="full-width">
-                        <mat-label>{{
-                          aggregatorDetail()!.identifierLabel
-                        }}</mat-label>
-                        @if (aggregatorDetail()!.identifierType === "url") {
-                          <input
-                            matInput
-                            type="url"
-                            formControlName="identifier"
-                            [readonly]="!isIdentifierEditable()"
-                          />
-                        } @else {
+                      <!-- Reddit aggregator with autocomplete -->
+                      @if (selectedAggregator()?.id === "reddit") {
+                        <mat-form-field appearance="outline" class="full-width">
+                          <mat-label>{{
+                            aggregatorDetail()!.identifierLabel
+                          }}</mat-label>
                           <input
                             matInput
                             formControlName="identifier"
+                            [matAutocomplete]="subredditAuto"
                             [readonly]="!isIdentifierEditable()"
+                            (input)="onSubredditSearch($event)"
                           />
-                        }
-                        @if (aggregatorDetail()!.identifierDescription) {
-                          <mat-hint>{{
-                            aggregatorDetail()!.identifierDescription
-                          }}</mat-hint>
-                        }
-                      </mat-form-field>
+                          @if (searchingSubreddits()) {
+                            <mat-spinner matSuffix diameter="20"></mat-spinner>
+                          }
+                          <mat-autocomplete
+                            #subredditAuto="matAutocomplete"
+                            [displayWith]="displaySubreddit"
+                            (optionSelected)="onSubredditSelected($event)"
+                          >
+                            @for (
+                              subreddit of subredditSearchResults();
+                              track subreddit.name
+                            ) {
+                              <mat-option [value]="subreddit.name">
+                                <span class="subreddit-option">
+                                  <strong>r/{{ subreddit.displayName }}</strong>
+                                  @if (subreddit.title) {
+                                    <span class="subreddit-title">{{
+                                      subreddit.title
+                                    }}</span>
+                                  }
+                                </span>
+                              </mat-option>
+                            }
+                            @if (
+                              subredditSearchResults().length === 0 &&
+                              !searchingSubreddits() &&
+                              feedFormGroup.get("identifier")?.value &&
+                              feedFormGroup.get("identifier")?.value.length > 2
+                            ) {
+                              <mat-option disabled>
+                                No subreddits found
+                              </mat-option>
+                            }
+                          </mat-autocomplete>
+                          @if (aggregatorDetail()!.identifierDescription) {
+                            <mat-hint>{{
+                              aggregatorDetail()!.identifierDescription
+                            }}</mat-hint>
+                          }
+                        </mat-form-field>
+                      } @else if (selectedAggregator()?.id === "youtube") {
+                        <!-- YouTube aggregator with autocomplete -->
+                        <mat-form-field appearance="outline" class="full-width">
+                          <mat-label>{{
+                            aggregatorDetail()!.identifierLabel
+                          }}</mat-label>
+                          <input
+                            matInput
+                            formControlName="identifier"
+                            [matAutocomplete]="channelAuto"
+                            [readonly]="!isIdentifierEditable()"
+                            (input)="onChannelSearch($event)"
+                          />
+                          @if (searchingChannels()) {
+                            <mat-spinner
+                              matSuffix
+                              diameter="20"
+                              class="channel-search-spinner"
+                            ></mat-spinner>
+                          }
+                          <mat-autocomplete
+                            #channelAuto="matAutocomplete"
+                            [displayWith]="displayChannel"
+                            (optionSelected)="onChannelSelected($event)"
+                          >
+                            @for (
+                              channel of channelSearchResults();
+                              track channel.channelId
+                            ) {
+                              <mat-option [value]="channel">
+                                <span class="channel-option">
+                                  @if (channel.thumbnailUrl) {
+                                    <img
+                                      [src]="channel.thumbnailUrl"
+                                      [alt]="channel.title"
+                                      class="channel-thumbnail"
+                                    />
+                                  }
+                                  <div class="channel-info">
+                                    <strong>{{
+                                      channel.handle
+                                        ? "@" + channel.handle
+                                        : channel.title
+                                    }}</strong>
+                                    @if (
+                                      channel.handle &&
+                                      channel.title !== channel.handle
+                                    ) {
+                                      <span class="channel-title">{{
+                                        channel.title
+                                      }}</span>
+                                    }
+                                    @if (channel.subscriberCount > 0) {
+                                      <span class="channel-subscribers">{{
+                                        formatSubscriberCount(
+                                          channel.subscriberCount
+                                        )
+                                      }}</span>
+                                    }
+                                  </div>
+                                </span>
+                              </mat-option>
+                            }
+                            @if (
+                              channelSearchResults().length === 0 &&
+                              !searchingChannels() &&
+                              feedFormGroup.get("identifier")?.value &&
+                              feedFormGroup.get("identifier")?.value.length > 2
+                            ) {
+                              <mat-option disabled>
+                                No channels found
+                              </mat-option>
+                            }
+                          </mat-autocomplete>
+                          @if (aggregatorDetail()!.identifierDescription) {
+                            <mat-hint>{{
+                              aggregatorDetail()!.identifierDescription
+                            }}</mat-hint>
+                          }
+                        </mat-form-field>
+                      } @else {
+                        <!-- Other aggregators with regular input -->
+                        <mat-form-field appearance="outline" class="full-width">
+                          <mat-label>{{
+                            aggregatorDetail()!.identifierLabel
+                          }}</mat-label>
+                          @if (aggregatorDetail()!.identifierType === "url") {
+                            <input
+                              matInput
+                              type="url"
+                              formControlName="identifier"
+                              [readonly]="!isIdentifierEditable()"
+                            />
+                          } @else {
+                            <input
+                              matInput
+                              formControlName="identifier"
+                              [readonly]="!isIdentifierEditable()"
+                            />
+                          }
+                          @if (aggregatorDetail()!.identifierDescription) {
+                            <mat-hint>{{
+                              aggregatorDetail()!.identifierDescription
+                            }}</mat-hint>
+                          }
+                        </mat-form-field>
+                      }
                     }
 
                     <!-- General Feed Options -->
@@ -631,6 +777,17 @@ import {
                             }
                           </mat-card-header>
                           <mat-card-content>
+                            @if (isYouTubeVideo(article)) {
+                              <div class="media-container">
+                                <iframe
+                                  [src]="getYouTubeEmbedUrl(article)"
+                                  frameborder="0"
+                                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                  allowfullscreen
+                                >
+                                </iframe>
+                              </div>
+                            }
                             <div
                               class="article-content"
                               [innerHTML]="article.content"
@@ -1749,6 +1906,87 @@ import {
         font-size: 0.875rem;
         margin: 8px 0 0 0;
       }
+
+      .preview-article-card .media-container {
+        margin: 16px 0;
+        background-color: #000;
+        border-radius: 4px;
+        overflow: hidden;
+      }
+
+      .preview-article-card .media-container iframe {
+        width: 100%;
+        aspect-ratio: 16 / 9;
+        display: block;
+      }
+
+      .subreddit-option {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .subreddit-option strong {
+        font-weight: 500;
+        color: var(--mat-sys-on-surface);
+      }
+
+      .subreddit-title {
+        font-size: 0.875rem;
+        color: var(--mat-sys-on-surface);
+        opacity: 0.7;
+      }
+
+      .channel-option {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        width: 100%;
+      }
+
+      .channel-thumbnail {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        object-fit: cover;
+        flex-shrink: 0;
+      }
+
+      .channel-info {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        flex: 1;
+        min-width: 0;
+      }
+
+      .channel-info strong {
+        font-weight: 500;
+        color: var(--mat-sys-on-surface);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .channel-title {
+        font-size: 0.875rem;
+        color: var(--mat-sys-on-surface);
+        opacity: 0.7;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .channel-subscribers {
+        font-size: 0.75rem;
+        color: var(--mat-sys-on-surface);
+        opacity: 0.6;
+      }
+
+      /* Spinner margin for YouTube channel search */
+      .channel-search-spinner {
+        margin-right: 8px;
+      }
     `,
   ],
 })
@@ -1763,6 +2001,8 @@ export class FeedFormComponent implements OnInit, OnDestroy {
   aggregatorService = inject(AggregatorService);
   userSettingsService = inject(UserSettingsService);
   private breadcrumbService = inject(BreadcrumbService);
+  private trpc = inject(TRPCService);
+  private sanitizer = inject(DomSanitizer);
 
   private destroy$ = new Subject<void>();
 
@@ -1777,6 +2017,27 @@ export class FeedFormComponent implements OnInit, OnDestroy {
   feedId = signal<number | null>(null);
   loadingFeed = signal<boolean>(false);
   hasOpenAICredentials = signal<boolean>(false);
+
+  // Subreddit search
+  subredditSearchResults = signal<
+    Array<{ name: string; displayName: string; title: string }>
+  >([]);
+  searchingSubreddits = signal<boolean>(false);
+  private subredditSearchTimeout: any = null;
+
+  // YouTube channel search
+  channelSearchResults = signal<
+    Array<{
+      channelId: string;
+      title: string;
+      description: string;
+      thumbnailUrl: string | null;
+      subscriberCount: number;
+      handle: string | null;
+    }>
+  >([]);
+  searchingChannels = signal<boolean>(false);
+  private channelSearchTimeout: any = null;
 
   // Expose Object for template usage
   protected readonly Object = Object;
@@ -1855,6 +2116,14 @@ export class FeedFormComponent implements OnInit, OnDestroy {
     // Clear breadcrumb label when leaving
     if (this.feedId()) {
       this.breadcrumbService.clearLabel(`id:${this.feedId()}`);
+    }
+    // Clear subreddit search timeout
+    if (this.subredditSearchTimeout) {
+      clearTimeout(this.subredditSearchTimeout);
+    }
+    // Clear channel search timeout
+    if (this.channelSearchTimeout) {
+      clearTimeout(this.channelSearchTimeout);
     }
     this.destroy$.next();
     this.destroy$.complete();
@@ -2257,6 +2526,239 @@ export class FeedFormComponent implements OnInit, OnDestroy {
         });
       },
     });
+  }
+
+  /**
+   * Handle subreddit search input.
+   */
+  onSubredditSearch(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const query = input.value.trim();
+
+    if (query.length < 2) {
+      this.subredditSearchResults.set([]);
+      this.searchingSubreddits.set(false);
+      return;
+    }
+
+    // Clear existing timeout
+    if (this.subredditSearchTimeout) {
+      clearTimeout(this.subredditSearchTimeout);
+    }
+
+    // Debounce the search
+    this.subredditSearchTimeout = setTimeout(() => {
+      const currentValue = this.feedFormGroup.get("identifier")?.value?.trim();
+      if (currentValue === query && query.length >= 2) {
+        this.searchSubreddits(query);
+      }
+    }, 500);
+  }
+
+  /**
+   * Search Reddit subreddits using TRPC.
+   */
+  private searchSubreddits(query: string) {
+    if (query.length < 2) {
+      this.subredditSearchResults.set([]);
+      this.searchingSubreddits.set(false);
+      return;
+    }
+
+    this.searchingSubreddits.set(true);
+
+    from(
+      this.trpc.client.aggregator.searchSubreddits.query({
+        query: query,
+        limit: 25,
+      }),
+    )
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (results) => {
+          this.subredditSearchResults.set(
+            results.map((r) => ({
+              name: r.name,
+              displayName: r.displayName,
+              title: r.title,
+            })),
+          );
+          this.searchingSubreddits.set(false);
+        },
+        error: (error) => {
+          console.error("Error searching subreddits:", error);
+          this.subredditSearchResults.set([]);
+          this.searchingSubreddits.set(false);
+        },
+      });
+  }
+
+  /**
+   * Display function for subreddit autocomplete.
+   */
+  displaySubreddit(
+    subreddit:
+      | string
+      | { name: string; displayName: string; title: string }
+      | null,
+  ): string {
+    if (!subreddit) {
+      return "";
+    }
+    // If it's already a string (the name), return it
+    if (typeof subreddit === "string") {
+      return subreddit;
+    }
+    // If it's an object, return the name
+    return subreddit.name || "";
+  }
+
+  /**
+   * Handle subreddit selection from autocomplete.
+   */
+  onSubredditSelected(event: any) {
+    const subreddit = event.option.value;
+    if (subreddit) {
+      this.feedFormGroup.patchValue({ identifier: subreddit });
+    }
+  }
+
+  /**
+   * Handle channel search input.
+   */
+  onChannelSearch(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const query = input.value?.trim() || "";
+
+    // Clear existing timeout
+    if (this.channelSearchTimeout) {
+      clearTimeout(this.channelSearchTimeout);
+    }
+
+    // Debounce the search
+    this.channelSearchTimeout = setTimeout(() => {
+      const currentValue = this.feedFormGroup.get("identifier")?.value?.trim();
+      if (currentValue === query && query.length >= 2) {
+        this.searchChannels(query);
+      }
+    }, 500);
+  }
+
+  /**
+   * Search YouTube channels using TRPC.
+   */
+  private searchChannels(query: string) {
+    if (query.length < 2) {
+      this.channelSearchResults.set([]);
+      this.searchingChannels.set(false);
+      return;
+    }
+
+    this.searchingChannels.set(true);
+
+    from(
+      this.trpc.client.aggregator.searchChannels.query({
+        query: query,
+        limit: 25,
+      }),
+    )
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (results) => {
+          this.channelSearchResults.set(results);
+          this.searchingChannels.set(false);
+        },
+        error: (error) => {
+          console.error("Error searching YouTube channels:", error);
+          this.channelSearchResults.set([]);
+          this.searchingChannels.set(false);
+        },
+      });
+  }
+
+  /**
+   * Display function for channel autocomplete.
+   */
+  displayChannel(
+    channel:
+      | string
+      | {
+          channelId: string;
+          title: string;
+          handle: string | null;
+        }
+      | null,
+  ): string {
+    if (!channel) {
+      return "";
+    }
+    // If it's already a string, return it as-is (could be handle, channelId, or URL)
+    if (typeof channel === "string") {
+      return channel;
+    }
+    // If it's an object, return the handle (with @) or channelId
+    return channel.handle ? `@${channel.handle}` : channel.channelId;
+  }
+
+  /**
+   * Handle channel selection from autocomplete.
+   */
+  onChannelSelected(event: any) {
+    const channel = event.option.value;
+    if (channel && typeof channel === "object") {
+      // Prefer handle if available, otherwise use channelId
+      // The YouTube aggregator can resolve both
+      const identifier = channel.handle
+        ? `@${channel.handle}`
+        : channel.channelId;
+      this.feedFormGroup.patchValue({ identifier });
+    }
+  }
+
+  /**
+   * Format subscriber count for display.
+   */
+  formatSubscriberCount(count: number): string {
+    if (count >= 1000000) {
+      return `${(count / 1000000).toFixed(1)}M subscribers`;
+    } else if (count >= 1000) {
+      return `${(count / 1000).toFixed(1)}K subscribers`;
+    }
+    return `${count} subscribers`;
+  }
+
+  /**
+   * Check if preview article is a YouTube video.
+   */
+  isYouTubeVideo(article: PreviewArticle): boolean {
+    return article.feedType === "youtube" && !!article.mediaUrl;
+  }
+
+  /**
+   * Get safe YouTube embed URL for preview article.
+   */
+  getYouTubeEmbedUrl(article: PreviewArticle): SafeResourceUrl {
+    if (!article.mediaUrl) {
+      return this.sanitizer.bypassSecurityTrustResourceUrl("");
+    }
+
+    // If mediaUrl already includes the proxy path, use it directly
+    if (article.mediaUrl.includes("/api/youtube-proxy")) {
+      return this.sanitizer.bypassSecurityTrustResourceUrl(article.mediaUrl);
+    }
+
+    // Extract video ID from standard YouTube URLs
+    const videoIdMatch = article.link.match(
+      /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&?/]+)/,
+    );
+    if (videoIdMatch && videoIdMatch[1]) {
+      const videoId = videoIdMatch[1];
+      return this.sanitizer.bypassSecurityTrustResourceUrl(
+        `https://www.youtube.com/embed/${videoId}`,
+      );
+    }
+
+    return this.sanitizer.bypassSecurityTrustResourceUrl("");
   }
 
   createFeed() {

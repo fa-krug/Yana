@@ -162,9 +162,6 @@ import { Article } from "../../core/models";
                     loading="lazy"
                   />
                 }
-                @if (article.summary) {
-                  <p class="article-summary">{{ article.summary }}</p>
-                }
                 <div class="article-tags">
                   <mat-chip-set>
                     @if (article.read || article.isRead) {
@@ -330,17 +327,6 @@ import { Article } from "../../core/models";
         object-fit: cover;
         border-radius: 4px;
         margin-bottom: 12px;
-      }
-
-      .article-summary {
-        color: rgba(0, 0, 0, 0.7);
-        font-size: 0.875rem;
-        line-height: 1.5;
-        margin: 12px 0;
-        display: -webkit-box;
-        -webkit-line-clamp: 3;
-        -webkit-box-orient: vertical;
-        overflow: hidden;
       }
 
       .article-tags {

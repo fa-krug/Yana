@@ -1136,7 +1136,12 @@ export class ArticleDetailComponent implements OnInit, OnDestroy {
     const article = this.article();
     if (!article?.mediaUrl) return "";
 
-    // Extract video ID from mediaUrl
+    // Check if mediaUrl is already a proxy URL - use it directly
+    if (article.mediaUrl.includes("/api/youtube-proxy")) {
+      return this.sanitizer.bypassSecurityTrustResourceUrl(article.mediaUrl);
+    }
+
+    // Extract video ID from standard YouTube URLs
     const videoIdMatch = article.mediaUrl.match(
       /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&?/]+)/,
     );

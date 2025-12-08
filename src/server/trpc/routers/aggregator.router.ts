@@ -7,7 +7,7 @@
 
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { router, publicProcedure } from "../procedures";
+import { router, publicProcedure, protectedProcedure } from "../procedures";
 import {
   getAllAggregatorMetadata,
   getAggregatorDetail,
@@ -15,6 +15,10 @@ import {
   getGroupedAggregatorMetadata,
 } from "../../services/aggregator.service";
 import { NotFoundError } from "../../errors";
+import { searchRedditSubreddits } from "../../services/reddit.service";
+import { searchYouTubeChannels } from "../../services/youtube.service";
+import { getUserSettings } from "../../services/userSettings.service";
+import { getAuthenticatedUser } from "../middleware";
 
 /**
  * Aggregator router.
@@ -94,6 +98,78 @@ export const aggregatorRouter = router({
           });
         }
         throw error;
+      }
+    }),
+
+  /**
+   * Search Reddit subreddits.
+   * Returns a list of subreddits matching the search query.
+   */
+  searchSubreddits: publicProcedure
+    .input(
+      z.object({
+        query: z.string().min(1).max(100),
+        limit: z.number().min(1).max(100).optional().default(25),
+      }),
+    )
+    .query(async ({ input }) => {
+      try {
+        const subreddits = await searchRedditSubreddits(
+          input.query,
+          input.limit,
+        );
+        return subreddits;
+      } catch (error) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `Failed to search subreddits: ${error instanceof Error ? error.message : "Unknown error"}`,
+        });
+      }
+    }),
+
+  /**
+   * Search YouTube channels.
+   * Returns a list of channels matching the search query.
+   * Requires authentication and YouTube API key in user settings.
+   */
+  searchChannels: protectedProcedure
+    .input(
+      z.object({
+        query: z.string().min(1).max(100),
+        limit: z.number().min(1).max(50).optional().default(25),
+      }),
+    )
+    .query(async ({ input, ctx }) => {
+      try {
+        const user = getAuthenticatedUser(ctx);
+        const settings = await getUserSettings(user.id);
+
+        if (
+          !settings.youtubeEnabled ||
+          !settings.youtubeApiKey ||
+          settings.youtubeApiKey.trim() === ""
+        ) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "YouTube API key is not configured. Please configure it in settings.",
+          });
+        }
+
+        const channels = await searchYouTubeChannels(
+          input.query,
+          settings.youtubeApiKey,
+          input.limit,
+        );
+        return channels;
+      } catch (error) {
+        if (error instanceof TRPCError) {
+          throw error;
+        }
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `Failed to search YouTube channels: ${error instanceof Error ? error.message : "Unknown error"}`,
+        });
       }
     }),
 });

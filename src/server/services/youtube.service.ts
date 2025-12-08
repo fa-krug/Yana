@@ -123,3 +123,141 @@ export async function testYouTubeCredentials(
     return { success: false, errors };
   }
 }
+
+export interface YouTubeChannelSearchResult {
+  channelId: string;
+  title: string;
+  description: string;
+  thumbnailUrl: string | null;
+  subscriberCount: number;
+  handle: string | null;
+}
+
+/**
+ * Search YouTube channels using YouTube Data API v3.
+ * Returns a list of channels matching the search query.
+ *
+ * Note: This requires a valid YouTube API key. The API key should be passed
+ * as a parameter, but for now we'll need to get it from user settings.
+ * This function should be called from a context where we have access to user settings.
+ */
+export async function searchYouTubeChannels(
+  query: string,
+  apiKey: string,
+  limit: number = 25,
+): Promise<YouTubeChannelSearchResult[]> {
+  if (!apiKey || apiKey.trim() === "") {
+    throw new Error("YouTube API key is required");
+  }
+
+  try {
+    const url = "https://www.googleapis.com/youtube/v3/search";
+    const response = await axios.get(url, {
+      params: {
+        part: "snippet",
+        q: query,
+        type: "channel",
+        maxResults: Math.min(limit, 50), // YouTube API max is 50
+        key: apiKey,
+        order: "relevance",
+      },
+      timeout: 10000,
+    });
+
+    const channels: YouTubeChannelSearchResult[] = [];
+
+    if (response.data?.items) {
+      for (const item of response.data.items) {
+        const snippet = item.snippet;
+        if (snippet && item.id?.channelId) {
+          // Get additional channel details (subscriber count, handle)
+          try {
+            const channelDetailsResponse = await axios.get(
+              "https://www.googleapis.com/youtube/v3/channels",
+              {
+                params: {
+                  part: "snippet,statistics",
+                  id: item.id.channelId,
+                  key: apiKey,
+                },
+                timeout: 10000,
+              },
+            );
+
+            const channelDetails = channelDetailsResponse.data?.items?.[0];
+            const channelSnippet = channelDetails?.snippet;
+            const channelStatistics = channelDetails?.statistics;
+
+            // Extract handle from customUrl or try to find it
+            let handle: string | null = null;
+            if (channelSnippet?.customUrl) {
+              handle = channelSnippet.customUrl.replace("@", "");
+            } else if (channelSnippet?.handle) {
+              handle = channelSnippet.handle.replace("@", "");
+            }
+
+            channels.push({
+              channelId: item.id.channelId,
+              title: snippet.title || "",
+              description: snippet.description || "",
+              thumbnailUrl:
+                snippet.thumbnails?.high?.url ||
+                snippet.thumbnails?.default?.url ||
+                null,
+              subscriberCount: parseInt(
+                channelStatistics?.subscriberCount || "0",
+                10,
+              ),
+              handle: handle,
+            });
+          } catch (detailError) {
+            // If we can't get details, still add the channel with basic info
+            logger.warn(
+              { error: detailError, channelId: item.id.channelId },
+              "Could not fetch channel details, using basic info",
+            );
+            channels.push({
+              channelId: item.id.channelId,
+              title: snippet.title || "",
+              description: snippet.description || "",
+              thumbnailUrl:
+                snippet.thumbnails?.high?.url ||
+                snippet.thumbnails?.default?.url ||
+                null,
+              subscriberCount: 0,
+              handle: null,
+            });
+          }
+        }
+      }
+    }
+
+    logger.info(
+      { query, count: channels.length },
+      "Successfully searched YouTube channels",
+    );
+    return channels;
+  } catch (error) {
+    logger.error({ error, query }, "Error searching YouTube channels");
+    if (axios.isAxiosError(error)) {
+      if (error.response?.status === 403) {
+        const errorData = error.response.data;
+        if (errorData?.error?.errors?.[0]?.reason === "quotaExceeded") {
+          throw new Error(
+            "YouTube API quota exceeded. Please try again later.",
+          );
+        }
+        throw new Error(
+          "YouTube API access denied. Check API key restrictions in Google Cloud Console.",
+        );
+      }
+      if (error.response?.status === 400) {
+        throw new Error("Invalid search query or API key.");
+      }
+      throw new Error(
+        `YouTube API error: ${error.response?.statusText || error.message}`,
+      );
+    }
+    throw error;
+  }
+}
