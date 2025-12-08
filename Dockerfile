@@ -80,7 +80,6 @@ ENV NODE_ENV=production \
 # Install tini for proper PID 1 signal handling and set up user/dirs
 RUN apt-get update && apt-get install -y --no-install-recommends tini \
     && rm -rf /var/lib/apt/lists/* \
-    && useradd -r -u 1001 -g root nodejs \
     && mkdir -p /app/data \
     && chown -R nodejs:root /app
 
