@@ -11,11 +11,6 @@ WORKDIR /app
 # Install ONLY what's needed for better-sqlite3 compilation
 # bcrypt 6.x and sharp use prebuilt binaries on glibc
 ENV DEBIAN_FRONTEND=noninteractive
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3 \
-    make \
-    g++ \
-    && rm -rf /var/lib/apt/lists/*
 
 # Copy package files for layer caching
 COPY package*.json ./
@@ -60,21 +55,6 @@ WORKDIR /app
 
 # Install runtime deps for Playwright chromium
 ENV DEBIAN_FRONTEND=noninteractive
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    chromium \
-    fonts-liberation \
-    libnss3 \
-    libatk1.0-0 \
-    libatk-bridge2.0-0 \
-    libcups2 \
-    libdrm2 \
-    libxkbcommon0 \
-    libxcomposite1 \
-    libxdamage1 \
-    libxrandr2 \
-    libgbm1 \
-    libasound2 \
-    && rm -rf /var/lib/apt/lists/*
 
 # Playwright config - use system chromium
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
@@ -90,8 +70,8 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/src/server ./src/server
 COPY --from=builder /app/docker-entrypoint.sh ./
 
-# Register chromium with Playwright (no download, just setup)
-RUN npx playwright install chromium || true
+# Register chromium with Playwright
+RUN npx playwright install chromium
 
 # Security: non-root user
 RUN useradd -r -u 1001 nodejs && \
