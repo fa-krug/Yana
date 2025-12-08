@@ -66,6 +66,10 @@ COPY package*.json ./
 # --ignore-scripts skips prepare script (husky) which requires dev deps
 RUN npm ci --omit=dev --ignore-scripts
 
+# Rebuild native modules (better-sqlite3, bcrypt) for target platform
+# This is necessary because --ignore-scripts skips postinstall hooks
+RUN npm rebuild better-sqlite3 bcrypt
+
 # =============================================================================
 # Runtime Stage - Use Playwright base image (includes Chromium)
 # =============================================================================
