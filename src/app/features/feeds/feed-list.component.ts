@@ -880,12 +880,12 @@ export class FeedListComponent implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe(() => this.loadFeeds());
 
-    // Auto-refresh every 30 seconds
+    // Auto-refresh every 30 seconds (silent to avoid UI glitches)
     interval(30000)
       .pipe(takeUntil(this.destroy$))
       .subscribe(() => {
         if (!this.feedService.loading()) {
-          this.loadFeeds();
+          this.loadFeeds(true);
         }
       });
   }
@@ -895,7 +895,7 @@ export class FeedListComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
-  loadFeeds() {
+  loadFeeds(silent: boolean = false) {
     const filters: FeedFilters = {
       search: this.searchControl.value || undefined,
       feedType: this.typeControl.value as any,
@@ -904,7 +904,7 @@ export class FeedListComponent implements OnInit, OnDestroy {
       pageSize: this.feedService.pageSize(),
     };
 
-    this.feedService.loadFeeds(filters).subscribe();
+    this.feedService.loadFeeds(filters, silent).subscribe();
   }
 
   refresh() {

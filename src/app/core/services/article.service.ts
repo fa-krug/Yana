@@ -54,11 +54,16 @@ export class ArticleService {
 
   /**
    * Load articles with optional filters
+   * @param filters - Filter options
+   * @param silent - If true, don't show loading state (for background updates)
    */
   loadArticles(
     filters: ArticleFilters = {},
+    silent: boolean = false,
   ): Observable<PaginatedResponse<Article>> {
-    this.loadingSignal.set(true);
+    if (!silent) {
+      this.loadingSignal.set(true);
+    }
     this.errorSignal.set(null);
 
     return from(
@@ -113,12 +118,16 @@ export class ArticleService {
         this.totalCountSignal.set(response.count || 0);
         this.currentPageSignal.set(response.page || 1);
         this.pageSizeSignal.set(response.pageSize || 20);
-        this.loadingSignal.set(false);
+        if (!silent) {
+          this.loadingSignal.set(false);
+        }
       }),
       catchError((error) => {
         console.error("Error loading articles:", error);
         this.errorSignal.set(error.message || "Failed to load articles");
-        this.loadingSignal.set(false);
+        if (!silent) {
+          this.loadingSignal.set(false);
+        }
         return of({ items: [], count: 0, page: 1, pageSize: 20, pages: 0 });
       }),
     );

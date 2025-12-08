@@ -459,11 +459,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
     // Load statistics immediately
     this.statisticsService.loadStatistics().subscribe();
 
-    // Auto-refresh every 30 seconds
+    // Auto-refresh every 30 seconds (silent to avoid UI glitches)
     interval(30000)
       .pipe(takeUntil(this.destroy$))
       .subscribe(() => {
-        this.statisticsService.loadStatistics().subscribe();
+        this.statisticsService.loadStatistics(true).subscribe();
       });
   }
 

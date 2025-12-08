@@ -336,11 +336,11 @@ export class MetricsComponent implements OnInit, OnDestroy {
   ngOnInit() {
     this.loadMetrics();
 
-    // Auto-refresh every 10 seconds
+    // Auto-refresh every 10 seconds (silent to avoid UI glitches)
     interval(10000)
       .pipe(takeUntil(this.destroy$))
       .subscribe(() => {
-        this.loadMetrics();
+        this.loadMetrics(true);
       });
 
     // Subscribe to SSE events for real-time updates
@@ -371,18 +371,24 @@ export class MetricsComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
-  loadMetrics() {
-    this.loading.set(true);
+  loadMetrics(silent: boolean = false) {
+    if (!silent) {
+      this.loading.set(true);
+    }
     this.error.set(null);
 
     this.tasksService.getMetrics().subscribe({
       next: (metrics) => {
         this.metrics.set(metrics);
-        this.loading.set(false);
+        if (!silent) {
+          this.loading.set(false);
+        }
       },
       error: (err) => {
         this.error.set(err.message || "Failed to load metrics");
-        this.loading.set(false);
+        if (!silent) {
+          this.loading.set(false);
+        }
       },
     });
 

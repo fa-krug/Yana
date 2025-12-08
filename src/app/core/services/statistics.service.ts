@@ -30,20 +30,25 @@ export class StatisticsService {
   /**
    * Load statistics from the API.
    * Only loads in browser (not during SSR).
+   * @param silent - If true, don't show loading state (for background updates)
    */
-  loadStatistics() {
+  loadStatistics(silent: boolean = false) {
     // Skip during SSR
     if (!isPlatformBrowser(this.platformId)) {
       return of(null);
     }
 
-    this.loadingSignal.set(true);
+    if (!silent) {
+      this.loadingSignal.set(true);
+    }
     this.errorSignal.set(null);
 
     return from(this.trpc.client.statistics.get.query()).pipe(
       tap((stats) => {
         this.statisticsSignal.set(stats);
-        this.loadingSignal.set(false);
+        if (!silent) {
+          this.loadingSignal.set(false);
+        }
       }),
       catchError((error) => {
         // Only log errors in browser (SSR errors are expected and harmless)
@@ -51,7 +56,9 @@ export class StatisticsService {
           console.error("Failed to load statistics:", error);
           this.errorSignal.set("Failed to load statistics");
         }
-        this.loadingSignal.set(false);
+        if (!silent) {
+          this.loadingSignal.set(false);
+        }
         return of(null);
       }),
     );

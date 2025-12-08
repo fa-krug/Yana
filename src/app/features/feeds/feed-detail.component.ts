@@ -1247,12 +1247,12 @@ export class FeedDetailComponent implements OnInit, OnDestroy {
         this.loadArticles(true);
       });
 
-    // Auto-refresh articles every 30 seconds
+    // Auto-refresh articles every 30 seconds (silent to avoid UI glitches)
     interval(30000)
       .pipe(takeUntil(this.destroy$))
       .subscribe(() => {
         if (!this.articleService.loading() && this.feed()) {
-          this.loadArticles();
+          this.loadArticles(false, true);
         }
       });
   }
@@ -1267,7 +1267,7 @@ export class FeedDetailComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
-  loadArticles(resetPage: boolean = false) {
+  loadArticles(resetPage: boolean = false, silent: boolean = false) {
     const currentFeed = this.feed();
     if (!currentFeed) return;
 
@@ -1286,7 +1286,7 @@ export class FeedDetailComponent implements OnInit, OnDestroy {
     // Note: 'read' and 'saved' filters are not supported by the API yet
     // They would require client-side filtering or API updates
 
-    this.articleService.loadArticles(filters).subscribe();
+    this.articleService.loadArticles(filters, silent).subscribe();
   }
 
   refreshArticles() {
