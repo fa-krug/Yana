@@ -48,6 +48,7 @@ import {
 import { FeedService } from "../../core/services/feed.service";
 import { GroupService } from "../../core/services/group.service";
 import { Article, Group } from "../../core/models";
+import { getProxiedImageUrl } from "../../core/utils/image-proxy.util";
 
 @Component({
   selector: "app-article-list",
@@ -167,7 +168,7 @@ import { Article, Group } from "../../core/models";
               <mat-card-content>
                 @if (article.thumbnailUrl) {
                   <img
-                    [src]="article.thumbnailUrl"
+                    [src]="getProxiedImageUrl(article.thumbnailUrl)"
                     [alt]="article.title || article.name"
                     class="article-thumbnail"
                     loading="lazy"
@@ -631,4 +632,7 @@ export class ArticleListComponent implements OnInit, OnDestroy {
   refresh() {
     this.applyFilters();
   }
+
+  // Expose utility function to template
+  getProxiedImageUrl = getProxiedImageUrl;
 }

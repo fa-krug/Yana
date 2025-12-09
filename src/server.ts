@@ -201,10 +201,12 @@ app.use("/trpc", createTRPCMiddleware());
 import { youtubeRoutes } from "./server/routes/youtube";
 import { greaderRoutes } from "./server/routes/greader";
 import { adminTasksSSERoutes } from "./server/routes/admin-tasks-sse";
+import { imageProxyRoutes } from "./server/routes/images";
 
 app.use("/api", youtubeRoutes());
 app.use("/api/greader", greaderRoutes()); // Google Reader API
 app.use("/api/admin/tasks", adminTasksSSERoutes()); // Admin tasks SSE
+app.use("/api", imageProxyRoutes()); // Image proxy for external images
 
 /**
  * Serve static files from /browser

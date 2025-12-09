@@ -33,6 +33,8 @@ export function setupSecurity(app: Express): void {
           baseUri: ["'self'"],
           formAction: ["'self'"],
           frameAncestors: ["'none'"],
+          // Allow embedding YouTube proxy (same origin) and YouTube embeds
+          frameSrc: ["'self'", "https://www.youtube-nocookie.com"],
           upgradeInsecureRequests: [],
         },
       }
@@ -60,21 +62,24 @@ export function setupSecurity(app: Express): void {
       }
     : false;
 
-  // Apply YouTube proxy CSP to /api/youtube-proxy route
-  app.use("/api/youtube-proxy", (req, res, next) => {
-    helmet({
-      contentSecurityPolicy: youtubeProxyCSP,
-      crossOriginEmbedderPolicy: false,
-    })(req, res, next);
+  // Apply helmet with route-specific CSP
+  app.use((req, res, next) => {
+    // Check if this is the YouTube proxy route
+    if (
+      req.path === "/api/youtube-proxy" ||
+      req.path.startsWith("/api/youtube-proxy")
+    ) {
+      helmet({
+        contentSecurityPolicy: youtubeProxyCSP,
+        crossOriginEmbedderPolicy: false,
+      })(req, res, next);
+    } else {
+      helmet({
+        contentSecurityPolicy: defaultCSP,
+        crossOriginEmbedderPolicy: false, // Allow embedding for iframes
+      })(req, res, next);
+    }
   });
-
-  // Apply default CSP to all other routes
-  app.use(
-    helmet({
-      contentSecurityPolicy: defaultCSP,
-      crossOriginEmbedderPolicy: false, // Allow embedding for iframes
-    }),
-  );
 
   // Rate limiting for API endpoints
   const apiLimiter = rateLimit({

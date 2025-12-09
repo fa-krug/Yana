@@ -3,8 +3,7 @@
   "version": "0.0.0",
   "scripts": {
     "start": "ng serve",
-    "build": "ng build && npm run postbuild",
-    "postbuild": "tsx scripts/patch-service-worker.ts",
+    "build": "ng build",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",

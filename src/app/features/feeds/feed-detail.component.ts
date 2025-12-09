@@ -54,6 +54,7 @@ import {
 import { BreadcrumbService } from "../../core/services/breadcrumb.service";
 import { ConfirmationService } from "../../core/services/confirmation.service";
 import { Feed, Article } from "../../core/models";
+import { getProxiedImageUrl } from "../../core/utils/image-proxy.util";
 
 @Component({
   selector: "app-feed-detail",
@@ -302,7 +303,7 @@ import { Feed, Article } from "../../core/models";
                         article.thumbnailUrl && !articleImageErrors[article.id]
                       ) {
                         <img
-                          [src]="article.thumbnailUrl"
+                          [src]="getProxiedImageUrl(article.thumbnailUrl)"
                           [alt]="article.title || article.name"
                           class="article-thumbnail"
                           loading="lazy"
@@ -1687,4 +1688,7 @@ export class FeedDetailComponent implements OnInit, OnDestroy {
       },
     });
   }
+
+  // Expose utility function to template
+  getProxiedImageUrl = getProxiedImageUrl;
 }
