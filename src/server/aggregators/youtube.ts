@@ -401,6 +401,9 @@ export class YouTubeAggregator extends BaseAggregator {
   override readonly identifierEditable = true;
   override readonly prefillName = false;
 
+  // Store channel icon URL for feed icon collection
+  private channelIconUrl: string | null = null;
+
   /**
    * Get YouTube API key from user settings.
    */
@@ -423,6 +426,13 @@ export class YouTubeAggregator extends BaseAggregator {
     }
 
     return settings.youtubeApiKey;
+  }
+
+  /**
+   * Collect feed icon URL during aggregation.
+   */
+  override async collectFeedIcon(): Promise<string | null> {
+    return this.channelIconUrl;
   }
 
   /**
@@ -540,13 +550,15 @@ export class YouTubeAggregator extends BaseAggregator {
       const uploadsPlaylistId =
         channel.contentDetails?.relatedPlaylists?.uploads;
 
-      // Store channel icon URL for later use in aggregation service
+      // Store channel icon URL for feed icon collection
       const snippet = (channelResponse.data.items[0] as any).snippet;
       if (snippet?.thumbnails) {
         const thumbnails = snippet.thumbnails;
         // Get highest quality thumbnail (prefer high quality first)
         for (const quality of ["high", "medium", "default"] as const) {
           if (thumbnails[quality]?.url) {
+            this.channelIconUrl = thumbnails[quality].url;
+            // Legacy support: also store in private property for backwards compatibility
             (this as any).__channelIconUrl = thumbnails[quality].url;
             break;
           }

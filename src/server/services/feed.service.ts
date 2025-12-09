@@ -344,10 +344,27 @@ export async function createFeed(
     await setFeedGroups(feed.id, user.id, groupIds);
   }
 
-  // Queue icon fetch if icon is not set
+  // Fetch icon synchronously if icon is not set
   if (!feed.icon) {
-    const { queueIconFetch } = await import("./icon.service");
-    await queueIconFetch(feed.id, false);
+    try {
+      const { processIconFetch } = await import("./icon.service");
+      await processIconFetch(feed.id, false);
+      // Reload feed to get updated icon
+      const [updatedFeed] = await db
+        .select()
+        .from(feeds)
+        .where(eq(feeds.id, feed.id))
+        .limit(1);
+      if (updatedFeed) {
+        Object.assign(feed, updatedFeed);
+      }
+    } catch (error) {
+      logger.warn(
+        { error, feedId: feed.id },
+        "Failed to fetch feed icon on create",
+      );
+      // Continue without icon - not critical
+    }
   }
 
   logger.info({ feedId: feed.id, userId: user.id, groupIds }, "Feed created");
@@ -388,9 +405,26 @@ export async function updateFeed(
     await setFeedGroups(id, user.id, groupIds);
   }
 
-  // Always queue icon fetch when saving a feed to ensure it's up-to-date
-  const { queueIconFetch } = await import("./icon.service");
-  await queueIconFetch(id, true);
+  // Always fetch icon synchronously when updating a feed to ensure it's up-to-date
+  try {
+    const { processIconFetch } = await import("./icon.service");
+    await processIconFetch(id, true);
+    // Reload feed to get updated icon
+    const [reloadedFeed] = await db
+      .select()
+      .from(feeds)
+      .where(eq(feeds.id, id))
+      .limit(1);
+    if (reloadedFeed) {
+      Object.assign(updated, reloadedFeed);
+    }
+  } catch (error) {
+    logger.warn(
+      { error, feedId: id },
+      "Failed to fetch feed icon on update",
+    );
+    // Continue without icon update - not critical
+  }
 
   logger.info({ feedId: id, userId: user.id, groupIds }, "Feed updated");
 

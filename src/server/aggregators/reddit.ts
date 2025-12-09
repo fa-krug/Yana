@@ -710,6 +710,9 @@ export class RedditAggregator extends BaseAggregator {
   override readonly prefillName = false;
   override readonly defaultDailyLimit = 20;
 
+  // Store subreddit icon URL for feed icon collection
+  private subredditIconUrl: string | null = null;
+
   override readonly options = {
     sort_by: {
       type: "choice" as const,
@@ -772,6 +775,13 @@ export class RedditAggregator extends BaseAggregator {
     }
   }
 
+  /**
+   * Collect feed icon URL during aggregation.
+   */
+  override async collectFeedIcon(): Promise<string | null> {
+    return this.subredditIconUrl;
+  }
+
   async aggregate(articleLimit?: number): Promise<RawArticle[]> {
     if (!this.feed) {
       throw new Error("Feed not initialized");
@@ -796,8 +806,9 @@ export class RedditAggregator extends BaseAggregator {
     // Fetch subreddit info to get icon for feed thumbnail
     const subredditInfo = await fetchSubredditInfo(subreddit, userAgent);
 
-    // Store subreddit icon URL for later use in aggregation service
-    // We'll access it via a property on the aggregator instance
+    // Store subreddit icon URL for feed icon collection
+    this.subredditIconUrl = subredditInfo.iconUrl;
+    // Legacy support: also store in private property for backwards compatibility
     (this as any).__subredditIconUrl = subredditInfo.iconUrl;
 
     // Calculate desired article count

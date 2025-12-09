@@ -85,6 +85,30 @@ export abstract class BaseAggregator {
   abstract aggregate(articleLimit?: number): Promise<RawArticle[]>;
 
   /**
+   * Fetch article content from URL.
+   * Can be overridden by subclasses for custom fetching logic.
+   * @param url - The article URL to fetch
+   * @param options - Fetch options (timeout, waitForSelector, etc.)
+   * @returns The HTML content of the page
+   */
+  async fetchArticleContent(
+    url: string,
+    options: {
+      timeout?: number;
+      waitForSelector?: string;
+      maxRetries?: number;
+    } = {},
+  ): Promise<string> {
+    // Default: use the generic fetch function
+    const { fetchArticleContent: fetchContent } = await import("./fetch");
+    return fetchContent(url, {
+      timeout: options.timeout ?? this.fetchTimeout,
+      waitForSelector: options.waitForSelector ?? this.waitForSelector,
+      maxRetries: options.maxRetries,
+    });
+  }
+
+  /**
    * Process article content.
    * Can be overridden by subclasses.
    */
@@ -149,6 +173,18 @@ export abstract class BaseAggregator {
       return false;
     }
     return this.existingUrls.has(url);
+  }
+
+  /**
+   * Collect feed icon URL during aggregation.
+   * Can be overridden by subclasses to provide feed-specific icons.
+   * The icon URL will be converted to base64 by the aggregation service.
+   *
+   * @returns Icon URL or null if no icon available
+   */
+  async collectFeedIcon(): Promise<string | null> {
+    // Default: no feed icon collection
+    return null;
   }
 
   // ============================================================================

@@ -103,7 +103,7 @@ export async function fetchFeed(
 }
 
 /**
- * Fetch article content using Playwright with retry logic.
+ * Fetch article content using Playwright.
  */
 export async function fetchArticleContent(
   url: string,

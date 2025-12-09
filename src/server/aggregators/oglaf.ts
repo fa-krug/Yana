@@ -29,11 +29,12 @@ async function getBrowser(): Promise<Browser> {
 
 /**
  * Fetch Oglaf comic content, handling the age confirmation page.
+ * Returns both the HTML content and the page object for image fetching.
  */
 async function fetchOglafContent(
   url: string,
   timeout: number = 30000,
-): Promise<string> {
+): Promise<{ html: string; page: Page }> {
   logger.info({ url }, "Fetching Oglaf content");
 
   const browserInstance = await getBrowser();
@@ -42,31 +43,56 @@ async function fetchOglafContent(
   try {
     await page.setDefaultTimeout(timeout);
 
-    // Navigate to URL
+    // Navigate to URL and wait for it to be fully loaded
     await page.goto(url, { waitUntil: "networkidle", timeout });
 
-    // Check if we're on a confirmation page and click the confirm button
-    try {
-      const confirmButton = await page.waitForSelector("#confirm", {
-        timeout: 5000,
+    // Check if we're on a confirmation page and handle it
+    const confirmButton = await page
+      .waitForSelector("#confirm", { timeout: 5000 })
+      .catch(() => null);
+
+    if (confirmButton) {
+      logger.debug("Found confirmation page, clicking confirm button");
+      // Wait for navigation to complete after clicking
+      await Promise.all([
+        page.waitForNavigation({ waitUntil: "networkidle", timeout }),
+        confirmButton.click(),
+      ]).catch(() => {
+        // If navigation doesn't happen (SPA), that's fine - page is already loaded
       });
-      if (confirmButton) {
-        logger.debug("Found confirmation page, clicking confirm button");
-        await confirmButton.click();
-        await page.waitForLoadState("networkidle");
-      }
-    } catch (error) {
-      // No confirm button or already confirmed
-      logger.debug(
-        { error },
-        "No age confirmation needed or already confirmed",
-      );
     }
 
-    // Get the page content
-    const content = await page.content();
-    return content;
+    // Wait for the comic image to be present - this is the definitive indicator
+    // that the page is fully loaded and ready
+    await page.waitForSelector(
+      "#strip, .content img, #content img, .comic img",
+      {
+        timeout,
+        state: "attached",
+      },
+    );
+
+    // Wait for network to be completely idle (no requests for 500ms)
+    await page.waitForLoadState("networkidle");
+
+    // Wait for document to be in complete state
+    await page.waitForFunction(() => document.readyState === "complete", {
+      timeout,
+    });
+
+    // Use evaluate() to get HTML directly from DOM
+    // This bypasses Playwright's navigation check in page.content()
+    const content = await page.evaluate(() => {
+      return document.documentElement.outerHTML;
+    });
+
+    if (!content || content.length === 0) {
+      throw new Error("Received empty content from page");
+    }
+
+    return { html: content, page };
   } catch (error) {
+    await page.close();
     logger.error(
       {
         error: error instanceof Error ? error : new Error(String(error)),
@@ -79,8 +105,67 @@ async function fetchOglafContent(
       undefined,
       error instanceof Error ? error : undefined,
     );
-  } finally {
-    await page.close();
+  }
+}
+
+/**
+ * Fetch an image from a URL using Playwright page context and convert to base64.
+ * This ensures cookies/authentication from the page are used.
+ */
+async function fetchImageAsBase64(
+  imageUrl: string,
+  page: Page,
+): Promise<string | null> {
+  try {
+    // Ensure URL is absolute
+    let absoluteUrl = imageUrl;
+    if (!imageUrl.startsWith("http://") && !imageUrl.startsWith("https://")) {
+      // Resolve relative URL using page URL
+      const pageUrl = page.url();
+      try {
+        absoluteUrl = new URL(imageUrl, pageUrl).toString();
+      } catch (urlError) {
+        logger.warn(
+          { error: urlError, imageUrl, pageUrl },
+          "Failed to resolve relative image URL",
+        );
+        return null;
+      }
+    }
+
+    logger.debug({ imageUrl: absoluteUrl }, "Fetching image as base64");
+
+    // Use Playwright's request context to fetch the image with cookies
+    const response = await page.request.get(absoluteUrl);
+    if (!response.ok()) {
+      logger.warn(
+        { url: absoluteUrl, status: response.status() },
+        "Failed to fetch image",
+      );
+      return null;
+    }
+
+    const buffer = await response.body();
+    const contentType = response.headers()["content-type"] || "image/jpeg";
+
+    // Convert to base64
+    const base64 = buffer.toString("base64");
+    const dataUri = `data:${contentType};base64,${base64}`;
+
+    logger.info(
+      {
+        url: absoluteUrl,
+        contentType,
+        size: buffer.length,
+        dataUriLength: dataUri.length,
+      },
+      "Converted image to base64",
+    );
+
+    return dataUri;
+  } catch (error) {
+    logger.error({ error, url: imageUrl }, "Failed to fetch image as base64");
+    return null;
   }
 }
 
@@ -130,9 +215,9 @@ function extractComicImageUrl(html: string, articleUrl: string): string | null {
 }
 
 /**
- * Extract the comic image from Oglaf page HTML.
+ * Extract the alt text from the comic image.
  */
-function extractComicImage(html: string, articleUrl: string): string {
+function extractComicImageAlt(html: string, articleUrl: string): string {
   try {
     const $ = cheerio.load(html);
     let comicImg = $("#strip");
@@ -142,22 +227,19 @@ function extractComicImage(html: string, articleUrl: string): string {
     }
 
     if (comicImg.length > 0) {
-      const imgSrc = comicImg.attr("src") || "";
-      const altText = comicImg.attr("alt") || "Oglaf comic";
-      return `<img src="${imgSrc}" alt="${altText}">`;
+      return comicImg.attr("alt") || comicImg.attr("title") || "Oglaf comic";
     }
 
-    logger.warn({ url: articleUrl }, "Could not find comic image");
-    return `<p>Could not extract comic. <a href="${articleUrl}">View on Oglaf</a></p>`;
+    return "Oglaf comic";
   } catch (error) {
-    logger.error(
+    logger.debug(
       {
         error: error instanceof Error ? error : new Error(String(error)),
         url: articleUrl,
       },
-      "Extraction failed",
+      "Failed to extract alt text",
     );
-    return `<p>Could not extract comic. <a href="${articleUrl}">View on Oglaf</a></p>`;
+    return "Oglaf comic";
   }
 }
 
@@ -168,6 +250,136 @@ export class OglafAggregator extends BaseAggregator {
   override readonly url: string = "https://www.oglaf.com/feeds/rss/";
   override readonly description: string =
     "Oglaf - Adult webcomic featuring fantasy, humor, and occasional NSFW content.";
+
+  /**
+   * Override fetchArticleContent to handle age confirmation page.
+   */
+  override async fetchArticleContent(
+    url: string,
+    options: {
+      timeout?: number;
+      waitForSelector?: string;
+      maxRetries?: number;
+    } = {},
+  ): Promise<string> {
+    const timeout = options.timeout ?? this.fetchTimeout;
+    const browserInstance = await getBrowser();
+    const page = await browserInstance.newPage();
+
+    try {
+      await page.setDefaultTimeout(timeout);
+
+      // Navigate to URL and wait for it to be fully loaded
+      await page.goto(url, { waitUntil: "networkidle", timeout });
+
+      // Check if we're on a confirmation page and handle it
+      const confirmButton = await page
+        .waitForSelector("#confirm", { timeout: 5000 })
+        .catch(() => null);
+
+      if (confirmButton) {
+        logger.debug("Found confirmation page, clicking confirm button");
+        // Wait for navigation to complete after clicking
+        await Promise.all([
+          page.waitForNavigation({ waitUntil: "networkidle", timeout }),
+          confirmButton.click(),
+        ]).catch(() => {
+          // If navigation doesn't happen (SPA), that's fine - page is already loaded
+        });
+      }
+
+      // Wait for the comic image to be present - this is the definitive indicator
+      // that the page is fully loaded and ready
+      await page.waitForSelector(
+        "#strip, .content img, #content img, .comic img",
+        {
+          timeout,
+          state: "attached",
+        },
+      );
+
+      // Wait for network to be completely idle (no requests for 500ms)
+      await page.waitForLoadState("networkidle");
+
+      // Wait for document to be in complete state
+      await page.waitForFunction(() => document.readyState === "complete", {
+        timeout,
+      });
+
+      // Use evaluate() to get HTML directly from DOM
+      // This bypasses Playwright's navigation check in page.content()
+      const content = await page.evaluate(() => {
+        return document.documentElement.outerHTML;
+      });
+
+      if (!content || content.length === 0) {
+        throw new Error("Received empty content from page");
+      }
+
+      return content;
+    } finally {
+      await page.close();
+    }
+  }
+
+  /**
+   * Override processArticleContent to extract only the comic image as base64.
+   * This ensures we don't include navigation and other page elements.
+   */
+  override async processArticleContent(
+    article: RawArticle,
+    html: string,
+    selectorsToRemove?: string[],
+  ): Promise<string> {
+    // Extract the comic image URL
+    const comicImageUrl = extractComicImageUrl(html, article.url);
+
+    if (!comicImageUrl) {
+      logger.warn({ url: article.url }, "Could not extract comic image URL");
+      return `<p>Could not extract comic. <a href="${article.url}">View on Oglaf</a></p>`;
+    }
+
+    // Fetch the image as base64 using Playwright
+    const browserInstance = await getBrowser();
+    const page = await browserInstance.newPage();
+
+    try {
+      // Navigate to the article URL to get cookies/context
+      await page.goto(article.url, {
+        waitUntil: "networkidle",
+        timeout: this.fetchTimeout,
+      });
+
+      // Handle age confirmation if needed
+      const confirmButton = await page
+        .waitForSelector("#confirm", { timeout: 5000 })
+        .catch(() => null);
+
+      if (confirmButton) {
+        await Promise.all([
+          page.waitForNavigation({
+            waitUntil: "networkidle",
+            timeout: this.fetchTimeout,
+          }),
+          confirmButton.click(),
+        ]).catch(() => {});
+      }
+
+      // Fetch image as base64
+      const comicImageBase64 = await fetchImageAsBase64(comicImageUrl, page);
+
+      if (comicImageBase64) {
+        const altText = extractComicImageAlt(html, article.url);
+        return `<img src="${comicImageBase64}" alt="${altText}">`;
+      } else {
+        // Fallback to URL if base64 conversion fails
+        const altText = extractComicImageAlt(html, article.url);
+        return `<img src="${comicImageUrl}" alt="${altText}">`;
+      }
+    } finally {
+      await page.close();
+    }
+  }
 
   async aggregate(articleLimit?: number): Promise<RawArticle[]> {
     const aggregateStart = Date.now();
@@ -293,6 +505,7 @@ export class OglafAggregator extends BaseAggregator {
         }
 
         // Fetch full content with age confirmation handling
+        let page: Page | null = null;
         try {
           logger.debug(
             {
@@ -305,7 +518,11 @@ export class OglafAggregator extends BaseAggregator {
           );
 
           const contentFetchStart = Date.now();
-          const html = await fetchOglafContent(article.url, this.fetchTimeout);
+          const { html, page: fetchedPage } = await fetchOglafContent(
+            article.url,
+            this.fetchTimeout,
+          );
+          page = fetchedPage;
           const contentFetchElapsed = Date.now() - contentFetchStart;
 
           logger.debug(
@@ -319,25 +536,82 @@ export class OglafAggregator extends BaseAggregator {
             "Article content fetched",
           );
 
-          // Extract comic image URL for thumbnail
+          // Extract comic image URL and convert to base64 for both thumbnail and content
           const extractStart = Date.now();
           const comicImageUrl = extractComicImageUrl(html, article.url);
-          if (comicImageUrl) {
-            article.thumbnailUrl = comicImageUrl;
+          let comicImageBase64: string | null = null;
+
+          if (comicImageUrl && page) {
             logger.debug(
               {
                 index: i + 1,
                 url: article.url,
-                thumbnailUrl: comicImageUrl,
+                imageUrl: comicImageUrl,
                 aggregator: this.id,
-                step: "extract_thumbnail",
+                step: "extract_image_url",
               },
-              "Comic image URL extracted for thumbnail",
+              "Extracted comic image URL, converting to base64",
+            );
+
+            // Fetch image as base64 using the page context (with cookies)
+            comicImageBase64 = await fetchImageAsBase64(comicImageUrl, page);
+            if (comicImageBase64) {
+              // Use the same base64 for both thumbnail and content
+              article.thumbnailUrl = comicImageBase64;
+              logger.info(
+                {
+                  index: i + 1,
+                  url: article.url,
+                  imageUrl: comicImageUrl,
+                  base64Length: comicImageBase64.length,
+                  aggregator: this.id,
+                  step: "extract_thumbnail",
+                },
+                "Comic image converted to base64",
+              );
+            } else {
+              // Fallback to URL if base64 conversion fails
+              article.thumbnailUrl = comicImageUrl;
+              logger.warn(
+                {
+                  index: i + 1,
+                  url: article.url,
+                  imageUrl: comicImageUrl,
+                  aggregator: this.id,
+                  step: "extract_thumbnail_fallback",
+                },
+                "Failed to convert image to base64, using URL",
+              );
+            }
+          } else {
+            logger.warn(
+              {
+                index: i + 1,
+                url: article.url,
+                hasImageUrl: !!comicImageUrl,
+                hasPage: !!page,
+                aggregator: this.id,
+                step: "extract_thumbnail_missing",
+              },
+              "Could not extract image URL or page not available",
             );
           }
 
-          // Extract comic image HTML for content
-          const comicImage = extractComicImage(html, article.url);
+          // Create content with base64 image if available, otherwise use URL
+          let comicImage: string;
+          if (comicImageBase64) {
+            // Use base64 image in content
+            const altText = extractComicImageAlt(html, article.url);
+            comicImage = `<img src="${comicImageBase64}" alt="${altText}">`;
+          } else if (comicImageUrl) {
+            // Fallback to URL if base64 conversion failed
+            const altText = extractComicImageAlt(html, article.url);
+            comicImage = `<img src="${comicImageUrl}" alt="${altText}">`;
+          } else {
+            // No image found
+            comicImage = `<p>Could not extract comic. <a href="${article.url}">View on Oglaf</a></p>`;
+          }
+
           const extractElapsed = Date.now() - extractStart;
 
           logger.debug(
@@ -365,6 +639,15 @@ export class OglafAggregator extends BaseAggregator {
           );
           // Continue with summary if available
           article.content = article.summary || "";
+        } finally {
+          // Close the page if it was opened
+          if (page) {
+            try {
+              await page.close();
+            } catch (closeError) {
+              logger.debug({ error: closeError }, "Error closing page");
+            }
+          }
         }
 
         const itemElapsed = Date.now() - itemStart;

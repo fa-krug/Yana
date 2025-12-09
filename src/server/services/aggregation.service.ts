@@ -193,7 +193,34 @@ export async function processFeedAggregation(
   // Run aggregation
   const rawArticles = await aggregator.aggregate(articleLimit);
 
-  // Update feed icon if aggregator provides one (e.g., Reddit subreddit icon, YouTube channel icon)
+  // Update feed icon if aggregator provides one
+  // First, try the new collectFeedIcon() method
+  try {
+    const feedIconUrl = await aggregator.collectFeedIcon();
+    if (feedIconUrl) {
+      const { convertThumbnailUrlToBase64 } =
+        await import("../aggregators/base/utils");
+      const iconBase64 = await convertThumbnailUrlToBase64(feedIconUrl);
+      if (iconBase64) {
+        await db
+          .update(feeds)
+          .set({ icon: iconBase64 })
+          .where(eq(feeds.id, feed.id));
+        logger.info(
+          { feedId: feed.id, aggregator: aggregator.id },
+          "Updated feed icon from aggregator",
+        );
+      }
+    }
+  } catch (error) {
+    logger.warn(
+      { error, feedId: feed.id, aggregator: aggregator.id },
+      "Failed to collect feed icon from aggregator",
+    );
+  }
+
+  // Legacy support: Update feed icon if aggregator provides one via private properties
+  // (for backwards compatibility with Reddit and YouTube)
   if ((aggregator as any).__subredditIconUrl) {
     try {
       const subredditIconUrl = (aggregator as any).__subredditIconUrl;
@@ -208,19 +235,19 @@ export async function processFeedAggregation(
             .where(eq(feeds.id, feed.id));
           logger.info(
             { feedId: feed.id },
-            "Updated feed icon from subreddit thumbnail",
+            "Updated feed icon from subreddit thumbnail (legacy)",
           );
         }
       }
     } catch (error) {
       logger.warn(
         { error, feedId: feed.id },
-        "Failed to update feed icon from subreddit",
+        "Failed to update feed icon from subreddit (legacy)",
       );
     }
   }
 
-  // Update feed icon for YouTube channels
+  // Legacy support: Update feed icon for YouTube channels
   if ((aggregator as any).__channelIconUrl) {
     try {
       const channelIconUrl = (aggregator as any).__channelIconUrl;
@@ -235,14 +262,14 @@ export async function processFeedAggregation(
             .where(eq(feeds.id, feed.id));
           logger.info(
             { feedId: feed.id },
-            "Updated feed icon from YouTube channel thumbnail",
+            "Updated feed icon from YouTube channel thumbnail (legacy)",
           );
         }
       }
     } catch (error) {
       logger.warn(
         { error, feedId: feed.id },
-        "Failed to update feed icon from YouTube channel",
+        "Failed to update feed icon from YouTube channel (legacy)",
       );
     }
   }
@@ -312,11 +339,15 @@ export async function processFeedAggregation(
         : (rawArticle.published ?? new Date());
 
       // Collect thumbnail if missing and convert to base64
-      let thumbnailBase64 = rawArticle.thumbnailUrl
-        ? await (
-            await import("../aggregators/base/utils")
-          ).convertThumbnailUrlToBase64(rawArticle.thumbnailUrl)
-        : null;
+      // If already a data URI (base64), use it directly
+      let thumbnailBase64 =
+        rawArticle.thumbnailUrl?.startsWith("data:")
+          ? rawArticle.thumbnailUrl
+          : rawArticle.thumbnailUrl
+            ? await (
+                await import("../aggregators/base/utils")
+              ).convertThumbnailUrlToBase64(rawArticle.thumbnailUrl)
+            : null;
 
       if (!thumbnailBase64) {
         const {
@@ -473,9 +504,8 @@ export async function processArticleReload(articleId: number): Promise<void> {
     feed.aggregatorOptions as Record<string, unknown>,
   );
 
-  // Fetch article content
-  const { fetchArticleContent } = await import("../aggregators/base/fetch");
-  const html = await fetchArticleContent(article.url, {
+  // Fetch article content using aggregator's fetch method (handles special cases like Oglaf)
+  const html = await aggregator.fetchArticleContent(article.url, {
     timeout: aggregator.fetchTimeout,
     waitForSelector: aggregator.waitForSelector,
   });

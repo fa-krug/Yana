@@ -285,7 +285,8 @@ export async function queueIconFetch(
 }
 
 /**
- * Process icon fetch (called by worker).
+ * Process icon fetch (converts to base64 and stores).
+ * Can be called directly (synchronously) or by worker.
  */
 export async function processIconFetch(
   feedId: number,
@@ -310,17 +311,30 @@ export async function processIconFetch(
     return;
   }
 
-  // Fetch icon
+  // Fetch icon URL
   const iconUrl = await fetchFeedIcon(feed);
 
   if (iconUrl) {
-    // Update feed with icon
-    await db
-      .update(feeds)
-      .set({ icon: iconUrl, updatedAt: new Date() })
-      .where(eq(feeds.id, feedId));
+    // Convert to base64
+    const { convertThumbnailUrlToBase64 } = await import(
+      "../aggregators/base/utils"
+    );
+    const iconBase64 = await convertThumbnailUrlToBase64(iconUrl);
 
-    logger.info({ feedId, iconUrl, force }, "Feed icon updated");
+    if (iconBase64) {
+      // Update feed with icon as base64
+      await db
+        .update(feeds)
+        .set({ icon: iconBase64, updatedAt: new Date() })
+        .where(eq(feeds.id, feedId));
+
+      logger.info({ feedId, force }, "Feed icon updated as base64");
+    } else {
+      logger.warn(
+        { feedId, iconUrl },
+        "Failed to convert feed icon to base64",
+      );
+    }
   } else {
     logger.warn({ feedId }, "No icon found for feed");
   }
