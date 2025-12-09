@@ -842,6 +842,9 @@ export function sanitizeHtml(html: string): string {
     // Remove script and style elements
     $("script, style, iframe, object, embed").remove();
 
+    // Remove YouTube-specific elements that shouldn't be in content
+    $(".ytd-app").remove();
+
     // Rename class, style, id, and data attributes to disable original styling/behavior
     $("*").each((_, el) => {
       const $el = $(el);

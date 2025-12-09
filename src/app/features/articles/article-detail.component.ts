@@ -624,6 +624,28 @@ import { ConfirmDialogComponent } from "../../shared/components/confirm-dialog.c
         height: auto;
       }
 
+      .article-content :deep(.youtube-embed-container) {
+        position: relative;
+        width: 100%;
+        max-width: 100%;
+        margin: 24px 0;
+        padding-bottom: 56.25%; /* 16:9 aspect ratio */
+        height: 0;
+        overflow: hidden;
+        box-sizing: border-box;
+      }
+
+      .article-content :deep(.youtube-embed-container iframe) {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100% !important;
+        height: 100% !important;
+        max-width: 100%;
+        border: 0;
+        box-sizing: border-box;
+      }
+
       .article-content-raw {
         margin-top: 24px;
         background-color: #f5f5f5;
@@ -1090,6 +1112,14 @@ export class ArticleDetailComponent implements OnInit, OnDestroy {
         return `<img${attributes} loading="lazy">`;
       },
     );
+
+    // Check if content contains YouTube embed containers
+    // If so, use bypassSecurityTrustHtml to preserve iframes
+    // (we control the source of these embeds from our backend)
+    if (contentWithLazyImages.includes("youtube-embed-container")) {
+      return this.sanitizer.bypassSecurityTrustHtml(contentWithLazyImages);
+    }
+
     return this.sanitizer.sanitize(1, contentWithLazyImages) || "";
   }
 

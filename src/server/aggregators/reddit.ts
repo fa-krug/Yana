@@ -88,6 +88,20 @@ interface RedditSubredditInfo {
 }
 
 /**
+ * Fix redditmedia.com and external-preview.redd.it URLs by replacing &amp; with &.
+ */
+function fixRedditMediaUrl(url: string | null): string | null {
+  if (!url) return null;
+  if (
+    url.includes("styles.redditmedia.com") ||
+    url.includes("external-preview.redd.it")
+  ) {
+    return url.replace(/&amp;/g, "&");
+  }
+  return url;
+}
+
+/**
  * Fetch subreddit information including icon.
  */
 async function fetchSubredditInfo(
@@ -105,8 +119,9 @@ async function fetchSubredditInfo(
 
     const subredditData = response.data.data;
     // Prefer icon_img, fall back to community_icon
-    const iconUrl =
-      subredditData.icon_img || subredditData.community_icon || null;
+    const iconUrl = fixRedditMediaUrl(
+      subredditData.icon_img || subredditData.community_icon || null,
+    );
 
     if (iconUrl) {
       logger.debug({ subreddit, iconUrl }, "Fetched subreddit icon");
@@ -244,7 +259,8 @@ function extractThumbnailUrl(post: RedditPost["data"]): string | null {
 
     // Try to get from preview data
     if (post.preview?.images?.[0]?.source?.url) {
-      return decodeURIComponent(post.preview.images[0].source.url);
+      const decoded = decodeURIComponent(post.preview.images[0].source.url);
+      return fixRedditMediaUrl(decoded);
     }
 
     // For image posts, use the URL directly if it's an image
@@ -282,7 +298,8 @@ function extractHeaderImageUrl(post: RedditPost["data"]): string | null {
   try {
     // Priority 1: Preview source images (highest quality)
     if (post.preview?.images?.[0]?.source?.url) {
-      const headerUrl = decodeURIComponent(post.preview.images[0].source.url);
+      const decoded = decodeURIComponent(post.preview.images[0].source.url);
+      const headerUrl = fixRedditMediaUrl(decoded);
       logger.debug({ url: headerUrl }, "Extracted header image from preview");
       return headerUrl;
     }
@@ -300,14 +317,16 @@ function extractHeaderImageUrl(post: RedditPost["data"]): string | null {
         // For animated images, prefer GIF or MP4
         if (mediaInfo.e === "AnimatedImage") {
           if (mediaInfo.s?.gif) {
-            const gifUrl = decodeURIComponent(mediaInfo.s.gif);
+            const decoded = decodeURIComponent(mediaInfo.s.gif);
+            const gifUrl = fixRedditMediaUrl(decoded);
             logger.debug(
               { url: gifUrl },
               "Extracted header image from gallery GIF",
             );
             return gifUrl;
           } else if (mediaInfo.s?.mp4) {
-            const mp4Url = decodeURIComponent(mediaInfo.s.mp4);
+            const decoded = decodeURIComponent(mediaInfo.s.mp4);
+            const mp4Url = fixRedditMediaUrl(decoded);
             logger.debug(
               { url: mp4Url },
               "Extracted header image from gallery MP4",
@@ -317,7 +336,8 @@ function extractHeaderImageUrl(post: RedditPost["data"]): string | null {
         }
         // For regular images, get the high-quality URL
         else if (mediaInfo.e === "Image" && mediaInfo.s?.u) {
-          const imageUrl = decodeURIComponent(mediaInfo.s.u);
+          const decoded = decodeURIComponent(mediaInfo.s.u);
+          const imageUrl = fixRedditMediaUrl(decoded);
           logger.debug(
             { url: imageUrl },
             "Extracted header image from gallery",
@@ -375,7 +395,8 @@ function extractRedditVideoPreview(post: RedditPost["data"]): string | null {
       return null;
     }
 
-    const previewUrl = decodeURIComponent(post.preview.images[0].source.url);
+    const decoded = decodeURIComponent(post.preview.images[0].source.url);
+    const previewUrl = fixRedditMediaUrl(decoded);
     logger.debug({ url: previewUrl }, "Extracted Reddit video preview");
     return previewUrl;
   } catch (error) {
@@ -396,13 +417,15 @@ function extractAnimatedGifUrl(post: RedditPost["data"]): string | null {
     const imageData = post.preview.images[0];
 
     if (imageData.variants?.gif?.source?.url) {
-      const gifUrl = decodeURIComponent(imageData.variants.gif.source.url);
+      const decoded = decodeURIComponent(imageData.variants.gif.source.url);
+      const gifUrl = fixRedditMediaUrl(decoded);
       logger.debug({ url: gifUrl }, "Extracted animated GIF URL");
       return gifUrl;
     }
 
     if (imageData.variants?.mp4?.source?.url) {
-      const mp4Url = decodeURIComponent(imageData.variants.mp4.source.url);
+      const decoded = decodeURIComponent(imageData.variants.mp4.source.url);
+      const mp4Url = fixRedditMediaUrl(decoded);
       logger.debug({ url: mp4Url }, "Extracted animated MP4 URL");
       return mp4Url;
     }
@@ -576,18 +599,20 @@ async function buildPostContent(
           const gifUrl = mediaInfo.s?.gif || mediaInfo.s?.mp4;
           if (gifUrl) {
             const decoded = decodeURIComponent(gifUrl);
+            const fixedUrl = fixRedditMediaUrl(decoded);
             if (caption) {
               contentParts.push(
-                `<figure><img src="${decoded}" alt="${escapeHtml(caption)}"><figcaption>${escapeHtml(caption)}</figcaption></figure>`,
+                `<figure><img src="${fixedUrl}" alt="${escapeHtml(caption)}"><figcaption>${escapeHtml(caption)}</figcaption></figure>`,
               );
             } else {
               contentParts.push(
-                `<p><img src="${decoded}" alt="Animated GIF"></p>`,
+                `<p><img src="${fixedUrl}" alt="Animated GIF"></p>`,
               );
             }
           }
         } else if (mediaInfo.e === "Image" && mediaInfo.s?.u) {
-          const imageUrl = decodeURIComponent(mediaInfo.s.u);
+          const decoded = decodeURIComponent(mediaInfo.s.u);
+          const imageUrl = fixRedditMediaUrl(decoded);
           if (caption) {
             contentParts.push(
               `<figure><img src="${imageUrl}" alt="${escapeHtml(caption)}"><figcaption>${escapeHtml(caption)}</figcaption></figure>`,
@@ -615,14 +640,16 @@ async function buildPostContent(
         const finalUrl = url.toLowerCase().endsWith(".gifv")
           ? url.slice(0, -1)
           : url;
-        contentParts.push(`<p><img src="${finalUrl}" alt="Animated GIF"></p>`);
+        const fixedUrl = fixRedditMediaUrl(finalUrl);
+        contentParts.push(`<p><img src="${fixedUrl}" alt="Animated GIF"></p>`);
       }
     } else if (
       [".jpg", ".jpeg", ".png", ".webp"].some((ext) =>
         url.toLowerCase().endsWith(ext),
       )
     ) {
-      contentParts.push(`<p><img src="${url}" alt="Post image"></p>`);
+      const fixedUrl = fixRedditMediaUrl(url);
+      contentParts.push(`<p><img src="${fixedUrl}" alt="Post image"></p>`);
     } else if (url.includes("v.redd.it")) {
       const previewUrl = extractRedditVideoPreview(post);
       if (previewUrl) {

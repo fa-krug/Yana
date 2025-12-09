@@ -84,6 +84,20 @@ export async function fetchFavicon(feedUrl: string): Promise<string | null> {
 }
 
 /**
+ * Fix redditmedia.com and external-preview.redd.it URLs by replacing &amp; with &.
+ */
+function fixRedditMediaUrl(url: string | null): string | null {
+  if (!url) return null;
+  if (
+    url.includes("styles.redditmedia.com") ||
+    url.includes("external-preview.redd.it")
+  ) {
+    return url.replace(/&amp;/g, "&");
+  }
+  return url;
+}
+
+/**
  * Fetch Reddit subreddit icon.
  */
 export async function fetchRedditIcon(
@@ -106,10 +120,11 @@ export async function fetchRedditIcon(
         timeout: 10000,
       });
 
-      const iconUrl =
+      const iconUrl = fixRedditMediaUrl(
         response.data?.data?.icon_img ||
-        response.data?.data?.community_icon ||
-        null;
+          response.data?.data?.community_icon ||
+          null,
+      );
 
       if (iconUrl) {
         logger.info({ subreddit, iconUrl }, "Found Reddit icon");
