@@ -419,10 +419,7 @@ export async function updateFeed(
       Object.assign(updated, reloadedFeed);
     }
   } catch (error) {
-    logger.warn(
-      { error, feedId: id },
-      "Failed to fetch feed icon on update",
-    );
+    logger.warn({ error, feedId: id }, "Failed to fetch feed icon on update");
     // Continue without icon update - not critical
   }
 

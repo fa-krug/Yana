@@ -316,9 +316,8 @@ export async function processIconFetch(
 
   if (iconUrl) {
     // Convert to base64
-    const { convertThumbnailUrlToBase64 } = await import(
-      "../aggregators/base/utils"
-    );
+    const { convertThumbnailUrlToBase64 } =
+      await import("../aggregators/base/utils");
     const iconBase64 = await convertThumbnailUrlToBase64(iconUrl);
 
     if (iconBase64) {
@@ -330,10 +329,7 @@ export async function processIconFetch(
 
       logger.info({ feedId, force }, "Feed icon updated as base64");
     } else {
-      logger.warn(
-        { feedId, iconUrl },
-        "Failed to convert feed icon to base64",
-      );
+      logger.warn({ feedId, iconUrl }, "Failed to convert feed icon to base64");
     }
   } else {
     logger.warn({ feedId }, "No icon found for feed");

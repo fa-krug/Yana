@@ -340,14 +340,13 @@ export async function processFeedAggregation(
 
       // Collect thumbnail if missing and convert to base64
       // If already a data URI (base64), use it directly
-      let thumbnailBase64 =
-        rawArticle.thumbnailUrl?.startsWith("data:")
-          ? rawArticle.thumbnailUrl
-          : rawArticle.thumbnailUrl
-            ? await (
-                await import("../aggregators/base/utils")
-              ).convertThumbnailUrlToBase64(rawArticle.thumbnailUrl)
-            : null;
+      let thumbnailBase64 = rawArticle.thumbnailUrl?.startsWith("data:")
+        ? rawArticle.thumbnailUrl
+        : rawArticle.thumbnailUrl
+          ? await (
+              await import("../aggregators/base/utils")
+            ).convertThumbnailUrlToBase64(rawArticle.thumbnailUrl)
+          : null;
 
       if (!thumbnailBase64) {
         const {
