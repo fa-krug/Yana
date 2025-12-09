@@ -11,7 +11,13 @@ import type { RawArticle } from "./base/types";
 import { fetchArticleContent } from "./base/fetch";
 import { extractContent } from "./base/extract";
 import { standardizeContentFormat } from "./base/process";
-import { sanitizeHtml } from "./base/utils";
+import {
+  sanitizeHtml,
+  extractImageFromUrl,
+  compressImage,
+  MAX_HEADER_IMAGE_WIDTH,
+  MAX_HEADER_IMAGE_HEIGHT,
+} from "./base/utils";
 import { logger } from "../utils/logger";
 import * as cheerio from "cheerio";
 
@@ -74,8 +80,11 @@ export class TagesschauAggregator extends FullWebsiteAggregator {
    *
    * Returns:
    *   HTML string with media embed iframe (and image if available), or null if no media found
+   *   For audio with images, the image is converted to base64 and placed above the player in a separate div
    */
-  private extractMediaHeader(soup: cheerio.CheerioAPI): string | null {
+  private async extractMediaHeader(
+    soup: cheerio.CheerioAPI,
+  ): Promise<string | null> {
     // Look for Tagesschau media player instances
     // They use: <div class="v-instance" data-v-type="MediaPlayer" data-v="{...}">
     // Look for players in the header/teaser area first (teaser-top class)
@@ -217,20 +226,51 @@ export class TagesschauAggregator extends FullWebsiteAggregator {
             // Adjust height for audio (smaller) vs video
             const height = isAudioOnly ? "200" : "315";
             // Build media header with iframe
-            // For audio with image: use image as background
+            // For audio with image: convert image to base64 and place above player
             if (isAudioOnly && imageUrl) {
+              try {
+                // Fetch and convert image to base64
+                const imageResult = await extractImageFromUrl(imageUrl, true);
+                if (imageResult) {
+                  const { imageData, contentType } = imageResult;
+                  const compressed = await compressImage(
+                    imageData,
+                    contentType,
+                    MAX_HEADER_IMAGE_WIDTH,
+                    MAX_HEADER_IMAGE_HEIGHT,
+                  );
+                  const imageB64 = compressed.imageData.toString("base64");
+                  const dataUri = `data:${compressed.contentType};base64,${imageB64}`;
+
+                  // Create separate divs: image above, player below
+                  return (
+                    `<div class="media-header">` +
+                    `<div class="media-image"><img src="${dataUri}" alt="Article image" style="max-width: 100%; height: auto; border-radius: 8px;"></div>` +
+                    `<div class="media-player" style="width: 100%;"><iframe src="${src}" width="100%" height="${height}" ` +
+                    `frameborder="0" allowfullscreen scrolling="no"></iframe></div>` +
+                    `</div>`
+                  );
+                }
+              } catch (error) {
+                logger.warn(
+                  { error, imageUrl },
+                  "Failed to convert audio image to base64, using URL fallback",
+                );
+              }
+              // Fallback: use URL directly if conversion failed or returned null
               return (
-                `<div class="media-header" style="position: relative; background-image: url('${imageUrl}'); background-size: cover; background-position: center; padding: 20px; border-radius: 8px;">` +
-                `<iframe src="${src}" width="100%" height="${height}" ` +
-                `frameborder="0" allowfullscreen scrolling="no" style="background: rgba(0,0,0,0.7); border-radius: 4px;"></iframe>` +
+                `<div class="media-header">` +
+                `<div class="media-image"><img src="${imageUrl}" alt="Article image" style="max-width: 100%; height: auto; border-radius: 8px;"></div>` +
+                `<div class="media-player" style="width: 100%;"><iframe src="${src}" width="100%" height="${height}" ` +
+                `frameborder="0" allowfullscreen scrolling="no"></iframe></div>` +
                 `</div>`
               );
             } else {
               // For video, just embed the iframe (it may have its own poster)
               return (
                 `<div class="media-header">` +
-                `<iframe src="${src}" width="100%" height="${height}" ` +
-                `frameborder="0" allowfullscreen scrolling="no"></iframe>` +
+                `<div class="media-player" style="width: 100%;"><iframe src="${src}" width="100%" height="${height}" ` +
+                `frameborder="0" allowfullscreen scrolling="no"></iframe></div>` +
                 `</div>`
               );
             }
@@ -248,22 +288,55 @@ export class TagesschauAggregator extends FullWebsiteAggregator {
               continue;
             }
 
-            // Build media header with player (image merged as poster/background)
+            // Build media header with player (image converted to base64 above player)
             if (isAudioOnly && mimeType.toLowerCase().includes("audio")) {
-              // Create HTML5 audio player with image as background
+              // Create HTML5 audio player with image above (converted to base64)
               if (imageUrl) {
+                try {
+                  // Fetch and convert image to base64
+                  const imageResult = await extractImageFromUrl(imageUrl, true);
+                  if (imageResult) {
+                    const { imageData, contentType } = imageResult;
+                    const compressed = await compressImage(
+                      imageData,
+                      contentType,
+                      MAX_HEADER_IMAGE_WIDTH,
+                      MAX_HEADER_IMAGE_HEIGHT,
+                    );
+                    const imageB64 = compressed.imageData.toString("base64");
+                    const dataUri = `data:${compressed.contentType};base64,${imageB64}`;
+
+                    // Create separate divs: image above, player below
+                    return (
+                      `<div class="media-header">` +
+                      `<div class="media-image"><img src="${dataUri}" alt="Article image" style="max-width: 100%; height: auto; border-radius: 8px;"></div>` +
+                      `<div class="media-player" style="width: 100%;"><audio controls preload="auto" style="width: 100%;">` +
+                      `<source src="${url}" type="${mimeType}">` +
+                      `Your browser does not support the audio element.` +
+                      `</audio></div>` +
+                      `</div>`
+                    );
+                  }
+                } catch (error) {
+                  logger.warn(
+                    { error, imageUrl },
+                    "Failed to convert audio image to base64, using URL fallback",
+                  );
+                }
+                // Fallback: use URL directly if conversion failed or returned null
                 return (
-                  `<div class="media-header" style="position: relative; background-image: url('${imageUrl}'); background-size: cover; background-position: center; padding: 20px; border-radius: 8px;">` +
-                  `<audio controls style="width: 100%; background: rgba(0,0,0,0.7); border-radius: 4px;">` +
+                  `<div class="media-header">` +
+                  `<div class="media-image"><img src="${imageUrl}" alt="Article image" style="max-width: 100%; height: auto; border-radius: 8px;"></div>` +
+                  `<div class="media-player" style="width: 100%;"><audio controls preload="auto" style="width: 100%;">` +
                   `<source src="${url}" type="${mimeType}">` +
                   `Your browser does not support the audio element.` +
-                  `</audio>` +
+                  `</audio></div>` +
                   `</div>`
                 );
               } else {
                 return (
                   `<div class="media-header">` +
-                  `<audio controls style="width: 100%;">` +
+                  `<audio controls preload="auto" style="width: 100%;">` +
                   `<source src="${url}" type="${mimeType}">` +
                   `Your browser does not support the audio element.` +
                   `</audio>` +
@@ -278,10 +351,10 @@ export class TagesschauAggregator extends FullWebsiteAggregator {
               const posterAttr = imageUrl ? `poster="${imageUrl}"` : "";
               return (
                 `<div class="media-header">` +
-                `<video controls ${posterAttr} style="max-width: 100%; height: auto; width: 100%;">` +
+                `<div class="media-player" style="width: 100%;"><video controls preload="auto" ${posterAttr} style="width: 100%;">` +
                 `<source src="${url}" type="${mimeType}">` +
                 `Your browser does not support the video element.` +
-                `</video>` +
+                `</video></div>` +
                 `</div>`
               );
             }
@@ -294,6 +367,59 @@ export class TagesschauAggregator extends FullWebsiteAggregator {
     }
 
     return null;
+  }
+
+  /**
+   * Process article content from HTML.
+   * Overrides base implementation to add Tagesschau-specific media header extraction.
+   */
+  override async processArticleContent(
+    article: RawArticle,
+    html: string,
+  ): Promise<string> {
+    // Extract media header first (before content extraction)
+    const soup = cheerio.load(html);
+    const mediaHeader = await this.extractMediaHeader(soup);
+
+    // Extract content from textabsatz paragraphs
+    const extracted = this.extractContentFromTextabsatz(html);
+
+    // Process content
+    let $ = cheerio.load(extracted);
+
+    // Remove empty elements
+    $("p, div, span").each((_, el) => {
+      const $el = $(el);
+      if (!$el.text().trim() && !$el.find("img").length) {
+        $el.remove();
+      }
+    });
+
+    let content = $.html();
+
+    // Sanitize HTML (remove scripts, rename attributes)
+    content = sanitizeHtml(content);
+
+    // Prepend media header if found
+    if (mediaHeader) {
+      content = mediaHeader + content;
+      logger.debug(
+        { url: article.url },
+        "Prepended media header to article content",
+      );
+    }
+
+    // Standardize format (add source link, but skip title image if media header exists)
+    const generateTitleImage =
+      !mediaHeader && (this.feed?.generateTitleImage ?? true);
+    const addSourceFooter = this.feed?.addSourceFooter ?? true;
+    return await standardizeContentFormat(
+      content,
+      article,
+      article.url,
+      generateTitleImage,
+      addSourceFooter,
+    );
   }
 
   override async aggregate(articleLimit?: number): Promise<RawArticle[]> {
@@ -327,49 +453,8 @@ export class TagesschauAggregator extends FullWebsiteAggregator {
           waitForSelector: this.waitForSelector,
         });
 
-        // Extract media header first (before content extraction)
-        const soup = cheerio.load(html);
-        const mediaHeader = this.extractMediaHeader(soup);
-
-        // Extract content from textabsatz paragraphs
-        const extracted = this.extractContentFromTextabsatz(html);
-
-        // Process content
-        let $ = cheerio.load(extracted);
-
-        // Remove empty elements
-        $("p, div, span").each((_, el) => {
-          const $el = $(el);
-          if (!$el.text().trim() && !$el.find("img").length) {
-            $el.remove();
-          }
-        });
-
-        let content = $.html();
-
-        // Sanitize HTML (remove scripts, rename attributes)
-        content = sanitizeHtml(content);
-
-        // Prepend media header if found
-        if (mediaHeader) {
-          content = mediaHeader + content;
-          logger.debug(
-            { url: article.url },
-            "Prepended media header to article content",
-          );
-        }
-
-        // Standardize format (add source link, but skip title image if media header exists)
-        const generateTitleImage =
-          !mediaHeader && (this.feed?.generateTitleImage ?? true);
-        const addSourceFooter = this.feed?.addSourceFooter ?? true;
-        article.content = await standardizeContentFormat(
-          content,
-          article,
-          article.url,
-          generateTitleImage,
-          addSourceFooter,
-        );
+        // Process with Tagesschau-specific logic
+        article.content = await this.processArticleContent(article, html);
       } catch (error) {
         logger.error(
           { error, url: article.url },

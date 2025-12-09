@@ -850,7 +850,7 @@ import { GroupService } from "../../core/services/group.service";
                         matStepperPrevious
                         class="back-button"
                       >
-                        Back to Edit
+                        Back
                       </button>
                       <button
                         mat-raised-button
@@ -858,7 +858,6 @@ import { GroupService } from "../../core/services/group.service";
                         (click)="previewFeed()"
                         class="retry-button"
                       >
-                        <mat-icon>refresh</mat-icon>
                         Try Again
                       </button>
                     </div>
@@ -939,7 +938,7 @@ import { GroupService } from "../../core/services/group.service";
                         [disabled]="creating()"
                         class="back-button"
                       >
-                        Back to Edit
+                        Back
                       </button>
                       <button
                         mat-raised-button
@@ -1690,7 +1689,7 @@ import { GroupService } from "../../core/services/group.service";
         }
 
         .preview-error .error-actions {
-          flex-direction: column;
+          flex-direction: column-reverse;
           width: 100%;
           gap: 12px;
         }

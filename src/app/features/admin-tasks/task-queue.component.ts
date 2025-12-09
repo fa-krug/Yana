@@ -238,11 +238,21 @@ import { TaskDetailsDialogComponent } from "./task-details-dialog.component";
         padding: 60px 40px;
       }
 
+      .error-card button {
+        width: 100%;
+      }
+
       .state-center {
         display: flex;
         justify-content: center;
         align-items: center;
         min-height: 400px;
+      }
+
+      @media (max-width: 600px) {
+        h1 {
+          font-size: 2rem;
+        }
       }
     `,
   ],

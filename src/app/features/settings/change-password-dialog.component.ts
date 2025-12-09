@@ -95,20 +95,35 @@ import { UserSettingsService } from "../../core/services/user-settings.service";
         </mat-form-field>
       </form>
     </mat-dialog-content>
-    <mat-dialog-actions align="end">
-      <button mat-button (click)="cancel()">Cancel</button>
+    <mat-dialog-actions class="dialog-actions">
       <button
-        mat-raised-button
-        color="primary"
+        class="primary-button"
         (click)="submit()"
         [disabled]="!passwordForm.valid || loading"
       >
         Change Password
       </button>
+      <button class="secondary-button" (click)="cancel()">Cancel</button>
     </mat-dialog-actions>
   `,
   styles: [
     `
+      :host {
+        display: block;
+        max-width: 100%;
+      }
+
+      :host ::ng-deep .mat-mdc-dialog-surface {
+        width: min(520px, calc(100vw - 32px));
+        max-width: 100%;
+        margin: 0 auto;
+      }
+
+      :host ::ng-deep .cdk-global-overlay-wrapper {
+        align-items: center;
+        padding: 24px 0;
+      }
+
       .full-width {
         width: 100%;
       }
@@ -116,6 +131,7 @@ import { UserSettingsService } from "../../core/services/user-settings.service";
       mat-dialog-content {
         min-width: 400px;
         padding: 24px;
+        box-sizing: border-box;
       }
 
       mat-form-field {
@@ -130,6 +146,118 @@ import { UserSettingsService } from "../../core/services/user-settings.service";
 
       mat-dialog-actions {
         padding: 16px 24px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+        width: 100%;
+      }
+
+      .primary-button {
+        width: 100%;
+        max-width: 440px;
+        background-color: #2196f3;
+        color: #ffffff;
+        border: none;
+        border-radius: 10px;
+        padding: 12px 18px;
+        font-size: 15px;
+        font-weight: 700;
+        cursor: pointer;
+        box-shadow: 0px 3px 6px rgba(0, 0, 0, 0.22);
+        transition:
+          background-color 0.2s,
+          box-shadow 0.2s,
+          transform 0.1s;
+      }
+
+      .primary-button:hover:not(:disabled) {
+        background-color: #1e88e5;
+        box-shadow: 0px 5px 10px rgba(0, 0, 0, 0.24);
+      }
+
+      .primary-button:active:not(:disabled) {
+        background-color: #1976d2;
+        box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.2);
+        transform: translateY(1px);
+      }
+
+      .primary-button:disabled {
+        background-color: #5e5e5e;
+        color: #ffffff;
+        cursor: not-allowed;
+        box-shadow: none;
+        opacity: 0.9;
+      }
+
+      .secondary-button {
+        background: transparent;
+        color: #ffffff;
+        border: none;
+        padding: 6px 12px;
+        font-size: 15px;
+        font-weight: 700;
+        cursor: pointer;
+        text-align: center;
+        transition: opacity 0.2s;
+      }
+
+      :host-context(:not(.dark-theme)) .secondary-button {
+        color: #1f1f1f;
+      }
+
+      :host-context(.dark-theme) .secondary-button {
+        color: #ffffff !important;
+      }
+
+      .secondary-button:hover {
+        opacity: 0.8;
+      }
+
+      .secondary-button:active {
+        opacity: 0.6;
+      }
+
+      @media (max-width: 768px) {
+        :host ::ng-deep .mat-mdc-dialog-surface {
+          width: calc(100vw - 24px);
+          max-width: calc(100vw - 24px);
+          min-width: 0;
+          margin: 0 12px;
+        }
+
+        :host ::ng-deep .cdk-global-overlay-wrapper {
+          align-items: flex-start;
+          padding: 12px 0 24px;
+        }
+
+        mat-dialog-content {
+          min-width: 0;
+          width: 100%;
+          max-width: 100%;
+          padding: 16px;
+        }
+
+        mat-dialog-actions {
+          padding: 12px 16px;
+          gap: 10px;
+        }
+
+        .primary-button {
+          padding: 12px 16px;
+          font-size: 15px;
+          max-width: 100%;
+        }
+
+        .secondary-button {
+          padding: 8px 12px;
+          font-size: 15px;
+        }
+
+        mat-form-field {
+          margin-top: 12px;
+          margin-bottom: 12px;
+        }
       }
     `,
   ],

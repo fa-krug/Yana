@@ -7,9 +7,6 @@
 import { BaseAggregator } from "./base/aggregator";
 import type { RawArticle } from "./base/types";
 import { fetchFeed, fetchArticleContent } from "./base/fetch";
-import { extractContent } from "./base/extract";
-import { processContent, standardizeContentFormat } from "./base/process";
-import { sanitizeHtml } from "./base/utils";
 import { logger } from "../utils/logger";
 import * as cheerio from "cheerio";
 
@@ -278,7 +275,7 @@ export class FullWebsiteAggregator extends BaseAggregator {
             "Article content fetched",
           );
 
-          // Extract content
+          // Process content using processArticleContent (handles extraction, sanitization, and processing)
           const extractStart = Date.now();
 
           // Combine base selectors with exclude_selectors option
@@ -295,9 +292,13 @@ export class FullWebsiteAggregator extends BaseAggregator {
             ...additionalSelectors,
           ];
 
-          const content = extractContent(html, {
-            selectorsToRemove: allSelectorsToRemove,
-          });
+          // Process with custom selectors (including exclude_selectors)
+          let processedContent = await this.processArticleContent(
+            article,
+            html,
+            allSelectorsToRemove,
+          );
+
           const extractElapsed = Date.now() - extractStart;
 
           logger.debug(
@@ -311,23 +312,8 @@ export class FullWebsiteAggregator extends BaseAggregator {
             "Content extracted",
           );
 
-          // Sanitize HTML (remove scripts, rename attributes)
-          const sanitizedContent = sanitizeHtml(content);
-
-          // Process content (standardize format with images and source link)
-          const processStart = Date.now();
-          const generateTitleImage = this.feed?.generateTitleImage ?? true;
-          const addSourceFooter = this.feed?.addSourceFooter ?? true;
-
-          let processedContent = await standardizeContentFormat(
-            sanitizedContent,
-            article,
-            article.url,
-            generateTitleImage,
-            addSourceFooter,
-          );
-
           // Apply regex replacements
+          const processStart = Date.now();
           const regexReplacements = this.getOption(
             "regex_replacements",
             "",

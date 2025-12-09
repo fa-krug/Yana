@@ -4,8 +4,8 @@
  */
 
 import { chromium } from "playwright";
-import { writeFile, mkdir, readFileSync } from "fs";
-import { existsSync } from "fs";
+import { readFileSync, existsSync } from "fs";
+import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 
 const sizes = [72, 96, 128, 144, 152, 192, 384, 512];

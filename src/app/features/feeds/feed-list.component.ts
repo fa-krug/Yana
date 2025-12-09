@@ -84,7 +84,6 @@ import { GroupService } from "../../core/services/group.service";
       <div class="header">
         <h1>Feeds</h1>
         <button mat-raised-button color="primary" routerLink="/feeds/create">
-          <mat-icon>add</mat-icon>
           Create Feed
         </button>
       </div>
@@ -316,14 +315,14 @@ import { GroupService } from "../../core/services/group.service";
   styles: [
     `
       .feed-list-container {
-        padding: 0;
+        padding: 24px;
       }
 
       .header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 16px;
+        margin-bottom: 24px;
       }
 
       h1 {
@@ -730,6 +729,10 @@ import { GroupService } from "../../core/services/group.service";
 
       /* Responsive adjustments */
       @media (max-width: 600px) {
+        .feed-list-container {
+          padding: 16px 12px 32px;
+        }
+
         h1 {
           font-size: 2rem;
           margin-bottom: 24px;
@@ -792,6 +795,10 @@ import { GroupService } from "../../core/services/group.service";
       }
 
       @media (max-width: 480px) {
+        .feed-list-container {
+          padding: 16px 8px 24px;
+        }
+
         h1 {
           font-size: 1.75rem;
           padding: 0 8px;

@@ -166,11 +166,9 @@ import { interval, Subject, takeUntil } from "rxjs";
                 color="primary"
                 routerLink="/feeds/create"
               >
-                <mat-icon>add</mat-icon>
                 Create Feed
               </button>
               <button mat-raised-button routerLink="/feeds">
-                <mat-icon>list</mat-icon>
                 View All Feeds
               </button>
             </div>
@@ -331,10 +329,6 @@ import { interval, Subject, takeUntil } from "rxjs";
         font-weight: 500;
         border-radius: 8px;
         transition: all 0.2s ease;
-      }
-
-      .actions button mat-icon {
-        margin-right: 8px;
       }
 
       .actions button:hover {

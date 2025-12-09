@@ -49,15 +49,6 @@ import { TaskHistoryDialogComponent } from "./task-history-dialog.component";
     <div class="tasks-list-container animate-fade-in">
       <div class="header">
         <h1>Scheduled Tasks</h1>
-        <button
-          mat-raised-button
-          color="primary"
-          (click)="loadTasks()"
-          [disabled]="loading()"
-        >
-          <mat-icon>refresh</mat-icon>
-          Refresh
-        </button>
       </div>
 
       @if (loading()) {
@@ -147,7 +138,7 @@ import { TaskHistoryDialogComponent } from "./task-history-dialog.component";
 
       .header {
         display: flex;
-        justify-content: space-between;
+        justify-content: flex-start;
         align-items: center;
         margin-bottom: 32px;
       }
@@ -156,10 +147,6 @@ import { TaskHistoryDialogComponent } from "./task-history-dialog.component";
         margin: 24px 0 0 0;
         font-size: 2.5rem;
         font-weight: 500;
-      }
-
-      .header button {
-        height: 40px;
       }
 
       .empty-card {
@@ -184,11 +171,27 @@ import { TaskHistoryDialogComponent } from "./task-history-dialog.component";
         padding: 60px 40px;
       }
 
+      .error-card button {
+        width: 100%;
+      }
+
       .state-center {
         display: flex;
         justify-content: center;
         align-items: center;
         min-height: 400px;
+      }
+
+      @media (max-width: 600px) {
+        .header {
+          flex-direction: column;
+          align-items: stretch;
+          gap: 16px;
+        }
+
+        h1 {
+          font-size: 2rem;
+        }
       }
     `,
   ],

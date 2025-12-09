@@ -12,6 +12,7 @@ import { logger } from "../utils/logger";
 import { NotFoundError } from "../errors";
 import type { Feed, Article, User } from "../db/types";
 import type { RawArticle } from "../aggregators/base/types";
+import { shouldSkipArticleByDuplicate } from "../aggregators/base/utils";
 
 /**
  * Aggregate a single feed.
@@ -249,10 +250,55 @@ export async function processFeedAggregation(
   let articlesCreated = 0;
   let articlesUpdated = 0;
 
+  const publishedCutoffDate = new Date();
+  publishedCutoffDate.setMonth(publishedCutoffDate.getMonth() - 2);
+
   // Save articles
   for (const rawArticle of rawArticles) {
     try {
-      // Check if article exists in this feed
+      const publishedDate = rawArticle.published
+        ? new Date(rawArticle.published)
+        : null;
+
+      if (
+        publishedDate &&
+        !Number.isNaN(publishedDate.getTime()) &&
+        publishedDate < publishedCutoffDate
+      ) {
+        logger.debug(
+          {
+            url: rawArticle.url,
+            published: publishedDate.toISOString(),
+            feedId: feed.id,
+          },
+          "Skipping article older than two months",
+        );
+        continue;
+      }
+
+      // Check if article should be skipped due to duplicates
+      const { shouldSkip, reason } = await shouldSkipArticleByDuplicate(
+        { url: rawArticle.url, title: rawArticle.title },
+        forceRefresh,
+      );
+
+      if (shouldSkip) {
+        if (reason) {
+          logger.debug(
+            {
+              url: rawArticle.url,
+              name: rawArticle.title,
+              feedId: feed.id,
+              reason,
+            },
+            "Skipping duplicate article",
+          );
+        }
+        // Don't log for existing URLs (too verbose)
+        continue;
+      }
+
+      // Check if article exists in this feed (for force refresh updates)
       const [existing] = await db
         .select()
         .from(articles)
@@ -260,6 +306,10 @@ export async function processFeedAggregation(
           and(eq(articles.url, rawArticle.url), eq(articles.feedId, feed.id)),
         )
         .limit(1);
+
+      const articleDate = feed.useCurrentTimestamp
+        ? new Date()
+        : (rawArticle.published ?? new Date());
 
       // Collect thumbnail if missing and convert to base64
       let thumbnailBase64 = rawArticle.thumbnailUrl
@@ -304,7 +354,7 @@ export async function processFeedAggregation(
             .set({
               name: rawArticle.title,
               content: rawArticle.content || "",
-              date: rawArticle.published,
+              date: articleDate,
               author: rawArticle.author || null,
               externalId: rawArticle.externalId || null,
               score: rawArticle.score || null,
@@ -328,7 +378,7 @@ export async function processFeedAggregation(
         feedId: feed.id,
         name: rawArticle.title,
         url: rawArticle.url,
-        date: rawArticle.published,
+        date: articleDate,
         content: rawArticle.content || "",
         author: rawArticle.author || null,
         externalId: rawArticle.externalId || null,
@@ -430,14 +480,6 @@ export async function processArticleReload(articleId: number): Promise<void> {
     waitForSelector: aggregator.waitForSelector,
   });
 
-  // Extract and process content
-  const { extractContent } = await import("../aggregators/base/extract");
-  const { processContent } = await import("../aggregators/base/process");
-
-  const extracted = extractContent(html, {
-    selectorsToRemove: aggregator.selectorsToRemove,
-  });
-
   // Create RawArticle from database article
   const rawArticle: RawArticle = {
     title: article.name,
@@ -453,7 +495,8 @@ export async function processArticleReload(articleId: number): Promise<void> {
     mediaType: article.mediaType || undefined,
   };
 
-  const processed = await processContent(extracted, rawArticle);
+  // Use aggregator's processArticleContent method (same as during aggregation)
+  const processed = await aggregator.processArticleContent(rawArticle, html);
 
   // Collect thumbnail if missing and convert to base64
   let thumbnailBase64 = rawArticle.thumbnailUrl

@@ -94,6 +94,38 @@ export abstract class BaseAggregator {
   }
 
   /**
+   * Process article content from HTML.
+   * This is called during both aggregation and reload.
+   * Can be overridden by subclasses for custom processing.
+   *
+   * @param article - The article being processed
+   * @param html - The raw HTML from the article URL
+   * @param selectorsToRemove - Optional custom selectors to remove (overrides this.selectorsToRemove)
+   * @returns Processed HTML content
+   */
+  async processArticleContent(
+    article: RawArticle,
+    html: string,
+    selectorsToRemove?: string[],
+  ): Promise<string> {
+    // Default implementation: extract, sanitize, and process
+    const { extractContent } = await import("./extract");
+    const { processContent } = await import("./process");
+    const { sanitizeHtml } = await import("./utils");
+
+    const selectors = selectorsToRemove ?? this.selectorsToRemove;
+    const extracted = extractContent(html, {
+      selectorsToRemove: selectors,
+    });
+
+    // Sanitize HTML (remove scripts, rename attributes)
+    const sanitized = sanitizeHtml(extracted);
+
+    // Process content (standardize format with images and source link)
+    return await processContent(sanitized, article);
+  }
+
+  /**
    * Should skip this article?
    * Can be overridden by subclasses.
    */
