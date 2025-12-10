@@ -1,5 +1,8 @@
 /**
  * Tests for aggregator router.
+ *
+ * These tests verify the tRPC aggregator endpoints work correctly
+ * with the new Template Method Pattern aggregator architecture.
  */
 
 import { describe, it, expect } from "vitest";

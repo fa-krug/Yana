@@ -669,16 +669,17 @@ export async function previewFeed(
           `Aggregation attempt completed: ${attemptArticles.length} articles`,
         );
 
-        // If we got at least 1 article, use it and stop trying
+        // If we got at least 1 article, use only the first one and stop trying
         if (attemptArticles && attemptArticles.length > 0) {
-          rawArticles = attemptArticles;
+          rawArticles = attemptArticles.slice(0, 1);
           logger.info(
             {
               articleLimit,
-              articleCount: rawArticles.length,
+              articleCount: attemptArticles.length,
+              articlesUsed: rawArticles.length,
               step: "aggregation_success",
             },
-            `Successfully got ${rawArticles.length} article(s) with limit ${articleLimit}`,
+            `Successfully got ${attemptArticles.length} article(s) with limit ${articleLimit}, using first one for preview`,
           );
           break;
         }
@@ -750,14 +751,14 @@ export async function previewFeed(
       };
     }
 
-    // Process articles for preview (take only the first one for preview display)
+    // Process the single article for preview (we already limited to 1 during aggregation)
     const processStart = Date.now();
     logger.debug(
       {
         articleCount: rawArticles.length,
         step: "process_articles_start",
       },
-      "Processing articles for preview",
+      "Processing article for preview",
     );
 
     const previewArticles: Array<{
@@ -771,8 +772,8 @@ export async function previewFeed(
       feedType?: "article" | "youtube" | "podcast" | "reddit";
     }> = [];
 
-    // Process only the first article for preview (even if we fetched more to find valid ones)
-    for (const article of rawArticles.slice(0, 1)) {
+    // Process the single article for preview
+    for (const article of rawArticles) {
       try {
         logger.debug(
           {
@@ -791,17 +792,20 @@ export async function previewFeed(
           : null;
 
         if (!thumbnailBase64) {
-          const { extractThumbnailUrlFromPageAndConvertToBase64 } =
-            await import("../aggregators/base/utils");
-          thumbnailBase64 =
-            (await extractThumbnailUrlFromPageAndConvertToBase64(
-              article.url,
-            )) || null;
-          if (thumbnailBase64) {
-            logger.debug(
-              { url: article.url },
-              "Extracted and converted thumbnail to base64 during preview",
-            );
+          // Use aggregator's thumbnail extraction method (can be overridden)
+          const thumbnailUrl = await aggregator.extractThumbnailFromUrl(
+            article.url,
+          );
+          if (thumbnailUrl) {
+            const { convertThumbnailUrlToBase64 } =
+              await import("../aggregators/base/utils");
+            thumbnailBase64 = await convertThumbnailUrlToBase64(thumbnailUrl);
+            if (thumbnailBase64) {
+              logger.debug(
+                { url: article.url },
+                "Extracted and converted thumbnail to base64 during preview",
+              );
+            }
           }
         }
 

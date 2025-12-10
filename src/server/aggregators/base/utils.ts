@@ -69,54 +69,32 @@ export function extractYouTubeVideoId(url: string): string | null {
 }
 
 /**
- * Convert Reddit preview.redd.it URLs to i.redd.it URLs when possible.
- * Reddit's i.redd.it CDN is more accessible than preview.redd.it.
+ * Get YouTube proxy URL for embedding.
+ * Uses BASE_URL from environment if set, otherwise defaults to frontend port (4200) in development
+ * or backend port (3000) in production.
  */
-function convertRedditPreviewUrl(url: string): string {
-  try {
-    // Convert preview.redd.it to i.redd.it
-    if (url.includes("preview.redd.it")) {
-      const urlObj = new URL(url);
-      // Extract the filename from the path
-      const pathParts = urlObj.pathname.split("/");
-      const filename = pathParts[pathParts.length - 1];
-
-      // Build i.redd.it URL (remove query params as they're often signatures)
-      const newUrl = `https://i.redd.it/${filename}`;
-      logger.debug(
-        { original: url, converted: newUrl },
-        "Converting Reddit preview URL",
-      );
-      return newUrl;
-    }
-    return url;
-  } catch (error) {
-    logger.debug({ error, url }, "Failed to convert Reddit preview URL");
-    return url;
-  }
+export function getYouTubeProxyUrl(videoId: string): string {
+  const baseUrl =
+    process.env["BASE_URL"] ||
+    (process.env["NODE_ENV"] === "development"
+      ? "http://localhost:4200"
+      : "http://localhost:3000");
+  return `${baseUrl.replace(/\/$/, "")}/api/youtube-proxy?v=${encodeURIComponent(videoId)}`;
 }
 
 /**
  * Get appropriate referer header for a URL.
- * For Reddit URLs, use reddit.com. For others, use the domain of the URL.
+ * Uses the origin of the URL as referer.
  */
 function getRefererHeader(url: string): string {
   try {
     const urlObj = new URL(url);
-
-    // Special handling for Reddit domains
-    if (
-      urlObj.hostname.includes("redd.it") ||
-      urlObj.hostname.includes("reddit.com")
-    ) {
-      return "https://www.reddit.com";
-    }
-
-    // For other domains, use the origin
+    // Use the origin as referer
     return `${urlObj.protocol}//${urlObj.hostname}`;
   } catch (error) {
     logger.debug({ error, url }, "Failed to determine referer");
-    return "https://www.reddit.com"; // Safe fallback
+    // Safe fallback
+    return "https://example.com";
   }
 }
 
@@ -129,9 +107,7 @@ async function fetchSingleImage(url: string): Promise<{
   contentType: string | null;
 }> {
   try {
-    // Try converting Reddit preview URLs first
-    let imageUrl = convertRedditPreviewUrl(url);
-    const referer = getRefererHeader(imageUrl);
+    const referer = getRefererHeader(url);
 
     const headers = {
       "User-Agent":
@@ -142,40 +118,12 @@ async function fetchSingleImage(url: string): Promise<{
       Referer: referer,
     };
 
-    let response;
-    try {
-      response = await axios.get(imageUrl, {
-        headers,
-        responseType: "arraybuffer",
-        timeout: 10000,
-        maxRedirects: 5,
-      });
-    } catch (error) {
-      // If converted URL fails and original was different, try original
-      if (
-        imageUrl !== url &&
-        axios.isAxiosError(error) &&
-        error.response?.status === 403
-      ) {
-        logger.debug(
-          { converted: imageUrl, original: url },
-          "Converted URL failed, trying original",
-        );
-        imageUrl = url;
-        const originalReferer = getRefererHeader(url);
-        response = await axios.get(imageUrl, {
-          headers: {
-            ...headers,
-            Referer: originalReferer,
-          },
-          responseType: "arraybuffer",
-          timeout: 10000,
-          maxRedirects: 5,
-        });
-      } else {
-        throw error;
-      }
-    }
+    const response = await axios.get(url, {
+      headers,
+      responseType: "arraybuffer",
+      timeout: 10000,
+      maxRedirects: 5,
+    });
 
     // Determine MIME type
     let contentType = response.headers["content-type"] || "";
@@ -283,7 +231,43 @@ export async function extractImageFromUrl(
       logger.debug({ url }, "URL is an image file");
       const result = await fetchSingleImage(url);
       if (result.imageData && result.imageData.length > 5000) {
-        // Check dimensions to ensure it's not too small
+        const isSvg =
+          result.contentType === "image/svg+xml" || urlPath.endsWith(".svg");
+
+        // For SVGs, convert to larger raster format (skip dimension checks)
+        if (isSvg) {
+          try {
+            const targetSize = isHeaderImage
+              ? {
+                  width: MAX_HEADER_IMAGE_WIDTH,
+                  height: MAX_HEADER_IMAGE_HEIGHT,
+                }
+              : { width: MAX_IMAGE_WIDTH, height: MAX_IMAGE_HEIGHT };
+            const converted = await sharp(result.imageData)
+              .resize(targetSize.width, targetSize.height, {
+                fit: "inside",
+                withoutEnlargement: false,
+              })
+              .png()
+              .toBuffer();
+            logger.debug(
+              {
+                originalSize: result.imageData.length,
+                convertedSize: converted.length,
+              },
+              "Converted SVG to PNG",
+            );
+            return {
+              imageData: converted,
+              contentType: "image/png",
+            };
+          } catch (error) {
+            logger.warn({ error, url }, "Failed to convert SVG");
+            return null;
+          }
+        }
+
+        // For non-SVG images, check dimensions to ensure it's not too small
         try {
           const img = sharp(result.imageData);
           const metadata = await img.metadata();
@@ -334,19 +318,110 @@ export async function extractImageFromUrl(
       }
     }
 
-    // Fetch the page to extract meta tags and images
-    const headers = {
-      "User-Agent":
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-    };
+    // Special handling for X.com/Twitter URLs
+    if (
+      parsedUrl.hostname === "x.com" ||
+      parsedUrl.hostname === "www.x.com" ||
+      parsedUrl.hostname === "twitter.com" ||
+      parsedUrl.hostname === "www.twitter.com" ||
+      parsedUrl.hostname === "mobile.twitter.com"
+    ) {
+      logger.debug({ url }, "X.com/Twitter URL detected");
+      // Extract tweet ID from URL (e.g., /status/1234567890)
+      const tweetIdMatch = url.match(/\/status\/(\d+)/);
+      if (tweetIdMatch) {
+        const tweetId = tweetIdMatch[1];
+        logger.debug({ tweetId }, "Extracted tweet ID");
 
-    const response = await axios.get(url, {
-      headers,
-      timeout: 10000,
-      maxRedirects: 5,
-    });
+        // Use fxtwitter.com API to get tweet media
+        try {
+          const apiUrl = `https://api.fxtwitter.com/status/${tweetId}`;
+          logger.debug({ apiUrl }, "Fetching tweet data from fxtwitter API");
 
-    const $ = cheerio.load(response.data);
+          const response = await axios.get(apiUrl, { timeout: 10000 });
+          const data = response.data;
+
+          // Try to extract images from the API response
+          const imageUrls: string[] = [];
+
+          // Check primary location: tweet.media.photos
+          if (
+            data?.tweet?.media?.photos &&
+            Array.isArray(data.tweet.media.photos)
+          ) {
+            for (const photo of data.tweet.media.photos) {
+              if (photo?.url) {
+                imageUrls.push(photo.url);
+              }
+            }
+            logger.debug(
+              { count: imageUrls.length },
+              "Found photos in tweet.media.photos",
+            );
+          }
+
+          // Fallback: check tweet.media.all for photo type
+          if (
+            imageUrls.length === 0 &&
+            data?.tweet?.media?.all &&
+            Array.isArray(data.tweet.media.all)
+          ) {
+            for (const media of data.tweet.media.all) {
+              if (media?.type === "photo" && media?.url) {
+                imageUrls.push(media.url);
+              }
+            }
+            logger.debug(
+              { count: imageUrls.length },
+              "Found photos in tweet.media.all",
+            );
+          }
+
+          // Download the first image found
+          if (imageUrls.length > 0) {
+            const imageUrl = imageUrls[0];
+            logger.debug({ imageUrl }, "Downloading X.com image");
+            const result = await fetchSingleImage(imageUrl);
+            if (result.imageData) {
+              return {
+                imageData: result.imageData,
+                contentType: result.contentType || "image/jpeg",
+              };
+            }
+          } else {
+            logger.warn(
+              { tweetId },
+              "No images found in fxtwitter API response",
+            );
+          }
+        } catch (error) {
+          logger.warn(
+            { error, url },
+            "Failed to extract X.com image via fxtwitter API",
+          );
+        }
+      } else {
+        logger.debug({ url }, "Could not extract tweet ID from URL");
+      }
+    }
+
+    // Fetch the page using Playwright to get fully rendered HTML (including JS-loaded content)
+    // This ensures we get dynamically loaded content like inline SVGs
+    // We'll keep the page open to potentially screenshot SVG elements with their backgrounds
+    const fetchModule = await import("./fetch");
+    const browser = await (fetchModule as any).getBrowser();
+    const page = await browser.newPage();
+
+    let html: string;
+    try {
+      await page.goto(url, { waitUntil: "domcontentloaded", timeout: 10000 });
+      html = await page.content();
+    } catch (error) {
+      await page.close();
+      throw error;
+    }
+
+    const $ = cheerio.load(html);
 
     // Strategy 1: Try og:image meta tag
     const ogImage = $('meta[property="og:image"]').attr("content");
@@ -356,6 +431,40 @@ export async function extractImageFromUrl(
       const result = await fetchSingleImage(imageUrl);
       // Check if image is large enough (skip small images)
       if (result.imageData && result.imageData.length > 5000) {
+        const isSvg =
+          result.contentType === "image/svg+xml" ||
+          imageUrl.toLowerCase().endsWith(".svg");
+
+        // For SVGs, convert to larger raster format (skip dimension checks)
+        if (isSvg) {
+          try {
+            const targetSize = isHeaderImage
+              ? {
+                  width: MAX_HEADER_IMAGE_WIDTH,
+                  height: MAX_HEADER_IMAGE_HEIGHT,
+                }
+              : { width: MAX_IMAGE_WIDTH, height: MAX_IMAGE_HEIGHT };
+            const converted = await sharp(result.imageData)
+              .resize(targetSize.width, targetSize.height, {
+                fit: "inside",
+                withoutEnlargement: false,
+              })
+              .png()
+              .toBuffer();
+            logger.debug({ url: imageUrl }, "Converted og:image SVG to PNG");
+            return {
+              imageData: converted,
+              contentType: "image/png",
+            };
+          } catch (error) {
+            logger.warn(
+              { error, url: imageUrl },
+              "Failed to convert og:image SVG",
+            );
+            return null;
+          }
+        }
+
         // Also check dimensions if we can get them
         try {
           const img = sharp(result.imageData);
@@ -397,6 +506,43 @@ export async function extractImageFromUrl(
       const result = await fetchSingleImage(imageUrl);
       // Check if image is large enough (skip small images)
       if (result.imageData && result.imageData.length > 5000) {
+        const isSvg =
+          result.contentType === "image/svg+xml" ||
+          imageUrl.toLowerCase().endsWith(".svg");
+
+        // For SVGs, convert to larger raster format (skip dimension checks)
+        if (isSvg) {
+          try {
+            const targetSize = isHeaderImage
+              ? {
+                  width: MAX_HEADER_IMAGE_WIDTH,
+                  height: MAX_HEADER_IMAGE_HEIGHT,
+                }
+              : { width: MAX_IMAGE_WIDTH, height: MAX_IMAGE_HEIGHT };
+            const converted = await sharp(result.imageData)
+              .resize(targetSize.width, targetSize.height, {
+                fit: "inside",
+                withoutEnlargement: false,
+              })
+              .png()
+              .toBuffer();
+            logger.debug(
+              { url: imageUrl },
+              "Converted twitter:image SVG to PNG",
+            );
+            return {
+              imageData: converted,
+              contentType: "image/png",
+            };
+          } catch (error) {
+            logger.warn(
+              { error, url: imageUrl },
+              "Failed to convert twitter:image SVG",
+            );
+            return null;
+          }
+        }
+
         // Also check dimensions if we can get them
         try {
           const img = sharp(result.imageData);
@@ -430,60 +576,430 @@ export async function extractImageFromUrl(
       }
     }
 
-    // Strategy 3: Find meaningful images on the page
-    const candidateImages: string[] = [];
-    $("img").each((_, el) => {
-      const imgSrc =
-        $(el).attr("src") ||
-        $(el).attr("data-src") ||
-        $(el).attr("data-lazy-src");
-      if (!imgSrc) return;
+    // Strategy 3: Find first meaningful image on the page
+    // Priority: 1) SVG (inline or file), 2) Large image
 
-      // Skip small images (likely icons/logos) - always check size
-      // Small images should only be used as thumbnails, not as header images
-      // Check both HTML attributes and CSS styles
-      const dimensions = extractImageDimensions($, el);
-      if (dimensions) {
-        if (dimensions.width < 100 || dimensions.height < 100) {
-          logger.debug(
-            {
-              width: dimensions.width,
-              height: dimensions.height,
-              src: imgSrc,
-              isHeaderImage,
-            },
-            "Skipping small image (will be used as thumbnail only)",
-          );
-          return;
+    // First, check for inline SVG elements - try to screenshot them with their background
+    let inlineSvgs = $("svg");
+
+    if (inlineSvgs.length > 0) {
+      // Try to find the SVG element on the page and screenshot it (including background from parent)
+      try {
+        // Find the first SVG element - check if it or its parent has a background
+        const firstSvg = inlineSvgs.first();
+        let elementToScreenshot = firstSvg[0];
+
+        // Check if parent has background color/style
+        const parent = firstSvg.parent();
+        if (parent.length > 0) {
+          const parentStyle = parent.attr("style") || "";
+          const parentClass = parent.attr("class") || "";
+          // If parent has background-related styles/classes, screenshot the parent instead
+          if (
+            parentStyle.includes("background") ||
+            parentClass.includes("background") ||
+            parentStyle.match(/background-?color/i)
+          ) {
+            // Try to find the parent element on the page
+            const parentSelector = parent.length > 0 ? `:has(> svg)` : null;
+            if (parentSelector) {
+              try {
+                const parentElement = await page
+                  .locator("svg")
+                  .first()
+                  .locator("..")
+                  .first();
+                if ((await parentElement.count()) > 0) {
+                  elementToScreenshot = await parentElement.elementHandle();
+                }
+              } catch {
+                // Fallback to SVG itself
+              }
+            }
+          }
         }
-      }
 
-      const imageUrl = new URL(imgSrc, url).toString();
-      candidateImages.push(imageUrl);
-    });
+        // Try to extract SVG with its background color
+        const svgLocator = page.locator("svg").first();
+        if ((await svgLocator.count()) > 0) {
+          // Get SVG HTML, background color, and text color from parent
+          const svgData = await svgLocator.evaluate((svg: SVGSVGElement) => {
+            const parent = svg.parentElement;
+            const parentStyle = parent ? window.getComputedStyle(parent) : null;
+            const svgStyle = window.getComputedStyle(svg);
 
-    // Try up to 5 candidate images
-    for (let idx = 0; idx < Math.min(candidateImages.length, 5); idx++) {
-      const imageUrl = candidateImages[idx];
-      logger.debug({ imageUrl, attempt: idx + 1 }, "Trying content image");
-      const result = await fetchSingleImage(imageUrl);
-      if (result.imageData && result.imageData.length > 5000) {
-        logger.debug({ attempt: idx + 1 }, "Successfully found valid image");
-        return {
-          imageData: result.imageData,
-          contentType: result.contentType || "image/jpeg",
-        };
-      } else if (result.imageData) {
+            // Get background color from parent or SVG itself
+            let backgroundColor: string | null = null;
+            if (parentStyle) {
+              const bgColor = parentStyle.backgroundColor;
+              if (
+                bgColor &&
+                bgColor !== "rgba(0, 0, 0, 0)" &&
+                bgColor !== "transparent"
+              ) {
+                backgroundColor = bgColor;
+              }
+            }
+            if (!backgroundColor) {
+              const bgColor = svgStyle.backgroundColor;
+              if (
+                bgColor &&
+                bgColor !== "rgba(0, 0, 0, 0)" &&
+                bgColor !== "transparent"
+              ) {
+                backgroundColor = bgColor;
+              }
+            }
+
+            // Get text/foreground color from parent or SVG itself
+            let textColor: string | null = null;
+            if (parentStyle) {
+              const color = parentStyle.color;
+              if (color && color !== "rgba(0, 0, 0, 0)") {
+                textColor = color;
+              }
+            }
+            if (!textColor) {
+              const color = svgStyle.color;
+              if (color && color !== "rgba(0, 0, 0, 0)") {
+                textColor = color;
+              }
+            }
+
+            // Also check for fill color in SVG elements (common for SVG icons)
+            if (!textColor) {
+              const firstElement = svg.querySelector(
+                "path, circle, rect, polygon, text",
+              );
+              if (firstElement) {
+                const elementStyle = window.getComputedStyle(firstElement);
+                const fill = elementStyle.fill;
+                if (fill && fill !== "none" && fill !== "rgba(0, 0, 0, 0)") {
+                  textColor = fill;
+                }
+              }
+            }
+
+            // Get SVG dimensions
+            const viewBox = svg.viewBox.baseVal;
+            const width = svg.width.baseVal.value || viewBox.width || 100;
+            const height = svg.height.baseVal.value || viewBox.height || 100;
+
+            // Get SVG outer HTML
+            const svgHtml = svg.outerHTML;
+
+            return {
+              svgHtml,
+              backgroundColor,
+              textColor,
+              width,
+              height,
+            };
+          });
+
+          if (svgData && svgData.svgHtml) {
+            logger.debug(
+              {
+                hasBackground: !!svgData.backgroundColor,
+                backgroundColor: svgData.backgroundColor,
+                hasTextColor: !!svgData.textColor,
+                textColor: svgData.textColor,
+                width: svgData.width,
+                height: svgData.height,
+              },
+              "Extracted SVG with background and text color",
+            );
+
+            // Extract inner SVG content (without the outer <svg> tag)
+            let innerSvgContent = svgData.svgHtml
+              .replace(/^<svg[^>]*>/, "")
+              .replace(/<\/svg>$/, "");
+
+            // Apply text color to SVG elements if it exists and elements don't have explicit fill
+            if (svgData.textColor) {
+              // Add fill to elements that don't have it, or replace existing fill with text color
+              innerSvgContent = innerSvgContent.replace(
+                /<(path|circle|rect|polygon|polyline|line|ellipse|text|g)([^>]*?)>/gi,
+                (match: string, tag: string, attrs: string) => {
+                  // Check if element already has fill attribute
+                  if (!attrs.match(/\bfill\s*=/i)) {
+                    // Add fill attribute with text color
+                    return `<${tag}${attrs} fill="${svgData.textColor}">`;
+                  } else {
+                    // Replace existing fill with text color
+                    return `<${tag}${attrs.replace(/\bfill\s*=\s*["'][^"']*["']/gi, `fill="${svgData.textColor}"`)}>`;
+                  }
+                },
+              );
+            }
+
+            // Create SVG with background rectangle if background color exists
+            let finalSvgHtml = svgData.svgHtml;
+            if (svgData.backgroundColor || svgData.textColor) {
+              // Add padding (10% on each side) to create breathing room
+              const padding = Math.min(svgData.width, svgData.height) * 0.1;
+              const paddedWidth = svgData.width + padding * 2;
+              const paddedHeight = svgData.height + padding * 2;
+
+              // Wrap SVG in a new SVG with background rectangle and updated content
+              const bgSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="${paddedWidth}" height="${paddedHeight}" viewBox="0 0 ${paddedWidth} ${paddedHeight}">
+${svgData.backgroundColor ? `  <rect width="100%" height="100%" fill="${svgData.backgroundColor}"/>` : ""}
+  <g transform="translate(${padding}, ${padding})">
+    ${innerSvgContent}
+  </g>
+</svg>`;
+              finalSvgHtml = bgSvg;
+            }
+
+            // Convert to PNG
+            const targetSize = isHeaderImage
+              ? {
+                  width: MAX_HEADER_IMAGE_WIDTH,
+                  height: MAX_HEADER_IMAGE_HEIGHT,
+                }
+              : { width: MAX_IMAGE_WIDTH, height: MAX_IMAGE_HEIGHT };
+
+            const converted = await sharp(Buffer.from(finalSvgHtml, "utf-8"))
+              .resize(targetSize.width, targetSize.height, {
+                fit: "inside",
+                withoutEnlargement: false,
+              })
+              .png()
+              .toBuffer();
+
+            logger.debug(
+              {
+                originalSize: finalSvgHtml.length,
+                convertedSize: converted.length,
+              },
+              "Successfully converted SVG with background to PNG",
+            );
+
+            await page.close();
+            return {
+              imageData: converted,
+              contentType: "image/png",
+            };
+          }
+        }
+      } catch (error) {
         logger.debug(
-          { size: result.imageData.length },
-          "Image too small, trying next candidate",
+          { error },
+          "Failed to screenshot SVG, falling back to conversion",
+        );
+        // Fallback to converting SVG HTML
+      }
+    }
+
+    // Fallback: try to extract and convert SVG from HTML
+    let svgHtml: string | null = null;
+    if (inlineSvgs.length > 0) {
+      const firstSvg = inlineSvgs.first();
+      svgHtml = $("<div>").append(firstSvg.clone()).html();
+    } else {
+      // Fallback: try to extract SVG from raw HTML string
+      const svgMatch = html.match(/<svg[^>]*>[\s\S]*?<\/svg>/i);
+      if (svgMatch && svgMatch[0] && svgMatch[0].length > 200) {
+        svgHtml = svgMatch[0];
+        logger.debug(
+          { svgLength: svgHtml.length },
+          "Found inline SVG in raw HTML (cheerio didn't parse it)",
         );
       }
     }
 
+    logger.debug(
+      {
+        svgCount: inlineSvgs.length,
+        svgHtmlLength: svgHtml?.length,
+        htmlLength: html.length,
+      },
+      "Checking for inline SVGs",
+    );
+
+    if (svgHtml && svgHtml.length > 200) {
+      // Check if SVG has meaningful content (has path elements)
+      const hasPaths =
+        svgHtml.includes("<path") || svgHtml.includes("&lt;path");
+
+      if (hasPaths || svgHtml.length > 500) {
+        logger.debug(
+          {
+            size: svgHtml.length,
+            hasPaths,
+          },
+          "Found inline SVG, converting to PNG",
+        );
+        try {
+          const targetSize = isHeaderImage
+            ? { width: MAX_HEADER_IMAGE_WIDTH, height: MAX_HEADER_IMAGE_HEIGHT }
+            : { width: MAX_IMAGE_WIDTH, height: MAX_IMAGE_HEIGHT };
+          const converted = await sharp(Buffer.from(svgHtml, "utf-8"))
+            .resize(targetSize.width, targetSize.height, {
+              fit: "inside",
+              withoutEnlargement: false,
+            })
+            .png()
+            .toBuffer();
+          logger.debug(
+            { originalSize: svgHtml.length, convertedSize: converted.length },
+            "Successfully converted inline SVG to PNG",
+          );
+          await page.close();
+          return {
+            imageData: converted,
+            contentType: "image/png",
+          };
+        } catch (error) {
+          logger.warn(
+            { error, svgLength: svgHtml.length },
+            "Failed to convert inline SVG",
+          );
+        }
+      }
+    }
+
+    // Second, check for SVG image files
+    const images = $("img");
+    let firstLargeImageUrl: string | null = null;
+
+    for (let idx = 0; idx < images.length; idx++) {
+      const el = images[idx];
+      const imgSrc =
+        $(el).attr("src") ||
+        $(el).attr("data-src") ||
+        $(el).attr("data-lazy-src");
+      if (!imgSrc) continue;
+
+      const isSvg = imgSrc.toLowerCase().endsWith(".svg");
+      if (!isSvg) {
+        // Track first large non-SVG image for fallback
+        if (!firstLargeImageUrl) {
+          const dimensions = extractImageDimensions($, el);
+          if (
+            !dimensions ||
+            (dimensions.width >= 100 && dimensions.height >= 100)
+          ) {
+            firstLargeImageUrl = new URL(imgSrc, url).toString();
+          }
+        }
+        continue;
+      }
+
+      // Found SVG image file - fetch and convert it
+      const imageUrl = new URL(imgSrc, url).toString();
+      logger.debug({ imageUrl }, "Found SVG image file, converting to PNG");
+
+      const result = await fetchSingleImage(imageUrl);
+      if (!result.imageData || result.imageData.length < 1000) {
+        logger.debug({ size: result.imageData?.length }, "SVG too small");
+        continue;
+      }
+
+      try {
+        const targetSize = isHeaderImage
+          ? { width: MAX_HEADER_IMAGE_WIDTH, height: MAX_HEADER_IMAGE_HEIGHT }
+          : { width: MAX_IMAGE_WIDTH, height: MAX_IMAGE_HEIGHT };
+        const converted = await sharp(result.imageData)
+          .resize(targetSize.width, targetSize.height, {
+            fit: "inside",
+            withoutEnlargement: false,
+          })
+          .png()
+          .toBuffer();
+        logger.debug(
+          {
+            originalSize: result.imageData.length,
+            convertedSize: converted.length,
+          },
+          "Successfully converted SVG to PNG",
+        );
+        return {
+          imageData: converted,
+          contentType: "image/png",
+        };
+      } catch (error) {
+        logger.warn({ error, url: imageUrl }, "Failed to convert SVG");
+        continue;
+      }
+    }
+
+    // Second pass: if no SVG found, use first large image
+    if (firstLargeImageUrl) {
+      logger.debug(
+        { imageUrl: firstLargeImageUrl },
+        "No SVG found, trying first large image",
+      );
+      const result = await fetchSingleImage(firstLargeImageUrl);
+      if (result.imageData && result.imageData.length > 5000) {
+        // For header images, check actual dimensions
+        if (isHeaderImage) {
+          try {
+            const img = sharp(result.imageData);
+            const metadata = await img.metadata();
+            if (
+              metadata.width &&
+              metadata.height &&
+              metadata.width >= 200 &&
+              metadata.height >= 200
+            ) {
+              logger.debug(
+                {
+                  width: metadata.width,
+                  height: metadata.height,
+                  size: result.imageData.length,
+                },
+                "Successfully found valid header image",
+              );
+              return {
+                imageData: result.imageData,
+                contentType: result.contentType || "image/jpeg",
+              };
+            } else {
+              logger.debug(
+                {
+                  width: metadata.width,
+                  height: metadata.height,
+                  size: result.imageData.length,
+                },
+                "Header image too small",
+              );
+            }
+          } catch (error) {
+            // If we can't check dimensions, use file size check only
+            logger.debug(
+              { size: result.imageData.length },
+              "Successfully found valid image",
+            );
+            return {
+              imageData: result.imageData,
+              contentType: result.contentType || "image/jpeg",
+            };
+          }
+        } else {
+          logger.debug(
+            { size: result.imageData.length },
+            "Successfully found valid image",
+          );
+          return {
+            imageData: result.imageData,
+            contentType: result.contentType || "image/jpeg",
+          };
+        }
+      }
+    }
+
+    await page.close();
     return null;
   } catch (error) {
     logger.warn({ error, url }, "Failed to extract image from URL");
+    // Make sure page is closed even on error
+    try {
+      const page = (error as any).page;
+      if (page) await page.close();
+    } catch {
+      // Ignore cleanup errors
+    }
     return null;
   }
 }
@@ -534,25 +1050,6 @@ export async function extractThumbnailUrlFromPage(
   url: string,
 ): Promise<string | null> {
   try {
-    // Special handling for YouTube URLs
-    const videoId = extractYouTubeVideoId(url);
-    if (videoId) {
-      // Try maxresdefault first (highest quality), fall back to hqdefault
-      for (const quality of ["maxresdefault", "hqdefault"]) {
-        const thumbnailUrl = `https://img.youtube.com/vi/${videoId}/${quality}.jpg`;
-        try {
-          const response = await axios.head(thumbnailUrl, { timeout: 5000 });
-          if (response.status === 200) {
-            logger.debug({ thumbnailUrl }, "Found YouTube thumbnail");
-            return thumbnailUrl;
-          }
-        } catch (error) {
-          // Try next quality
-          continue;
-        }
-      }
-    }
-
     const headers = {
       "User-Agent":
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
@@ -842,9 +1339,6 @@ export function sanitizeHtml(html: string): string {
     // Remove script and style elements
     $("script, style, iframe, object, embed").remove();
 
-    // Remove YouTube-specific elements that shouldn't be in content
-    $(".ytd-app").remove();
-
     // Rename class, style, id, and data attributes to disable original styling/behavior
     $("*").each((_, el) => {
       const $el = $(el);
@@ -915,8 +1409,8 @@ export function shouldSkipArticle(
  * Check if an article should be skipped during aggregation.
  *
  * Consolidates common skip logic:
- * 1. Skip if URL already exists (unless forceRefresh)
- * 2. Skip if article with same name exists in last 2 weeks (unless forceRefresh)
+ * 1. Skip if URL already exists in this feed (unless forceRefresh)
+ * 2. Skip if article with same name exists in last 2 weeks in this feed (unless forceRefresh)
  *
  * @param article - The article to check
  * @param forceRefresh - If true, don't skip existing articles
@@ -924,6 +1418,7 @@ export function shouldSkipArticle(
  */
 export async function shouldSkipArticleByDuplicate(
   article: { url: string; title: string },
+  feedId: number,
   forceRefresh: boolean,
 ): Promise<{ shouldSkip: boolean; reason: string | null }> {
   // Import here to avoid circular dependency
@@ -935,18 +1430,18 @@ export async function shouldSkipArticleByDuplicate(
     return { shouldSkip: false, reason: null };
   }
 
-  // Check 1: URL already exists (globally, not just in current feed)
+  // Check 1: URL already exists in this feed
   const [existingByUrl] = await db
     .select()
     .from(articles)
-    .where(eq(articles.url, article.url))
+    .where(and(eq(articles.url, article.url), eq(articles.feedId, feedId)))
     .limit(1);
 
   if (existingByUrl) {
     return { shouldSkip: true, reason: null }; // Don't log for existing articles (too verbose)
   }
 
-  // Check 2: Article with same name exists in last 2 weeks
+  // Check 2: Article with same name exists in last 2 weeks (only in this feed)
   const twoWeeksAgo = new Date();
   twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
 
@@ -954,7 +1449,11 @@ export async function shouldSkipArticleByDuplicate(
     .select()
     .from(articles)
     .where(
-      and(eq(articles.name, article.title), gte(articles.date, twoWeeksAgo)),
+      and(
+        eq(articles.name, article.title),
+        eq(articles.feedId, feedId),
+        gte(articles.date, twoWeeksAgo),
+      ),
     )
     .limit(1);
 

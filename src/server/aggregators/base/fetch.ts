@@ -4,6 +4,7 @@
 
 import Parser from "rss-parser";
 import { chromium, type Browser } from "playwright";
+import axios from "axios";
 import { logger } from "../../utils/logger";
 import { ContentFetchError } from "./exceptions";
 
@@ -12,7 +13,7 @@ let browser: Browser | null = null;
 /**
  * Get or create browser instance.
  */
-async function getBrowser(): Promise<Browser> {
+export async function getBrowser(): Promise<Browser> {
   if (!browser) {
     browser = await chromium.launch({
       headless: true,
@@ -41,33 +42,56 @@ export async function fetchFeed(
   );
 
   try {
-    // Use custom request function with timeout support
-    const parserInitStart = Date.now();
-    const parserWithTimeout = new Parser({
-      timeout,
-      requestOptions: {
-        timeout,
+    // Fetch feed content using axios (avoids deprecated url.parse() in rss-parser)
+    const fetchStart = Date.now();
+    logger.info(
+      {
+        feedUrl,
+        step: "fetch_start",
       },
+      "Fetching RSS feed content",
+    );
+
+    const response = await axios.get(feedUrl, {
+      timeout,
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; RSS Reader)",
+      },
+      responseType: "text",
     });
+
+    const fetchElapsed = Date.now() - fetchStart;
+    logger.debug(
+      {
+        feedUrl,
+        elapsed: fetchElapsed,
+        step: "fetch_complete",
+      },
+      "RSS feed content fetched",
+    );
+
+    // Parse feed content using parseString (avoids deprecated url.parse() path)
+    const parserInitStart = Date.now();
+    const parser = new Parser();
     logger.debug(
       {
         feedUrl,
         elapsed: Date.now() - parserInitStart,
         step: "parser_init",
       },
-      "Parser initialized with timeout",
+      "Parser initialized",
     );
 
     const parseStart = Date.now();
     logger.info(
       {
         feedUrl,
-        step: "parseURL_start",
+        step: "parseString_start",
       },
-      "Calling parser.parseURL",
+      "Calling parser.parseString",
     );
 
-    const feed = await parserWithTimeout.parseURL(feedUrl);
+    const feed = await parser.parseString(response.data);
 
     const parseElapsed = Date.now() - parseStart;
     const totalElapsed = Date.now() - startTime;
@@ -104,89 +128,83 @@ export async function fetchFeed(
 
 /**
  * Fetch article content using Playwright.
+ * Fail-fast implementation (no retries) - errors are handled by the aggregator template method.
  */
 export async function fetchArticleContent(
   url: string,
   options: {
     timeout?: number;
     waitForSelector?: string;
-    maxRetries?: number;
   } = {},
 ): Promise<string> {
-  const { timeout = 30000, waitForSelector, maxRetries = 3 } = options;
+  const { timeout = 30000, waitForSelector } = options;
+  const startTime = Date.now();
 
-  let lastError: Error | null = null;
-
-  for (let attempt = 0; attempt < maxRetries; attempt++) {
-    try {
-      const browserInstance = await getBrowser();
-      const page = await browserInstance.newPage();
-
-      try {
-        // Always use domcontentloaded for faster, more reliable loading
-        await page.goto(url, { waitUntil: "domcontentloaded", timeout });
-
-        if (waitForSelector) {
-          await page.waitForSelector(waitForSelector, { timeout });
-        }
-
-        const html = await page.content();
-        await page.close();
-        return html;
-      } catch (error) {
-        await page.close();
-        throw error;
-      }
-    } catch (error) {
-      lastError = error as Error;
-
-      // Check if should retry
-      const { shouldRetry, getRetryDelay } = await import("./errorHandler");
-      if (shouldRetry(error) && attempt < maxRetries - 1) {
-        const delay = getRetryDelay(attempt);
-        logger.warn(
-          {
-            error: error instanceof Error ? error : new Error(String(error)),
-            url,
-            attempt: attempt + 1,
-            delay,
-          },
-          "Retrying fetch after delay",
-        );
-        await new Promise((resolve) => setTimeout(resolve, delay));
-        continue;
-      }
-
-      // Don't retry or max retries reached
-      const errorMessage =
-        lastError instanceof Error
-          ? lastError.message
-          : String(lastError || "Unknown error");
-      logger.error(
-        {
-          error: error instanceof Error ? error : new Error(String(error)),
-          url,
-          attempt: attempt + 1,
-        },
-        "Failed to fetch article content",
-      );
-      throw new ContentFetchError(
-        `Failed to fetch content from ${url}: ${errorMessage}`,
-        undefined,
-        lastError,
-      );
-    }
-  }
-
-  const finalErrorMessage =
-    lastError instanceof Error
-      ? lastError.message
-      : String(lastError || "Unknown error");
-  throw new ContentFetchError(
-    `Failed to fetch content from ${url} after ${maxRetries} attempts: ${finalErrorMessage}`,
-    undefined,
-    lastError || undefined,
+  logger.debug(
+    {
+      url,
+      timeout,
+      waitForSelector,
+      step: "fetchArticleContent",
+      subStep: "start",
+    },
+    "Fetching article content",
   );
+
+  try {
+    const browserInstance = await getBrowser();
+    const page = await browserInstance.newPage();
+
+    try {
+      // Always use domcontentloaded for faster, more reliable loading
+      await page.goto(url, { waitUntil: "domcontentloaded", timeout });
+
+      if (waitForSelector) {
+        await page.waitForSelector(waitForSelector, { timeout });
+      }
+
+      const html = await page.content();
+      await page.close();
+
+      const elapsed = Date.now() - startTime;
+      logger.debug(
+        {
+          url,
+          elapsed,
+          step: "fetchArticleContent",
+          subStep: "complete",
+        },
+        "Article content fetched successfully",
+      );
+
+      return html;
+    } catch (error) {
+      await page.close();
+      throw error;
+    }
+  } catch (error) {
+    const elapsed = Date.now() - startTime;
+    const errorMessage =
+      error instanceof Error ? error.message : String(error || "Unknown error");
+
+    logger.error(
+      {
+        error: error instanceof Error ? error : new Error(String(error)),
+        url,
+        elapsed,
+        step: "fetchArticleContent",
+        subStep: "error",
+        errorMessage,
+      },
+      "Failed to fetch article content",
+    );
+
+    throw new ContentFetchError(
+      `Failed to fetch content from ${url}: ${errorMessage}`,
+      undefined,
+      error instanceof Error ? error : undefined,
+    );
+  }
 }
 
 /**

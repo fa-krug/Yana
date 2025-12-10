@@ -115,7 +115,7 @@ export const articles = sqliteTable(
       .notNull()
       .references(() => feeds.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
-    url: text("url").notNull().unique(),
+    url: text("url").notNull(),
     date: integer("date", { mode: "timestamp" })
       .notNull()
       .$defaultFn(() => new Date()),
@@ -140,7 +140,10 @@ export const articles = sqliteTable(
       .$defaultFn(() => new Date()),
   },
   (table) => ({
-    urlIdx: uniqueIndex("articles_url_idx").on(table.url),
+    feedUrlIdx: uniqueIndex("articles_feed_url_idx").on(
+      table.feedId,
+      table.url,
+    ),
     feedIdIdx: index("articles_feed_id_idx").on(table.feedId),
     dateIdx: index("articles_date_idx").on(table.date),
     feedDateIdx: index("articles_feed_date_idx").on(table.feedId, table.date),

@@ -6,9 +6,8 @@
 
 import { BaseAggregator } from "./base/aggregator";
 import type { RawArticle } from "./base/types";
-import { fetchFeed, fetchArticleContent } from "./base/fetch";
-import { logger } from "../utils/logger";
-import * as cheerio from "cheerio";
+import { fetchFeed } from "./base/fetch";
+import Parser from "rss-parser";
 
 export class FullWebsiteAggregator extends BaseAggregator {
   override readonly id: string = "full_website";
@@ -59,16 +58,20 @@ export class FullWebsiteAggregator extends BaseAggregator {
     },
   };
 
-  async aggregate(articleLimit?: number): Promise<RawArticle[]> {
-    const aggregateStart = Date.now();
-    logger.info(
+  /**
+   * Fetch RSS feed data.
+   */
+  protected async fetchSourceData(limit?: number): Promise<Parser.Output<any>> {
+    const startTime = Date.now();
+    this.logger.info(
       {
+        step: "fetchSourceData",
+        subStep: "start",
         aggregator: this.id,
         feedId: this.feed?.id,
-        articleLimit,
-        step: "aggregate_start",
+        limit,
       },
-      `Starting aggregation${articleLimit ? ` (limit: ${articleLimit})` : ""}`,
+      "Fetching RSS feed",
     );
 
     if (!this.feed) {
@@ -76,323 +79,292 @@ export class FullWebsiteAggregator extends BaseAggregator {
     }
 
     const feedUrl = this.feed.identifier;
-    logger.info(
-      {
-        feedUrl,
-        aggregator: this.id,
-        step: "fetch_feed_start",
-      },
-      "Fetching RSS feed",
-    );
-
-    // Fetch RSS feed
-    const feedFetchStart = Date.now();
     const feed = await fetchFeed(feedUrl);
-    const feedFetchElapsed = Date.now() - feedFetchStart;
 
-    logger.info(
+    const elapsed = Date.now() - startTime;
+    this.logger.info(
       {
-        feedUrl,
+        step: "fetchSourceData",
+        subStep: "complete",
+        aggregator: this.id,
+        feedId: this.feed?.id,
         itemCount: feed.items?.length || 0,
-        elapsed: feedFetchElapsed,
-        aggregator: this.id,
-        step: "fetch_feed_complete",
+        elapsed,
       },
-      "RSS feed fetched, processing items",
+      "RSS feed fetched",
     );
 
-    const articles: RawArticle[] = [];
-    let itemsToProcess = feed.items || [];
+    return feed;
+  }
 
-    // Apply article limit if specified
-    if (articleLimit !== undefined && articleLimit > 0) {
-      itemsToProcess = itemsToProcess.slice(0, articleLimit);
-      logger.info(
-        {
-          originalCount: feed.items?.length || 0,
-          limitedCount: itemsToProcess.length,
-          articleLimit,
-          aggregator: this.id,
-          step: "apply_limit",
-        },
-        `Limited to first ${articleLimit} item(s)`,
-      );
-    }
-
-    logger.info(
+  /**
+   * Parse RSS feed items to RawArticle[].
+   */
+  protected async parseToRawArticles(
+    sourceData: unknown,
+  ): Promise<RawArticle[]> {
+    const startTime = Date.now();
+    this.logger.info(
       {
-        itemCount: itemsToProcess.length,
+        step: "parseToRawArticles",
+        subStep: "start",
         aggregator: this.id,
-        step: "process_items_start",
+        feedId: this.feed?.id,
       },
-      `Processing ${itemsToProcess.length} feed items`,
+      "Parsing RSS feed items",
     );
 
-    for (let i = 0; i < itemsToProcess.length; i++) {
-      const item = itemsToProcess[i];
-      const itemStart = Date.now();
+    const feed = sourceData as Parser.Output<any>;
+    const items = feed.items || [];
 
-      try {
-        logger.debug(
-          {
-            index: i + 1,
-            total: itemsToProcess.length,
-            title: item.title,
-            url: item.link,
-            aggregator: this.id,
-            step: "process_item_start",
-          },
-          `Processing item ${i + 1}/${itemsToProcess.length}`,
-        );
+    const articles: RawArticle[] = items.map((item) => {
+      const article: RawArticle = {
+        title: item.title || "",
+        url: item.link || "",
+        published: item.pubDate ? new Date(item.pubDate) : new Date(),
+        summary: item.contentSnippet || item.content || "",
+        author: item.creator || item.author || undefined,
+      };
 
-        const article: RawArticle = {
-          title: item.title || "",
-          url: item.link || "",
-          published: item.pubDate ? new Date(item.pubDate) : new Date(),
-          summary: item.contentSnippet || item.content || "",
-          author: item.creator || item.author || undefined,
-        };
+      // Extract metadata
+      return article;
+    });
 
-        // Skip if should skip
-        if (this.shouldSkipArticle(article)) {
-          logger.debug(
-            {
-              index: i + 1,
-              title: article.title,
-              aggregator: this.id,
-              step: "item_skipped",
-            },
-            "Item skipped by shouldSkipArticle",
-          );
-          continue;
-        }
-
-        // Check ignore_title_contains
-        const ignoreTitle = this.getOption(
-          "ignore_title_contains",
-          "",
-        ) as string;
-        if (ignoreTitle) {
-          const titleFilters = ignoreTitle
-            .split("\n")
-            .map((line) => line.trim())
-            .filter((line) => line.length > 0);
-          if (
-            titleFilters.some((filter) =>
-              article.title.toLowerCase().includes(filter.toLowerCase()),
-            )
-          ) {
-            logger.debug(
-              {
-                index: i + 1,
-                title: article.title,
-                aggregator: this.id,
-                step: "item_skipped",
-              },
-              "Item skipped by ignore_title_contains filter",
-            );
-            continue;
-          }
-        }
-
-        // Check ignore_content_contains
-        const ignoreContent = this.getOption(
-          "ignore_content_contains",
-          "",
-        ) as string;
-        if (ignoreContent) {
-          const contentFilters = ignoreContent
-            .split("\n")
-            .map((line) => line.trim())
-            .filter((line) => line.length > 0);
-          const searchText =
-            `${article.title} ${article.summary || ""}`.toLowerCase();
-          if (
-            contentFilters.some((filter) =>
-              searchText.includes(filter.toLowerCase()),
-            )
-          ) {
-            logger.debug(
-              {
-                index: i + 1,
-                title: article.title,
-                aggregator: this.id,
-                step: "item_skipped",
-              },
-              "Item skipped by ignore_content_contains filter",
-            );
-            continue;
-          }
-        }
-
-        // Check if article already exists - skip fetching content if it does (unless force refresh)
-        if (this.isExistingUrl(article.url)) {
-          logger.debug(
-            {
-              index: i + 1,
-              url: article.url,
-              title: article.title,
-              aggregator: this.id,
-              step: "skip_existing",
-            },
-            "Skipping existing article (will not fetch content)",
-          );
-          continue;
-        }
-
-        // Fetch full content
-        if (!this.forceRefresh) {
-          // Check cache first
-          // TODO: Implement caching
-        }
-
-        try {
-          logger.debug(
-            {
-              index: i + 1,
-              url: article.url,
-              aggregator: this.id,
-              step: "fetch_content_start",
-            },
-            "Fetching article content",
-          );
-
-          const contentFetchStart = Date.now();
-          const html = await fetchArticleContent(article.url, {
-            timeout: this.fetchTimeout,
-            waitForSelector: this.waitForSelector,
-          });
-          const contentFetchElapsed = Date.now() - contentFetchStart;
-
-          logger.debug(
-            {
-              index: i + 1,
-              url: article.url,
-              elapsed: contentFetchElapsed,
-              aggregator: this.id,
-              step: "fetch_content_complete",
-            },
-            "Article content fetched",
-          );
-
-          // Process content using processArticleContent (handles extraction, sanitization, and processing)
-          const extractStart = Date.now();
-
-          // Combine base selectors with exclude_selectors option
-          const excludeSelectors = this.getOption(
-            "exclude_selectors",
-            "",
-          ) as string;
-          const additionalSelectors = excludeSelectors
-            .split("\n")
-            .map((line) => line.trim())
-            .filter((line) => line.length > 0);
-          const allSelectorsToRemove = [
-            ...this.selectorsToRemove,
-            ...additionalSelectors,
-          ];
-
-          // Process with custom selectors (including exclude_selectors)
-          let processedContent = await this.processArticleContent(
-            article,
-            html,
-            allSelectorsToRemove,
-          );
-
-          const extractElapsed = Date.now() - extractStart;
-
-          logger.debug(
-            {
-              index: i + 1,
-              url: article.url,
-              elapsed: extractElapsed,
-              aggregator: this.id,
-              step: "extract_complete",
-            },
-            "Content extracted",
-          );
-
-          // Apply regex replacements
-          const processStart = Date.now();
-          const regexReplacements = this.getOption(
-            "regex_replacements",
-            "",
-          ) as string;
-          if (regexReplacements) {
-            processedContent = this.applyRegexReplacements(
-              processedContent,
-              regexReplacements,
-            );
-          }
-
-          article.content = processedContent;
-          const processElapsed = Date.now() - processStart;
-
-          logger.debug(
-            {
-              index: i + 1,
-              url: article.url,
-              elapsed: processElapsed,
-              aggregator: this.id,
-              step: "process_complete",
-            },
-            "Article processed",
-          );
-        } catch (error) {
-          logger.warn(
-            {
-              error: error instanceof Error ? error : new Error(String(error)),
-              url: article.url,
-              index: i + 1,
-              aggregator: this.id,
-              step: "fetch_content_failed",
-            },
-            "Failed to fetch article content, using summary",
-          );
-          // Continue with summary if available
-          article.content = article.summary || "";
-        }
-
-        const itemElapsed = Date.now() - itemStart;
-        logger.debug(
-          {
-            index: i + 1,
-            title: article.title,
-            elapsed: itemElapsed,
-            aggregator: this.id,
-            step: "item_complete",
-          },
-          `Item ${i + 1} processed`,
-        );
-
-        articles.push(article);
-      } catch (error) {
-        logger.error(
-          {
-            error,
-            item,
-            index: i + 1,
-            aggregator: this.id,
-            step: "item_error",
-          },
-          "Error processing feed item",
-        );
-        continue;
-      }
-    }
-
-    const totalElapsed = Date.now() - aggregateStart;
-    logger.info(
+    const elapsed = Date.now() - startTime;
+    this.logger.info(
       {
+        step: "parseToRawArticles",
+        subStep: "complete",
         aggregator: this.id,
+        feedId: this.feed?.id,
         articleCount: articles.length,
-        totalElapsed,
-        step: "aggregate_complete",
+        elapsed,
       },
-      `Aggregation complete: ${articles.length} articles`,
+      "Parsed RSS feed items",
     );
 
     return articles;
+  }
+
+  /**
+   * Apply article filters (ignore_title_contains, ignore_content_contains).
+   */
+  protected override async applyArticleFilters(
+    articles: RawArticle[],
+  ): Promise<RawArticle[]> {
+    const startTime = Date.now();
+    this.logger.debug(
+      {
+        step: "filterArticles",
+        subStep: "applyArticleFilters",
+        aggregator: this.id,
+        feedId: this.feed?.id,
+        initialCount: articles.length,
+      },
+      "Applying article filters",
+    );
+
+    let filtered = articles;
+
+    // Check ignore_title_contains
+    const ignoreTitle = this.getOption("ignore_title_contains", "") as string;
+    if (ignoreTitle) {
+      const titleFilters = ignoreTitle
+        .split("\n")
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0);
+
+      filtered = filtered.filter((article) => {
+        const shouldSkip = titleFilters.some((filter) =>
+          article.title.toLowerCase().includes(filter.toLowerCase()),
+        );
+        if (shouldSkip) {
+          this.logger.debug(
+            {
+              step: "filterArticles",
+              subStep: "applyArticleFilters",
+              aggregator: this.id,
+              feedId: this.feed?.id,
+              url: article.url,
+              title: article.title,
+              filter: "ignore_title_contains",
+            },
+            "Article skipped by ignore_title_contains filter",
+          );
+        }
+        return !shouldSkip;
+      });
+    }
+
+    // Check ignore_content_contains
+    const ignoreContent = this.getOption(
+      "ignore_content_contains",
+      "",
+    ) as string;
+    if (ignoreContent) {
+      const contentFilters = ignoreContent
+        .split("\n")
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0);
+
+      filtered = filtered.filter((article) => {
+        const searchText =
+          `${article.title} ${article.summary || ""}`.toLowerCase();
+        const shouldSkip = contentFilters.some((filter) =>
+          searchText.includes(filter.toLowerCase()),
+        );
+        if (shouldSkip) {
+          this.logger.debug(
+            {
+              step: "filterArticles",
+              subStep: "applyArticleFilters",
+              aggregator: this.id,
+              feedId: this.feed?.id,
+              url: article.url,
+              title: article.title,
+              filter: "ignore_content_contains",
+            },
+            "Article skipped by ignore_content_contains filter",
+          );
+        }
+        return !shouldSkip;
+      });
+    }
+
+    const elapsed = Date.now() - startTime;
+    this.logger.debug(
+      {
+        step: "filterArticles",
+        subStep: "applyArticleFilters",
+        aggregator: this.id,
+        feedId: this.feed?.id,
+        initialCount: articles.length,
+        filteredCount: filtered.length,
+        elapsed,
+      },
+      "Article filters applied",
+    );
+
+    return filtered;
+  }
+
+  /**
+   * Apply article limit.
+   */
+  protected override applyArticleLimit(articles: RawArticle[]): RawArticle[] {
+    // Limit is applied by the template method's articleLimit parameter
+    // This method can be overridden for custom limit logic
+    return articles;
+  }
+
+  /**
+   * Remove elements by selectors (combines base selectors with exclude_selectors option).
+   */
+  protected override async removeElementsBySelectors(
+    html: string,
+    article: RawArticle,
+  ): Promise<string> {
+    const startTime = Date.now();
+
+    // Combine base selectors with exclude_selectors option
+    const excludeSelectors = this.getOption("exclude_selectors", "") as string;
+    const additionalSelectors = excludeSelectors
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0);
+    const allSelectorsToRemove = [
+      ...this.selectorsToRemove,
+      ...additionalSelectors,
+    ];
+
+    this.logger.debug(
+      {
+        step: "extractContent",
+        subStep: "removeElementsBySelectors",
+        aggregator: this.id,
+        feedId: this.feed?.id,
+        url: article.url,
+        selectorCount: allSelectorsToRemove.length,
+      },
+      "Removing elements by selectors",
+    );
+
+    const { removeElementsBySelectors } = await import("./base/utils");
+    const result = removeElementsBySelectors(html, allSelectorsToRemove);
+
+    const elapsed = Date.now() - startTime;
+    this.logger.debug(
+      {
+        step: "extractContent",
+        subStep: "removeElementsBySelectors",
+        aggregator: this.id,
+        feedId: this.feed?.id,
+        url: article.url,
+        selectorCount: allSelectorsToRemove.length,
+        elapsed,
+      },
+      "Elements removed by selectors",
+    );
+
+    return result;
+  }
+
+  /**
+   * Process content (apply regex replacements after standard processing).
+   */
+  protected override async processContent(
+    html: string,
+    article: RawArticle,
+  ): Promise<string> {
+    const startTime = Date.now();
+    this.logger.debug(
+      {
+        step: "enrichArticles",
+        subStep: "processContent",
+        aggregator: this.id,
+        feedId: this.feed?.id,
+        url: article.url,
+      },
+      "Processing content",
+    );
+
+    // First, use base processContent (standardize format)
+    let processed = await super.processContent(html, article);
+
+    // Then apply regex replacements if configured
+    const regexReplacements = this.getOption(
+      "regex_replacements",
+      "",
+    ) as string;
+    if (regexReplacements) {
+      processed = this.applyRegexReplacements(processed, regexReplacements);
+      this.logger.debug(
+        {
+          step: "enrichArticles",
+          subStep: "processContent",
+          aggregator: this.id,
+          feedId: this.feed?.id,
+          url: article.url,
+          appliedReplacements: true,
+        },
+        "Applied regex replacements",
+      );
+    }
+
+    const elapsed = Date.now() - startTime;
+    this.logger.debug(
+      {
+        step: "enrichArticles",
+        subStep: "processContent",
+        aggregator: this.id,
+        feedId: this.feed?.id,
+        url: article.url,
+        elapsed,
+      },
+      "Content processed",
+    );
+
+    return processed;
   }
 
   /**
@@ -446,8 +418,12 @@ export class FullWebsiteAggregator extends BaseAggregator {
       parts.push(currentPart.join(""));
 
       if (parts.length < 2) {
-        logger.warn(
+        this.logger.warn(
           {
+            step: "enrichArticles",
+            subStep: "processContent",
+            aggregator: this.id,
+            feedId: this.feed?.id,
             lineNum: lineNum + 1,
             line,
           },
@@ -460,18 +436,41 @@ export class FullWebsiteAggregator extends BaseAggregator {
       const replacement = parts.slice(1).join("|").trim(); // Join back in case | was in replacement
 
       if (!pattern) {
-        logger.warn({ lineNum: lineNum + 1 }, "Empty pattern, skipping");
+        this.logger.warn(
+          {
+            step: "enrichArticles",
+            subStep: "processContent",
+            aggregator: this.id,
+            feedId: this.feed?.id,
+            lineNum: lineNum + 1,
+          },
+          "Empty pattern, skipping",
+        );
         continue;
       }
 
       try {
         // Apply regex replacement
         result = result.replace(new RegExp(pattern, "g"), replacement);
-        logger.debug({ pattern, replacement }, "Applied regex replacement");
-      } catch (error) {
-        logger.warn(
+        this.logger.debug(
           {
-            error,
+            step: "enrichArticles",
+            subStep: "processContent",
+            aggregator: this.id,
+            feedId: this.feed?.id,
+            pattern,
+            replacement,
+          },
+          "Applied regex replacement",
+        );
+      } catch (error) {
+        this.logger.warn(
+          {
+            step: "enrichArticles",
+            subStep: "processContent",
+            aggregator: this.id,
+            feedId: this.feed?.id,
+            error: error instanceof Error ? error : new Error(String(error)),
             pattern,
             lineNum: lineNum + 1,
           },

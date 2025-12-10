@@ -68,9 +68,6 @@ export function extractContent(
     // Remove scripts, styles, etc. from extracted content
     cleaned("script, style, noscript, iframe, embed, object").remove();
 
-    // Remove YouTube-specific elements that shouldn't be in content
-    cleaned(".ytd-app").remove();
-
     text = cleaned.html() || "";
 
     // Clean up empty tags

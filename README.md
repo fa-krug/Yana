@@ -275,6 +275,36 @@ The system supports multiple aggregator types:
 - **reddit** - Reddit subreddit aggregator
 - **podcast** - Podcast feed aggregator
 
+### Aggregator Testing Tools
+
+Test all aggregators against a specific article URL for debugging:
+
+```bash
+npm run test:aggregator <url>
+```
+
+**Example:**
+```bash
+npm run test:aggregator https://example.com/article
+```
+
+This script:
+- Tests all registered aggregators against the URL
+- Shows fetch, extraction, and processing results for each
+- Displays success/failure status, content length, and processing time
+- Useful for debugging content extraction issues and comparing aggregator behavior
+
+### Aggregator Flow Documentation
+
+For detailed information about the aggregation flow, see:
+- **[docs/AGGREGATOR_FLOW.md](docs/AGGREGATOR_FLOW.md)** - Comprehensive documentation covering:
+  - Fixed aggregation flow (Template Method Pattern)
+  - Step-by-step breakdown of each phase
+  - Error handling strategy
+  - Configuration options
+  - Debugging tools usage
+  - How to create custom aggregators
+
 ## 🧠 AI Features
 
 The application includes AI-powered features:
@@ -435,6 +465,8 @@ npm run build                # Then build frontend
 ## 📚 Documentation
 
 - `docs/TRPC_API.md` - Complete tRPC API reference documentation
+- `docs/AGGREGATOR_FLOW.md` - Aggregator flow documentation (Template Method Pattern, step-by-step breakdown, debugging tools)
+- `docs/BACKWARDS_COMPATIBILITY.md` - Backwards compatibility guide explaining how the new architecture maintains compatibility
 
 ## 📄 License
 

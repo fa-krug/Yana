@@ -31,6 +31,9 @@ export class TagesschauAggregator extends FullWebsiteAggregator {
   override readonly prefillName = true;
   override readonly identifierEditable = false;
 
+  // Store original HTML for media header extraction
+  private originalHtmlCache: Map<string, string> = new Map();
+
   override readonly waitForSelector = "p.textabsatz";
   override readonly selectorsToRemove = [
     "div.teaser",
@@ -370,22 +373,63 @@ export class TagesschauAggregator extends FullWebsiteAggregator {
   }
 
   /**
-   * Process article content from HTML.
-   * Overrides base implementation to add Tagesschau-specific media header extraction.
+   * Override fetchArticleContentInternal to cache original HTML for media header extraction.
    */
-  override async processArticleContent(
+  protected override async fetchArticleContentInternal(
+    url: string,
     article: RawArticle,
-    html: string,
   ): Promise<string> {
-    // Extract media header first (before content extraction)
-    const soup = cheerio.load(html);
-    const mediaHeader = await this.extractMediaHeader(soup);
+    const html = await super.fetchArticleContentInternal(url, article);
+    // Cache original HTML for media header extraction
+    this.originalHtmlCache.set(article.url, html);
+    return html;
+  }
 
-    // Extract content from textabsatz paragraphs
-    const extracted = this.extractContentFromTextabsatz(html);
+  /**
+   * Override processContent to add Tagesschau-specific media header extraction.
+   */
+  protected override async processContent(
+    html: string,
+    article: RawArticle,
+  ): Promise<string> {
+    const startTime = Date.now();
+    this.logger.debug(
+      {
+        step: "enrichArticles",
+        subStep: "processContent",
+        aggregator: this.id,
+        feedId: this.feed?.id,
+        url: article.url,
+      },
+      "Processing Tagesschau content with media header",
+    );
 
-    // Process content
-    let $ = cheerio.load(extracted);
+    // Extract media header from cached original HTML
+    let mediaHeader: string | null = null;
+    const originalHtml = this.originalHtmlCache.get(article.url);
+    if (originalHtml) {
+      try {
+        const soup = cheerio.load(originalHtml);
+        mediaHeader = await this.extractMediaHeader(soup);
+        // Clear cache after use
+        this.originalHtmlCache.delete(article.url);
+      } catch (error) {
+        this.logger.debug(
+          {
+            step: "enrichArticles",
+            subStep: "processContent",
+            aggregator: this.id,
+            feedId: this.feed?.id,
+            url: article.url,
+            error,
+          },
+          "Failed to extract media header, continuing without it",
+        );
+      }
+    }
+
+    // Process content (remove empty elements, sanitize)
+    let $ = cheerio.load(html);
 
     // Remove empty elements
     $("p, div, span").each((_, el) => {
@@ -395,7 +439,7 @@ export class TagesschauAggregator extends FullWebsiteAggregator {
       }
     });
 
-    let content = $.html();
+    let content = $.html() || "";
 
     // Sanitize HTML (remove scripts, rename attributes)
     content = sanitizeHtml(content);
@@ -403,68 +447,88 @@ export class TagesschauAggregator extends FullWebsiteAggregator {
     // Prepend media header if found
     if (mediaHeader) {
       content = mediaHeader + content;
-      logger.debug(
-        { url: article.url },
+      this.logger.debug(
+        {
+          step: "enrichArticles",
+          subStep: "processContent",
+          aggregator: this.id,
+          feedId: this.feed?.id,
+          url: article.url,
+        },
         "Prepended media header to article content",
       );
     }
 
-    // Standardize format (add source link, but skip title image if media header exists)
+    // Use base processContent for standardization (but skip title image if media header exists)
     const generateTitleImage =
       !mediaHeader && (this.feed?.generateTitleImage ?? true);
     const addSourceFooter = this.feed?.addSourceFooter ?? true;
-    return await standardizeContentFormat(
+
+    // Call base processContent but with custom generateTitleImage
+    const { processContent: processContentUtil } =
+      await import("./base/process");
+    const result = await processContentUtil(
       content,
       article,
-      article.url,
       generateTitleImage,
       addSourceFooter,
     );
+
+    const elapsed = Date.now() - startTime;
+    this.logger.debug(
+      {
+        step: "enrichArticles",
+        subStep: "processContent",
+        aggregator: this.id,
+        feedId: this.feed?.id,
+        url: article.url,
+        elapsed,
+      },
+      "Tagesschau content processed",
+    );
+
+    return result;
   }
 
-  override async aggregate(articleLimit?: number): Promise<RawArticle[]> {
-    if (!this.feed) {
-      throw new Error("Feed not initialized");
-    }
+  /**
+   * Override extractContent to use Tagesschau-specific extraction.
+   */
+  protected override async extractContent(
+    html: string,
+    article: RawArticle,
+  ): Promise<string> {
+    const startTime = Date.now();
+    this.logger.debug(
+      {
+        step: "extractContent",
+        subStep: "extractTagesschau",
+        aggregator: this.id,
+        feedId: this.feed?.id,
+        url: article.url,
+      },
+      "Extracting Tagesschau content",
+    );
 
-    // Call parent aggregate to get base articles
-    const articles = await super.aggregate(articleLimit);
+    // Use Tagesschau-specific extraction
+    const extracted = this.extractContentFromTextabsatz(html);
 
-    // Process each article with Tagesschau-specific logic
-    for (const article of articles) {
-      try {
-        // Skip if article already exists (unless force refresh)
-        if (this.isExistingUrl(article.url)) {
-          logger.debug(
-            {
-              url: article.url,
-              title: article.title,
-              aggregator: this.id,
-              step: "skip_existing",
-            },
-            "Skipping existing article (will not fetch content)",
-          );
-          continue;
-        }
+    // Use base removeElementsBySelectors for additional cleanup
+    const result = await super.removeElementsBySelectors(extracted, article);
 
-        // Fetch article HTML
-        const html = await fetchArticleContent(article.url, {
-          timeout: this.fetchTimeout,
-          waitForSelector: this.waitForSelector,
-        });
+    const elapsed = Date.now() - startTime;
+    this.logger.debug(
+      {
+        step: "extractContent",
+        subStep: "extractTagesschau",
+        aggregator: this.id,
+        feedId: this.feed?.id,
+        url: article.url,
+        elapsed,
+      },
+      "Tagesschau content extracted",
+    );
 
-        // Process with Tagesschau-specific logic
-        article.content = await this.processArticleContent(article, html);
-      } catch (error) {
-        logger.error(
-          { error, url: article.url },
-          "Error processing Tagesschau article",
-        );
-        // Continue with original content if processing fails
-      }
-    }
-
-    return articles;
+    return result;
   }
 
   /**

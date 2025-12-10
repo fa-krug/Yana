@@ -306,6 +306,7 @@ export async function processFeedAggregation(
       // Check if article should be skipped due to duplicates
       const { shouldSkip, reason } = await shouldSkipArticleByDuplicate(
         { url: rawArticle.url, title: rawArticle.title },
+        feed.id,
         forceRefresh,
       );
 
@@ -338,47 +339,39 @@ export async function processFeedAggregation(
         ? new Date()
         : (rawArticle.published ?? new Date());
 
-      // Collect thumbnail if missing and convert to base64
-      // If already a data URI (base64), use it directly
-      let thumbnailBase64 = rawArticle.thumbnailUrl?.startsWith("data:")
-        ? rawArticle.thumbnailUrl
-        : rawArticle.thumbnailUrl
-          ? await (
-              await import("../aggregators/base/utils")
-            ).convertThumbnailUrlToBase64(rawArticle.thumbnailUrl)
-          : null;
-
-      if (!thumbnailBase64) {
-        const {
-          extractThumbnailUrlFromPageAndConvertToBase64,
-          extractBase64ImageFromContent,
-        } = await import("../aggregators/base/utils");
-        thumbnailBase64 =
-          (await extractThumbnailUrlFromPageAndConvertToBase64(
-            rawArticle.url,
-          )) || null;
-        if (thumbnailBase64) {
-          logger.debug(
-            { url: rawArticle.url },
-            "Extracted and converted thumbnail to base64 during aggregation",
-          );
-        } else {
-          // Fallback: try to extract base64 image from content (e.g., header image that was embedded)
-          thumbnailBase64 = rawArticle.content
-            ? extractBase64ImageFromContent(rawArticle.content)
-            : null;
-          if (thumbnailBase64) {
-            logger.debug(
-              { url: rawArticle.url },
-              "Extracted base64 thumbnail from article content",
-            );
-          }
-        }
-      }
-
       if (existing) {
         if (forceRefresh) {
           // Force refresh: Update existing article
+          // Only process thumbnail if we're actually updating
+          let thumbnailBase64 = rawArticle.thumbnailUrl?.startsWith("data:")
+            ? rawArticle.thumbnailUrl
+            : rawArticle.thumbnailUrl
+              ? await (
+                  await import("../aggregators/base/utils")
+                ).convertThumbnailUrlToBase64(rawArticle.thumbnailUrl)
+              : null;
+
+          if (!thumbnailBase64) {
+            // Use aggregator's thumbnail extraction method (can be overridden)
+            const thumbnailUrl = await aggregator.extractThumbnailFromUrl(
+              rawArticle.url,
+            );
+            if (thumbnailUrl) {
+              const { convertThumbnailUrlToBase64 } =
+                await import("../aggregators/base/utils");
+              thumbnailBase64 = await convertThumbnailUrlToBase64(thumbnailUrl);
+            }
+
+            // Fallback: try to extract base64 image from content
+            if (!thumbnailBase64 && rawArticle.content) {
+              const { extractBase64ImageFromContent } =
+                await import("../aggregators/base/utils");
+              thumbnailBase64 = extractBase64ImageFromContent(
+                rawArticle.content,
+              );
+            }
+          }
+
           await db
             .update(articles)
             .set({
@@ -403,6 +396,67 @@ export async function processFeedAggregation(
         continue;
       }
 
+      // Final check: Verify URL doesn't exist globally (race condition protection)
+      // This prevents UNIQUE constraint errors if another process inserted the same URL
+      // between the initial duplicate check and this point
+      if (!forceRefresh) {
+        const [existingByUrl] = await db
+          .select()
+          .from(articles)
+          .where(eq(articles.url, rawArticle.url))
+          .limit(1);
+
+        if (existingByUrl) {
+          logger.debug(
+            { url: rawArticle.url, feedId: feed.id },
+            "Article URL already exists (skipping duplicate detected before insert)",
+          );
+          continue;
+        }
+      }
+
+      // Only process thumbnail if we're actually going to insert the article
+      // Collect thumbnail if missing and convert to base64
+      // If already a data URI (base64), use it directly
+      let thumbnailBase64 = rawArticle.thumbnailUrl?.startsWith("data:")
+        ? rawArticle.thumbnailUrl
+        : rawArticle.thumbnailUrl
+          ? await (
+              await import("../aggregators/base/utils")
+            ).convertThumbnailUrlToBase64(rawArticle.thumbnailUrl)
+          : null;
+
+      if (!thumbnailBase64) {
+        // Use aggregator's thumbnail extraction method (can be overridden)
+        const thumbnailUrl = await aggregator.extractThumbnailFromUrl(
+          rawArticle.url,
+        );
+        if (thumbnailUrl) {
+          const { convertThumbnailUrlToBase64 } =
+            await import("../aggregators/base/utils");
+          thumbnailBase64 = await convertThumbnailUrlToBase64(thumbnailUrl);
+          if (thumbnailBase64) {
+            logger.debug(
+              { url: rawArticle.url },
+              "Extracted and converted thumbnail to base64 during aggregation",
+            );
+          }
+        }
+
+        // Fallback: try to extract base64 image from content (e.g., header image that was embedded)
+        if (!thumbnailBase64 && rawArticle.content) {
+          const { extractBase64ImageFromContent } =
+            await import("../aggregators/base/utils");
+          thumbnailBase64 = extractBase64ImageFromContent(rawArticle.content);
+          if (thumbnailBase64) {
+            logger.debug(
+              { url: rawArticle.url },
+              "Extracted base64 thumbnail from article content",
+            );
+          }
+        }
+      }
+
       // Create new article
       await db.insert(articles).values({
         feedId: feed.id,
@@ -425,7 +479,21 @@ export async function processFeedAggregation(
       });
 
       articlesCreated++;
-    } catch (error) {
+    } catch (error: any) {
+      // Handle UNIQUE constraint errors gracefully (article already exists)
+      // This is a fallback in case the final check above didn't catch it
+      if (
+        error?.code === "SQLITE_CONSTRAINT_UNIQUE" ||
+        (error?.message && error.message.includes("UNIQUE constraint failed"))
+      ) {
+        logger.debug(
+          { url: rawArticle.url, feedId: feed.id },
+          "Article already exists (UNIQUE constraint - skipping duplicate)",
+        );
+        continue;
+      }
+
+      // Log other errors as actual failures
       logger.error({ error, url: rawArticle.url }, "Failed to save article");
       continue;
     }
@@ -503,13 +571,19 @@ export async function processArticleReload(articleId: number): Promise<void> {
     feed.aggregatorOptions as Record<string, unknown>,
   );
 
-  // Fetch article content using aggregator's fetch method (handles special cases like Oglaf)
-  const html = await aggregator.fetchArticleContent(article.url, {
-    timeout: aggregator.fetchTimeout,
-    waitForSelector: aggregator.waitForSelector,
-  });
+  // Fetch article content using aggregator's internal method (handles special cases like Oglaf)
+  const rawArticleForFetch: RawArticle = {
+    title: article.name,
+    url: article.url,
+    published: article.date,
+  };
+  const html = await (aggregator as any).fetchArticleContentInternal(
+    article.url,
+    rawArticleForFetch,
+  );
 
   // Create RawArticle from database article
+  // Preserve headerImageUrl if it was set by fetchArticleContentInternal (e.g., Reddit)
   const rawArticle: RawArticle = {
     title: article.name,
     url: article.url,
@@ -522,33 +596,58 @@ export async function processArticleReload(articleId: number): Promise<void> {
     duration: article.duration || undefined,
     viewCount: article.viewCount || undefined,
     mediaType: article.mediaType || undefined,
+    ...((rawArticleForFetch as RawArticle & { headerImageUrl?: string })
+      .headerImageUrl
+      ? {
+          headerImageUrl: (
+            rawArticleForFetch as RawArticle & { headerImageUrl?: string }
+          ).headerImageUrl,
+        }
+      : {}),
   };
 
-  // Use aggregator's processArticleContent method (same as during aggregation)
-  const processed = await aggregator.processArticleContent(rawArticle, html);
+  // Use aggregator's template method flow (extractContent + processContent)
+  // This ensures generateTitleImage and addSourceFooter are respected
+  const extracted = await (aggregator as any).extractContent(html, rawArticle);
+  const processed = await (aggregator as any).processContent(
+    extracted,
+    rawArticle,
+  );
+
+  // Handle date according to feed.useCurrentTimestamp setting (same as processFeedAggregation)
+  const articleDate = feed.useCurrentTimestamp
+    ? new Date()
+    : (rawArticle.published ?? article.date);
 
   // Collect thumbnail if missing and convert to base64
-  let thumbnailBase64 = rawArticle.thumbnailUrl
-    ? await (
-        await import("../aggregators/base/utils")
-      ).convertThumbnailUrlToBase64(rawArticle.thumbnailUrl)
-    : null;
+  // Use same logic as processFeedAggregation force refresh path
+  let thumbnailBase64 = rawArticle.thumbnailUrl?.startsWith("data:")
+    ? rawArticle.thumbnailUrl
+    : rawArticle.thumbnailUrl
+      ? await (
+          await import("../aggregators/base/utils")
+        ).convertThumbnailUrlToBase64(rawArticle.thumbnailUrl)
+      : null;
 
   if (!thumbnailBase64) {
-    const {
-      extractThumbnailUrlFromPageAndConvertToBase64,
-      extractBase64ImageFromContent,
-    } = await import("../aggregators/base/utils");
-    thumbnailBase64 =
-      (await extractThumbnailUrlFromPageAndConvertToBase64(article.url)) ||
-      null;
-    if (thumbnailBase64) {
-      logger.debug(
-        { articleId },
-        "Extracted and converted thumbnail to base64 during reload",
-      );
-    } else {
-      // Fallback: try to extract base64 image from content (e.g., header image that was embedded)
+    // Use aggregator's thumbnail extraction method (can be overridden)
+    const thumbnailUrl = await aggregator.extractThumbnailFromUrl(article.url);
+    if (thumbnailUrl) {
+      const { convertThumbnailUrlToBase64 } =
+        await import("../aggregators/base/utils");
+      thumbnailBase64 = await convertThumbnailUrlToBase64(thumbnailUrl);
+      if (thumbnailBase64) {
+        logger.debug(
+          { articleId },
+          "Extracted and converted thumbnail to base64 during reload",
+        );
+      }
+    }
+
+    // Fallback: try to extract base64 image from content (e.g., header image that was embedded)
+    if (!thumbnailBase64 && processed) {
+      const { extractBase64ImageFromContent } =
+        await import("../aggregators/base/utils");
       thumbnailBase64 = extractBase64ImageFromContent(processed);
       if (thumbnailBase64) {
         logger.debug(
@@ -559,12 +658,22 @@ export async function processArticleReload(articleId: number): Promise<void> {
     }
   }
 
-  // Update article
+  // Update article with all fields (same as processFeedAggregation force refresh)
+  // This ensures all features are applied identically
   await db
     .update(articles)
     .set({
+      name: rawArticle.title,
       content: processed,
+      date: articleDate,
+      author: rawArticle.author || null,
+      externalId: rawArticle.externalId || null,
+      score: rawArticle.score || null,
       thumbnailUrl: thumbnailBase64 || null,
+      mediaUrl: rawArticle.mediaUrl || null,
+      duration: rawArticle.duration || null,
+      viewCount: rawArticle.viewCount || null,
+      mediaType: rawArticle.mediaType || null,
       updatedAt: new Date(),
     })
     .where(eq(articles.id, articleId));

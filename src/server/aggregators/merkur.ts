@@ -89,117 +89,136 @@ export class MerkurAggregator extends FullWebsiteAggregator {
     ".id-StoryElement-embed--fanq",
   ];
 
-  override async aggregate(articleLimit?: number): Promise<RawArticle[]> {
-    if (!this.feed) {
-      throw new Error("Feed not initialized");
-    }
-
-    // Use feed identifier directly (from identifierChoices)
-    const feedUrl = this.feed.identifier;
-    logger.info(
-      { feedUrl, aggregator: this.id },
-      "Using feed identifier directly",
+  /**
+   * Override extractContent to use .idjs-Story selector.
+   */
+  protected override async extractContent(
+    html: string,
+    article: RawArticle,
+  ): Promise<string> {
+    const startTime = Date.now();
+    this.logger.debug(
+      {
+        step: "extractContent",
+        subStep: "extractIdjsStory",
+        aggregator: this.id,
+        feedId: this.feed?.id,
+        url: article.url,
+      },
+      "Extracting content from .idjs-Story element",
     );
 
-    // Call parent aggregate to get base articles
-    const articles = await super.aggregate(articleLimit);
+    const extracted = extractContent(html, {
+      selectorsToRemove: this.selectorsToRemove,
+      contentSelector: ".idjs-Story",
+    });
 
-    // Process each article with Merkur-specific logic
-    for (const article of articles) {
-      try {
-        // Skip if article already exists (unless force refresh)
-        if (this.isExistingUrl(article.url)) {
-          logger.debug(
-            {
-              url: article.url,
-              title: article.title,
-              aggregator: this.id,
-              step: "skip_existing",
-            },
-            "Skipping existing article (will not fetch content)",
-          );
-          continue;
-        }
-
-        // If content was already fetched by parent, we need to re-fetch with Merkur-specific extraction
-        // Otherwise, fetch article HTML
-        const html = await fetchArticleContent(article.url, {
-          timeout: this.fetchTimeout,
-          waitForSelector: this.waitForSelector,
-        });
-
-        // Extract content from .idjs-Story element
-        const extracted = extractContent(html, {
-          selectorsToRemove: this.selectorsToRemove,
-          contentSelector: ".idjs-Story",
-        });
-
-        if (!extracted || extracted.trim().length === 0) {
-          logger.warn(
-            { url: article.url },
-            "Could not find .idjs-Story content, using summary",
-          );
-          article.content = article.summary || "";
-          continue;
-        }
-
-        // Process content with Merkur-specific cleanup
-        const $ = cheerio.load(extracted);
-
-        // Remove empty tags (p, div, span) that have no text and no images
-        $("p, div, span").each((_, el) => {
-          const $el = $(el);
-          if (!$el.text().trim() && !$el.find("img").length) {
-            $el.remove();
-          }
-        });
-
-        let content = $.html();
-
-        // Sanitize HTML (remove scripts, rename attributes)
-        // This creates data-sanitized-* attributes
-        content = sanitizeHtml(content);
-
-        // Remove all data-sanitized-* attributes after sanitization (as per legacy behavior)
-        // The legacy Python code removes these attributes to clean up the HTML
-        const $sanitized = cheerio.load(content);
-        $sanitized("*").each((_, el) => {
-          const $el = $sanitized(el);
-          if ("attribs" in el && el.attribs) {
-            const attrs = el.attribs;
-            const attrsToRemove: string[] = [];
-            for (const attr of Object.keys(attrs)) {
-              if (attr.startsWith("data-sanitized-")) {
-                attrsToRemove.push(attr);
-              }
-            }
-            for (const attr of attrsToRemove) {
-              $el.removeAttr(attr);
-            }
-          }
-        });
-        content = $sanitized.html() || "";
-
-        // Standardize format (add header image, source link)
-        const generateTitleImage = this.feed?.generateTitleImage ?? true;
-        const addSourceFooter = this.feed?.addSourceFooter ?? true;
-        article.content = await standardizeContentFormat(
-          content,
-          article,
-          article.url,
-          generateTitleImage,
-          addSourceFooter,
-        );
-      } catch (error) {
-        logger.error(
-          { error, url: article.url },
-          "Error processing Merkur article",
-        );
-        // Continue with original content if processing fails
-        article.content = article.summary || "";
-      }
+    if (!extracted || extracted.trim().length === 0) {
+      this.logger.warn(
+        {
+          step: "extractContent",
+          subStep: "extractIdjsStory",
+          aggregator: this.id,
+          feedId: this.feed?.id,
+          url: article.url,
+        },
+        "Could not find .idjs-Story content, using base extraction",
+      );
+      // Fallback to base extraction
+      return await super.extractContent(html, article);
     }
 
-    return articles;
+    // Use base removeElementsBySelectors for additional cleanup
+    const result = await super.removeElementsBySelectors(extracted, article);
+
+    const elapsed = Date.now() - startTime;
+    this.logger.debug(
+      {
+        step: "extractContent",
+        subStep: "extractIdjsStory",
+        aggregator: this.id,
+        feedId: this.feed?.id,
+        url: article.url,
+        elapsed,
+      },
+      "Content extracted from .idjs-Story",
+    );
+
+    return result;
+  }
+
+  /**
+   * Override processContent to apply Merkur-specific cleanup.
+   */
+  protected override async processContent(
+    html: string,
+    article: RawArticle,
+  ): Promise<string> {
+    const startTime = Date.now();
+    this.logger.debug(
+      {
+        step: "enrichArticles",
+        subStep: "processContent",
+        aggregator: this.id,
+        feedId: this.feed?.id,
+        url: article.url,
+      },
+      "Processing Merkur content with custom cleanup",
+    );
+
+    // Process content with Merkur-specific cleanup
+    const $ = cheerio.load(html);
+
+    // Remove empty tags (p, div, span) that have no text and no images
+    $("p, div, span").each((_, el) => {
+      const $el = $(el);
+      if (!$el.text().trim() && !$el.find("img").length) {
+        $el.remove();
+      }
+    });
+
+    let content = $.html() || "";
+
+    // Sanitize HTML (remove scripts, rename attributes)
+    // This creates data-sanitized-* attributes
+    content = sanitizeHtml(content);
+
+    // Remove all data-sanitized-* attributes after sanitization (as per legacy behavior)
+    // The legacy Python code removes these attributes to clean up the HTML
+    const $sanitized = cheerio.load(content);
+    $sanitized("*").each((_, el) => {
+      const $el = $sanitized(el);
+      if ("attribs" in el && el.attribs) {
+        const attrs = el.attribs;
+        const attrsToRemove: string[] = [];
+        for (const attr of Object.keys(attrs)) {
+          if (attr.startsWith("data-sanitized-")) {
+            attrsToRemove.push(attr);
+          }
+        }
+        for (const attr of attrsToRemove) {
+          $el.removeAttr(attr);
+        }
+      }
+    });
+    content = $sanitized.html() || "";
+
+    // Use base processContent for standardization
+    const result = await super.processContent(content, article);
+
+    const elapsed = Date.now() - startTime;
+    this.logger.debug(
+      {
+        step: "enrichArticles",
+        subStep: "processContent",
+        aggregator: this.id,
+        feedId: this.feed?.id,
+        url: article.url,
+        elapsed,
+      },
+      "Merkur content processed",
+    );
+
+    return result;
   }
 }

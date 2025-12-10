@@ -92,6 +92,7 @@ const aggregatorClasses = new Map<string, new () => BaseAggregator>([
   ["reddit", RedditAggregator],
   ["podcast", PodcastAggregator],
   ["tagesschau", TagesschauAggregator],
+  ["explosm", ExplosmAggregator],
   ["dark_legacy", DarkLegacyAggregator],
   ["caschys_blog", CaschysBlogAggregator],
   ["mactechnews", MacTechNewsAggregator],

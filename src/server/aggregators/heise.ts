@@ -6,11 +6,9 @@
 
 import { FullWebsiteAggregator } from "./full_website";
 import type { RawArticle } from "./base/types";
-import { fetchArticleContent } from "./base/fetch";
 import { extractContent } from "./base/extract";
 import { standardizeContentFormat } from "./base/process";
 import { sanitizeHtml } from "./base/utils";
-import { logger } from "../utils/logger";
 import * as cheerio from "cheerio";
 import { ContentFetchError } from "./base/exceptions";
 
@@ -126,133 +124,210 @@ export class HeiseAggregator extends FullWebsiteAggregator {
     ];
 
     if (skipTerms.some((term) => article.title.includes(term))) {
-      logger.info({ title: article.title }, "Skipping filtered content");
+      this.logger.info(
+        {
+          step: "filterArticles",
+          subStep: "shouldSkipArticle",
+          aggregator: this.id,
+          feedId: this.feed?.id,
+          title: article.title,
+        },
+        "Skipping filtered content",
+      );
       return true;
     }
 
     return super.shouldSkipArticle(article);
   }
 
-  override async aggregate(articleLimit?: number): Promise<RawArticle[]> {
-    if (!this.feed) {
-      throw new Error("Feed not initialized");
-    }
-
-    // Get options
+  /**
+   * Override fetchArticleContentInternal to handle all-pages URL conversion.
+   */
+  protected override async fetchArticleContentInternal(
+    url: string,
+    article: RawArticle,
+  ): Promise<string> {
     const traverseMultipage = this.getOption(
       "traverse_multipage",
       false,
     ) as boolean;
-    const maxComments = this.getOption("max_comments", 0) as number;
 
-    // Call parent aggregate to get base articles
-    const articles = await super.aggregate(articleLimit);
-
-    // Process each article with Heise-specific logic
-    for (const article of articles) {
+    // Convert to all-pages URL if option enabled
+    let articleUrl = url;
+    if (traverseMultipage) {
       try {
-        // Skip if article already exists (unless force refresh)
-        if (this.isExistingUrl(article.url)) {
-          logger.debug(
-            {
-              url: article.url,
-              title: article.title,
-              aggregator: this.id,
-              step: "skip_existing",
-            },
-            "Skipping existing article (will not fetch content)",
-          );
-          continue;
-        }
-
-        // Convert to all-pages URL if option enabled
-        let articleUrl = article.url;
-        if (traverseMultipage) {
-          try {
-            const url = new URL(articleUrl);
-            url.searchParams.set("seite", "all");
-            articleUrl = url.toString();
-            logger.info({ url: articleUrl }, "Using all-pages URL");
-          } catch (error) {
-            logger.warn(
-              { error, url: article.url },
-              "Failed to convert to all-pages URL",
-            );
-          }
-        }
-
-        // Fetch article HTML
-        const html = await fetchArticleContent(articleUrl, {
-          timeout: this.fetchTimeout,
-          waitForSelector: this.waitForSelector,
-        });
-
-        // Extract content
-        const extracted = extractContent(html, {
-          selectorsToRemove: this.selectorsToRemove,
-          contentSelector: "#meldung, .StoryContent",
-        });
-
-        // Process content
-        const $ = cheerio.load(extracted);
-
-        // Remove empty elements
-        $("p, div, span").each((_, el) => {
-          const $el = $(el);
-          if (!$el.text().trim() && !$el.find("img").length) {
-            $el.remove();
-          }
-        });
-
-        let content = $.html();
-
-        // Sanitize HTML (remove scripts, rename attributes)
-        content = sanitizeHtml(content);
-
-        // Add comments if enabled
-        if (maxComments > 0) {
-          try {
-            logger.info(
-              { url: articleUrl, maxComments },
-              "Extracting comments",
-            );
-            const commentsHtml = await this.extractComments(
-              articleUrl,
-              html,
-              maxComments,
-            );
-            if (commentsHtml) {
-              content = `${content}\n\n${commentsHtml}`;
-            }
-          } catch (error) {
-            logger.warn(
-              { error, url: articleUrl },
-              "Failed to extract comments",
-            );
-            // Comments are optional, continue without them
-          }
-        }
-
-        // Standardize format (add header image, source link)
-        const generateTitleImage = this.feed?.generateTitleImage ?? true;
-        const addSourceFooter = this.feed?.addSourceFooter ?? true;
-        article.content = await standardizeContentFormat(
-          content,
-          article,
-          article.url,
-          generateTitleImage,
-          addSourceFooter,
+        const urlObj = new URL(articleUrl);
+        urlObj.searchParams.set("seite", "all");
+        articleUrl = urlObj.toString();
+        this.logger.info(
+          {
+            step: "enrichArticles",
+            subStep: "fetchArticleContent",
+            aggregator: this.id,
+            feedId: this.feed?.id,
+            originalUrl: url,
+            convertedUrl: articleUrl,
+          },
+          "Using all-pages URL",
         );
       } catch (error) {
-        logger.error(
-          { error, url: article.url },
-          "Error processing Heise article",
+        this.logger.warn(
+          {
+            step: "enrichArticles",
+            subStep: "fetchArticleContent",
+            aggregator: this.id,
+            feedId: this.feed?.id,
+            error,
+            url,
+          },
+          "Failed to convert to all-pages URL",
         );
-        // Continue with original content if processing fails
       }
     }
 
-    return articles;
+    // Use base fetchArticleContentInternal
+    return await super.fetchArticleContentInternal(articleUrl, article);
+  }
+
+  /**
+   * Override extractContent to use #meldung/.StoryContent selector.
+   */
+  protected override async extractContent(
+    html: string,
+    article: RawArticle,
+  ): Promise<string> {
+    const startTime = Date.now();
+    this.logger.debug(
+      {
+        step: "extractContent",
+        subStep: "extractHeise",
+        aggregator: this.id,
+        feedId: this.feed?.id,
+        url: article.url,
+      },
+      "Extracting content from #meldung/.StoryContent",
+    );
+
+    const extracted = extractContent(html, {
+      selectorsToRemove: this.selectorsToRemove,
+      contentSelector: "#meldung, .StoryContent",
+    });
+
+    // Process content - remove empty elements
+    const $ = cheerio.load(extracted);
+    $("p, div, span").each((_, el) => {
+      const $el = $(el);
+      if (!$el.text().trim() && !$el.find("img").length) {
+        $el.remove();
+      }
+    });
+
+    const result = $.html() || "";
+
+    // Use base removeElementsBySelectors for additional cleanup
+    const cleaned = await super.removeElementsBySelectors(result, article);
+
+    const elapsed = Date.now() - startTime;
+    this.logger.debug(
+      {
+        step: "extractContent",
+        subStep: "extractHeise",
+        aggregator: this.id,
+        feedId: this.feed?.id,
+        url: article.url,
+        elapsed,
+      },
+      "Heise content extracted",
+    );
+
+    return cleaned;
+  }
+
+  /**
+   * Override processContent to add comments if enabled.
+   */
+  protected override async processContent(
+    html: string,
+    article: RawArticle,
+  ): Promise<string> {
+    const startTime = Date.now();
+    this.logger.debug(
+      {
+        step: "enrichArticles",
+        subStep: "processContent",
+        aggregator: this.id,
+        feedId: this.feed?.id,
+        url: article.url,
+      },
+      "Processing Heise content",
+    );
+
+    // Sanitize HTML (remove scripts, rename attributes)
+    const sanitized = sanitizeHtml(html);
+
+    // Add comments if enabled
+    const maxComments = this.getOption("max_comments", 0) as number;
+    let content = sanitized;
+    if (maxComments > 0) {
+      try {
+        this.logger.info(
+          {
+            step: "enrichArticles",
+            subStep: "processContent",
+            aggregator: this.id,
+            feedId: this.feed?.id,
+            url: article.url,
+            maxComments,
+          },
+          "Extracting comments",
+        );
+        // Extract comments (need original HTML to extract forum URL)
+        // Fetch original HTML again since processContent receives extracted content
+        const originalHtml = await this.fetchArticleContentInternal(
+          article.url,
+          article,
+        );
+        const commentsHtml = await this.extractComments(
+          article.url,
+          originalHtml,
+          maxComments,
+        );
+        if (commentsHtml) {
+          content = `${content}\n\n${commentsHtml}`;
+        }
+      } catch (error) {
+        this.logger.warn(
+          {
+            step: "enrichArticles",
+            subStep: "processContent",
+            aggregator: this.id,
+            feedId: this.feed?.id,
+            url: article.url,
+            error: error instanceof Error ? error : new Error(String(error)),
+          },
+          "Failed to extract comments",
+        );
+        // Comments are optional, continue without them
+      }
+    }
+
+    // Use base processContent for standardization
+    const result = await super.processContent(content, article);
+
+    const elapsed = Date.now() - startTime;
+    this.logger.debug(
+      {
+        step: "enrichArticles",
+        subStep: "processContent",
+        aggregator: this.id,
+        feedId: this.feed?.id,
+        url: article.url,
+        elapsed,
+      },
+      "Heise content processed",
+    );
+
+    return result;
   }
 
   /**
@@ -266,18 +341,41 @@ export class HeiseAggregator extends FullWebsiteAggregator {
     // Extract forum URL from article HTML
     const forumUrl = this.extractForumUrl(articleHtml, articleUrl);
     if (!forumUrl) {
-      logger.info({ url: articleUrl }, "No forum URL found in article");
+      this.logger.info(
+        {
+          step: "enrichArticles",
+          subStep: "extractComments",
+          aggregator: this.id,
+          feedId: this.feed?.id,
+          url: articleUrl,
+        },
+        "No forum URL found in article",
+      );
       return null;
     }
 
-    logger.info({ forumUrl }, "Fetching comments from forum");
+    this.logger.info(
+      {
+        step: "enrichArticles",
+        subStep: "extractComments",
+        aggregator: this.id,
+        feedId: this.feed?.id,
+        forumUrl,
+      },
+      "Fetching comments from forum",
+    );
 
     try {
-      // Fetch the forum page
-      const html = await fetchArticleContent(forumUrl, {
-        timeout: 30000,
-        waitForSelector: "body",
-      });
+      // Fetch the forum page using template method flow
+      const forumArticle: RawArticle = {
+        title: "",
+        url: forumUrl,
+        published: new Date(),
+      };
+      const html = await this.fetchArticleContentInternal(
+        forumUrl,
+        forumArticle,
+      );
 
       const $ = cheerio.load(html);
 
@@ -293,8 +391,15 @@ export class HeiseAggregator extends FullWebsiteAggregator {
       for (const selector of commentSelectors) {
         const elements = $(selector);
         if (elements.length > 0) {
-          logger.info(
-            { selector, count: elements.length },
+          this.logger.info(
+            {
+              step: "enrichArticles",
+              subStep: "extractComments",
+              aggregator: this.id,
+              feedId: this.feed?.id,
+              selector,
+              count: elements.length,
+            },
             "Found comments using selector",
           );
           commentElements = elements;
@@ -303,7 +408,16 @@ export class HeiseAggregator extends FullWebsiteAggregator {
       }
 
       if (!commentElements || commentElements.length === 0) {
-        logger.info({ forumUrl }, "No comments found in forum HTML");
+        this.logger.info(
+          {
+            step: "enrichArticles",
+            subStep: "extractComments",
+            aggregator: this.id,
+            feedId: this.feed?.id,
+            forumUrl,
+          },
+          "No comments found in forum HTML",
+        );
         return null;
       }
 
@@ -390,7 +504,17 @@ export class HeiseAggregator extends FullWebsiteAggregator {
             extractedCount++;
           }
         } catch (error) {
-          logger.warn({ error, index: i }, "Error extracting comment");
+          this.logger.warn(
+            {
+              step: "enrichArticles",
+              subStep: "extractComments",
+              aggregator: this.id,
+              feedId: this.feed?.id,
+              error: error instanceof Error ? error : new Error(String(error)),
+              index: i,
+            },
+            "Error extracting comment",
+          );
         }
       });
 
@@ -398,13 +522,42 @@ export class HeiseAggregator extends FullWebsiteAggregator {
         return null;
       }
 
-      logger.info({ extractedCount }, "Successfully extracted comments");
+      this.logger.info(
+        {
+          step: "enrichArticles",
+          subStep: "extractComments",
+          aggregator: this.id,
+          feedId: this.feed?.id,
+          extractedCount,
+        },
+        "Successfully extracted comments",
+      );
       return commentHtmlParts.join("\n");
     } catch (error) {
       if (error instanceof ContentFetchError) {
-        logger.warn({ error, forumUrl }, "Failed to fetch comments");
+        this.logger.warn(
+          {
+            step: "enrichArticles",
+            subStep: "extractComments",
+            aggregator: this.id,
+            feedId: this.feed?.id,
+            error: error instanceof Error ? error : new Error(String(error)),
+            forumUrl,
+          },
+          "Failed to fetch comments",
+        );
       } else {
-        logger.warn({ error, forumUrl }, "Unexpected error fetching comments");
+        this.logger.warn(
+          {
+            step: "enrichArticles",
+            subStep: "extractComments",
+            aggregator: this.id,
+            feedId: this.feed?.id,
+            error: error instanceof Error ? error : new Error(String(error)),
+            forumUrl,
+          },
+          "Unexpected error fetching comments",
+        );
       }
       return null;
     }

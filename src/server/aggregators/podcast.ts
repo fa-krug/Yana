@@ -243,34 +243,83 @@ export class PodcastAggregator extends BaseAggregator {
   override readonly identifierDescription = "RSS feed URL for the podcast";
   override readonly prefillName = false;
 
-  override async aggregate(articleLimit?: number): Promise<RawArticle[]> {
+  /**
+   * Fetch RSS feed data.
+   */
+  protected override async fetchSourceData(
+    limit?: number,
+  ): Promise<import("rss-parser").Output<any>> {
+    const startTime = Date.now();
+    this.logger.info(
+      {
+        step: "fetchSourceData",
+        subStep: "start",
+        aggregator: this.id,
+        feedId: this.feed?.id,
+        limit,
+      },
+      "Fetching podcast RSS feed",
+    );
+
     if (!this.feed) {
       throw new Error("Feed not initialized");
     }
 
     const feedUrl = this.feed.identifier;
-    logger.info({ feedUrl, feedId: this.feed.id }, "Fetching podcast RSS feed");
-
-    // Fetch RSS feed
     const feed = await fetchFeed(feedUrl);
-    const items = feed.items || [];
 
-    if (items.length === 0) {
-      logger.warn({ feedUrl }, "No entries found in podcast feed");
-      return [];
+    if (feed.items?.length === 0) {
+      this.logger.warn(
+        {
+          step: "fetchSourceData",
+          subStep: "complete",
+          aggregator: this.id,
+          feedId: this.feed?.id,
+          feedUrl,
+        },
+        "No entries found in podcast feed",
+      );
     }
 
-    // Apply article limit if specified
-    const itemsToProcess = articleLimit ? items.slice(0, articleLimit) : items;
-
-    logger.info(
-      { feedUrl, itemCount: itemsToProcess.length },
-      "Processing podcast episodes",
+    const elapsed = Date.now() - startTime;
+    this.logger.info(
+      {
+        step: "fetchSourceData",
+        subStep: "complete",
+        aggregator: this.id,
+        feedId: this.feed?.id,
+        itemCount: feed.items?.length || 0,
+        elapsed,
+      },
+      "Podcast RSS feed fetched",
     );
+
+    return feed;
+  }
+
+  /**
+   * Parse podcast RSS feed items to RawArticle[].
+   */
+  protected override async parseToRawArticles(
+    sourceData: unknown,
+  ): Promise<RawArticle[]> {
+    const startTime = Date.now();
+    this.logger.info(
+      {
+        step: "parseToRawArticles",
+        subStep: "start",
+        aggregator: this.id,
+        feedId: this.feed?.id,
+      },
+      "Parsing podcast episodes",
+    );
+
+    const feed = sourceData as import("rss-parser").Output<any>;
+    const items = feed.items || [];
 
     const articles: RawArticle[] = [];
 
-    for (const item of itemsToProcess) {
+    for (const item of items) {
       try {
         // Extract podcast-specific data
         const { url: audioUrl, type: audioType } = extractEnclosure(item);
@@ -279,8 +328,14 @@ export class PodcastAggregator extends BaseAggregator {
         const description = extractDescription(item);
 
         if (!audioUrl) {
-          logger.warn(
-            { title: item.title },
+          this.logger.warn(
+            {
+              step: "parseToRawArticles",
+              subStep: "parseEpisode",
+              aggregator: this.id,
+              feedId: this.feed?.id,
+              title: item.title,
+            },
             "Podcast episode has no audio enclosure, skipping",
           );
           continue;
@@ -352,16 +407,42 @@ export class PodcastAggregator extends BaseAggregator {
           mediaType: audioType || "audio/mpeg",
         });
       } catch (error) {
-        logger.error({ error, item }, "Error processing podcast episode");
+        this.logger.error(
+          {
+            step: "parseToRawArticles",
+            subStep: "parseEpisode",
+            aggregator: this.id,
+            feedId: this.feed?.id,
+            error: error instanceof Error ? error : new Error(String(error)),
+            item,
+          },
+          "Error processing podcast episode",
+        );
         continue;
       }
     }
 
-    logger.info(
-      { feedUrl, articleCount: articles.length },
-      "Podcast aggregation complete",
+    const elapsed = Date.now() - startTime;
+    this.logger.info(
+      {
+        step: "parseToRawArticles",
+        subStep: "complete",
+        aggregator: this.id,
+        feedId: this.feed?.id,
+        articleCount: articles.length,
+        elapsed,
+      },
+      "Podcast episodes parsed",
     );
 
     return articles;
+  }
+
+  /**
+   * Check if content should be fetched - podcast aggregator never fetches.
+   */
+  protected override shouldFetchContent(article: RawArticle): boolean {
+    // Podcast aggregator uses content from feed, never fetches from web
+    return false;
   }
 }

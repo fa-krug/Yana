@@ -54,22 +54,3 @@ export function classifyError(error: unknown): ErrorType {
 
   return "unknown";
 }
-
-/**
- * Should retry this error?
- * Only retry network/timeout errors.
- */
-export function shouldRetry(error: unknown): boolean {
-  const errorType = classifyError(error);
-  return errorType === "network" || errorType === "timeout";
-}
-
-/**
- * Get retry delay with exponential backoff.
- */
-export function getRetryDelay(
-  attempt: number,
-  baseDelay: number = 1000,
-): number {
-  return baseDelay * Math.pow(2, attempt);
-}

@@ -44,75 +44,61 @@ export class CaschysBlogAggregator extends FullWebsiteAggregator {
     return super.shouldSkipArticle(article);
   }
 
-  override async aggregate(articleLimit?: number): Promise<RawArticle[]> {
-    if (!this.feed) {
-      throw new Error("Feed not initialized");
+  /**
+   * Override extractContent to use .entry-inner selector.
+   */
+  protected override async extractContent(
+    html: string,
+    article: RawArticle,
+  ): Promise<string> {
+    const startTime = Date.now();
+    this.logger.debug(
+      {
+        step: "extractContent",
+        subStep: "extractEntryInner",
+        aggregator: this.id,
+        feedId: this.feed?.id,
+        url: article.url,
+      },
+      "Extracting content from .entry-inner element",
+    );
+
+    const extracted = extractContent(html, {
+      selectorsToRemove: this.selectorsToRemove,
+      contentSelector: ".entry-inner",
+    });
+
+    if (!extracted || extracted.trim().length === 0) {
+      this.logger.warn(
+        {
+          step: "extractContent",
+          subStep: "extractEntryInner",
+          aggregator: this.id,
+          feedId: this.feed?.id,
+          url: article.url,
+        },
+        "Could not find .entry-inner content, using base extraction",
+      );
+      // Fallback to base extraction
+      return await super.extractContent(html, article);
     }
 
-    // Call parent aggregate to get base articles
-    const articles = await super.aggregate(articleLimit);
+    // Use base removeElementsBySelectors for additional cleanup
+    const result = await super.removeElementsBySelectors(extracted, article);
 
-    // Process each article with Caschys Blog-specific content extraction
-    for (const article of articles) {
-      try {
-        // Skip if article already exists (unless force refresh)
-        if (this.isExistingUrl(article.url)) {
-          logger.debug(
-            {
-              url: article.url,
-              title: article.title,
-              aggregator: this.id,
-              step: "skip_existing",
-            },
-            "Skipping existing article (will not fetch content)",
-          );
-          continue;
-        }
+    const elapsed = Date.now() - startTime;
+    this.logger.debug(
+      {
+        step: "extractContent",
+        subStep: "extractEntryInner",
+        aggregator: this.id,
+        feedId: this.feed?.id,
+        url: article.url,
+        elapsed,
+      },
+      "Content extracted from .entry-inner",
+    );
 
-        // Fetch article HTML
-        const html = await fetchArticleContent(article.url, {
-          timeout: this.fetchTimeout,
-          waitForSelector: this.waitForSelector,
-        });
-
-        // Extract content from .entry-inner element
-        const extracted = extractContent(html, {
-          selectorsToRemove: this.selectorsToRemove,
-          contentSelector: ".entry-inner",
-        });
-
-        if (!extracted || extracted.trim().length === 0) {
-          logger.warn(
-            { url: article.url },
-            "Could not find .entry-inner content, using summary",
-          );
-          article.content = article.summary || "";
-          continue;
-        }
-
-        // Sanitize HTML (remove scripts, rename attributes)
-        const sanitizedContent = sanitizeHtml(extracted);
-
-        // Standardize format (add header image, source link)
-        const generateTitleImage = this.feed?.generateTitleImage ?? true;
-        const addSourceFooter = this.feed?.addSourceFooter ?? true;
-        article.content = await standardizeContentFormat(
-          sanitizedContent,
-          article,
-          article.url,
-          generateTitleImage,
-          addSourceFooter,
-        );
-      } catch (error) {
-        logger.error(
-          { error, url: article.url },
-          "Error processing Caschys Blog article",
-        );
-        // Continue with summary if available
-        article.content = article.summary || "";
-      }
-    }
-
-    return articles;
+    return result;
   }
 }

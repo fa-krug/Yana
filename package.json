@@ -14,6 +14,7 @@
     "db:studio": "drizzle-kit studio",
     "db:migrate-data:dry-run": "tsx src/server/scripts/migrateData.ts --dry-run",
     "icons:generate": "tsx scripts/generate-icons.ts",
+    "test:aggregator": "tsx src/server/scripts/test-aggregator.ts",
     "prepare": "husky"
   },
   "private": true,
@@ -47,6 +48,7 @@
     "express-rate-limit": "^8.2.1",
     "express-session": "^1.18.2",
     "helmet": "^8.1.0",
+    "marked": "^17.0.1",
     "node-cron": "^4.2.1",
     "pino": "^10.1.0",
     "pino-http": "^11.0.0",

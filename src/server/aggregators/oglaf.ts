@@ -9,6 +9,7 @@ import { BaseAggregator } from "./base/aggregator";
 import type { RawArticle } from "./base/types";
 import { fetchFeed } from "./base/fetch";
 import { ContentFetchError } from "./base/exceptions";
+import Parser from "rss-parser";
 import { chromium, type Browser, type Page } from "playwright";
 import * as cheerio from "cheerio";
 import { logger } from "../utils/logger";
@@ -251,146 +252,25 @@ export class OglafAggregator extends BaseAggregator {
   override readonly description: string =
     "Oglaf - Adult webcomic featuring fantasy, humor, and occasional NSFW content.";
 
-  /**
-   * Override fetchArticleContent to handle age confirmation page.
-   */
-  override async fetchArticleContent(
-    url: string,
-    options: {
-      timeout?: number;
-      waitForSelector?: string;
-      maxRetries?: number;
-    } = {},
-  ): Promise<string> {
-    const timeout = options.timeout ?? this.fetchTimeout;
-    const browserInstance = await getBrowser();
-    const page = await browserInstance.newPage();
-
-    try {
-      await page.setDefaultTimeout(timeout);
-
-      // Navigate to URL and wait for it to be fully loaded
-      await page.goto(url, { waitUntil: "networkidle", timeout });
-
-      // Check if we're on a confirmation page and handle it
-      const confirmButton = await page
-        .waitForSelector("#confirm", { timeout: 5000 })
-        .catch(() => null);
-
-      if (confirmButton) {
-        logger.debug("Found confirmation page, clicking confirm button");
-        // Wait for navigation to complete after clicking
-        await Promise.all([
-          page.waitForNavigation({ waitUntil: "networkidle", timeout }),
-          confirmButton.click(),
-        ]).catch(() => {
-          // If navigation doesn't happen (SPA), that's fine - page is already loaded
-        });
-      }
-
-      // Wait for the comic image to be present - this is the definitive indicator
-      // that the page is fully loaded and ready
-      await page.waitForSelector(
-        "#strip, .content img, #content img, .comic img",
-        {
-          timeout,
-          state: "attached",
-        },
-      );
-
-      // Wait for network to be completely idle (no requests for 500ms)
-      await page.waitForLoadState("networkidle");
-
-      // Wait for document to be in complete state
-      await page.waitForFunction(() => document.readyState === "complete", {
-        timeout,
-      });
-
-      // Use evaluate() to get HTML directly from DOM
-      // This bypasses Playwright's navigation check in page.content()
-      const content = await page.evaluate(() => {
-        return document.documentElement.outerHTML;
-      });
-
-      if (!content || content.length === 0) {
-        throw new Error("Received empty content from page");
-      }
-
-      return content;
-    } finally {
-      await page.close();
-    }
-  }
+  // Store page during enrichment for image fetching
+  private currentPage: Page | null = null;
 
   /**
-   * Override processArticleContent to extract only the comic image as base64.
-   * This ensures we don't include navigation and other page elements.
+   * Fetch RSS feed data.
    */
-  override async processArticleContent(
-    article: RawArticle,
-    html: string,
-    selectorsToRemove?: string[],
-  ): Promise<string> {
-    // Extract the comic image URL
-    const comicImageUrl = extractComicImageUrl(html, article.url);
-
-    if (!comicImageUrl) {
-      logger.warn({ url: article.url }, "Could not extract comic image URL");
-      return `<p>Could not extract comic. <a href="${article.url}">View on Oglaf</a></p>`;
-    }
-
-    // Fetch the image as base64 using Playwright
-    const browserInstance = await getBrowser();
-    const page = await browserInstance.newPage();
-
-    try {
-      // Navigate to the article URL to get cookies/context
-      await page.goto(article.url, {
-        waitUntil: "networkidle",
-        timeout: this.fetchTimeout,
-      });
-
-      // Handle age confirmation if needed
-      const confirmButton = await page
-        .waitForSelector("#confirm", { timeout: 5000 })
-        .catch(() => null);
-
-      if (confirmButton) {
-        await Promise.all([
-          page.waitForNavigation({
-            waitUntil: "networkidle",
-            timeout: this.fetchTimeout,
-          }),
-          confirmButton.click(),
-        ]).catch(() => {});
-      }
-
-      // Fetch image as base64
-      const comicImageBase64 = await fetchImageAsBase64(comicImageUrl, page);
-
-      if (comicImageBase64) {
-        const altText = extractComicImageAlt(html, article.url);
-        return `<img src="${comicImageBase64}" alt="${altText}">`;
-      } else {
-        // Fallback to URL if base64 conversion fails
-        const altText = extractComicImageAlt(html, article.url);
-        return `<img src="${comicImageUrl}" alt="${altText}">`;
-      }
-    } finally {
-      await page.close();
-    }
-  }
-
-  async aggregate(articleLimit?: number): Promise<RawArticle[]> {
-    const aggregateStart = Date.now();
-    logger.info(
+  protected override async fetchSourceData(
+    limit?: number,
+  ): Promise<Parser.Output<any>> {
+    const startTime = Date.now();
+    this.logger.info(
       {
+        step: "fetchSourceData",
+        subStep: "start",
         aggregator: this.id,
         feedId: this.feed?.id,
-        articleLimit,
-        step: "aggregate_start",
+        limit,
       },
-      `Starting aggregation${articleLimit ? ` (limit: ${articleLimit})` : ""}`,
+      "Fetching RSS feed",
     );
 
     if (!this.feed) {
@@ -398,297 +278,285 @@ export class OglafAggregator extends BaseAggregator {
     }
 
     const feedUrl = this.feed.identifier;
-    logger.info(
-      {
-        feedUrl,
-        aggregator: this.id,
-        step: "fetch_feed_start",
-      },
-      "Fetching RSS feed",
-    );
-
-    // Fetch RSS feed
-    const feedFetchStart = Date.now();
     const feed = await fetchFeed(feedUrl);
-    const feedFetchElapsed = Date.now() - feedFetchStart;
 
-    logger.info(
+    const elapsed = Date.now() - startTime;
+    this.logger.info(
       {
-        feedUrl,
+        step: "fetchSourceData",
+        subStep: "complete",
+        aggregator: this.id,
+        feedId: this.feed?.id,
         itemCount: feed.items?.length || 0,
-        elapsed: feedFetchElapsed,
-        aggregator: this.id,
-        step: "fetch_feed_complete",
+        elapsed,
       },
-      "RSS feed fetched, processing items",
+      "RSS feed fetched",
     );
 
-    const articles: RawArticle[] = [];
-    let itemsToProcess = feed.items || [];
+    return feed;
+  }
 
-    // Apply article limit if specified
-    if (articleLimit !== undefined && articleLimit > 0) {
-      itemsToProcess = itemsToProcess.slice(0, articleLimit);
-      logger.info(
-        {
-          originalCount: feed.items?.length || 0,
-          limitedCount: itemsToProcess.length,
-          articleLimit,
-          aggregator: this.id,
-          step: "apply_limit",
-        },
-        `Limited to first ${articleLimit} item(s)`,
-      );
-    }
-
-    logger.info(
+  /**
+   * Parse RSS feed items to RawArticle[].
+   */
+  protected override async parseToRawArticles(
+    sourceData: unknown,
+  ): Promise<RawArticle[]> {
+    const startTime = Date.now();
+    this.logger.info(
       {
-        itemCount: itemsToProcess.length,
+        step: "parseToRawArticles",
+        subStep: "start",
         aggregator: this.id,
-        step: "process_items_start",
+        feedId: this.feed?.id,
       },
-      `Processing ${itemsToProcess.length} feed items`,
+      "Parsing RSS feed items",
     );
 
-    for (let i = 0; i < itemsToProcess.length; i++) {
-      const item = itemsToProcess[i];
-      const itemStart = Date.now();
+    const feed = sourceData as Parser.Output<any>;
+    const items = feed.items || [];
 
-      try {
-        logger.debug(
-          {
-            index: i + 1,
-            total: itemsToProcess.length,
-            title: item.title,
-            url: item.link,
-            aggregator: this.id,
-            step: "process_item_start",
-          },
-          `Processing item ${i + 1}/${itemsToProcess.length}`,
-        );
+    const articles: RawArticle[] = items.map((item) => ({
+      title: item.title || "",
+      url: item.link || "",
+      published: item.pubDate ? new Date(item.pubDate) : new Date(),
+      summary: item.contentSnippet || item.content || "",
+      author: item.creator || item.author || undefined,
+    }));
 
-        const article: RawArticle = {
-          title: item.title || "",
-          url: item.link || "",
-          published: item.pubDate ? new Date(item.pubDate) : new Date(),
-          summary: item.contentSnippet || item.content || "",
-          author: item.creator || item.author || undefined,
-        };
-
-        // Skip if should skip
-        if (this.shouldSkipArticle(article)) {
-          logger.debug(
-            {
-              index: i + 1,
-              title: article.title,
-              aggregator: this.id,
-              step: "item_skipped",
-            },
-            "Item skipped by shouldSkipArticle",
-          );
-          continue;
-        }
-
-        // Check if article already exists - skip fetching content if it does (unless force refresh)
-        if (this.isExistingUrl(article.url)) {
-          logger.debug(
-            {
-              index: i + 1,
-              url: article.url,
-              title: article.title,
-              aggregator: this.id,
-              step: "skip_existing",
-            },
-            "Skipping existing article (will not fetch content)",
-          );
-          continue;
-        }
-
-        // Fetch full content with age confirmation handling
-        let page: Page | null = null;
-        try {
-          logger.debug(
-            {
-              index: i + 1,
-              url: article.url,
-              aggregator: this.id,
-              step: "fetch_content_start",
-            },
-            "Fetching article content",
-          );
-
-          const contentFetchStart = Date.now();
-          const { html, page: fetchedPage } = await fetchOglafContent(
-            article.url,
-            this.fetchTimeout,
-          );
-          page = fetchedPage;
-          const contentFetchElapsed = Date.now() - contentFetchStart;
-
-          logger.debug(
-            {
-              index: i + 1,
-              url: article.url,
-              elapsed: contentFetchElapsed,
-              aggregator: this.id,
-              step: "fetch_content_complete",
-            },
-            "Article content fetched",
-          );
-
-          // Extract comic image URL and convert to base64 for both thumbnail and content
-          const extractStart = Date.now();
-          const comicImageUrl = extractComicImageUrl(html, article.url);
-          let comicImageBase64: string | null = null;
-
-          if (comicImageUrl && page) {
-            logger.debug(
-              {
-                index: i + 1,
-                url: article.url,
-                imageUrl: comicImageUrl,
-                aggregator: this.id,
-                step: "extract_image_url",
-              },
-              "Extracted comic image URL, converting to base64",
-            );
-
-            // Fetch image as base64 using the page context (with cookies)
-            comicImageBase64 = await fetchImageAsBase64(comicImageUrl, page);
-            if (comicImageBase64) {
-              // Use the same base64 for both thumbnail and content
-              article.thumbnailUrl = comicImageBase64;
-              logger.info(
-                {
-                  index: i + 1,
-                  url: article.url,
-                  imageUrl: comicImageUrl,
-                  base64Length: comicImageBase64.length,
-                  aggregator: this.id,
-                  step: "extract_thumbnail",
-                },
-                "Comic image converted to base64",
-              );
-            } else {
-              // Fallback to URL if base64 conversion fails
-              article.thumbnailUrl = comicImageUrl;
-              logger.warn(
-                {
-                  index: i + 1,
-                  url: article.url,
-                  imageUrl: comicImageUrl,
-                  aggregator: this.id,
-                  step: "extract_thumbnail_fallback",
-                },
-                "Failed to convert image to base64, using URL",
-              );
-            }
-          } else {
-            logger.warn(
-              {
-                index: i + 1,
-                url: article.url,
-                hasImageUrl: !!comicImageUrl,
-                hasPage: !!page,
-                aggregator: this.id,
-                step: "extract_thumbnail_missing",
-              },
-              "Could not extract image URL or page not available",
-            );
-          }
-
-          // Create content with base64 image if available, otherwise use URL
-          let comicImage: string;
-          if (comicImageBase64) {
-            // Use base64 image in content
-            const altText = extractComicImageAlt(html, article.url);
-            comicImage = `<img src="${comicImageBase64}" alt="${altText}">`;
-          } else if (comicImageUrl) {
-            // Fallback to URL if base64 conversion failed
-            const altText = extractComicImageAlt(html, article.url);
-            comicImage = `<img src="${comicImageUrl}" alt="${altText}">`;
-          } else {
-            // No image found
-            comicImage = `<p>Could not extract comic. <a href="${article.url}">View on Oglaf</a></p>`;
-          }
-
-          const extractElapsed = Date.now() - extractStart;
-
-          logger.debug(
-            {
-              index: i + 1,
-              url: article.url,
-              elapsed: extractElapsed,
-              aggregator: this.id,
-              step: "extract_complete",
-            },
-            "Comic image extracted",
-          );
-
-          article.content = comicImage;
-        } catch (error) {
-          logger.warn(
-            {
-              error: error instanceof Error ? error : new Error(String(error)),
-              url: article.url,
-              index: i + 1,
-              aggregator: this.id,
-              step: "fetch_content_failed",
-            },
-            "Failed to fetch article content, using summary",
-          );
-          // Continue with summary if available
-          article.content = article.summary || "";
-        } finally {
-          // Close the page if it was opened
-          if (page) {
-            try {
-              await page.close();
-            } catch (closeError) {
-              logger.debug({ error: closeError }, "Error closing page");
-            }
-          }
-        }
-
-        const itemElapsed = Date.now() - itemStart;
-        logger.debug(
-          {
-            index: i + 1,
-            title: article.title,
-            elapsed: itemElapsed,
-            aggregator: this.id,
-            step: "item_complete",
-          },
-          `Item ${i + 1} processed`,
-        );
-
-        articles.push(article);
-      } catch (error) {
-        logger.error(
-          {
-            error,
-            item,
-            index: i + 1,
-            aggregator: this.id,
-            step: "item_error",
-          },
-          "Error processing feed item",
-        );
-        continue;
-      }
-    }
-
-    const totalElapsed = Date.now() - aggregateStart;
-    logger.info(
+    const elapsed = Date.now() - startTime;
+    this.logger.info(
       {
+        step: "parseToRawArticles",
+        subStep: "complete",
         aggregator: this.id,
+        feedId: this.feed?.id,
         articleCount: articles.length,
-        totalElapsed,
-        step: "aggregate_complete",
+        elapsed,
       },
-      `Aggregation complete: ${articles.length} articles`,
+      "Parsed RSS feed items",
     );
 
     return articles;
+  }
+
+  /**
+   * Override fetchArticleContentInternal to handle age confirmation page.
+   */
+  protected override async fetchArticleContentInternal(
+    url: string,
+    article: RawArticle,
+  ): Promise<string> {
+    const startTime = Date.now();
+    this.logger.debug(
+      {
+        step: "enrichArticles",
+        subStep: "fetchArticleContent",
+        aggregator: this.id,
+        feedId: this.feed?.id,
+        url,
+      },
+      "Fetching Oglaf content with age confirmation handling",
+    );
+
+    try {
+      const { html, page } = await fetchOglafContent(url, this.fetchTimeout);
+      // Store page for use in processContent
+      this.currentPage = page;
+      const elapsed = Date.now() - startTime;
+      this.logger.debug(
+        {
+          step: "enrichArticles",
+          subStep: "fetchArticleContent",
+          aggregator: this.id,
+          feedId: this.feed?.id,
+          url,
+          elapsed,
+        },
+        "Oglaf content fetched",
+      );
+      return html;
+    } catch (error) {
+      const elapsed = Date.now() - startTime;
+      this.logger.error(
+        {
+          step: "enrichArticles",
+          subStep: "fetchArticleContent",
+          aggregator: this.id,
+          feedId: this.feed?.id,
+          url,
+          error: error instanceof Error ? error : new Error(String(error)),
+          elapsed,
+        },
+        "Failed to fetch Oglaf content",
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Override processContent to extract only the comic image as base64.
+   */
+  protected override async processContent(
+    html: string,
+    article: RawArticle,
+  ): Promise<string> {
+    const startTime = Date.now();
+    this.logger.debug(
+      {
+        step: "enrichArticles",
+        subStep: "processContent",
+        aggregator: this.id,
+        feedId: this.feed?.id,
+        url: article.url,
+      },
+      "Processing Oglaf content - extracting comic image",
+    );
+
+    // Extract the comic image URL
+    const comicImageUrl = extractComicImageUrl(html, article.url);
+
+    if (!comicImageUrl) {
+      this.logger.warn(
+        {
+          step: "enrichArticles",
+          subStep: "processContent",
+          aggregator: this.id,
+          feedId: this.feed?.id,
+          url: article.url,
+        },
+        "Could not extract comic image URL",
+      );
+      return `<p>Could not extract comic. <a href="${article.url}">View on Oglaf</a></p>`;
+    }
+
+    // Use stored page if available, otherwise create new one
+    let page = this.currentPage;
+    let shouldClosePage = false;
+
+    if (!page) {
+      // Fallback: create new page
+      const browserInstance = await getBrowser();
+      page = await browserInstance.newPage();
+      shouldClosePage = true;
+
+      try {
+        await page.goto(article.url, {
+          waitUntil: "networkidle",
+          timeout: this.fetchTimeout,
+        });
+
+        // Handle age confirmation if needed
+        const confirmButton = await page
+          .waitForSelector("#confirm", { timeout: 5000 })
+          .catch(() => null);
+
+        if (confirmButton) {
+          await Promise.all([
+            page.waitForNavigation({
+              waitUntil: "networkidle",
+              timeout: this.fetchTimeout,
+            }),
+            confirmButton.click(),
+          ]).catch(() => {});
+        }
+      } catch (error) {
+        if (shouldClosePage && page) {
+          await page.close();
+        }
+        throw error;
+      }
+    }
+
+    try {
+      // Fetch image as base64 using page context
+      const comicImageBase64 = await fetchImageAsBase64(comicImageUrl, page);
+
+      if (comicImageBase64) {
+        // Store as thumbnail URL (will be converted by service)
+        article.thumbnailUrl = comicImageBase64;
+        const altText = extractComicImageAlt(html, article.url);
+        const elapsed = Date.now() - startTime;
+        this.logger.debug(
+          {
+            step: "enrichArticles",
+            subStep: "processContent",
+            aggregator: this.id,
+            feedId: this.feed?.id,
+            url: article.url,
+            elapsed,
+          },
+          "Comic image extracted and converted to base64",
+        );
+        return `<img src="${comicImageBase64}" alt="${altText}">`;
+      } else {
+        // Fallback to URL if base64 conversion fails
+        article.thumbnailUrl = comicImageUrl;
+        const altText = extractComicImageAlt(html, article.url);
+        const elapsed = Date.now() - startTime;
+        this.logger.warn(
+          {
+            step: "enrichArticles",
+            subStep: "processContent",
+            aggregator: this.id,
+            feedId: this.feed?.id,
+            url: article.url,
+            elapsed,
+          },
+          "Failed to convert image to base64, using URL",
+        );
+        return `<img src="${comicImageUrl}" alt="${altText}">`;
+      }
+    } finally {
+      // Close page if we created it
+      if (shouldClosePage && page) {
+        try {
+          await page.close();
+        } catch (error) {
+          this.logger.debug(
+            {
+              step: "enrichArticles",
+              subStep: "processContent",
+              aggregator: this.id,
+              feedId: this.feed?.id,
+              error,
+            },
+            "Error closing page",
+          );
+        }
+      }
+      // Clear stored page
+      this.currentPage = null;
+    }
+  }
+
+  /**
+   * Override enrichArticles to handle page cleanup after processing.
+   */
+  protected override async enrichArticles(
+    articles: RawArticle[],
+  ): Promise<RawArticle[]> {
+    try {
+      return await super.enrichArticles(articles);
+    } finally {
+      // Ensure page is closed if still open
+      if (this.currentPage) {
+        try {
+          await this.currentPage.close();
+        } catch (error) {
+          this.logger.debug(
+            {
+              step: "enrichArticles",
+              subStep: "cleanup",
+              aggregator: this.id,
+              feedId: this.feed?.id,
+              error,
+            },
+            "Error closing page during cleanup",
+          );
+        }
+        this.currentPage = null;
+      }
+    }
   }
 }

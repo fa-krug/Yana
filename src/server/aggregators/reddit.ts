@@ -1,7 +1,7 @@
 /**
  * Reddit aggregator.
  *
- * Aggregates posts from Reddit subreddits using Reddit's JSON API.
+ * Aggregates posts from Reddit subreddits using Reddit's OAuth2 API.
  * Based on the legacy Python implementation using PRAW.
  */
 
@@ -11,6 +11,126 @@ import { logger } from "../utils/logger";
 import axios from "axios";
 import { getUserSettings } from "../services/userSettings.service";
 import { standardizeContentFormat } from "./base/process";
+import { extractYouTubeVideoId } from "./base/utils";
+import { marked } from "marked";
+
+// Configure marked with extensions similar to Python version
+// nl2br: Convert newlines to <br> (handled by breaks option)
+// fenced_code: Support ```code blocks``` (enabled by default)
+// tables: Support tables (enabled by default)
+marked.setOptions({
+  breaks: true, // Convert newlines to <br> (like nl2br extension)
+  gfm: true, // GitHub Flavored Markdown (includes tables, strikethrough, etc.)
+});
+
+/**
+ * Token cache entry.
+ */
+interface TokenCacheEntry {
+  token: string;
+  expiresAt: number;
+}
+
+/**
+ * In-memory token cache per user.
+ */
+const tokenCache = new Map<number, TokenCacheEntry>();
+
+/**
+ * Get Reddit OAuth2 access token.
+ * Implements client credentials flow with token caching.
+ */
+async function getRedditAccessToken(userId: number): Promise<string> {
+  // Check cache first
+  const cached = tokenCache.get(userId);
+  if (cached && cached.expiresAt > Date.now() + 60000) {
+    // Token still valid (refresh 1 minute before expiration)
+    return cached.token;
+  }
+
+  // Get credentials from user settings
+  const settings = await getUserSettings(userId);
+
+  // Validate Reddit is enabled
+  if (!settings.redditEnabled) {
+    throw new Error(
+      "Reddit is not enabled. Please enable Reddit in your settings and configure API credentials.",
+    );
+  }
+
+  // Validate credentials are present
+  if (!settings.redditClientId || !settings.redditClientSecret) {
+    throw new Error(
+      "Reddit API credentials not configured. Please set Client ID and Client Secret in your settings.",
+    );
+  }
+
+  const userAgent = settings.redditUserAgent || "Yana/1.0";
+
+  try {
+    // Request access token using OAuth2 client credentials flow
+    const authUrl = "https://www.reddit.com/api/v1/access_token";
+    const authData = new URLSearchParams({
+      grant_type: "client_credentials",
+    });
+
+    const response = await axios.post(authUrl, authData, {
+      auth: {
+        username: settings.redditClientId,
+        password: settings.redditClientSecret,
+      },
+      headers: {
+        "User-Agent": userAgent,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      timeout: 10000,
+    });
+
+    if (
+      response.status === 200 &&
+      response.data?.access_token &&
+      response.data?.token_type === "bearer"
+    ) {
+      const token = response.data.access_token;
+      const expiresIn = response.data.expires_in || 3600; // Default to 1 hour
+      const expiresAt = Date.now() + expiresIn * 1000 - 60000; // Refresh 1 min early
+
+      // Cache the token
+      tokenCache.set(userId, { token, expiresAt });
+
+      logger.debug(
+        { userId, expiresIn },
+        "Reddit OAuth token obtained and cached",
+      );
+
+      return token;
+    }
+
+    throw new Error("Invalid response from Reddit OAuth API");
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      if (error.response?.status === 401) {
+        throw new Error(
+          "Invalid Reddit API credentials. Please check your Client ID and Client Secret.",
+        );
+      }
+      if (error.response?.status === 403) {
+        throw new Error(
+          "Reddit app configuration issue. Check your app settings on Reddit.",
+        );
+      }
+      if (error.response?.status === 429) {
+        throw new Error("Rate limited by Reddit. Please try again later.");
+      }
+      throw new Error(
+        `Reddit OAuth error: ${error.response?.statusText || error.message}`,
+      );
+    }
+    throw new Error(
+      `Failed to get Reddit access token: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+}
 
 interface RedditPost {
   data: {
@@ -102,17 +222,70 @@ function fixRedditMediaUrl(url: string | null): string | null {
 }
 
 /**
+ * Convert Reddit preview.redd.it URLs to i.redd.it URLs when possible.
+ * Reddit's i.redd.it CDN is more accessible than preview.redd.it.
+ */
+function convertRedditPreviewUrl(url: string): string {
+  try {
+    // Convert preview.redd.it to i.redd.it
+    if (url.includes("preview.redd.it")) {
+      const urlObj = new URL(url);
+      // Extract the filename from the path
+      const pathParts = urlObj.pathname.split("/");
+      const filename = pathParts[pathParts.length - 1];
+
+      // Build i.redd.it URL (remove query params as they're often signatures)
+      const newUrl = `https://i.redd.it/${filename}`;
+      logger.debug(
+        { original: url, converted: newUrl },
+        "Converting Reddit preview URL",
+      );
+      return newUrl;
+    }
+    return url;
+  } catch (error) {
+    logger.debug({ error, url }, "Failed to convert Reddit preview URL");
+    return url;
+  }
+}
+
+/**
+ * Get appropriate referer header for Reddit URLs.
+ * For Reddit URLs, use reddit.com. For others, use the domain of the URL.
+ */
+function getRedditRefererHeader(url: string): string {
+  try {
+    const urlObj = new URL(url);
+
+    // Special handling for Reddit domains
+    if (
+      urlObj.hostname.includes("redd.it") ||
+      urlObj.hostname.includes("reddit.com")
+    ) {
+      return "https://www.reddit.com";
+    }
+
+    // For other domains, use the origin
+    return `${urlObj.protocol}//${urlObj.hostname}`;
+  } catch (error) {
+    logger.debug({ error, url }, "Failed to determine referer");
+    return "https://www.reddit.com"; // Safe fallback for Reddit
+  }
+}
+
+/**
  * Fetch subreddit information including icon.
  */
 async function fetchSubredditInfo(
   subreddit: string,
-  userAgent: string,
+  userId: number,
 ): Promise<{ iconUrl: string | null }> {
   try {
-    const url = `https://www.reddit.com/r/${subreddit}/about.json`;
+    const accessToken = await getRedditAccessToken(userId);
+    const url = `https://oauth.reddit.com/r/${subreddit}/about`;
     const response = await axios.get<RedditSubredditInfo>(url, {
       headers: {
-        "User-Agent": userAgent,
+        Authorization: `Bearer ${accessToken}`,
       },
       timeout: 10000,
     });
@@ -158,6 +331,46 @@ function normalizeSubreddit(identifier: string): string {
 }
 
 /**
+ * Extract post ID and subreddit from Reddit URL.
+ * Format: https://reddit.com/r/{subreddit}/comments/{postId}/...
+ */
+function extractPostInfoFromUrl(url: string): {
+  subreddit: string | null;
+  postId: string | null;
+} {
+  const match = url.match(/\/r\/([a-zA-Z0-9_]+)\/comments\/([a-zA-Z0-9]+)/);
+  return match
+    ? { subreddit: match[1], postId: match[2] }
+    : { subreddit: null, postId: null };
+}
+
+/**
+ * Fetch a single Reddit post by ID.
+ */
+async function fetchRedditPost(
+  subreddit: string,
+  postId: string,
+  userId: number,
+): Promise<RedditPost["data"] | null> {
+  try {
+    const accessToken = await getRedditAccessToken(userId);
+    const response = await axios.get(
+      `https://oauth.reddit.com/r/${subreddit}/comments/${postId}`,
+      {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        timeout: 10000,
+      },
+    );
+
+    // Reddit comments API returns: [0] = post data, [1] = comments data
+    return response.data?.[0]?.data?.children?.[0]?.data || null;
+  } catch (error) {
+    logger.warn({ error, subreddit, postId }, "Error fetching Reddit post");
+    return null;
+  }
+}
+
+/**
  * Validate subreddit name.
  */
 function validateSubreddit(subreddit: string): {
@@ -184,8 +397,9 @@ function validateSubreddit(subreddit: string): {
  * Convert Reddit markdown to HTML.
  * Handles Reddit-specific markdown extensions like ^superscript,
  * ~~strikethrough~~, >!spoilers!<, and Giphy embeds.
+ * Then converts standard markdown to HTML using marked library.
  */
-function convertRedditMarkdown(text: string): string {
+async function convertRedditMarkdown(text: string): Promise<string> {
   if (!text) return "";
 
   // Handle Reddit preview images
@@ -220,23 +434,25 @@ function convertRedditMarkdown(text: string): string {
       `<img src="https://i.giphy.com/${giphyId}.gif" alt="Giphy GIF">`,
   );
 
-  // Handle Reddit-specific superscript syntax
+  // Handle Reddit-specific superscript syntax (before markdown conversion)
   text = text.replace(/\^(\w+)/g, "<sup>$1</sup>");
   text = text.replace(/\^\(([^)]+)\)/g, "<sup>$1</sup>");
 
-  // Handle strikethrough
+  // Handle strikethrough (before markdown conversion)
   text = text.replace(/~~(.+?)~~/g, "<del>$1</del>");
 
-  // Handle spoiler syntax
+  // Handle spoiler syntax (before markdown conversion)
   text = text.replace(
     />!(.+?)!</g,
     '<span class="spoiler" style="background: #000; color: #000;">$1</span>',
   );
 
-  // Convert newlines to <br>
-  text = text.replace(/\n/g, "<br>");
+  // Convert markdown to HTML using marked
+  // Note: strikethrough and superscript are already handled above,
+  // but marked will handle other markdown features like headers, lists, links, etc.
+  const htmlContent = await marked.parse(text);
 
-  return text;
+  return htmlContent as string;
 }
 
 /**
@@ -292,10 +508,35 @@ function extractThumbnailUrl(post: RedditPost["data"]): string | null {
 
 /**
  * Extract high-quality header image URL from a Reddit post.
- * Prioritizes high-quality images suitable for use as header images.
+ * Prioritizes YouTube videos for embedding, then high-quality images suitable for use as header images.
  */
 function extractHeaderImageUrl(post: RedditPost["data"]): string | null {
   try {
+    // Priority 0: Check for YouTube videos (highest priority - embed instead of image)
+    // Check post URL first
+    if (post.url) {
+      const videoId = extractYouTubeVideoId(post.url);
+      if (videoId) {
+        logger.debug(
+          { url: post.url, videoId },
+          "Found YouTube video in post URL",
+        );
+        return post.url; // Return YouTube URL for embedding
+      }
+    }
+
+    // Check URLs in selftext for YouTube videos
+    if (post.is_self && post.selftext) {
+      const urls = extractUrlsFromText(post.selftext);
+      for (const url of urls) {
+        const videoId = extractYouTubeVideoId(url);
+        if (videoId) {
+          logger.debug({ url, videoId }, "Found YouTube video in selftext");
+          return url; // Return YouTube URL for embedding
+        }
+      }
+    }
+
     // Priority 1: Preview source images (highest quality)
     if (post.preview?.images?.[0]?.source?.url) {
       const decoded = decodeURIComponent(post.preview.images[0].source.url);
@@ -377,6 +618,70 @@ function extractHeaderImageUrl(post: RedditPost["data"]): string | null {
         "Falling back to thumbnail as header",
       );
       return thumbnailUrl;
+    }
+
+    // Priority 6: If no image found, return submission URL to extract image from it
+    // This will be processed by standardizeContentFormat() which will try to extract
+    // an image from the URL using extract_image_from_url()
+    if (post.url) {
+      const url = post.url;
+      // Only return URL if it's not already an image file (already checked in Priority 3)
+      // and not a video (already checked in Priority 4)
+      if (
+        ![".jpg", ".jpeg", ".png", ".webp", ".gif"].some((ext) =>
+          url.toLowerCase().endsWith(ext),
+        ) &&
+        !url.includes("v.redd.it")
+      ) {
+        logger.debug(
+          { url },
+          "No image found, will extract from submission URL",
+        );
+        return url;
+      }
+    }
+
+    // Priority 7: Extract URLs from text post selftext and try to find images
+    // Only if no better image was found above
+    if (post.is_self && post.selftext) {
+      const urls = extractUrlsFromText(post.selftext);
+      if (urls.length > 0) {
+        logger.debug(
+          { count: urls.length },
+          "Found URL(s) in selftext, checking for images",
+        );
+        // Try each URL - prioritize direct image URLs, then other URLs
+        // The actual image extraction will be done by standardizeContentFormat()
+        let firstValidUrl: string | null = null;
+        for (const url of urls) {
+          // Skip invalid URLs
+          if (!url.startsWith("http://") && !url.startsWith("https://")) {
+            continue;
+          }
+          // Track first valid URL for fallback
+          if (firstValidUrl === null) {
+            firstValidUrl = url;
+          }
+          // If it's a direct image URL, return it immediately
+          if (
+            [".jpg", ".jpeg", ".png", ".webp", ".gif"].some((ext) =>
+              url.toLowerCase().endsWith(ext),
+            )
+          ) {
+            logger.debug({ url }, "Found direct image URL in selftext");
+            return url;
+          }
+        }
+        // If no direct image URLs found, return first valid URL
+        // standardizeContentFormat() will try to extract an image from it
+        if (firstValidUrl) {
+          logger.debug(
+            { url: firstValidUrl },
+            "Found URL in selftext, will extract image",
+          );
+          return firstValidUrl;
+        }
+      }
     }
 
     return null;
@@ -470,9 +775,11 @@ function extractUrlsFromText(text: string): string[] {
 /**
  * Format a single comment as HTML with link.
  */
-function formatCommentHtml(comment: RedditComment["data"]): string {
+async function formatCommentHtml(
+  comment: RedditComment["data"],
+): Promise<string> {
   const author = comment.author || "[deleted]";
-  const body = convertRedditMarkdown(comment.body || "");
+  const body = await convertRedditMarkdown(comment.body || "");
   const commentUrl = `https://reddit.com${comment.permalink}`;
 
   return `
@@ -504,13 +811,17 @@ async function fetchPostComments(
   subreddit: string,
   postId: string,
   commentLimit: number,
-  userAgent: string,
+  userId: number,
 ): Promise<RedditComment["data"][]> {
   try {
-    const url = `https://www.reddit.com/r/${subreddit}/comments/${postId}.json`;
+    const accessToken = await getRedditAccessToken(userId);
+    const url = `https://oauth.reddit.com/r/${subreddit}/comments/${postId}`;
     const response = await axios.get(url, {
+      params: {
+        sort: "best", // Match Python's comment_sort = "best"
+      },
       headers: {
-        "User-Agent": userAgent,
+        Authorization: `Bearer ${accessToken}`,
       },
       timeout: 10000,
     });
@@ -573,14 +884,14 @@ async function buildPostContent(
   post: RedditPost["data"],
   commentLimit: number,
   subreddit: string,
-  userAgent: string,
+  userId: number,
 ): Promise<string> {
   const contentParts: string[] = [];
 
   // Post content (selftext or link)
   if (post.is_self && post.selftext) {
     // Text post - convert Reddit markdown to HTML
-    const selftextHtml = convertRedditMarkdown(post.selftext);
+    const selftextHtml = await convertRedditMarkdown(post.selftext);
     contentParts.push(`<div>${selftextHtml}</div>`);
   } else if (
     post.is_gallery &&
@@ -678,10 +989,10 @@ async function buildPostContent(
       subreddit,
       post.id,
       commentLimit,
-      userAgent,
+      userId,
     );
     if (comments.length > 0) {
-      const commentHtmls = comments.map(formatCommentHtml);
+      const commentHtmls = await Promise.all(comments.map(formatCommentHtml));
       contentParts.push(commentHtmls.join(""));
     } else {
       contentParts.push("<p><em>No comments yet.</em></p>");
@@ -757,21 +1068,44 @@ export class RedditAggregator extends BaseAggregator {
 
   /**
    * Get Reddit user agent from user settings or use default.
+   * Also validates that Reddit is enabled and credentials are configured.
    */
   private async getUserAgent(): Promise<string> {
     if (!this.feed?.userId) {
-      return "Yana/1.0";
+      throw new Error(
+        "Feed must have a userId to use Reddit API. Reddit requires authenticated API access.",
+      );
     }
 
+    const userId = this.feed.userId;
+
     try {
-      const settings = await getUserSettings(this.feed.userId);
+      const settings = await getUserSettings(userId);
+
+      // Validate Reddit is enabled
+      if (!settings.redditEnabled) {
+        throw new Error(
+          "Reddit is not enabled. Please enable Reddit in your settings and configure API credentials.",
+        );
+      }
+
+      // Validate credentials are present
+      if (!settings.redditClientId || !settings.redditClientSecret) {
+        throw new Error(
+          "Reddit API credentials not configured. Please set Client ID and Client Secret in your settings.",
+        );
+      }
+
       return settings.redditUserAgent || "Yana/1.0";
     } catch (error) {
+      if (error instanceof Error && error.message.includes("Reddit")) {
+        throw error; // Re-throw Reddit-specific errors
+      }
       logger.warn(
         { error },
         "Could not get user settings, using default user agent",
       );
-      return "Yana/1.0";
+      throw new Error("Could not get user settings for Reddit API access.");
     }
   }
 
@@ -782,7 +1116,12 @@ export class RedditAggregator extends BaseAggregator {
     return this.subredditIconUrl;
   }
 
-  async aggregate(articleLimit?: number): Promise<RawArticle[]> {
+  /**
+   * Validate subreddit identifier.
+   */
+  protected override async validate(): Promise<void> {
+    await super.validate();
+
     if (!this.feed) {
       throw new Error("Feed not initialized");
     }
@@ -794,17 +1133,62 @@ export class RedditAggregator extends BaseAggregator {
       );
     }
 
-    logger.info(
-      { subreddit, feedId: this.feed.id },
-      "Starting Reddit aggregation",
+    const validation = validateSubreddit(subreddit);
+    if (!validation.valid) {
+      throw new Error(validation.error || "Invalid subreddit");
+    }
+  }
+
+  /**
+   * Apply rate limiting for Reddit API.
+   */
+  protected override async applyRateLimiting(): Promise<void> {
+    // Reddit API is generally permissive, but we still apply default rate limiting
+    await super.applyRateLimiting();
+  }
+
+  /**
+   * Fetch Reddit posts from API.
+   */
+  protected override async fetchSourceData(limit?: number): Promise<unknown> {
+    const startTime = Date.now();
+    this.logger.info(
+      {
+        step: "fetchSourceData",
+        subStep: "start",
+        aggregator: this.id,
+        feedId: this.feed?.id,
+        limit,
+      },
+      "Fetching Reddit posts",
     );
 
+    if (!this.feed) {
+      throw new Error("Feed not initialized");
+    }
+
+    const subreddit = normalizeSubreddit(this.feed.identifier);
+    if (!subreddit) {
+      throw new Error(
+        `Could not extract subreddit from identifier: ${this.feed.identifier}`,
+      );
+    }
+
     const sortBy = this.getOption("sort_by", "hot") as string;
-    const commentLimit = this.getOption("comment_limit", 10) as number;
-    const userAgent = await this.getUserAgent();
+
+    if (!this.feed.userId) {
+      throw new Error(
+        "Feed must have a userId to use Reddit API. Reddit requires authenticated API access.",
+      );
+    }
+
+    const userId = this.feed.userId;
+
+    // Validate Reddit is enabled and get user agent (validates credentials)
+    await this.getUserAgent();
 
     // Fetch subreddit info to get icon for feed thumbnail
-    const subredditInfo = await fetchSubredditInfo(subreddit, userAgent);
+    const subredditInfo = await fetchSubredditInfo(subreddit, userId);
 
     // Store subreddit icon URL for feed icon collection
     this.subredditIconUrl = subredditInfo.iconUrl;
@@ -812,132 +1196,59 @@ export class RedditAggregator extends BaseAggregator {
     (this as any).__subredditIconUrl = subredditInfo.iconUrl;
 
     // Calculate desired article count
-    const desiredArticleCount = articleLimit || 25;
+    const desiredArticleCount = limit || 25;
 
     // Fetch 2-3x more posts than needed to account for filtering
     // (AutoModerator posts, old posts, etc.)
     // Reddit API max is 100
     const fetchLimit = Math.min(desiredArticleCount * 3, 100);
 
+    // Apply rate limiting
+    await this.applyRateLimiting();
+
     try {
-      // Fetch posts from Reddit JSON API
-      const url = `https://www.reddit.com/r/${subreddit}/${sortBy}.json`;
+      // Get access token for authenticated API call
+      const accessToken = await getRedditAccessToken(userId);
+
+      // Fetch posts from Reddit OAuth API
+      const url = `https://oauth.reddit.com/r/${subreddit}/${sortBy}`;
       const response = await axios.get(url, {
         params: {
           limit: fetchLimit,
         },
         headers: {
-          "User-Agent": userAgent,
+          Authorization: `Bearer ${accessToken}`,
         },
         timeout: 30000,
       });
 
       const posts: RedditPost[] = response.data.data.children || [];
 
-      if (posts.length === 0) {
-        logger.warn({ subreddit }, "No posts found in subreddit");
-        return [];
-      }
-
-      logger.info(
-        { subreddit, postCount: posts.length, desiredArticleCount },
-        "Successfully fetched Reddit posts",
+      const elapsed = Date.now() - startTime;
+      this.logger.info(
+        {
+          step: "fetchSourceData",
+          subStep: "complete",
+          aggregator: this.id,
+          feedId: this.feed?.id,
+          postCount: posts.length,
+          elapsed,
+        },
+        "Reddit posts fetched",
       );
 
-      // Convert to RawArticle format
-      const articles: RawArticle[] = [];
-      const twoMonthsAgo = new Date();
-      twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
-
-      // Get feed thumbnail (subreddit icon) for fallback
-      const feedThumbnailUrl = subredditInfo.iconUrl;
-
-      for (const post of posts) {
-        // Stop if we have enough articles
-        if (articles.length >= desiredArticleCount) {
-          break;
-        }
-
-        const postData = post.data;
-
-        // Skip AutoModerator posts
-        if (postData.author === "AutoModerator") {
-          logger.debug({ postId: postData.id }, "Skipping AutoModerator post");
-          continue;
-        }
-
-        // Skip if too old (older than 2 months)
-        const postDate = new Date(postData.created_utc * 1000);
-        if (postDate < twoMonthsAgo) {
-          logger.debug(
-            { postId: postData.id, date: postDate },
-            "Skipping old post",
-          );
-          continue;
-        }
-
-        const permalink = `https://reddit.com${postData.permalink}`;
-        const rawContent = await buildPostContent(
-          postData,
-          commentLimit,
-          subreddit,
-          userAgent,
-        );
-        const headerImageUrl = extractHeaderImageUrl(postData);
-        const thumbnailUrl = extractThumbnailUrl(postData);
-
-        // Standardize content format (convert header image to base64, add source footer)
-        const generateTitleImage = this.feed?.generateTitleImage ?? true;
-        const addSourceFooter = this.feed?.addSourceFooter ?? true;
-        const content = await standardizeContentFormat(
-          rawContent,
-          {
-            title: postData.title,
-            url: permalink,
-            published: postDate,
-            content: rawContent,
-            summary: postData.selftext || "",
-            author: postData.author,
-            score: postData.score,
-            externalId: postData.id,
-          },
-          permalink,
-          generateTitleImage,
-          addSourceFooter,
-          headerImageUrl ?? undefined,
-        );
-
-        // For article thumbnail: use header image if available, otherwise use thumbnail
-        const articleThumbnailUrl = headerImageUrl || thumbnailUrl || undefined;
-
-        // Set media_url for Reddit videos
-        let mediaUrl: string | undefined;
-        if (postData.is_video && postData.url?.includes("v.redd.it")) {
-          mediaUrl = `${permalink}/embed`;
-        }
-
-        articles.push({
-          title: postData.title,
-          url: permalink,
-          published: postDate,
-          content,
-          summary: postData.selftext || "",
-          author: postData.author,
-          score: postData.score,
-          thumbnailUrl: articleThumbnailUrl,
-          mediaUrl,
-          externalId: postData.id,
-        });
-      }
-
-      logger.info(
-        { subreddit, articleCount: articles.length },
-        "Completed Reddit aggregation",
-      );
-      return articles;
+      return { posts, subreddit, subredditInfo };
     } catch (error) {
-      logger.error(
-        { error, subreddit, feedId: this.feed.id },
+      const elapsed = Date.now() - startTime;
+      this.logger.error(
+        {
+          step: "fetchSourceData",
+          subStep: "error",
+          aggregator: this.id,
+          feedId: this.feed?.id,
+          error: error instanceof Error ? error : new Error(String(error)),
+          elapsed,
+        },
         "Error fetching Reddit posts",
       );
       if (axios.isAxiosError(error)) {
@@ -952,5 +1263,274 @@ export class RedditAggregator extends BaseAggregator {
       }
       throw error;
     }
+  }
+
+  /**
+   * Parse Reddit posts to RawArticle[].
+   */
+  protected override async parseToRawArticles(
+    sourceData: unknown,
+  ): Promise<RawArticle[]> {
+    const startTime = Date.now();
+    this.logger.info(
+      {
+        step: "parseToRawArticles",
+        subStep: "start",
+        aggregator: this.id,
+        feedId: this.feed?.id,
+      },
+      "Parsing Reddit posts",
+    );
+
+    const { posts, subreddit, subredditInfo } = sourceData as {
+      posts: RedditPost[];
+      subreddit: string;
+      subredditInfo: { iconUrl: string | null };
+    };
+
+    if (posts.length === 0) {
+      this.logger.warn(
+        {
+          step: "parseToRawArticles",
+          subStep: "complete",
+          aggregator: this.id,
+          feedId: this.feed?.id,
+          subreddit,
+        },
+        "No posts found in subreddit",
+      );
+      return [];
+    }
+
+    const commentLimit = this.getOption("comment_limit", 10) as number;
+
+    if (!this.feed?.userId) {
+      throw new Error(
+        "Feed must have a userId to use Reddit API. Reddit requires authenticated API access.",
+      );
+    }
+
+    const userId = this.feed.userId;
+    const twoMonthsAgo = new Date();
+    twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
+
+    const articles: RawArticle[] = [];
+
+    for (const post of posts) {
+      const postData = post.data;
+      const postDate = new Date(postData.created_utc * 1000);
+      const permalink = `https://reddit.com${postData.permalink}`;
+
+      const rawContent = await buildPostContent(
+        postData,
+        commentLimit,
+        subreddit,
+        userId,
+      );
+      const headerImageUrl = extractHeaderImageUrl(postData);
+      const thumbnailUrl = extractThumbnailUrl(postData);
+
+      // For article thumbnail: use header image if available, otherwise use thumbnail
+      const articleThumbnailUrl = headerImageUrl || thumbnailUrl || undefined;
+
+      // Set media_url for Reddit videos
+      let mediaUrl: string | undefined;
+      if (postData.is_video && postData.url?.includes("v.redd.it")) {
+        mediaUrl = `${permalink}/embed`;
+      }
+
+      articles.push({
+        title: postData.title,
+        url: permalink,
+        published: postDate,
+        content: rawContent, // Will be processed in processContent
+        summary: postData.selftext || "",
+        author: postData.author,
+        score: postData.score,
+        thumbnailUrl: articleThumbnailUrl,
+        mediaUrl,
+        externalId: postData.id,
+        // Store headerImageUrl for use in processContent
+        ...(headerImageUrl ? { headerImageUrl } : {}),
+      } as RawArticle & { headerImageUrl?: string });
+    }
+
+    const elapsed = Date.now() - startTime;
+    this.logger.info(
+      {
+        step: "parseToRawArticles",
+        subStep: "complete",
+        aggregator: this.id,
+        feedId: this.feed?.id,
+        articleCount: articles.length,
+        elapsed,
+      },
+      "Reddit posts parsed",
+    );
+
+    return articles;
+  }
+
+  /**
+   * Check if article should be skipped (AutoModerator, old posts).
+   */
+  protected override shouldSkipArticle(article: RawArticle): boolean {
+    // Check base skip logic first
+    if (super.shouldSkipArticle(article)) {
+      return true;
+    }
+
+    // Skip AutoModerator posts
+    if (article.author === "AutoModerator") {
+      this.logger.debug(
+        {
+          step: "filterArticles",
+          subStep: "shouldSkipArticle",
+          aggregator: this.id,
+          feedId: this.feed?.id,
+          url: article.url,
+          reason: "AutoModerator",
+        },
+        "Skipping AutoModerator post",
+      );
+      return true;
+    }
+
+    // Skip if too old (older than 2 months)
+    const twoMonthsAgo = new Date();
+    twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
+    if (article.published < twoMonthsAgo) {
+      this.logger.debug(
+        {
+          step: "filterArticles",
+          subStep: "shouldSkipArticle",
+          aggregator: this.id,
+          feedId: this.feed?.id,
+          url: article.url,
+          reason: "too_old",
+          date: article.published,
+        },
+        "Skipping old post",
+      );
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * Fetch article content from URL.
+   * Override to fetch Reddit posts via API (including comments) instead of web scraping.
+   * Always uses API - never falls back to web scraping.
+   */
+  protected override async fetchArticleContentInternal(
+    url: string,
+    article: RawArticle,
+  ): Promise<string> {
+    const { subreddit, postId } = extractPostInfoFromUrl(url);
+
+    if (!subreddit || !postId) {
+      throw new Error(
+        `Invalid Reddit URL format: ${url}. Expected format: /r/{subreddit}/comments/{postId}/...`,
+      );
+    }
+
+    if (!this.feed?.userId) {
+      throw new Error(
+        "Feed must have a userId to use Reddit API. Reddit requires authenticated API access.",
+      );
+    }
+
+    const postData = await fetchRedditPost(subreddit, postId, this.feed.userId);
+
+    if (!postData) {
+      throw new Error(
+        `Failed to fetch Reddit post ${postId} from r/${subreddit} via API`,
+      );
+    }
+
+    // Build content with comments
+    const content = await buildPostContent(
+      postData,
+      this.getOption("comment_limit", 10) as number,
+      subreddit,
+      this.feed.userId,
+    );
+
+    // Extract header image URL and store it in the article for processContent
+    // This will be used by processContent to add the header image
+    const headerImageUrl = extractHeaderImageUrl(postData);
+    if (headerImageUrl) {
+      (article as RawArticle & { headerImageUrl?: string }).headerImageUrl =
+        headerImageUrl;
+    }
+
+    return content;
+  }
+
+  /**
+   * Extract content from HTML.
+   * Override to skip extraction for Reddit posts.
+   * Content is always fetched via API (buildPostContent) and returns HTML fragments.
+   */
+  protected override async extractContent(
+    html: string,
+    article: RawArticle,
+  ): Promise<string> {
+    // Reddit content is always formatted HTML fragments from buildPostContent (API)
+    // No extraction needed - return as-is
+    return html;
+  }
+
+  /**
+   * Process content with Reddit-specific formatting.
+   */
+  protected override async processContent(
+    html: string,
+    article: RawArticle,
+  ): Promise<string> {
+    const startTime = Date.now();
+    this.logger.debug(
+      {
+        step: "enrichArticles",
+        subStep: "processContent",
+        aggregator: this.id,
+        feedId: this.feed?.id,
+        url: article.url,
+      },
+      "Processing Reddit content",
+    );
+
+    // Get header image URL if stored
+    const headerImageUrl = (article as RawArticle & { headerImageUrl?: string })
+      .headerImageUrl;
+
+    const generateTitleImage = this.feed?.generateTitleImage ?? true;
+    const addSourceFooter = this.feed?.addSourceFooter ?? true;
+
+    // Use standardizeContentFormat with Reddit-specific header image
+    const processed = await standardizeContentFormat(
+      html,
+      article,
+      article.url,
+      generateTitleImage,
+      addSourceFooter,
+      headerImageUrl,
+    );
+
+    const elapsed = Date.now() - startTime;
+    this.logger.debug(
+      {
+        step: "enrichArticles",
+        subStep: "processContent",
+        aggregator: this.id,
+        feedId: this.feed?.id,
+        url: article.url,
+        elapsed,
+      },
+      "Reddit content processed",
+    );
+
+    return processed;
   }
 }

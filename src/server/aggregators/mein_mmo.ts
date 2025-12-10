@@ -6,11 +6,9 @@
 
 import { FullWebsiteAggregator } from "./full_website";
 import type { RawArticle } from "./base/types";
-import { fetchArticleContent } from "./base/fetch";
 import { extractContent } from "./base/extract";
 import { standardizeContentFormat } from "./base/process";
 import { sanitizeHtml } from "./base/utils";
-import { logger } from "../utils/logger";
 import * as cheerio from "cheerio";
 import type { AnyNode } from "domhandler";
 import { ContentFetchError } from "./base/exceptions";
@@ -90,111 +88,267 @@ export class MeinMmoAggregator extends FullWebsiteAggregator {
     },
   };
 
-  override async aggregate(articleLimit?: number): Promise<RawArticle[]> {
-    if (!this.feed) {
-      throw new Error("Feed not initialized");
-    }
-
-    // Get options
+  /**
+   * Override fetchArticleContentInternal to handle multi-page articles.
+   */
+  protected override async fetchArticleContentInternal(
+    url: string,
+    article: RawArticle,
+  ): Promise<string> {
     const traverseMultipage = this.getOption(
       "traverse_multipage",
       false,
     ) as boolean;
 
-    // Call parent aggregate to get base articles
-    const articles = await super.aggregate(articleLimit);
+    if (traverseMultipage) {
+      this.logger.debug(
+        {
+          step: "enrichArticles",
+          subStep: "fetchArticleContent",
+          aggregator: this.id,
+          feedId: this.feed?.id,
+          url,
+        },
+        "Fetching multi-page article",
+      );
+      // fetchAllPages returns combined content divs, not full HTML
+      // Store flag for extractContent to know it's multipage
+      (article as RawArticle & { __isMultiPage?: boolean }).__isMultiPage =
+        true;
+      return await this.fetchAllPages(url);
+    }
 
-    // Process each article with Mein-MMO-specific logic
-    for (const article of articles) {
+    // Use base fetchArticleContentInternal for single-page
+    return await super.fetchArticleContentInternal(url, article);
+  }
+
+  /**
+   * Override extractContent to use Mein-MMO-specific extraction.
+   */
+  protected override async extractContent(
+    html: string,
+    article: RawArticle,
+  ): Promise<string> {
+    const startTime = Date.now();
+    const isMultiPage =
+      (article as RawArticle & { __isMultiPage?: boolean }).__isMultiPage ||
+      false;
+
+    this.logger.debug(
+      {
+        step: "extractContent",
+        subStep: "extractMeinMmo",
+        aggregator: this.id,
+        feedId: this.feed?.id,
+        url: article.url,
+        isMultiPage,
+      },
+      "Extracting Mein-MMO content",
+    );
+
+    // Use Mein-MMO-specific extraction
+    const extracted = await this.extractMeinMmoContent(
+      html,
+      article,
+      isMultiPage,
+    );
+
+    // Use base removeElementsBySelectors for additional cleanup
+    const result = await super.removeElementsBySelectors(extracted, article);
+
+    const elapsed = Date.now() - startTime;
+    this.logger.debug(
+      {
+        step: "extractContent",
+        subStep: "extractMeinMmo",
+        aggregator: this.id,
+        feedId: this.feed?.id,
+        url: article.url,
+        elapsed,
+      },
+      "Mein-MMO content extracted",
+    );
+
+    return result;
+  }
+
+  /**
+   * Override processContent to extract header image URL.
+   */
+  protected override async processContent(
+    html: string,
+    article: RawArticle,
+  ): Promise<string> {
+    const startTime = Date.now();
+    this.logger.debug(
+      {
+        step: "enrichArticles",
+        subStep: "processContent",
+        aggregator: this.id,
+        feedId: this.feed?.id,
+        url: article.url,
+      },
+      "Processing Mein-MMO content",
+    );
+
+    // Get header image URL
+    // Need to fetch original HTML if we used multipage (fetchAllPages returns combined content)
+    const traverseMultipage = this.getOption(
+      "traverse_multipage",
+      false,
+    ) as boolean;
+    let headerImageUrl: string | undefined;
+    if (traverseMultipage) {
+      // For multipage, fetch first page to get header image (use base method to avoid multipage)
       try {
-        // Skip if article already exists (unless force refresh)
-        if (this.isExistingUrl(article.url)) {
-          logger.debug(
-            {
-              url: article.url,
-              title: article.title,
-              aggregator: this.id,
-              step: "skip_existing",
-            },
-            "Skipping existing article (will not fetch content)",
-          );
-          continue;
-        }
-
-        // Fetch article HTML (with multi-page support if enabled)
-        let html: string;
-        let isMultiPage = false;
-        if (traverseMultipage) {
-          html = await this.fetchAllPages(article.url);
-          // fetchAllPages returns combined content divs, so we need to handle extraction differently
-          isMultiPage = true;
-        } else {
-          html = await fetchArticleContent(article.url, {
-            timeout: this.fetchTimeout,
-            waitForSelector: this.waitForSelector,
-          });
-        }
-
-        // Extract and process content with Mein-MMO-specific logic
-        // For multi-page articles, fetchAllPages already returns combined content divs
-        const processed = await this.extractContent(html, article, isMultiPage);
-
-        // Sanitize HTML
-        const sanitized = sanitizeHtml(processed);
-
-        // Standardize format (add header image, source link)
-        const generateTitleImage = this.feed?.generateTitleImage ?? true;
-        const addSourceFooter = this.feed?.addSourceFooter ?? true;
-        const headerImageUrl = this.getHeaderImageUrl(html, article);
-        article.content = await standardizeContentFormat(
-          sanitized,
-          article,
+        const firstPageHtml = await super.fetchArticleContentInternal(
           article.url,
-          generateTitleImage,
-          addSourceFooter,
-          headerImageUrl,
+          article,
         );
+        headerImageUrl = this.getHeaderImageUrl(firstPageHtml, article);
       } catch (error) {
-        logger.error(
-          { error, url: article.url },
-          "Error processing Mein-MMO article",
+        this.logger.debug(
+          {
+            step: "enrichArticles",
+            subStep: "processContent",
+            aggregator: this.id,
+            feedId: this.feed?.id,
+            url: article.url,
+            error,
+          },
+          "Failed to fetch header image URL",
         );
-        // Continue with original content if processing fails
+      }
+    } else {
+      // For single page, we need to refetch to get header image
+      // (html is already extracted content)
+      try {
+        const fullHtml = await super.fetchArticleContentInternal(
+          article.url,
+          article,
+        );
+        headerImageUrl = this.getHeaderImageUrl(fullHtml, article);
+      } catch (error) {
+        this.logger.debug(
+          {
+            step: "enrichArticles",
+            subStep: "processContent",
+            aggregator: this.id,
+            feedId: this.feed?.id,
+            url: article.url,
+            error,
+          },
+          "Failed to fetch header image URL",
+        );
       }
     }
 
-    return articles;
+    // Use base processContent with header image URL
+    const { processContent: processContentUtil } =
+      await import("./base/process");
+    const { sanitizeHtml } = await import("./base/utils");
+
+    // Sanitize HTML
+    const sanitized = sanitizeHtml(html);
+
+    // Standardize format with header image
+    const generateTitleImage = this.feed?.generateTitleImage ?? true;
+    const addSourceFooter = this.feed?.addSourceFooter ?? true;
+    const result = await processContentUtil(
+      sanitized,
+      article,
+      generateTitleImage,
+      addSourceFooter,
+      headerImageUrl,
+    );
+
+    const elapsed = Date.now() - startTime;
+    this.logger.debug(
+      {
+        step: "enrichArticles",
+        subStep: "processContent",
+        aggregator: this.id,
+        feedId: this.feed?.id,
+        url: article.url,
+        elapsed,
+      },
+      "Mein-MMO content processed",
+    );
+
+    return result;
   }
 
   /**
    * Fetch all pages of a multi-page article and combine the content.
    */
   private async fetchAllPages(baseUrl: string): Promise<string> {
-    logger.info({ url: baseUrl }, "Fetching multi-page article");
+    this.logger.info(
+      {
+        step: "enrichArticles",
+        subStep: "fetchAllPages",
+        aggregator: this.id,
+        feedId: this.feed?.id,
+        url: baseUrl,
+      },
+      "Fetching multi-page article",
+    );
 
-    // Fetch first page
-    const firstPageHtml = await fetchArticleContent(baseUrl, {
-      timeout: this.fetchTimeout,
-      waitForSelector: this.waitForSelector,
-    });
+    // Fetch first page using template method flow
+    const firstPageArticle: RawArticle = {
+      title: "",
+      url: baseUrl,
+      published: new Date(),
+    };
+    const firstPageHtml = await this.fetchArticleContentInternal(
+      baseUrl,
+      firstPageArticle,
+    );
 
     // Extract page numbers from pagination
     const pageNumbers = this.extractPageNumbers(firstPageHtml);
 
     if (pageNumbers.size <= 1) {
-      logger.info({ url: baseUrl }, "Single page article detected");
+      this.logger.info(
+        {
+          step: "enrichArticles",
+          subStep: "fetchAllPages",
+          aggregator: this.id,
+          feedId: this.feed?.id,
+          url: baseUrl,
+        },
+        "Single page article detected",
+      );
       return firstPageHtml;
     }
 
     const maxPage = Math.max(...Array.from(pageNumbers));
-    logger.info({ url: baseUrl, maxPage }, "Multi-page article detected");
+    this.logger.info(
+      {
+        step: "enrichArticles",
+        subStep: "fetchAllPages",
+        aggregator: this.id,
+        feedId: this.feed?.id,
+        url: baseUrl,
+        maxPage,
+      },
+      "Multi-page article detected",
+    );
 
     // Extract content from first page
     const $first = cheerio.load(firstPageHtml);
     const contentDiv = $first("div.gp-entry-content").first();
 
     if (contentDiv.length === 0) {
-      logger.warn({ url: baseUrl }, "Could not find content div on first page");
+      this.logger.warn(
+        {
+          step: "enrichArticles",
+          subStep: "fetchAllPages",
+          aggregator: this.id,
+          feedId: this.feed?.id,
+          url: baseUrl,
+        },
+        "Could not find content div on first page",
+      );
       return firstPageHtml;
     }
 
@@ -205,32 +359,85 @@ export class MeinMmoAggregator extends FullWebsiteAggregator {
     const baseUrlClean = baseUrl.replace(/\/$/, "");
     for (let pageNum = 2; pageNum <= maxPage; pageNum++) {
       const pageUrl = `${baseUrlClean}/${pageNum}/`;
-      logger.info({ url: pageUrl, pageNum, maxPage }, "Fetching page");
+      this.logger.info(
+        {
+          step: "enrichArticles",
+          subStep: "fetchAllPages",
+          aggregator: this.id,
+          feedId: this.feed?.id,
+          url: pageUrl,
+          pageNum,
+          maxPage,
+        },
+        "Fetching page",
+      );
 
       try {
-        const pageHtml = await fetchArticleContent(pageUrl, {
-          timeout: this.fetchTimeout,
-          waitForSelector: this.waitForSelector,
-        });
+        // Fetch page using template method flow
+        const pageArticle: RawArticle = {
+          title: "",
+          url: pageUrl,
+          published: new Date(),
+        };
+        const pageHtml = await this.fetchArticleContentInternal(
+          pageUrl,
+          pageArticle,
+        );
 
         const $page = cheerio.load(pageHtml);
         const pageContent = $page("div.gp-entry-content").first();
 
         if (pageContent.length > 0) {
           allContentParts.push(pageContent.html() || "");
-          logger.info({ pageNum, maxPage }, "Page fetched successfully");
+          this.logger.info(
+            {
+              step: "enrichArticles",
+              subStep: "fetchAllPages",
+              aggregator: this.id,
+              feedId: this.feed?.id,
+              pageNum,
+              maxPage,
+            },
+            "Page fetched successfully",
+          );
         } else {
-          logger.warn(
-            { pageNum, maxPage },
+          this.logger.warn(
+            {
+              step: "enrichArticles",
+              subStep: "fetchAllPages",
+              aggregator: this.id,
+              feedId: this.feed?.id,
+              pageNum,
+              maxPage,
+            },
             "Could not find content div on page",
           );
         }
       } catch (error) {
         if (error instanceof ContentFetchError) {
-          logger.warn({ error, pageNum, maxPage }, "Failed to fetch page");
+          this.logger.warn(
+            {
+              step: "enrichArticles",
+              subStep: "fetchAllPages",
+              aggregator: this.id,
+              feedId: this.feed?.id,
+              error: error instanceof Error ? error : new Error(String(error)),
+              pageNum,
+              maxPage,
+            },
+            "Failed to fetch page",
+          );
         } else {
-          logger.error(
-            { error, pageNum, maxPage },
+          this.logger.error(
+            {
+              step: "enrichArticles",
+              subStep: "fetchAllPages",
+              aggregator: this.id,
+              feedId: this.feed?.id,
+              error: error instanceof Error ? error : new Error(String(error)),
+              pageNum,
+              maxPage,
+            },
             "Unexpected error fetching page",
           );
         }
@@ -240,8 +447,12 @@ export class MeinMmoAggregator extends FullWebsiteAggregator {
 
     // Combine all content
     const combinedContent = allContentParts.join("\n\n");
-    logger.info(
+    this.logger.info(
       {
+        step: "enrichArticles",
+        subStep: "fetchAllPages",
+        aggregator: this.id,
+        feedId: this.feed?.id,
         url: baseUrl,
         pageCount: allContentParts.length,
         contentLength: combinedContent.length,
@@ -278,7 +489,16 @@ export class MeinMmoAggregator extends FullWebsiteAggregator {
       const text = $link.text().trim();
       if (/^\d+$/.test(text)) {
         pageNumbers.add(parseInt(text, 10));
-        logger.debug({ pageNumber: text }, "Found page number from link text");
+        this.logger.debug(
+          {
+            step: "enrichArticles",
+            subStep: "fetchAllPages",
+            aggregator: this.id,
+            feedId: this.feed?.id,
+            pageNumber: text,
+          },
+          "Found page number from link text",
+        );
       }
 
       // Also try to extract from URL
@@ -288,8 +508,15 @@ export class MeinMmoAggregator extends FullWebsiteAggregator {
         const match = href.match(/\/(\d+)\/?$/);
         if (match) {
           pageNumbers.add(parseInt(match[1], 10));
-          logger.debug(
-            { pageNumber: match[1], href },
+          this.logger.debug(
+            {
+              step: "enrichArticles",
+              subStep: "fetchAllPages",
+              aggregator: this.id,
+              feedId: this.feed?.id,
+              pageNumber: match[1],
+              href,
+            },
             "Found page number from URL",
           );
         }
@@ -302,15 +529,27 @@ export class MeinMmoAggregator extends FullWebsiteAggregator {
       const text = $span.text().trim();
       if (/^\d+$/.test(text)) {
         pageNumbers.add(parseInt(text, 10));
-        logger.debug(
-          { pageNumber: text },
+        this.logger.debug(
+          {
+            step: "enrichArticles",
+            subStep: "fetchAllPages",
+            aggregator: this.id,
+            feedId: this.feed?.id,
+            pageNumber: text,
+          },
           "Found current page number from span",
         );
       }
     });
 
-    logger.info(
-      { pageNumbers: Array.from(pageNumbers).sort((a, b) => a - b) },
+    this.logger.info(
+      {
+        step: "enrichArticles",
+        subStep: "fetchAllPages",
+        aggregator: this.id,
+        feedId: this.feed?.id,
+        pageNumbers: Array.from(pageNumbers).sort((a, b) => a - b),
+      },
       "Extracted page numbers",
     );
     return pageNumbers;
@@ -330,7 +569,16 @@ export class MeinMmoAggregator extends FullWebsiteAggregator {
     if (headerImg.length > 0) {
       const src = headerImg.attr("src");
       if (src) {
-        logger.info({ url: src }, "Found header image (16x9)");
+        this.logger.info(
+          {
+            step: "enrichArticles",
+            subStep: "processContent",
+            aggregator: this.id,
+            feedId: this.feed?.id,
+            url: src,
+          },
+          "Found header image (16x9)",
+        );
         return src;
       }
     }
@@ -342,7 +590,16 @@ export class MeinMmoAggregator extends FullWebsiteAggregator {
       if (headerImg.length > 0) {
         const src = headerImg.attr("src");
         if (src) {
-          logger.info({ url: src }, "Found header image");
+          this.logger.info(
+            {
+              step: "enrichArticles",
+              subStep: "processContent",
+              aggregator: this.id,
+              feedId: this.feed?.id,
+              url: src,
+            },
+            "Found header image",
+          );
           return src;
         }
       }
@@ -353,8 +610,9 @@ export class MeinMmoAggregator extends FullWebsiteAggregator {
 
   /**
    * Extract and clean article content from a Mein-MMO page.
+   * This is the Mein-MMO-specific extraction logic.
    */
-  private async extractContent(
+  private async extractMeinMmoContent(
     html: string,
     article: RawArticle,
     isMultiPage: boolean = false,
@@ -381,7 +639,16 @@ export class MeinMmoAggregator extends FullWebsiteAggregator {
     // Handle multi-page articles: find ALL content divs, not just the first one
     const contentDivs = $("div.gp-entry-content");
     if (contentDivs.length === 0) {
-      logger.warn({ url: article.url }, "Could not find article content");
+      this.logger.warn(
+        {
+          step: "extractContent",
+          subStep: "extractMeinMmo",
+          aggregator: this.id,
+          feedId: this.feed?.id,
+          url: article.url,
+        },
+        "Could not find article content",
+      );
       // Fallback: return the HTML as-is
       return isMultiPage ? html : $.html();
     }
@@ -389,8 +656,14 @@ export class MeinMmoAggregator extends FullWebsiteAggregator {
     // If multi-page, we'll have multiple divs - wrap them in a container
     let content: cheerio.Cheerio<AnyNode>;
     if (contentDivs.length > 1) {
-      logger.info(
-        { pageCount: contentDivs.length },
+      this.logger.info(
+        {
+          step: "extractContent",
+          subStep: "extractMeinMmo",
+          aggregator: this.id,
+          feedId: this.feed?.id,
+          pageCount: contentDivs.length,
+        },
         "Processing multi-page article",
       );
       // Create a wrapper div to contain all pages
@@ -452,7 +725,16 @@ export class MeinMmoAggregator extends FullWebsiteAggregator {
         newP.append(newLink);
 
         $figure.replaceWith(newP);
-        logger.debug({ url: cleanUrl }, "Converted YouTube embed to link");
+        this.logger.debug(
+          {
+            step: "extractContent",
+            subStep: "extractMeinMmo",
+            aggregator: this.id,
+            feedId: this.feed?.id,
+            url: cleanUrl,
+          },
+          "Converted YouTube embed to link",
+        );
       } else if (twitterLink) {
         // Extract tweet URL (clean up tracking parameters)
         let cleanUrl = twitterLink;
@@ -481,7 +763,16 @@ export class MeinMmoAggregator extends FullWebsiteAggregator {
         }
 
         $figure.replaceWith(newP);
-        logger.debug({ url: cleanUrl }, "Converted Twitter/X embed to link");
+        this.logger.debug(
+          {
+            step: "extractContent",
+            subStep: "extractMeinMmo",
+            aggregator: this.id,
+            feedId: this.feed?.id,
+            url: cleanUrl,
+          },
+          "Converted Twitter/X embed to link",
+        );
       }
     });
 
@@ -523,7 +814,16 @@ export class MeinMmoAggregator extends FullWebsiteAggregator {
           newP.append(newLink);
 
           $figure.replaceWith(newP);
-          logger.debug({ url: cleanUrl }, "Converted Reddit embed to link");
+          this.logger.debug(
+            {
+              step: "extractContent",
+              subStep: "extractMeinMmo",
+              aggregator: this.id,
+              feedId: this.feed?.id,
+              url: cleanUrl,
+            },
+            "Converted Reddit embed to link",
+          );
         }
       }
     });

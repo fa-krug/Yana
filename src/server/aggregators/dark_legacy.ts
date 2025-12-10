@@ -6,10 +6,8 @@
 
 import { BaseAggregator } from "./base/aggregator";
 import type { RawArticle } from "./base/types";
-import { fetchFeed, fetchArticleContent } from "./base/fetch";
-import { standardizeContentFormat } from "./base/process";
-import { sanitizeHtml } from "./base/utils";
-import { logger } from "../utils/logger";
+import { fetchFeed } from "./base/fetch";
+import Parser from "rss-parser";
 import * as cheerio from "cheerio";
 
 export class DarkLegacyAggregator extends BaseAggregator {
@@ -28,16 +26,22 @@ export class DarkLegacyAggregator extends BaseAggregator {
     "noscript",
   ];
 
-  async aggregate(articleLimit?: number): Promise<RawArticle[]> {
-    const aggregateStart = Date.now();
-    logger.info(
+  /**
+   * Fetch RSS feed data.
+   */
+  protected override async fetchSourceData(
+    limit?: number,
+  ): Promise<Parser.Output<any>> {
+    const startTime = Date.now();
+    this.logger.info(
       {
+        step: "fetchSourceData",
+        subStep: "start",
         aggregator: this.id,
         feedId: this.feed?.id,
-        articleLimit,
-        step: "aggregate_start",
+        limit,
       },
-      `Starting aggregation${articleLimit ? ` (limit: ${articleLimit})` : ""}`,
+      "Fetching RSS feed",
     );
 
     if (!this.feed) {
@@ -45,239 +49,63 @@ export class DarkLegacyAggregator extends BaseAggregator {
     }
 
     const feedUrl = this.feed.identifier;
-    logger.info(
-      {
-        feedUrl,
-        aggregator: this.id,
-        step: "fetch_feed_start",
-      },
-      "Fetching RSS feed",
-    );
-
-    // Fetch RSS feed
-    const feedFetchStart = Date.now();
     const feed = await fetchFeed(feedUrl);
-    const feedFetchElapsed = Date.now() - feedFetchStart;
 
-    logger.info(
+    const elapsed = Date.now() - startTime;
+    this.logger.info(
       {
-        feedUrl,
+        step: "fetchSourceData",
+        subStep: "complete",
+        aggregator: this.id,
+        feedId: this.feed?.id,
         itemCount: feed.items?.length || 0,
-        elapsed: feedFetchElapsed,
-        aggregator: this.id,
-        step: "fetch_feed_complete",
+        elapsed,
       },
-      "RSS feed fetched, processing items",
+      "RSS feed fetched",
     );
 
-    const articles: RawArticle[] = [];
-    let itemsToProcess = feed.items || [];
+    return feed;
+  }
 
-    // Apply article limit if specified
-    if (articleLimit !== undefined && articleLimit > 0) {
-      itemsToProcess = itemsToProcess.slice(0, articleLimit);
-      logger.info(
-        {
-          originalCount: feed.items?.length || 0,
-          limitedCount: itemsToProcess.length,
-          articleLimit,
-          aggregator: this.id,
-          step: "apply_limit",
-        },
-        `Limited to first ${articleLimit} item(s)`,
-      );
-    }
-
-    logger.info(
+  /**
+   * Parse RSS feed items to RawArticle[].
+   */
+  protected override async parseToRawArticles(
+    sourceData: unknown,
+  ): Promise<RawArticle[]> {
+    const startTime = Date.now();
+    this.logger.info(
       {
-        itemCount: itemsToProcess.length,
+        step: "parseToRawArticles",
+        subStep: "start",
         aggregator: this.id,
-        step: "process_items_start",
+        feedId: this.feed?.id,
       },
-      `Processing ${itemsToProcess.length} feed items`,
+      "Parsing RSS feed items",
     );
 
-    for (let i = 0; i < itemsToProcess.length; i++) {
-      const item = itemsToProcess[i];
-      const itemStart = Date.now();
+    const feed = sourceData as Parser.Output<any>;
+    const items = feed.items || [];
 
-      try {
-        logger.debug(
-          {
-            index: i + 1,
-            total: itemsToProcess.length,
-            title: item.title,
-            url: item.link,
-            aggregator: this.id,
-            step: "process_item_start",
-          },
-          `Processing item ${i + 1}/${itemsToProcess.length}`,
-        );
+    const articles: RawArticle[] = items.map((item) => ({
+      title: item.title || "",
+      url: item.link || "",
+      published: item.pubDate ? new Date(item.pubDate) : new Date(),
+      summary: item.contentSnippet || item.content || "",
+      author: item.creator || item.author || undefined,
+    }));
 
-        const article: RawArticle = {
-          title: item.title || "",
-          url: item.link || "",
-          published: item.pubDate ? new Date(item.pubDate) : new Date(),
-          summary: item.contentSnippet || item.content || "",
-          author: item.creator || item.author || undefined,
-        };
-
-        // Skip if should skip
-        if (this.shouldSkipArticle(article)) {
-          logger.debug(
-            {
-              index: i + 1,
-              title: article.title,
-              aggregator: this.id,
-              step: "item_skipped",
-            },
-            "Item skipped by shouldSkipArticle",
-          );
-          continue;
-        }
-
-        // Check if article already exists - skip fetching content if it does (unless force refresh)
-        if (this.isExistingUrl(article.url)) {
-          logger.debug(
-            {
-              index: i + 1,
-              url: article.url,
-              title: article.title,
-              aggregator: this.id,
-              step: "skip_existing",
-            },
-            "Skipping existing article (will not fetch content)",
-          );
-          continue;
-        }
-
-        // Fetch full content
-        try {
-          logger.debug(
-            {
-              index: i + 1,
-              url: article.url,
-              aggregator: this.id,
-              step: "fetch_content_start",
-            },
-            "Fetching article content",
-          );
-
-          const contentFetchStart = Date.now();
-          const html = await fetchArticleContent(article.url, {
-            timeout: this.fetchTimeout,
-            waitForSelector: this.waitForSelector,
-          });
-          const contentFetchElapsed = Date.now() - contentFetchStart;
-
-          logger.debug(
-            {
-              index: i + 1,
-              url: article.url,
-              elapsed: contentFetchElapsed,
-              aggregator: this.id,
-              step: "fetch_content_complete",
-            },
-            "Article content fetched",
-          );
-
-          // Extract content using custom logic
-          const extractStart = Date.now();
-          const extractedContent = this.extractContent(html, article.url);
-          const extractElapsed = Date.now() - extractStart;
-
-          logger.debug(
-            {
-              index: i + 1,
-              url: article.url,
-              elapsed: extractElapsed,
-              aggregator: this.id,
-              step: "extract_complete",
-            },
-            "Content extracted",
-          );
-
-          // Sanitize HTML (remove scripts, rename attributes)
-          const sanitizedContent = sanitizeHtml(extractedContent);
-
-          // Process content (standardize format with images and source link)
-          const processStart = Date.now();
-          const generateTitleImage = this.feed?.generateTitleImage ?? true;
-          const addSourceFooter = this.feed?.addSourceFooter ?? true;
-
-          const processedContent = await standardizeContentFormat(
-            sanitizedContent,
-            article,
-            article.url,
-            generateTitleImage,
-            addSourceFooter,
-          );
-
-          article.content = processedContent;
-          const processElapsed = Date.now() - processStart;
-
-          logger.debug(
-            {
-              index: i + 1,
-              url: article.url,
-              elapsed: processElapsed,
-              aggregator: this.id,
-              step: "process_complete",
-            },
-            "Article processed",
-          );
-        } catch (error) {
-          logger.warn(
-            {
-              error: error instanceof Error ? error : new Error(String(error)),
-              url: article.url,
-              index: i + 1,
-              aggregator: this.id,
-              step: "fetch_content_failed",
-            },
-            "Failed to fetch article content, using summary",
-          );
-          // Continue with summary if available
-          article.content = article.summary || "";
-        }
-
-        const itemElapsed = Date.now() - itemStart;
-        logger.debug(
-          {
-            index: i + 1,
-            title: article.title,
-            elapsed: itemElapsed,
-            aggregator: this.id,
-            step: "item_complete",
-          },
-          `Item ${i + 1} processed`,
-        );
-
-        articles.push(article);
-      } catch (error) {
-        logger.error(
-          {
-            error,
-            item,
-            index: i + 1,
-            aggregator: this.id,
-            step: "item_error",
-          },
-          "Error processing feed item",
-        );
-        continue;
-      }
-    }
-
-    const totalElapsed = Date.now() - aggregateStart;
-    logger.info(
+    const elapsed = Date.now() - startTime;
+    this.logger.info(
       {
+        step: "parseToRawArticles",
+        subStep: "complete",
         aggregator: this.id,
+        feedId: this.feed?.id,
         articleCount: articles.length,
-        totalElapsed,
-        step: "aggregate_complete",
+        elapsed,
       },
-      `Aggregation complete: ${articles.length} articles`,
+      "Parsed RSS feed items",
     );
 
     return articles;
@@ -285,23 +113,40 @@ export class DarkLegacyAggregator extends BaseAggregator {
 
   /**
    * Extract comic images from #gallery element.
-   * This matches the Python implementation's extract_content method.
    */
-  private extractContent(html: string, url: string): string {
+  protected override async extractContent(
+    html: string,
+    article: RawArticle,
+  ): Promise<string> {
+    const startTime = Date.now();
+    this.logger.debug(
+      {
+        step: "extractContent",
+        subStep: "extractGallery",
+        aggregator: this.id,
+        feedId: this.feed?.id,
+        url: article.url,
+      },
+      "Extracting comic images from #gallery element",
+    );
+
     try {
       const $ = cheerio.load(html);
       const gallery = $("#gallery");
 
       if (gallery.length === 0) {
-        logger.warn(
+        this.logger.warn(
           {
-            url,
+            step: "extractContent",
+            subStep: "extractGallery",
             aggregator: this.id,
-            step: "gallery_not_found",
+            feedId: this.feed?.id,
+            url: article.url,
           },
-          `Could not find #gallery element in ${url}`,
+          `Could not find #gallery element in ${article.url}`,
         );
-        return html; // Fallback to original HTML
+        // Fallback to base extraction
+        return await super.extractContent(html, article);
       }
 
       // Create a new div to hold the extracted images
@@ -312,11 +157,13 @@ export class DarkLegacyAggregator extends BaseAggregator {
 
       if (images.length === 0) {
         // If no images found, use the gallery element itself
-        logger.debug(
+        this.logger.debug(
           {
-            url,
+            step: "extractContent",
+            subStep: "extractGallery",
             aggregator: this.id,
-            step: "no_images_found",
+            feedId: this.feed?.id,
+            url: article.url,
           },
           "No images found in gallery, using gallery element",
         );
@@ -346,29 +193,47 @@ export class DarkLegacyAggregator extends BaseAggregator {
       const result = contentDiv.html() || "";
       if (!result) {
         // Fallback to gallery if no images were successfully extracted
-        logger.warn(
+        this.logger.warn(
           {
-            url,
+            step: "extractContent",
+            subStep: "extractGallery",
             aggregator: this.id,
-            step: "extraction_empty",
+            feedId: this.feed?.id,
+            url: article.url,
           },
           "Extraction resulted in empty content, using gallery element",
         );
         return gallery.html() || "";
       }
 
+      const elapsed = Date.now() - startTime;
+      this.logger.debug(
+        {
+          step: "extractContent",
+          subStep: "extractGallery",
+          aggregator: this.id,
+          feedId: this.feed?.id,
+          url: article.url,
+          elapsed,
+        },
+        "Comic images extracted from gallery",
+      );
+
       return result;
     } catch (error) {
-      logger.error(
+      this.logger.error(
         {
-          error: error instanceof Error ? error : new Error(String(error)),
-          url,
+          step: "extractContent",
+          subStep: "extractGallery",
           aggregator: this.id,
-          step: "extraction_failed",
+          feedId: this.feed?.id,
+          url: article.url,
+          error: error instanceof Error ? error : new Error(String(error)),
         },
-        `Extraction failed for ${url}`,
+        `Extraction failed for ${article.url}, using base extraction`,
       );
-      return html; // Fallback to original HTML
+      // Fallback to base extraction
+      return await super.extractContent(html, article);
     }
   }
 }
