@@ -21,24 +21,17 @@ import {
 } from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { RouterModule, ActivatedRoute } from "@angular/router";
-import { FormControl, ReactiveFormsModule } from "@angular/forms";
+import { FormControl } from "@angular/forms";
 
 // RxJS
 import { debounceTime, distinctUntilChanged, Subject, takeUntil } from "rxjs";
 
 // Angular Material
-import { MatCardModule } from "@angular/material/card";
 import { MatButtonModule } from "@angular/material/button";
 import { MatIconModule } from "@angular/material/icon";
-import { MatFormFieldModule } from "@angular/material/form-field";
-import { MatInputModule } from "@angular/material/input";
-import { MatSelectModule } from "@angular/material/select";
-import { MatChipsModule } from "@angular/material/chips";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatPaginatorModule, PageEvent } from "@angular/material/paginator";
-import { MatMenuModule } from "@angular/material/menu";
 import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
-import { MatTooltipModule } from "@angular/material/tooltip";
 
 // Application
 import {
@@ -47,8 +40,9 @@ import {
 } from "../../core/services/article.service";
 import { FeedService } from "../../core/services/feed.service";
 import { GroupService } from "../../core/services/group.service";
-import { Article, Group } from "../../core/models";
-import { getProxiedImageUrl } from "../../core/utils/image-proxy.util";
+import { Article } from "../../core/models";
+import { ArticleFiltersComponent } from "./components/article-filters.component";
+import { ArticleCardComponent } from "../../shared/components/article-card.component";
 
 @Component({
   selector: "app-article-list",
@@ -57,19 +51,13 @@ import { getProxiedImageUrl } from "../../core/utils/image-proxy.util";
   imports: [
     CommonModule,
     RouterModule,
-    ReactiveFormsModule,
-    MatCardModule,
     MatButtonModule,
     MatIconModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatSelectModule,
-    MatChipsModule,
     MatProgressSpinnerModule,
     MatPaginatorModule,
-    MatMenuModule,
     MatSnackBarModule,
-    MatTooltipModule,
+    ArticleFiltersComponent,
+    ArticleCardComponent,
   ],
   template: `
     <div class="article-list-container container-lg animate-fade-in">
@@ -77,42 +65,12 @@ import { getProxiedImageUrl } from "../../core/utils/image-proxy.util";
         <h1>Articles</h1>
       </div>
 
-      <div class="filters">
-        <mat-form-field appearance="outline" class="search-field">
-          <mat-label>Search articles</mat-label>
-          <input matInput [formControl]="searchControl" />
-          <mat-icon matPrefix>search</mat-icon>
-        </mat-form-field>
-
-        <mat-form-field appearance="outline" class="filter-field">
-          <mat-label>Feed</mat-label>
-          <mat-select [formControl]="feedControl">
-            <mat-option [value]="null">All Feeds</mat-option>
-            @for (feed of feedService.feeds(); track feed.id) {
-              <mat-option [value]="feed.id">{{ feed.name }}</mat-option>
-            }
-          </mat-select>
-        </mat-form-field>
-
-        <mat-form-field appearance="outline" class="filter-field">
-          <mat-label>Group</mat-label>
-          <mat-select [formControl]="groupControl">
-            <mat-option [value]="null">All Groups</mat-option>
-            @for (group of groupService.groups(); track group.id) {
-              <mat-option [value]="group.id">{{ group.name }}</mat-option>
-            }
-          </mat-select>
-        </mat-form-field>
-
-        <mat-form-field appearance="outline" class="filter-field">
-          <mat-label>Read State</mat-label>
-          <mat-select [formControl]="readStateControl">
-            <mat-option [value]="null">All</mat-option>
-            <mat-option value="unread">Unread</mat-option>
-            <mat-option value="read">Read</mat-option>
-          </mat-select>
-        </mat-form-field>
-      </div>
+      <app-article-filters
+        [searchControl]="searchControl"
+        [feedControl]="feedControl"
+        [groupControl]="groupControl"
+        [readStateControl]="readStateControl"
+      />
 
       @if (articleService.error()) {
         <div class="state-center error">
@@ -142,105 +100,12 @@ import { getProxiedImageUrl } from "../../core/utils/image-proxy.util";
         }
         <div class="article-grid">
           @for (article of articleService.articles(); track article.id) {
-            <mat-card
-              class="article-card card-elevated"
-              [routerLink]="['/articles', article.id]"
-            >
-              <mat-card-header>
-                <mat-card-title>{{
-                  article.title || article.name
-                }}</mat-card-title>
-                <mat-card-subtitle>
-                  <div class="article-meta">
-                    <span class="article-date">
-                      <mat-icon>schedule</mat-icon>
-                      {{ article.published | date: "short" }}
-                    </span>
-                    @if (article.author) {
-                      <span class="article-author">
-                        <mat-icon>person</mat-icon>
-                        {{ article.author }}
-                      </span>
-                    }
-                  </div>
-                </mat-card-subtitle>
-              </mat-card-header>
-              <mat-card-content>
-                @if (article.thumbnailUrl) {
-                  <img
-                    [src]="getProxiedImageUrl(article.thumbnailUrl)"
-                    [alt]="article.title || article.name"
-                    class="article-thumbnail"
-                    loading="lazy"
-                  />
-                }
-                <div class="article-tags">
-                  <mat-chip-set>
-                    @if (article.read || article.isRead) {
-                      <mat-chip class="status-read">Read</mat-chip>
-                    }
-                    @if (article.saved || article.isSaved) {
-                      <mat-chip class="status-saved">Saved</mat-chip>
-                    }
-                    @if (article.isVideo) {
-                      <mat-chip>Video</mat-chip>
-                    }
-                    @if (article.isPodcast) {
-                      <mat-chip>Podcast</mat-chip>
-                    }
-                    @if (article.isReddit) {
-                      <mat-chip>Reddit</mat-chip>
-                    }
-                  </mat-chip-set>
-                </div>
-              </mat-card-content>
-              <mat-card-actions>
-                <button
-                  mat-button
-                  [color]="article.read || article.isRead ? 'primary' : ''"
-                  (click)="toggleRead($event, article)"
-                  [matTooltip]="
-                    article.read || article.isRead
-                      ? 'Mark as unread'
-                      : 'Mark as read'
-                  "
-                >
-                  <mat-icon>{{
-                    article.read || article.isRead
-                      ? "check_circle"
-                      : "radio_button_unchecked"
-                  }}</mat-icon>
-                  {{ article.read || article.isRead ? "Read" : "Unread" }}
-                </button>
-                <button
-                  mat-button
-                  [color]="article.saved || article.isSaved ? 'accent' : ''"
-                  (click)="toggleSaved($event, article)"
-                  [matTooltip]="
-                    article.saved || article.isSaved ? 'Unsave' : 'Save'
-                  "
-                >
-                  <mat-icon>{{
-                    article.saved || article.isSaved
-                      ? "bookmark"
-                      : "bookmark_border"
-                  }}</mat-icon>
-                  {{ article.saved || article.isSaved ? "Saved" : "Save" }}
-                </button>
-                <div class="spacer"></div>
-                @if (article.link) {
-                  <a
-                    mat-icon-button
-                    [href]="article.link"
-                    target="_blank"
-                    (click)="$event.stopPropagation()"
-                    matTooltip="Open original"
-                  >
-                    <mat-icon>open_in_new</mat-icon>
-                  </a>
-                }
-              </mat-card-actions>
-            </mat-card>
+            <app-article-card
+              [article]="article"
+              [articleRoute]="['/articles', article.id.toString()]"
+              (toggleRead)="toggleRead($event.event, $event.article)"
+              (toggleSaved)="toggleSaved($event.event, $event.article)"
+            />
           }
         </div>
 
@@ -276,100 +141,11 @@ import { getProxiedImageUrl } from "../../core/utils/image-proxy.util";
         font-weight: 500;
       }
 
-      .filters {
-        display: flex;
-        gap: 16px;
-        margin-bottom: 24px;
-        flex-wrap: wrap;
-      }
-
-      .search-field {
-        flex: 1;
-        min-width: 200px;
-      }
-
-      .filter-field {
-        min-width: 150px;
-      }
-
       .article-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
         gap: 16px;
         margin-bottom: 24px;
-      }
-
-      .article-card {
-        cursor: pointer;
-        transition:
-          transform 0.2s ease,
-          box-shadow 0.2s ease;
-      }
-
-      .article-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
-      }
-
-      .article-meta {
-        display: flex;
-        gap: 16px;
-        align-items: center;
-        color: rgba(0, 0, 0, 0.6);
-        font-size: 0.875rem;
-        margin-top: 8px;
-      }
-
-      .article-meta span {
-        display: flex;
-        align-items: center;
-        gap: 4px;
-      }
-
-      .article-meta mat-icon {
-        font-size: 16px;
-        width: 16px;
-        height: 16px;
-      }
-
-      .article-thumbnail {
-        width: 100%;
-        height: auto;
-        max-height: 200px;
-        object-fit: cover;
-        border-radius: 4px;
-        margin-bottom: 12px;
-      }
-
-      .article-tags {
-        margin-top: 12px;
-      }
-
-      .status-read {
-        background-color: #1976d2 !important;
-        color: white !important;
-      }
-
-      :host-context(.dark-theme) {
-        .status-read {
-          background-color: #2196f3 !important;
-          color: #000000 !important;
-        }
-      }
-
-      .status-saved {
-        background-color: #ff6d00 !important;
-        color: white !important;
-      }
-
-      mat-card-actions {
-        display: flex;
-        align-items: center;
-        padding: 8px 16px;
-      }
-
-      .spacer {
-        flex: 1;
       }
 
       .state-center {
@@ -418,24 +194,9 @@ import { getProxiedImageUrl } from "../../core/utils/image-proxy.util";
           font-size: 1.5rem;
         }
 
-        .filters {
-          flex-direction: column;
-          padding: 16px;
-        }
-
-        .search-field,
-        .filter-field {
-          width: 100%;
-        }
-
         .article-grid {
           grid-template-columns: 1fr;
           gap: 0;
-        }
-
-        .article-card {
-          border-radius: 0;
-          margin: 0;
         }
       }
     `,
@@ -448,7 +209,7 @@ export class ArticleListComponent implements OnInit, OnDestroy {
   route = inject(ActivatedRoute);
   snackBar = inject(MatSnackBar);
 
-  searchControl = new FormControl("");
+  searchControl = new FormControl<string | null>("");
   feedControl = new FormControl<number | null>(null);
   groupControl = new FormControl<number | null>(null);
   readStateControl = new FormControl<"read" | "unread" | null>(null);
@@ -629,10 +390,7 @@ export class ArticleListComponent implements OnInit, OnDestroy {
     });
   }
 
-  refresh() {
+  protected refresh() {
     this.applyFilters();
   }
-
-  // Expose utility function to template
-  getProxiedImageUrl = getProxiedImageUrl;
 }

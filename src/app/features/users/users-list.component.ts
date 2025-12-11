@@ -49,6 +49,10 @@ import {
 import { UserEditDialogComponent } from "./user-edit-dialog.component";
 import { UserCreateDialogComponent } from "./user-create-dialog.component";
 import { AdminChangePasswordDialogComponent } from "./admin-change-password-dialog.component";
+import {
+  ConfirmDialogComponent,
+  ConfirmDialogData,
+} from "../../shared/components/confirm-dialog.component";
 
 @Component({
   selector: "app-users-list",
@@ -77,8 +81,12 @@ import { AdminChangePasswordDialogComponent } from "./admin-change-password-dial
     <div class="users-list-container container-lg animate-fade-in">
       <div class="header">
         <h1>Users</h1>
-        <button mat-raised-button color="primary" (click)="openCreateDialog()">
-          <mat-icon>add</mat-icon>
+        <button
+          mat-raised-button
+          color="primary"
+          (click)="openCreateDialog()"
+          class="create-button"
+        >
           Create User
         </button>
       </div>
@@ -168,6 +176,14 @@ import { AdminChangePasswordDialogComponent } from "./admin-change-password-dial
                     <mat-icon>lock</mat-icon>
                     <span>Change Password</span>
                   </button>
+                  <button
+                    mat-menu-item
+                    (click)="openDeleteDialog(user)"
+                    class="delete-action"
+                  >
+                    <mat-icon>delete</mat-icon>
+                    <span>Delete</span>
+                  </button>
                 </mat-menu>
               </td>
             </ng-container>
@@ -201,13 +217,19 @@ import { AdminChangePasswordDialogComponent } from "./admin-change-password-dial
 
       .header {
         display: flex;
-        justify-content: space-between;
-        align-items: center;
+        flex-direction: column;
+        gap: 16px;
         margin-bottom: 24px;
       }
 
       .header h1 {
         margin: 0;
+      }
+
+      .create-button {
+        width: 100%;
+        padding: 12px 16px;
+        box-sizing: border-box;
       }
 
       .filters {
@@ -281,6 +303,24 @@ import { AdminChangePasswordDialogComponent } from "./admin-change-password-dial
         .filter-field {
           width: 100%;
         }
+      }
+
+      .delete-action {
+        color: #f44336 !important;
+      }
+
+      .delete-action:hover {
+        background: rgba(244, 67, 54, 0.08) !important;
+      }
+
+      /* Ensure the inner menu text inherits the red color */
+      .delete-action .mat-mdc-menu-item-text {
+        color: inherit !important;
+      }
+
+      /* Ensure the icon inherits the red color too */
+      .delete-action mat-icon {
+        color: inherit !important;
       }
     `,
   ],
@@ -375,6 +415,13 @@ export class UsersListComponent implements OnInit, OnDestroy {
 
     dialogRef.afterClosed().subscribe((result) => {
       if (result) {
+        // If user was deleted, refresh the list
+        if (result === "deleted") {
+          this.snackBar.open("User deleted successfully", "Close", {
+            duration: 3000,
+            panelClass: ["success-snackbar"],
+          });
+        }
         this.loadUsers();
       }
     });
@@ -393,6 +440,46 @@ export class UsersListComponent implements OnInit, OnDestroy {
           panelClass: ["success-snackbar"],
         });
       }
+    });
+  }
+
+  openDeleteDialog(user: User): void {
+    const dialogData: ConfirmDialogData = {
+      title: "Delete User",
+      message: `Are you sure you want to delete user "${user.username}"? This action cannot be undone.`,
+      confirmText: "Delete",
+      cancelText: "Cancel",
+      confirmColor: "warn",
+    };
+
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      width: "500px",
+      data: dialogData,
+    });
+
+    dialogRef.afterClosed().subscribe((confirmed) => {
+      if (confirmed) {
+        this.deleteUser(user);
+      }
+    });
+  }
+
+  deleteUser(user: User): void {
+    this.loading.set(true);
+    this.usersService.deleteUser(user.id).subscribe({
+      next: () => {
+        this.snackBar.open("User deleted successfully", "Close", {
+          duration: 3000,
+          panelClass: ["success-snackbar"],
+        });
+        this.loadUsers();
+      },
+      error: (error) => {
+        this.snackBar.open(error?.message || "Failed to delete user", "Close", {
+          duration: 3000,
+        });
+        this.loading.set(false);
+      },
     });
   }
 

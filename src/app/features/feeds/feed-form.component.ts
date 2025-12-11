@@ -36,18 +36,9 @@ import { MatStepper } from "@angular/material/stepper";
 import { MatCardModule } from "@angular/material/card";
 import { MatButtonModule } from "@angular/material/button";
 import { MatIconModule } from "@angular/material/icon";
-import { MatFormFieldModule } from "@angular/material/form-field";
-import { MatInputModule } from "@angular/material/input";
-import { MatSelectModule } from "@angular/material/select";
-import { MatStepperModule } from "@angular/material/stepper";
-import { MatCheckboxModule } from "@angular/material/checkbox";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
-import { MatDividerModule } from "@angular/material/divider";
-import { MatPaginatorModule } from "@angular/material/paginator";
-import { MatChipsModule } from "@angular/material/chips";
-import { MatAutocompleteModule } from "@angular/material/autocomplete";
-import { MatTooltipModule } from "@angular/material/tooltip";
+import { MatStepperModule } from "@angular/material/stepper";
 
 import { FeedService } from "../../core/services/feed.service";
 import { AggregatorService } from "../../core/services/aggregator.service";
@@ -63,6 +54,9 @@ import {
   Group,
 } from "../../core/models";
 import { GroupService } from "../../core/services/group.service";
+import { AggregatorSelectionStepComponent } from "./components/aggregator-selection-step.component";
+import { FeedConfigStepComponent } from "./components/feed-config-step.component";
+import { FeedPreviewStepComponent } from "./components/feed-preview-step.component";
 
 @Component({
   selector: "app-feed-form",
@@ -75,18 +69,12 @@ import { GroupService } from "../../core/services/group.service";
     MatCardModule,
     MatButtonModule,
     MatIconModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatSelectModule,
-    MatStepperModule,
-    MatCheckboxModule,
     MatProgressSpinnerModule,
     MatSnackBarModule,
-    MatDividerModule,
-    MatPaginatorModule,
-    MatChipsModule,
-    MatAutocompleteModule,
-    MatTooltipModule,
+    MatStepperModule,
+    AggregatorSelectionStepComponent,
+    FeedConfigStepComponent,
+    FeedPreviewStepComponent,
   ],
   template: `
     <div class="feed-form-container container-sm">
@@ -126,831 +114,66 @@ import { GroupService } from "../../core/services/group.service";
               #stepper
               (selectionChange)="onStepChange($event)"
             >
-              <!-- Step 1: Select Aggregator Type (hidden in edit mode) -->
               @if (!isEditMode()) {
                 <mat-step [stepControl]="aggregatorFormGroup">
-                  <form [formGroup]="aggregatorFormGroup">
-                    <ng-template matStepLabel>Select</ng-template>
-
-                    <h3>Choose Feed Type</h3>
-                    <p>
-                      Select how you want to aggregate content for this feed.
-                    </p>
-
-                    <div class="aggregator-filters">
-                      <mat-form-field appearance="outline" class="search-field">
-                        <mat-label>Search aggregators</mat-label>
-                        <input matInput [formControl]="searchControl" />
-                        <mat-icon matPrefix>search</mat-icon>
-                      </mat-form-field>
-
-                      <mat-form-field appearance="outline" class="filter-field">
-                        <mat-label>Type</mat-label>
-                        <mat-select [formControl]="typeControl">
-                          <mat-option [value]="null">All Types</mat-option>
-                          <mat-option value="managed">Managed</mat-option>
-                          <mat-option value="social">Social</mat-option>
-                          <mat-option value="custom">Custom</mat-option>
-                        </mat-select>
-                      </mat-form-field>
-                    </div>
-
-                    @if (aggregatorService.loading()) {
-                      <div class="loading">
-                        <mat-spinner diameter="40"></mat-spinner>
-                        <p>Loading aggregators...</p>
-                      </div>
-                    } @else if (
-                      aggregatorService.paginatedAggregators().length === 0
-                    ) {
-                      <div class="empty-state">
-                        <mat-icon>search_off</mat-icon>
-                        <p>No aggregators found</p>
-                        <p class="muted">
-                          Try adjusting your search or filters
-                        </p>
-                      </div>
-                    } @else {
-                      <div class="aggregator-grid">
-                        @for (
-                          agg of aggregatorService.paginatedAggregators();
-                          track agg.id
-                        ) {
-                          <mat-card
-                            class="aggregator-card"
-                            [class.selected]="
-                              aggregatorFormGroup.get('aggregatorType')
-                                ?.value === agg.id
-                            "
-                            (click)="selectAggregator(agg.id)"
-                          >
-                            <mat-card-header>
-                              <div class="aggregator-icon">
-                                @if (agg.icon && !imageErrors[agg.id]) {
-                                  <img
-                                    [src]="agg.icon"
-                                    [alt]="agg.name"
-                                    class="aggregator-image"
-                                    (error)="imageErrors[agg.id] = true"
-                                  />
-                                }
-                                @if (!agg.icon || imageErrors[agg.id]) {
-                                  <mat-icon
-                                    [class]="
-                                      'feed-icon ' + (agg.feedType || 'article')
-                                    "
-                                  >
-                                    {{
-                                      getAggregatorIcon(
-                                        agg.feedType || "article"
-                                      )
-                                    }}
-                                  </mat-icon>
-                                }
-                              </div>
-                              <mat-card-title>{{ agg.name }}</mat-card-title>
-                              <mat-card-subtitle>{{
-                                agg.id
-                              }}</mat-card-subtitle>
-                            </mat-card-header>
-                            <mat-card-content>
-                              @if (agg.description) {
-                                <p class="aggregator-description">
-                                  {{ agg.description }}
-                                </p>
-                              }
-                              <mat-chip-set>
-                                <mat-chip [class]="'type-' + agg.type">{{
-                                  agg.type
-                                }}</mat-chip>
-                                @if (agg.feedType) {
-                                  <mat-chip>{{ agg.feedType }}</mat-chip>
-                                }
-                              </mat-chip-set>
-                              @if (agg.url) {
-                                <p class="aggregator-url">
-                                  <mat-icon>link</mat-icon>
-                                  {{ agg.url }}
-                                </p>
-                              }
-                            </mat-card-content>
-                            @if (
-                              aggregatorFormGroup.get("aggregatorType")
-                                ?.value === agg.id
-                            ) {
-                              <mat-card-actions>
-                                <button mat-button disabled>
-                                  <mat-icon>check_circle</mat-icon>
-                                  Selected
-                                </button>
-                              </mat-card-actions>
-                            }
-                          </mat-card>
-                        }
-                      </div>
-
-                      <mat-paginator
-                        [length]="aggregatorService.totalCount()"
-                        [pageSize]="aggregatorService.pageSize()"
-                        [pageIndex]="aggregatorService.currentPage() - 1"
-                        [pageSizeOptions]="[6, 12, 24, 48]"
-                        (page)="onPageChange($event)"
-                        showFirstLastButtons
-                      >
-                      </mat-paginator>
-                    }
-
-                    <div class="step-actions">
-                      <button
-                        mat-raised-button
-                        color="primary"
-                        matStepperNext
-                        [disabled]="!aggregatorFormGroup.valid"
-                      >
-                        Next
-                      </button>
-                    </div>
-                  </form>
+                  <app-aggregator-selection-step
+                    [aggregatorFormGroup]="aggregatorFormGroup"
+                    [aggregatorService]="aggregatorService"
+                    [searchControl]="searchControl"
+                    [typeControl]="typeControl"
+                    [imageErrors]="imageErrors"
+                    (aggregatorSelected)="selectAggregator($event)"
+                    (pageChange)="onPageChange($event)"
+                    (imageError)="imageErrors[$event] = true"
+                  />
                 </mat-step>
               }
 
-              <!-- Step 2: Feed Details -->
               <mat-step [stepControl]="feedFormGroup">
-                <form [formGroup]="feedFormGroup">
-                  <ng-template matStepLabel>Config</ng-template>
-
-                  <h3>Feed Configuration</h3>
-
-                  @if (aggregatorDetail()) {
-                    <!-- Feed Name -->
-                    <mat-form-field appearance="outline" class="full-width">
-                      <mat-label>Feed Name</mat-label>
-                      <input matInput formControlName="name" />
-                      <mat-hint>A descriptive name for this feed</mat-hint>
-                    </mat-form-field>
-
-                    <!-- Identifier Field -->
-                    @if (aggregatorDetail()!.identifierChoices) {
-                      <mat-form-field appearance="outline" class="full-width">
-                        <mat-label>{{
-                          aggregatorDetail()!.identifierLabel
-                        }}</mat-label>
-                        <mat-select formControlName="identifier">
-                          @for (
-                            choice of aggregatorDetail()!.identifierChoices;
-                            track choice[0]
-                          ) {
-                            <mat-option [value]="choice[0]">{{
-                              choice[1]
-                            }}</mat-option>
-                          }
-                        </mat-select>
-                        @if (aggregatorDetail()!.identifierDescription) {
-                          <mat-hint>{{
-                            aggregatorDetail()!.identifierDescription
-                          }}</mat-hint>
-                        }
-                      </mat-form-field>
-                    } @else {
-                      <!-- Reddit aggregator with autocomplete -->
-                      @if (selectedAggregator()?.id === "reddit") {
-                        <mat-form-field appearance="outline" class="full-width">
-                          <mat-label>{{
-                            aggregatorDetail()!.identifierLabel
-                          }}</mat-label>
-                          <input
-                            matInput
-                            formControlName="identifier"
-                            [matAutocomplete]="subredditAuto"
-                            [readonly]="!isIdentifierEditable()"
-                            (input)="onSubredditSearch($event)"
-                          />
-                          @if (searchingSubreddits()) {
-                            <mat-spinner matSuffix diameter="20"></mat-spinner>
-                          }
-                          <mat-autocomplete
-                            #subredditAuto="matAutocomplete"
-                            [displayWith]="displaySubreddit"
-                            (optionSelected)="onSubredditSelected($event)"
-                          >
-                            @for (
-                              subreddit of subredditSearchResults();
-                              track subreddit.name
-                            ) {
-                              <mat-option [value]="subreddit.name">
-                                <span class="subreddit-option">
-                                  <strong>r/{{ subreddit.displayName }}</strong>
-                                  @if (subreddit.title) {
-                                    <span class="subreddit-title">{{
-                                      subreddit.title
-                                    }}</span>
-                                  }
-                                </span>
-                              </mat-option>
-                            }
-                            @if (
-                              subredditSearchResults().length === 0 &&
-                              !searchingSubreddits() &&
-                              feedFormGroup.get("identifier")?.value &&
-                              feedFormGroup.get("identifier")?.value.length > 2
-                            ) {
-                              <mat-option disabled>
-                                No subreddits found
-                              </mat-option>
-                            }
-                          </mat-autocomplete>
-                          @if (aggregatorDetail()!.identifierDescription) {
-                            <mat-hint>{{
-                              aggregatorDetail()!.identifierDescription
-                            }}</mat-hint>
-                          }
-                        </mat-form-field>
-                      } @else if (selectedAggregator()?.id === "youtube") {
-                        <!-- YouTube aggregator with autocomplete -->
-                        <mat-form-field appearance="outline" class="full-width">
-                          <mat-label>{{
-                            aggregatorDetail()!.identifierLabel
-                          }}</mat-label>
-                          <input
-                            matInput
-                            formControlName="identifier"
-                            [matAutocomplete]="channelAuto"
-                            [readonly]="!isIdentifierEditable()"
-                            (input)="onChannelSearch($event)"
-                          />
-                          @if (searchingChannels()) {
-                            <mat-spinner
-                              matSuffix
-                              diameter="20"
-                              class="channel-search-spinner"
-                            ></mat-spinner>
-                          }
-                          <mat-autocomplete
-                            #channelAuto="matAutocomplete"
-                            [displayWith]="displayChannel"
-                            (optionSelected)="onChannelSelected($event)"
-                          >
-                            @for (
-                              channel of channelSearchResults();
-                              track channel.channelId
-                            ) {
-                              <mat-option [value]="channel">
-                                <span class="channel-option">
-                                  @if (channel.thumbnailUrl) {
-                                    <img
-                                      [src]="channel.thumbnailUrl"
-                                      [alt]="channel.title"
-                                      class="channel-thumbnail"
-                                    />
-                                  }
-                                  <div class="channel-info">
-                                    <strong>{{
-                                      channel.handle
-                                        ? "@" + channel.handle
-                                        : channel.title
-                                    }}</strong>
-                                    @if (
-                                      channel.handle &&
-                                      channel.title !== channel.handle
-                                    ) {
-                                      <span class="channel-title">{{
-                                        channel.title
-                                      }}</span>
-                                    }
-                                    @if (channel.subscriberCount > 0) {
-                                      <span class="channel-subscribers">{{
-                                        formatSubscriberCount(
-                                          channel.subscriberCount
-                                        )
-                                      }}</span>
-                                    }
-                                  </div>
-                                </span>
-                              </mat-option>
-                            }
-                            @if (
-                              channelSearchResults().length === 0 &&
-                              !searchingChannels() &&
-                              feedFormGroup.get("identifier")?.value &&
-                              feedFormGroup.get("identifier")?.value.length > 2
-                            ) {
-                              <mat-option disabled>
-                                No channels found
-                              </mat-option>
-                            }
-                          </mat-autocomplete>
-                          @if (aggregatorDetail()!.identifierDescription) {
-                            <mat-hint>{{
-                              aggregatorDetail()!.identifierDescription
-                            }}</mat-hint>
-                          }
-                        </mat-form-field>
-                      } @else {
-                        <!-- Other aggregators with regular input -->
-                        <mat-form-field appearance="outline" class="full-width">
-                          <mat-label>{{
-                            aggregatorDetail()!.identifierLabel
-                          }}</mat-label>
-                          @if (aggregatorDetail()!.identifierType === "url") {
-                            <input
-                              matInput
-                              type="url"
-                              formControlName="identifier"
-                              [readonly]="!isIdentifierEditable()"
-                            />
-                          } @else {
-                            <input
-                              matInput
-                              formControlName="identifier"
-                              [readonly]="!isIdentifierEditable()"
-                            />
-                          }
-                          @if (aggregatorDetail()!.identifierDescription) {
-                            <mat-hint>{{
-                              aggregatorDetail()!.identifierDescription
-                            }}</mat-hint>
-                          }
-                        </mat-form-field>
-                      }
-                    }
-
-                    <!-- Groups Selection -->
-                    <div class="groups-section">
-                      <h4>Groups</h4>
-                      <p class="section-description">
-                        Organize this feed into groups for easier filtering and
-                        management. Type to search existing groups or create a
-                        new one.
-                      </p>
-
-                      <!-- Selected groups as chips -->
-                      @if (selectedGroupIds().length > 0) {
-                        <div class="selected-groups">
-                          <mat-chip-set>
-                            @for (
-                              groupId of selectedGroupIds();
-                              track groupId
-                            ) {
-                              @let group = getGroupById(groupId);
-                              @if (group) {
-                                <mat-chip
-                                  (removed)="removeGroup(groupId)"
-                                  class="group-chip"
-                                >
-                                  {{ group.name }}
-                                  <button
-                                    matChipRemove
-                                    [attr.aria-label]="'remove ' + group.name"
-                                  >
-                                    <mat-icon>cancel</mat-icon>
-                                  </button>
-                                </mat-chip>
-                              }
-                            }
-                          </mat-chip-set>
-                        </div>
-                      }
-
-                      <!-- Group input with autocomplete -->
-                      <mat-form-field appearance="outline" class="full-width">
-                        <mat-label>Add Group</mat-label>
-                        <input
-                          matInput
-                          [formControl]="groupInputControl"
-                          [matAutocomplete]="groupAuto"
-                          (keydown.enter)="handleGroupInputEnter($event)"
-                        />
-                        <mat-icon matPrefix>search</mat-icon>
-                        @if (creatingGroup()) {
-                          <mat-spinner matSuffix diameter="20"></mat-spinner>
-                        }
-                        <mat-autocomplete
-                          #groupAuto="matAutocomplete"
-                          [displayWith]="displayGroup"
-                          (optionSelected)="onGroupSelected($event)"
-                        >
-                          @for (group of filteredGroups(); track group.id) {
-                            <mat-option [value]="group">
-                              <mat-icon>folder</mat-icon>
-                              <span>{{ group.name }}</span>
-                            </mat-option>
-                          }
-                          @if (
-                            getCreateGroupOption() &&
-                            filteredGroups().length > 0
-                          ) {
-                            <mat-divider></mat-divider>
-                          }
-                          @if (getCreateGroupOption()) {
-                            <mat-option
-                              [value]="null"
-                              (onSelectionChange)="
-                                $event.isUserInput && createGroupFromInput()
-                              "
-                              class="create-option"
-                            >
-                              <mat-icon>add_circle</mat-icon>
-                              <span
-                                >Create new group: "{{
-                                  getCreateGroupOption()
-                                }}"</span
-                              >
-                            </mat-option>
-                          }
-                          @if (
-                            filteredGroups().length === 0 &&
-                            !getCreateGroupOption() &&
-                            groupInputControl.value &&
-                            groupInputControl.value.length > 0
-                          ) {
-                            <mat-option disabled>
-                              No groups found. Type a name and press Enter to
-                              create.
-                            </mat-option>
-                          }
-                        </mat-autocomplete>
-                        <mat-hint
-                          >Type to search existing groups or create a new one.
-                          Press Enter to create.</mat-hint
-                        >
-                      </mat-form-field>
-                    </div>
-
-                    <!-- General Feed Options -->
-                    <div class="general-options-section">
-                      <h4>General Options</h4>
-
-                      <mat-checkbox formControlName="enabled">
-                        Enabled
-                      </mat-checkbox>
-                      <p class="option-help-text">
-                        Enable this feed for automatic aggregation
-                      </p>
-
-                      <mat-checkbox formControlName="generate_title_image">
-                        Extract header image
-                      </mat-checkbox>
-                      <p class="option-help-text">
-                        Extract and display header image from articles
-                      </p>
-
-                      <mat-checkbox formControlName="add_source_footer">
-                        Add source footer
-                      </mat-checkbox>
-                      <p class="option-help-text">
-                        Add source link at the bottom of articles
-                      </p>
-
-                      <mat-checkbox formControlName="skip_duplicates">
-                        Skip duplicates
-                      </mat-checkbox>
-                      <p class="option-help-text">
-                        Skip articles with duplicate titles in last 7 days
-                      </p>
-
-                      <mat-checkbox formControlName="use_current_timestamp">
-                        Use current timestamp
-                      </mat-checkbox>
-                      <p class="option-help-text">
-                        Use current time instead of RSS feed date
-                      </p>
-
-                      <mat-form-field appearance="outline" class="full-width">
-                        <mat-label>Daily post limit</mat-label>
-                        <input
-                          matInput
-                          type="number"
-                          formControlName="daily_post_limit"
-                          [min]="-1"
-                        />
-                        <mat-hint
-                          >Daily post target: -1=unlimited, 0=disabled, n>0=~n
-                          posts/day</mat-hint
-                        >
-                      </mat-form-field>
-                    </div>
-
-                    @if (
-                      getFilteredOptions() &&
-                      Object.keys(getFilteredOptions()).length > 0
-                    ) {
-                      <div class="aggregator-options-section">
-                        <h4>Aggregator Options</h4>
-                        @for (
-                          optionEntry of Object.entries(getFilteredOptions());
-                          track optionEntry[0]
-                        ) {
-                          @let optionKey = optionEntry[0];
-                          @let option = optionEntry[1];
-                          @let fieldName = "option_" + optionKey;
-
-                          @if (
-                            feedFormGroup.get(fieldName) &&
-                            option.type === "boolean"
-                          ) {
-                            <mat-checkbox [formControlName]="fieldName">
-                              {{ option.label }}
-                            </mat-checkbox>
-                            @if (option.helpText) {
-                              <p class="option-help-text">
-                                {{ option.helpText }}
-                              </p>
-                            }
-                          } @else if (
-                            feedFormGroup.get(fieldName) &&
-                            option.type === "choice"
-                          ) {
-                            <mat-form-field
-                              appearance="outline"
-                              class="full-width"
-                            >
-                              <mat-label>{{ option.label }}</mat-label>
-                              <mat-select [formControlName]="fieldName">
-                                @if (!option.required) {
-                                  <mat-option [value]="null">None</mat-option>
-                                }
-                                @for (
-                                  choice of option.choices;
-                                  track choice[0]
-                                ) {
-                                  <mat-option [value]="choice[0]">{{
-                                    choice[1]
-                                  }}</mat-option>
-                                }
-                              </mat-select>
-                              @if (option.helpText) {
-                                <mat-hint>{{ option.helpText }}</mat-hint>
-                              }
-                            </mat-form-field>
-                          } @else if (
-                            feedFormGroup.get(fieldName) &&
-                            option.type === "password"
-                          ) {
-                            <mat-form-field
-                              appearance="outline"
-                              class="full-width"
-                            >
-                              <mat-label>{{ option.label }}</mat-label>
-                              <input
-                                matInput
-                                type="password"
-                                [formControlName]="fieldName"
-                              />
-                              @if (option.helpText) {
-                                <mat-hint>{{ option.helpText }}</mat-hint>
-                              }
-                            </mat-form-field>
-                          } @else if (
-                            feedFormGroup.get(fieldName) &&
-                            (option.type === "integer" ||
-                              option.type === "float")
-                          ) {
-                            <mat-form-field
-                              appearance="outline"
-                              class="full-width"
-                            >
-                              <mat-label>{{ option.label }}</mat-label>
-                              <input
-                                matInput
-                                [type]="
-                                  option.type === 'integer'
-                                    ? 'number'
-                                    : 'number'
-                                "
-                                [formControlName]="fieldName"
-                                [min]="option.min"
-                                [max]="option.max"
-                                [step]="option.type === 'float' ? '0.01' : '1'"
-                              />
-                              @if (option.helpText) {
-                                <mat-hint>{{ option.helpText }}</mat-hint>
-                              }
-                            </mat-form-field>
-                          } @else if (feedFormGroup.get(fieldName)) {
-                            @let widgetType = option.widget || "text";
-                            @if (widgetType === "textarea") {
-                              <mat-form-field
-                                appearance="outline"
-                                class="full-width"
-                              >
-                                <mat-label>{{ option.label }}</mat-label>
-                                <textarea
-                                  matInput
-                                  [formControlName]="fieldName"
-                                  [rows]="5"
-                                ></textarea>
-                                @if (option.helpText) {
-                                  <mat-hint>{{ option.helpText }}</mat-hint>
-                                }
-                              </mat-form-field>
-                            } @else {
-                              <mat-form-field
-                                appearance="outline"
-                                class="full-width"
-                              >
-                                <mat-label>{{ option.label }}</mat-label>
-                                <input matInput [formControlName]="fieldName" />
-                                @if (option.helpText) {
-                                  <mat-hint>{{ option.helpText }}</mat-hint>
-                                }
-                              </mat-form-field>
-                            }
-                          }
-                        }
-                      </div>
-                    }
-
-                    @if (hasOpenAICredentials() && !isManagedAggregator()) {
-                      <div class="ai-options-section">
-                        <h4>AI Features</h4>
-                        <p class="section-description">
-                          AI-powered content processing. Leave fields empty to
-                          disable. Order: Summarization → Translation → Custom
-                          Prompt.
-                        </p>
-
-                        <mat-checkbox formControlName="ai_summarize">
-                          Generate AI summary
-                        </mat-checkbox>
-                        <p class="option-help-text">
-                          Generate AI summary of article content
-                        </p>
-
-                        <mat-form-field appearance="outline" class="full-width">
-                          <mat-label>Translate to language</mat-label>
-                          <input
-                            matInput
-                            formControlName="ai_translate_to"
-                            maxlength="10"
-                          />
-                          <mat-hint
-                            >Target language code (e.g., 'en', 'de', 'es').
-                            Leave empty to disable translation.</mat-hint
-                          >
-                        </mat-form-field>
-
-                        <mat-form-field appearance="outline" class="full-width">
-                          <mat-label>Custom AI prompt</mat-label>
-                          <textarea
-                            matInput
-                            formControlName="ai_custom_prompt"
-                            [rows]="4"
-                            maxlength="500"
-                          ></textarea>
-                          <mat-hint
-                            >Custom AI prompt to process article content. Leave
-                            empty to disable.</mat-hint
-                          >
-                        </mat-form-field>
-                      </div>
-                    }
-                  }
-
-                  <div class="step-actions">
-                    <button mat-button matStepperPrevious>Back</button>
-                    <button
-                      mat-raised-button
-                      color="primary"
-                      matStepperNext
-                      [disabled]="!feedFormGroup.valid"
-                    >
-                      Next
-                    </button>
-                  </div>
-                </form>
+                <app-feed-config-step
+                  [feedFormGroup]="feedFormGroup"
+                  [aggregatorDetail]="aggregatorDetail()"
+                  [selectedAggregator]="selectedAggregator()"
+                  [identifierControl]="getIdentifierControl()"
+                  [isIdentifierEditable]="isIdentifierEditable()"
+                  [searchingSubreddits]="searchingSubreddits()"
+                  [searchingChannels]="searchingChannels()"
+                  [subredditSearchResults]="subredditSearchResults()"
+                  [channelSearchResults]="channelSearchResults()"
+                  [groupInputControl]="groupInputControl"
+                  [selectedGroupIds]="selectedGroupIds()"
+                  [filteredGroups]="filteredGroups()"
+                  [creatingGroup]="creatingGroup()"
+                  [allGroups]="groupService.groups()"
+                  [filteredOptions]="getFilteredOptions()"
+                  [showAIOptions]="
+                    hasOpenAICredentials() && !isManagedAggregator()
+                  "
+                  [aiSummarizeControl]="feedFormGroup.get('ai_summarize')"
+                  [aiTranslateToControl]="feedFormGroup.get('ai_translate_to')"
+                  [aiCustomPromptControl]="
+                    feedFormGroup.get('ai_custom_prompt')
+                  "
+                  (subredditSearch)="onSubredditSearch($event)"
+                  (subredditSelected)="onSubredditSelected($event)"
+                  (channelSearch)="onChannelSearch($event)"
+                  (channelSelected)="onChannelSelected($event)"
+                  (groupSelected)="selectGroup($event)"
+                  (groupRemoved)="removeGroup($event)"
+                  (groupInputEnter)="handleGroupInputEnter($event)"
+                  (createGroupFromInput)="createGroupFromInput()"
+                />
               </mat-step>
 
-              <!-- Step 3: Preview & Test -->
               <mat-step>
-                <ng-template matStepLabel>Preview</ng-template>
-
-                <h3>Test Feed Configuration</h3>
-                <p class="muted">
-                  Preview the first article from this feed with full content to
-                  verify the configuration is correct.
-                </p>
-
-                @if (!previewResponse() || previewing()) {
-                  <!-- Loading state -->
-                  <div class="preview-loading">
-                    <mat-spinner diameter="40"></mat-spinner>
-                    <p>Fetching article...</p>
-                    <p class="muted">This may take up to a minute</p>
-                  </div>
-                } @else if (!previewResponse()!.success) {
-                  <!-- Error state -->
-                  <div class="preview-error">
-                    <mat-icon color="warn">error</mat-icon>
-                    <h4>Preview Failed</h4>
-                    <p class="error-message">{{ previewResponse()!.error }}</p>
-                    <div class="error-actions">
-                      <button
-                        mat-button
-                        color="primary"
-                        matStepperPrevious
-                        class="back-button"
-                      >
-                        Back
-                      </button>
-                      <button
-                        mat-raised-button
-                        color="accent"
-                        (click)="previewFeed()"
-                        class="retry-button"
-                      >
-                        Try Again
-                      </button>
-                    </div>
-                  </div>
-                } @else {
-                  <!-- Success state - show articles -->
-                  <div class="preview-success">
-                    <div class="success-header">
-                      <mat-icon color="primary">check_circle</mat-icon>
-                      <p>Found article</p>
-                    </div>
-
-                    <div class="preview-articles">
-                      @for (
-                        article of previewResponse()!.articles;
-                        track article.link
-                      ) {
-                        <mat-card class="preview-article-card">
-                          <mat-card-header>
-                            @if (article.thumbnailUrl) {
-                              <img
-                                mat-card-avatar
-                                [src]="article.thumbnailUrl"
-                                [alt]="article.title"
-                              />
-                            }
-                            <mat-card-title>{{ article.title }}</mat-card-title>
-                            @if (article.author) {
-                              <mat-card-subtitle
-                                >by {{ article.author }}</mat-card-subtitle
-                              >
-                            }
-                          </mat-card-header>
-                          <mat-card-content>
-                            @if (isYouTubeVideo(article)) {
-                              <div class="media-container">
-                                <iframe
-                                  [src]="getYouTubeEmbedUrl(article)"
-                                  frameborder="0"
-                                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                  allowfullscreen
-                                >
-                                </iframe>
-                              </div>
-                            }
-                            <div
-                              class="article-content"
-                              [innerHTML]="article.content"
-                            ></div>
-                            @if (article.published) {
-                              <p class="article-date muted">
-                                {{ article.published }}
-                              </p>
-                            }
-                          </mat-card-content>
-                        </mat-card>
-                      }
-                    </div>
-
-                    @if (creating()) {
-                      <div class="preview-loading">
-                        <mat-spinner diameter="40"></mat-spinner>
-                        <p>
-                          {{
-                            isEditMode()
-                              ? "Updating feed..."
-                              : "Creating feed..."
-                          }}
-                        </p>
-                      </div>
-                    }
-
-                    <div class="step-actions">
-                      <button
-                        mat-button
-                        color="primary"
-                        matStepperPrevious
-                        [disabled]="creating()"
-                        class="back-button"
-                      >
-                        Back
-                      </button>
-                      <button
-                        mat-raised-button
-                        color="primary"
-                        (click)="createFeed()"
-                        [disabled]="creating()"
-                      >
-                        {{ isEditMode() ? "Update Feed" : "Create Feed" }}
-                      </button>
-                    </div>
-                  </div>
-                }
+                <app-feed-preview-step
+                  [previewResponse]="previewResponse()"
+                  [previewing]="previewing()"
+                  [creating]="creating()"
+                  [isEditMode]="isEditMode()"
+                  (previewFeed)="previewFeed()"
+                  (submitFeed)="createFeed()"
+                />
               </mat-step>
             </mat-stepper>
           }
@@ -2215,7 +1438,7 @@ export class FeedFormComponent implements OnInit, OnDestroy {
   private channelSearchTimeout: any = null;
 
   // Group selection with autocomplete
-  groupInputControl = new FormControl<string>("");
+  groupInputControl = new FormControl<string | null>("");
   selectedGroupIds = signal<number[]>([]);
   filteredGroups = signal<Group[]>([]);
   creatingGroup = signal<boolean>(false);
@@ -2248,23 +1471,29 @@ export class FeedFormComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     // Check if user has OpenAI credentials
-    this.userSettingsService.getSettings().subscribe({
-      next: (settings) => {
-        this.hasOpenAICredentials.set(settings.openai_enabled);
-      },
-      error: () => {
-        this.hasOpenAICredentials.set(false);
-      },
-    });
+    this.userSettingsService
+      .getSettings()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (settings) => {
+          this.hasOpenAICredentials.set(settings.openai_enabled);
+        },
+        error: () => {
+          this.hasOpenAICredentials.set(false);
+        },
+      });
 
     // Load groups
-    this.groupService.loadGroups().subscribe({
-      next: (groups) => {
-        this.filteredGroups.set(groups);
-        // Initialize filter
-        this.filterGroups("");
-      },
-    });
+    this.groupService
+      .loadGroups()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (groups) => {
+          this.filteredGroups.set(groups);
+          // Initialize filter
+          this.filterGroups("");
+        },
+      });
 
     // Set up group input filtering
     this.groupInputControl.valueChanges
@@ -2331,144 +1560,163 @@ export class FeedFormComponent implements OnInit, OnDestroy {
   }
 
   loadAggregators() {
-    this.aggregatorService.loadAggregators().subscribe();
+    this.aggregatorService
+      .loadAggregators()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe();
   }
 
   loadFeedForEdit(id: number) {
     this.loadingFeed.set(true);
-    this.feedService.getFeed(id).subscribe({
-      next: (feed) => {
-        this.loadingFeed.set(false);
-        // Update breadcrumb with feed name
-        this.breadcrumbService.setLabel(`id:${feed.id}`, feed.name);
-        // Load aggregators first, then populate form
-        this.aggregatorService.loadAggregators().subscribe(() => {
-          // Set aggregator type
-          this.aggregatorFormGroup.patchValue({
-            aggregatorType: feed.aggregator,
-          });
-
-          // Load aggregator detail and populate form
+    this.feedService
+      .getFeed(id)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (feed) => {
+          this.loadingFeed.set(false);
+          // Update breadcrumb with feed name
+          this.breadcrumbService.setLabel(`id:${feed.id}`, feed.name);
+          // Load aggregators first, then populate form
           this.aggregatorService
-            .getAggregatorDetail(feed.aggregator)
-            .subscribe((detail) => {
-              this.aggregatorDetail.set(detail);
-              const agg = this.aggregatorService.getAggregator(feed.aggregator);
-              this.selectedAggregator.set(agg);
-
-              // Load feed groups
-              this.groupService.getFeedGroups(feed.id).subscribe({
-                next: (groups) => {
-                  const groupIds = groups.map((g) => g.id);
-                  this.selectedGroupIds.set(groupIds);
-                },
+            .loadAggregators()
+            .pipe(takeUntil(this.destroy$))
+            .subscribe(() => {
+              // Set aggregator type
+              this.aggregatorFormGroup.patchValue({
+                aggregatorType: feed.aggregator,
               });
 
-              // Populate feed form with existing values
-              this.feedFormGroup.patchValue({
-                name: feed.name,
-                identifier: feed.identifier,
-                enabled: feed.enabled,
-                generate_title_image: feed.generateTitleImage,
-                add_source_footer: feed.addSourceFooter,
-                skip_duplicates: feed.skipDuplicates,
-                use_current_timestamp: feed.useCurrentTimestamp,
-                daily_post_limit: feed.dailyPostLimit,
-                // Only populate AI features for non-managed aggregators
-                ai_translate_to: this.isManagedAggregator()
-                  ? ""
-                  : feed.aiTranslateTo || "",
-                ai_summarize: this.isManagedAggregator()
-                  ? false
-                  : feed.aiSummarize || false,
-                ai_custom_prompt: this.isManagedAggregator()
-                  ? ""
-                  : feed.aiCustomPrompt || "",
-              });
+              // Load aggregator detail and populate form
+              this.aggregatorService
+                .getAggregatorDetail(feed.aggregator)
+                .pipe(takeUntil(this.destroy$))
+                .subscribe((detail) => {
+                  this.aggregatorDetail.set(detail);
+                  const agg = this.aggregatorService.getAggregator(
+                    feed.aggregator,
+                  );
+                  this.selectedAggregator.set(agg);
 
-              // Disable identifier field if not editable
-              const identifierControl = this.feedFormGroup.get("identifier");
-              if (identifierControl) {
-                if (!detail.identifierEditable && !detail.identifierChoices) {
-                  identifierControl.disable();
-                } else {
-                  identifierControl.enable();
-                }
-              }
+                  // Load feed groups
+                  this.groupService
+                    .getFeedGroups(feed.id)
+                    .pipe(takeUntil(this.destroy$))
+                    .subscribe({
+                      next: (groups) => {
+                        const groupIds = groups.map((g) => g.id);
+                        this.selectedGroupIds.set(groupIds);
+                      },
+                    });
 
-              // Clear existing option fields
-              Object.keys(this.feedFormGroup.controls).forEach((key) => {
-                if (key.startsWith("option_")) {
-                  this.feedFormGroup.removeControl(key);
-                }
-              });
+                  // Populate feed form with existing values
+                  this.feedFormGroup.patchValue({
+                    name: feed.name,
+                    identifier: feed.identifier,
+                    enabled: feed.enabled,
+                    generate_title_image: feed.generateTitleImage,
+                    add_source_footer: feed.addSourceFooter,
+                    skip_duplicates: feed.skipDuplicates,
+                    use_current_timestamp: feed.useCurrentTimestamp,
+                    daily_post_limit: feed.dailyPostLimit,
+                    // Only populate AI features for non-managed aggregators
+                    ai_translate_to: this.isManagedAggregator()
+                      ? ""
+                      : feed.aiTranslateTo || "",
+                    ai_summarize: this.isManagedAggregator()
+                      ? false
+                      : feed.aiSummarize || false,
+                    ai_custom_prompt: this.isManagedAggregator()
+                      ? ""
+                      : feed.aiCustomPrompt || "",
+                  });
 
-              // Add option fields dynamically and populate with existing values (filtered for managed aggregators)
-              const filteredOptions = this.getFilteredOptions();
-              if (filteredOptions) {
-                Object.entries(filteredOptions).forEach(([key, option]) => {
-                  const fieldName = `option_${key}`;
-                  const validators = option.required
-                    ? [Validators.required]
-                    : [];
-                  const existingValue =
-                    feed.aggregatorOptions?.[key] ?? option.default;
+                  // Disable identifier field if not editable
+                  const identifierControl =
+                    this.feedFormGroup.get("identifier");
+                  if (identifierControl) {
+                    if (
+                      !detail.identifierEditable &&
+                      !detail.identifierChoices
+                    ) {
+                      identifierControl.disable();
+                    } else {
+                      identifierControl.enable();
+                    }
+                  }
 
-                  // Add JSON validation for json widget type
-                  if (option.widget === "json") {
-                    validators.push((control: AbstractControl) => {
-                      if (!control.value || control.value.trim() === "") {
-                        return null; // Empty is valid (will use default)
+                  // Clear existing option fields
+                  Object.keys(this.feedFormGroup.controls).forEach((key) => {
+                    if (key.startsWith("option_")) {
+                      this.feedFormGroup.removeControl(key);
+                    }
+                  });
+
+                  // Add option fields dynamically and populate with existing values (filtered for managed aggregators)
+                  const filteredOptions = this.getFilteredOptions();
+                  if (filteredOptions) {
+                    Object.entries(filteredOptions).forEach(([key, option]) => {
+                      const fieldName = `option_${key}`;
+                      const validators = option.required
+                        ? [Validators.required]
+                        : [];
+                      const existingValue =
+                        feed.aggregatorOptions?.[key] ?? option.default;
+
+                      // Add JSON validation for json widget type
+                      if (option.widget === "json") {
+                        validators.push((control: AbstractControl) => {
+                          if (!control.value || control.value.trim() === "") {
+                            return null; // Empty is valid (will use default)
+                          }
+                          try {
+                            JSON.parse(control.value);
+                            return null;
+                          } catch (e) {
+                            return { jsonInvalid: true };
+                          }
+                        });
                       }
-                      try {
-                        JSON.parse(control.value);
-                        return null;
-                      } catch (e) {
-                        return { jsonInvalid: true };
+
+                      if (option.type === "boolean") {
+                        this.feedFormGroup.addControl(
+                          fieldName,
+                          this.fb.control(existingValue ?? false),
+                        );
+                      } else if (
+                        option.type === "integer" ||
+                        option.type === "float"
+                      ) {
+                        this.feedFormGroup.addControl(
+                          fieldName,
+                          this.fb.control(existingValue ?? null, validators),
+                        );
+                      } else {
+                        this.feedFormGroup.addControl(
+                          fieldName,
+                          this.fb.control(existingValue ?? "", validators),
+                        );
                       }
                     });
                   }
 
-                  if (option.type === "boolean") {
-                    this.feedFormGroup.addControl(
-                      fieldName,
-                      this.fb.control(existingValue ?? false),
-                    );
-                  } else if (
-                    option.type === "integer" ||
-                    option.type === "float"
-                  ) {
-                    this.feedFormGroup.addControl(
-                      fieldName,
-                      this.fb.control(existingValue ?? null, validators),
-                    );
-                  } else {
-                    this.feedFormGroup.addControl(
-                      fieldName,
-                      this.fb.control(existingValue ?? "", validators),
-                    );
-                  }
+                  // Skip to step 2 (index 0 when Step 1 is hidden) after a short delay to ensure stepper is initialized
+                  setTimeout(() => {
+                    if (this.stepper) {
+                      // When Step 1 is hidden, Step 2 becomes index 0
+                      this.stepper.selectedIndex = 0;
+                    }
+                  }, 100);
                 });
-              }
-
-              // Skip to step 2 (index 0 when Step 1 is hidden) after a short delay to ensure stepper is initialized
-              setTimeout(() => {
-                if (this.stepper) {
-                  // When Step 1 is hidden, Step 2 becomes index 0
-                  this.stepper.selectedIndex = 0;
-                }
-              }, 100);
             });
-        });
-      },
-      error: (error) => {
-        this.loadingFeed.set(false);
-        this.snackBar.open(`Failed to load feed: ${error.message}`, "Close", {
-          duration: 5000,
-        });
-        this.router.navigate(["/feeds"]);
-      },
-    });
+        },
+        error: (error) => {
+          this.loadingFeed.set(false);
+          this.snackBar.open(`Failed to load feed: ${error.message}`, "Close", {
+            duration: 5000,
+          });
+          this.router.navigate(["/feeds"]);
+        },
+      });
   }
 
   selectAggregator(aggregatorId: string) {
@@ -2508,6 +1756,7 @@ export class FeedFormComponent implements OnInit, OnDestroy {
       // Fetch aggregator detail for identifier configuration and options
       this.aggregatorService
         .getAggregatorDetail(modulePath)
+        .pipe(takeUntil(this.destroy$))
         .subscribe((detail) => {
           this.aggregatorDetail.set(detail);
 
@@ -2652,6 +1901,10 @@ export class FeedFormComponent implements OnInit, OnDestroy {
     return !!(detail?.identifierChoices && detail.identifierChoices.length > 0);
   }
 
+  protected getIdentifierControl(): FormControl<string> {
+    return this.feedFormGroup.get("identifier") as FormControl<string>;
+  }
+
   /**
    * Check if current aggregator is managed type.
    */
@@ -2746,22 +1999,26 @@ export class FeedFormComponent implements OnInit, OnDestroy {
         : this.feedFormGroup.get("ai_custom_prompt")?.value || "",
     };
 
-    this.feedService.previewFeed(previewData).subscribe({
-      next: (response) => {
-        this.previewing.set(false);
-        this.previewResponse.set(response);
-      },
-      error: (error) => {
-        this.previewing.set(false);
-        this.previewResponse.set({
-          success: false,
-          articles: [],
-          count: 0,
-          error: error.message || "Unknown error occurred",
-          errorType: "unknown",
-        });
-      },
-    });
+    this.feedService
+      .previewFeed(previewData)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response) => {
+          this.previewing.set(false);
+          this.previewResponse.set(response);
+        },
+        error: (error) => {
+          if (this.destroy$.closed) return;
+          this.previewing.set(false);
+          this.previewResponse.set({
+            success: false,
+            articles: [],
+            count: 0,
+            error: error.message || "Unknown error occurred",
+            errorType: "unknown",
+          });
+        },
+      });
   }
 
   /**
@@ -2822,6 +2079,7 @@ export class FeedFormComponent implements OnInit, OnDestroy {
           this.searchingSubreddits.set(false);
         },
         error: (error) => {
+          if (this.destroy$.closed) return;
           console.error("Error searching subreddits:", error);
           this.subredditSearchResults.set([]);
           this.searchingSubreddits.set(false);
@@ -2852,10 +2110,16 @@ export class FeedFormComponent implements OnInit, OnDestroy {
   /**
    * Handle subreddit selection from autocomplete.
    */
-  onSubredditSelected(event: any) {
-    const subreddit = event.option.value;
-    if (subreddit) {
-      this.feedFormGroup.patchValue({ identifier: subreddit });
+  onSubredditSelected(subreddit: any) {
+    // Handle both event object and direct subreddit value
+    const value =
+      typeof subreddit === "object" && subreddit.option
+        ? subreddit.option.value
+        : subreddit;
+    if (value) {
+      const subredditName =
+        typeof value === "string" ? value : value.name || value;
+      this.feedFormGroup.patchValue({ identifier: subredditName });
     }
   }
 
@@ -2905,6 +2169,7 @@ export class FeedFormComponent implements OnInit, OnDestroy {
           this.searchingChannels.set(false);
         },
         error: (error) => {
+          if (this.destroy$.closed) return;
           console.error("Error searching YouTube channels:", error);
           this.channelSearchResults.set([]);
           this.searchingChannels.set(false);
@@ -2939,14 +2204,16 @@ export class FeedFormComponent implements OnInit, OnDestroy {
   /**
    * Handle channel selection from autocomplete.
    */
-  onChannelSelected(event: any) {
-    const channel = event.option.value;
-    if (channel && typeof channel === "object") {
+  onChannelSelected(channel: any) {
+    // Handle both event object and direct channel value
+    const value =
+      typeof channel === "object" && channel.option
+        ? channel.option.value
+        : channel;
+    if (value && typeof value === "object") {
       // Prefer handle if available, otherwise use channelId
       // The YouTube aggregator can resolve both
-      const identifier = channel.handle
-        ? `@${channel.handle}`
-        : channel.channelId;
+      const identifier = value.handle ? `@${value.handle}` : value.channelId;
       this.feedFormGroup.patchValue({ identifier });
     }
   }
@@ -3049,51 +2316,57 @@ export class FeedFormComponent implements OnInit, OnDestroy {
     }
 
     this.creatingGroup.set(true);
-    this.groupService.createGroup(name).subscribe({
-      next: (group) => {
-        // Wait for groups to reload, then add to selection
-        this.groupService.loadGroups().subscribe({
-          next: () => {
-            this.creatingGroup.set(false);
-            this.groupInputControl.setValue("");
-            this.filterGroups("");
-            // Add to selection after groups are reloaded
-            this.selectGroup(group);
-            this.snackBar.open(
-              `Created and added group: ${group.name}`,
-              "Close",
-              {
-                duration: 3000,
+    this.groupService
+      .createGroup(name)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (group) => {
+          // Wait for groups to reload, then add to selection
+          this.groupService
+            .loadGroups()
+            .pipe(takeUntil(this.destroy$))
+            .subscribe({
+              next: () => {
+                this.creatingGroup.set(false);
+                this.groupInputControl.setValue("");
+                this.filterGroups("");
+                // Add to selection after groups are reloaded
+                this.selectGroup(group);
+                this.snackBar.open(
+                  `Created and added group: ${group.name}`,
+                  "Close",
+                  {
+                    duration: 3000,
+                  },
+                );
               },
-            );
-          },
-          error: () => {
-            // Even if reload fails, still add the group to selection
-            this.creatingGroup.set(false);
-            this.groupInputControl.setValue("");
-            this.filterGroups("");
-            this.selectGroup(group);
-            this.snackBar.open(
-              `Created and added group: ${group.name}`,
-              "Close",
-              {
-                duration: 3000,
+              error: () => {
+                // Even if reload fails, still add the group to selection
+                this.creatingGroup.set(false);
+                this.groupInputControl.setValue("");
+                this.filterGroups("");
+                this.selectGroup(group);
+                this.snackBar.open(
+                  `Created and added group: ${group.name}`,
+                  "Close",
+                  {
+                    duration: 3000,
+                  },
+                );
               },
-            );
-          },
-        });
-      },
-      error: (error) => {
-        this.creatingGroup.set(false);
-        this.snackBar.open(
-          `Failed to create group: ${error.message || "Unknown error"}`,
-          "Close",
-          {
-            duration: 5000,
-          },
-        );
-      },
-    });
+            });
+        },
+        error: (error) => {
+          this.creatingGroup.set(false);
+          this.snackBar.open(
+            `Failed to create group: ${error.message || "Unknown error"}`,
+            "Close",
+            {
+              duration: 5000,
+            },
+          );
+        },
+      });
   }
 
   /**
@@ -3230,26 +2503,30 @@ export class FeedFormComponent implements OnInit, OnDestroy {
 
     if (this.isEditMode() && this.feedId()) {
       // Update existing feed
-      this.feedService.updateFeed(this.feedId()!, feedData).subscribe({
-        next: (feed) => {
-          this.creating.set(false);
-          this.snackBar.open(`Updated feed: ${feed.name}`, "Close", {
-            duration: 3000,
-            panelClass: ["success-snackbar"],
-          });
-          this.router.navigate(["/feeds", feed.id]);
-        },
-        error: (error) => {
-          this.creating.set(false);
-          this.snackBar.open(
-            `Failed to update feed: ${error.message || "Unknown error"}`,
-            "Close",
-            {
-              duration: 5000,
-            },
-          );
-        },
-      });
+      this.feedService
+        .updateFeed(this.feedId()!, feedData)
+        .pipe(takeUntil(this.destroy$))
+        .subscribe({
+          next: (feed) => {
+            this.creating.set(false);
+            this.snackBar.open(`Updated feed: ${feed.name}`, "Close", {
+              duration: 3000,
+              panelClass: ["success-snackbar"],
+            });
+            this.router.navigate(["/feeds", feed.id]);
+          },
+          error: (error) => {
+            if (this.destroy$.closed) return;
+            this.creating.set(false);
+            this.snackBar.open(
+              `Failed to update feed: ${error.message || "Unknown error"}`,
+              "Close",
+              {
+                duration: 5000,
+              },
+            );
+          },
+        });
     } else {
       // Create new feed
       this.feedService.createFeed(feedData).subscribe({

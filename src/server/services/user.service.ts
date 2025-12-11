@@ -311,3 +311,15 @@ export async function updateUser(
 
   return updatedUser;
 }
+
+/**
+ * Delete user.
+ */
+export async function deleteUser(userId: number): Promise<void> {
+  // Check if user exists
+  await getUserById(userId);
+
+  await db.delete(users).where(eq(users.id, userId));
+
+  logger.info({ userId }, "User deleted");
+}

@@ -120,15 +120,18 @@ import { AdminUsersService } from "../../core/services/admin-users.service";
         <mat-checkbox formControlName="isSuperuser">Superuser</mat-checkbox>
       </form>
     </mat-dialog-content>
-    <mat-dialog-actions align="end">
-      <button mat-button (click)="cancel()">Cancel</button>
+    <mat-dialog-actions align="end" class="actions">
       <button
         mat-raised-button
         color="primary"
         (click)="submit()"
         [disabled]="!userForm.valid || loading"
+        class="action-button"
       >
         Create
+      </button>
+      <button mat-button (click)="cancel()" class="action-button">
+        Cancel
       </button>
     </mat-dialog-actions>
   `,
@@ -139,7 +142,6 @@ import { AdminUsersService } from "../../core/services/admin-users.service";
       }
 
       mat-dialog-content {
-        min-width: 500px;
         padding: 24px;
       }
 
@@ -158,8 +160,69 @@ import { AdminUsersService } from "../../core/services/admin-users.service";
         display: block;
       }
 
-      mat-dialog-actions {
+      mat-dialog-actions.actions {
         padding: 16px 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        align-items: stretch;
+        width: 100%;
+        box-sizing: border-box;
+      }
+
+      .action-button {
+        width: 100%;
+        min-width: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        padding: 12px 16px !important;
+        box-sizing: border-box;
+        margin: 0 !important;
+      }
+
+      .action-button ::ng-deep .mat-button-wrapper,
+      .action-button ::ng-deep .mat-mdc-button-persistent-ripple,
+      .action-button ::ng-deep .mdc-button__label {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: 100%;
+        padding: 0;
+        margin: 0;
+      }
+
+      /* Mobile-friendly dialog sizing */
+      @media (max-width: 768px) {
+        :host ::ng-deep .mat-mdc-dialog-surface {
+          width: calc(100vw - 24px);
+          max-width: calc(100vw - 24px);
+          min-width: 0;
+          margin: 0 12px;
+        }
+
+        :host ::ng-deep .cdk-global-overlay-wrapper {
+          align-items: flex-start;
+          padding: 12px 0 24px;
+        }
+
+        mat-dialog-content {
+          min-width: 0;
+          padding: 16px;
+        }
+
+        mat-dialog-actions.actions {
+          padding: 12px 16px;
+          gap: 6px;
+          margin: 0;
+        }
+
+        .action-button {
+          margin: 0 auto;
+          padding: 12px 16px;
+          width: 100%;
+        }
       }
     `,
   ],

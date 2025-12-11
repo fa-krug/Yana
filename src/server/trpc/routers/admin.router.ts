@@ -16,6 +16,7 @@ import {
   updateUserPassword,
   listUsers,
   updateUser,
+  deleteUser,
 } from "../../services/user.service";
 import {
   adminUpdateUserSchema,
@@ -23,7 +24,7 @@ import {
   adminChangePasswordSchema,
   adminListUsersSchema,
 } from "../../validation/schemas";
-import { NotFoundError } from "../../errors";
+import { NotFoundError, PermissionDeniedError } from "../../errors";
 import { adminTasksRouter } from "./admin-tasks.router";
 
 /**
@@ -225,13 +226,13 @@ export const adminRouter = router({
      */
     delete: superuserProcedure
       .input(z.object({ id: z.number().int().positive() }))
-      .mutation(async ({ input }) => {
-        // Check if user exists
-        await getUserById(input.id);
+      .mutation(async ({ input, ctx }) => {
+        // Prevent users from deleting themselves
+        if (input.id === ctx.user.id) {
+          throw new PermissionDeniedError("You cannot delete your own account");
+        }
 
-        // Note: Delete functionality would need to be implemented in user.service
-        // For now, we'll just return success
-        // In a real implementation, you'd call deleteUser(input.id)
+        await deleteUser(input.id);
         return {
           success: true,
           message: "User deleted successfully",

@@ -86,9 +86,9 @@ export const userRouter = router({
     const settings = await getUserSettings(user.id);
     return {
       enabled: settings.redditEnabled,
-      clientId: settings.redditClientId,
-      clientSecret: settings.redditClientSecret,
-      userAgent: settings.redditUserAgent,
+      clientId: settings.redditClientId || "",
+      clientSecret: settings.redditClientSecret ? "••••••••" : "",
+      userAgent: settings.redditUserAgent || "",
     };
   }),
 
@@ -163,7 +163,7 @@ export const userRouter = router({
     const settings = await getUserSettings(user.id);
     return {
       enabled: settings.youtubeEnabled,
-      apiKey: settings.youtubeApiKey,
+      apiKey: settings.youtubeApiKey ? "••••••••" : "",
     };
   }),
 
@@ -231,17 +231,17 @@ export const userRouter = router({
     const settings = await getUserSettings(user.id);
     return {
       enabled: settings.openaiEnabled,
-      apiUrl: settings.openaiApiUrl,
-      apiKey: settings.openaiApiKey,
-      model: settings.aiModel,
-      temperature: settings.aiTemperature,
-      maxTokens: settings.aiMaxTokens,
-      defaultDailyLimit: settings.aiDefaultDailyLimit,
-      defaultMonthlyLimit: settings.aiDefaultMonthlyLimit,
-      maxPromptLength: settings.aiMaxPromptLength,
-      requestTimeout: settings.aiRequestTimeout,
-      maxRetries: settings.aiMaxRetries,
-      retryDelay: settings.aiRetryDelay,
+      apiUrl: settings.openaiApiUrl || "",
+      apiKey: settings.openaiApiKey ? "••••••••" : "",
+      model: settings.aiModel || "",
+      temperature: settings.aiTemperature || 0.3,
+      maxTokens: settings.aiMaxTokens || 2000,
+      defaultDailyLimit: settings.aiDefaultDailyLimit || 200,
+      defaultMonthlyLimit: settings.aiDefaultMonthlyLimit || 2000,
+      maxPromptLength: settings.aiMaxPromptLength || 500,
+      requestTimeout: settings.aiRequestTimeout || 120,
+      maxRetries: settings.aiMaxRetries || 3,
+      retryDelay: settings.aiRetryDelay || 2,
     };
   }),
 

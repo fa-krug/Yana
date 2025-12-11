@@ -22,8 +22,13 @@ import {
   updateUserPassword,
   listUsers,
   updateUser,
+  deleteUser,
 } from "../services/user.service";
-import { AuthenticationError, NotFoundError } from "../errors";
+import {
+  AuthenticationError,
+  NotFoundError,
+  PermissionDeniedError,
+} from "../errors";
 import type { AuthenticatedRequest } from "../middleware/auth";
 
 const router = Router();
@@ -214,6 +219,32 @@ router.post(
     res.json({
       success: true,
       message: "Password changed successfully",
+    });
+  }),
+);
+
+/**
+ * DELETE /api/v1/admin/users/:id
+ * Delete user
+ */
+router.delete(
+  "/:id",
+  asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    const userId = parseInt(req.params["id"]);
+    if (isNaN(userId)) {
+      throw new NotFoundError("Invalid user ID");
+    }
+
+    // Prevent users from deleting themselves
+    if (req.user && userId === req.user.id) {
+      throw new PermissionDeniedError("You cannot delete your own account");
+    }
+
+    await deleteUser(userId);
+
+    res.json({
+      success: true,
+      message: "User deleted successfully",
     });
   }),
 );

@@ -160,4 +160,8 @@ export class AdminUsersService {
       }),
     );
   }
+
+  deleteUser(id: number): Observable<MessageResponse> {
+    return from(this.trpc.client.admin.user.delete.mutate({ id }));
+  }
 }
