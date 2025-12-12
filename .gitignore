@@ -100,6 +100,7 @@ playwright/.cache/
 db.sqlite3
 db.sqlite3-shm
 db.sqlite3-wal
+db.sqlite3.backup.*
 test.db
 test.db-shm
 test.db-wal
