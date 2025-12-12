@@ -9,7 +9,7 @@ import { DomSanitizer, SafeHtml } from "@angular/platform-browser";
 import { MatCardModule } from "@angular/material/card";
 import { MatChipsModule } from "@angular/material/chips";
 import { MatIconModule } from "@angular/material/icon";
-import { ArticleDetail } from "../../../core/models";
+import { ArticleDetail } from "@app/core/models";
 import { ArticleMediaComponent } from "./article-media.component";
 
 @Component({

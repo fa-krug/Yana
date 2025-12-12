@@ -8,6 +8,7 @@ import {
   OnInit,
   OnDestroy,
   ChangeDetectionStrategy,
+  isDevMode,
 } from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { RouterModule, Router } from "@angular/router";
@@ -16,7 +17,7 @@ import { MatButtonModule } from "@angular/material/button";
 import { MatIconModule } from "@angular/material/icon";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatGridListModule } from "@angular/material/grid-list";
-import { StatisticsService } from "../../core/services/statistics.service";
+import { StatisticsService } from "@app/core/services/statistics.service";
 import { interval, Subject, takeUntil } from "rxjs";
 
 @Component({
@@ -454,11 +455,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.statisticsService.loadStatistics().subscribe();
 
     // Auto-refresh every 30 seconds (silent to avoid UI glitches)
-    interval(30000)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe(() => {
-        this.statisticsService.loadStatistics(true).subscribe();
-      });
+    // Disabled in development mode
+    if (!isDevMode()) {
+      interval(30000)
+        .pipe(takeUntil(this.destroy$))
+        .subscribe(() => {
+          this.statisticsService.loadStatistics(true).subscribe();
+        });
+    }
   }
 
   ngOnDestroy() {

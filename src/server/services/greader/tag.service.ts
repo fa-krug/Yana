@@ -10,9 +10,9 @@ import {
   userArticleStates,
   groups,
   feedGroups,
-} from "../../db";
-import { logger } from "../../utils/logger";
-import { cache } from "../../utils/cache";
+} from "@server/db";
+import { logger } from "@server/utils/logger";
+import { cache } from "@server/utils/cache";
 
 const STATE_READ = "user/-/state/com.google/read";
 const STATE_STARRED = "user/-/state/com.google/starred";
@@ -220,7 +220,7 @@ export async function markAllAsRead(
   }
 
   // Build base conditions
-  const baseConditions: any[] = [];
+  const baseConditions: ReturnType<typeof and>[] = [];
   let needsFeedJoin = false;
 
   // Filter by stream

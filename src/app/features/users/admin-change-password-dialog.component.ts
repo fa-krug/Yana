@@ -17,7 +17,7 @@ import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
 import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatInputModule } from "@angular/material/input";
 import { MatButtonModule } from "@angular/material/button";
-import { AdminUsersService } from "../../core/services/admin-users.service";
+import { AdminUsersService } from "@app/core/services/admin-users.service";
 
 @Component({
   selector: "app-admin-change-password-dialog",

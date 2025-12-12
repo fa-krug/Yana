@@ -4,7 +4,7 @@
 
 import axios from "axios";
 import sharp from "sharp";
-import { logger } from "../../../../utils/logger";
+import { logger } from "@server/utils/logger";
 
 /**
  * Get appropriate referer header for a URL.

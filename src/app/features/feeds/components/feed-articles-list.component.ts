@@ -16,9 +16,9 @@ import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatPaginatorModule, PageEvent } from "@angular/material/paginator";
 import { MatMenuModule } from "@angular/material/menu";
 import { MatTooltipModule } from "@angular/material/tooltip";
-import { ArticleService } from "../../../core/services/article.service";
-import { Article } from "../../../core/models";
-import { getProxiedImageUrl } from "../../../core/utils/image-proxy.util";
+import { ArticleService } from "@app/core/services/article.service";
+import { Article } from "@app/core/models";
+import { getProxiedImageUrl } from "@app/core/utils/image-proxy.util";
 
 @Component({
   selector: "app-feed-articles-list",

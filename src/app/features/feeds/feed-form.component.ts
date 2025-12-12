@@ -40,11 +40,13 @@ import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
 import { MatStepperModule } from "@angular/material/stepper";
 
-import { FeedService } from "../../core/services/feed.service";
-import { AggregatorService } from "../../core/services/aggregator.service";
-import { UserSettingsService } from "../../core/services/user-settings.service";
-import { BreadcrumbService } from "../../core/services/breadcrumb.service";
-import { TRPCService } from "../../core/trpc/trpc.service";
+import { FeedService } from "@app/core/services/feed.service";
+import { AggregatorService } from "@app/core/services/aggregator.service";
+import { UserSettingsService } from "@app/core/services/user-settings.service";
+import { BreadcrumbService } from "@app/core/services/breadcrumb.service";
+import { TRPCService } from "@app/core/trpc/trpc.service";
+import { FeedFormSearchService } from "@app/core/services/feed-form-search.service";
+import { FeedFormValidationService } from "@app/core/services/feed-form-validation.service";
 import {
   Aggregator,
   AggregatorDetail,
@@ -52,8 +54,8 @@ import {
   FeedPreviewResponse,
   PreviewArticle,
   Group,
-} from "../../core/models";
-import { GroupService } from "../../core/services/group.service";
+} from "@app/core/models";
+import { GroupService } from "@app/core/services/group.service";
 import { AggregatorSelectionStepComponent } from "./components/aggregator-selection-step.component";
 import { FeedConfigStepComponent } from "./components/feed-config-step.component";
 import { FeedPreviewStepComponent } from "./components/feed-preview-step.component";
@@ -136,10 +138,12 @@ import { FeedPreviewStepComponent } from "./components/feed-preview-step.compone
                   [selectedAggregator]="selectedAggregator()"
                   [identifierControl]="getIdentifierControl()"
                   [isIdentifierEditable]="isIdentifierEditable()"
-                  [searchingSubreddits]="searchingSubreddits()"
-                  [searchingChannels]="searchingChannels()"
-                  [subredditSearchResults]="subredditSearchResults()"
-                  [channelSearchResults]="channelSearchResults()"
+                  [searchingSubreddits]="searchService.searchingSubreddits()"
+                  [searchingChannels]="searchService.searchingChannels()"
+                  [subredditSearchResults]="
+                    searchService.subredditSearchResults()
+                  "
+                  [channelSearchResults]="searchService.channelSearchResults()"
                   [groupInputControl]="groupInputControl"
                   [selectedGroupIds]="selectedGroupIds()"
                   [filteredGroups]="filteredGroups()"
@@ -1398,8 +1402,9 @@ export class FeedFormComponent implements OnInit, OnDestroy {
   aggregatorService = inject(AggregatorService);
   userSettingsService = inject(UserSettingsService);
   groupService = inject(GroupService);
+  searchService = inject(FeedFormSearchService);
+  validationService = inject(FeedFormValidationService);
   private breadcrumbService = inject(BreadcrumbService);
-  private trpc = inject(TRPCService);
   private sanitizer = inject(DomSanitizer);
 
   private destroy$ = new Subject<void>();
@@ -1416,26 +1421,9 @@ export class FeedFormComponent implements OnInit, OnDestroy {
   loadingFeed = signal<boolean>(false);
   hasOpenAICredentials = signal<boolean>(false);
 
-  // Subreddit search
-  subredditSearchResults = signal<
-    Array<{ name: string; displayName: string; title: string }>
-  >([]);
-  searchingSubreddits = signal<boolean>(false);
-  private subredditSearchTimeout: any = null;
-
-  // YouTube channel search
-  channelSearchResults = signal<
-    Array<{
-      channelId: string;
-      title: string;
-      description: string;
-      thumbnailUrl: string | null;
-      subscriberCount: number;
-      handle: string | null;
-    }>
-  >([]);
-  searchingChannels = signal<boolean>(false);
-  private channelSearchTimeout: any = null;
+  // Search timeouts
+  private subredditSearchTimeout: ReturnType<typeof setTimeout> | null = null;
+  private channelSearchTimeout: ReturnType<typeof setTimeout> | null = null;
 
   // Group selection with autocomplete
   groupInputControl = new FormControl<string | null>("");
@@ -1453,21 +1441,7 @@ export class FeedFormComponent implements OnInit, OnDestroy {
     aggregatorType: ["", Validators.required],
   });
 
-  feedFormGroup: FormGroup = this.fb.group({
-    name: ["", Validators.required],
-    identifier: ["", Validators.required],
-    enabled: [true],
-    generate_title_image: [true],
-    add_source_footer: [true],
-    skip_duplicates: [true],
-    use_current_timestamp: [true],
-    daily_post_limit: [50],
-    // AI features
-    ai_translate_to: [""],
-    ai_summarize: [false],
-    ai_custom_prompt: [""],
-    groupIds: [[]],
-  });
+  feedFormGroup: FormGroup = this.validationService.createFeedFormGroup();
 
   ngOnInit() {
     // Check if user has OpenAI credentials
@@ -1644,59 +1618,14 @@ export class FeedFormComponent implements OnInit, OnDestroy {
                     }
                   }
 
-                  // Clear existing option fields
-                  Object.keys(this.feedFormGroup.controls).forEach((key) => {
-                    if (key.startsWith("option_")) {
-                      this.feedFormGroup.removeControl(key);
-                    }
-                  });
-
                   // Add option fields dynamically and populate with existing values (filtered for managed aggregators)
                   const filteredOptions = this.getFilteredOptions();
                   if (filteredOptions) {
-                    Object.entries(filteredOptions).forEach(([key, option]) => {
-                      const fieldName = `option_${key}`;
-                      const validators = option.required
-                        ? [Validators.required]
-                        : [];
-                      const existingValue =
-                        feed.aggregatorOptions?.[key] ?? option.default;
-
-                      // Add JSON validation for json widget type
-                      if (option.widget === "json") {
-                        validators.push((control: AbstractControl) => {
-                          if (!control.value || control.value.trim() === "") {
-                            return null; // Empty is valid (will use default)
-                          }
-                          try {
-                            JSON.parse(control.value);
-                            return null;
-                          } catch (e) {
-                            return { jsonInvalid: true };
-                          }
-                        });
-                      }
-
-                      if (option.type === "boolean") {
-                        this.feedFormGroup.addControl(
-                          fieldName,
-                          this.fb.control(existingValue ?? false),
-                        );
-                      } else if (
-                        option.type === "integer" ||
-                        option.type === "float"
-                      ) {
-                        this.feedFormGroup.addControl(
-                          fieldName,
-                          this.fb.control(existingValue ?? null, validators),
-                        );
-                      } else {
-                        this.feedFormGroup.addControl(
-                          fieldName,
-                          this.fb.control(existingValue ?? "", validators),
-                        );
-                      }
-                    });
+                    this.validationService.addAggregatorOptions(
+                      this.feedFormGroup,
+                      filteredOptions,
+                      feed.aggregatorOptions,
+                    );
                   }
 
                   // Skip to step 2 (index 0 when Step 1 is hidden) after a short delay to ensure stepper is initialized
@@ -1784,37 +1713,13 @@ export class FeedFormComponent implements OnInit, OnDestroy {
             }
           }
 
-          // Clear existing option fields
-          Object.keys(this.feedFormGroup.controls).forEach((key) => {
-            if (key.startsWith("option_")) {
-              this.feedFormGroup.removeControl(key);
-            }
-          });
-
           // Add option fields dynamically (filtered for managed aggregators)
           const filteredOptions = this.getFilteredOptions();
           if (filteredOptions) {
-            Object.entries(filteredOptions).forEach(([key, option]) => {
-              const fieldName = `option_${key}`;
-              const validators = option.required ? [Validators.required] : [];
-
-              if (option.type === "boolean") {
-                this.feedFormGroup.addControl(
-                  fieldName,
-                  this.fb.control(option.default || false),
-                );
-              } else if (option.type === "integer" || option.type === "float") {
-                this.feedFormGroup.addControl(
-                  fieldName,
-                  this.fb.control(option.default || null, validators),
-                );
-              } else {
-                this.feedFormGroup.addControl(
-                  fieldName,
-                  this.fb.control(option.default || "", validators),
-                );
-              }
-            });
+            this.validationService.addAggregatorOptions(
+              this.feedFormGroup,
+              filteredOptions,
+            );
           }
         });
     } else {
@@ -1916,30 +1821,11 @@ export class FeedFormComponent implements OnInit, OnDestroy {
   /**
    * Filter out restricted options for managed aggregators.
    */
-  getFilteredOptions(): Record<string, any> {
-    const detail = this.aggregatorDetail();
-    if (!detail?.options) {
-      return {};
-    }
-
-    // For managed aggregators, filter out restricted options
-    if (this.isManagedAggregator()) {
-      const restrictedOptions = [
-        "exclude_selectors",
-        "ignore_content_contains",
-        "ignore_title_contains",
-        "regex_replacements",
-      ];
-      const filtered: Record<string, any> = {};
-      Object.entries(detail.options).forEach(([key, value]) => {
-        if (!restrictedOptions.includes(key)) {
-          filtered[key] = value;
-        }
-      });
-      return filtered;
-    }
-
-    return detail.options;
+  getFilteredOptions(): Record<string, AggregatorDetail["options"][string]> {
+    return this.validationService.getFilteredOptions(
+      this.aggregatorDetail(),
+      this.isManagedAggregator(),
+    );
   }
 
   previewFeed() {
@@ -1951,17 +1837,11 @@ export class FeedFormComponent implements OnInit, OnDestroy {
     this.previewResponse.set(null);
 
     // Collect aggregator options (filtered for managed aggregators)
-    const aggregatorOptions: Record<string, any> = {};
     const filteredOptions = this.getFilteredOptions();
-    if (filteredOptions) {
-      Object.keys(filteredOptions).forEach((key) => {
-        const fieldName = `option_${key}`;
-        const value = this.feedFormGroup.get(fieldName)?.value;
-        if (value !== null && value !== undefined && value !== "") {
-          aggregatorOptions[key] = value;
-        }
-      });
-    }
+    const aggregatorOptions = this.validationService.collectAggregatorOptions(
+      this.feedFormGroup,
+      filteredOptions,
+    );
 
     // Determine feed type from aggregator
     const agg = this.selectedAggregator();
@@ -2024,13 +1904,13 @@ export class FeedFormComponent implements OnInit, OnDestroy {
   /**
    * Handle subreddit search input.
    */
-  onSubredditSearch(event: Event) {
+  onSubredditSearch(event: Event): void {
     const input = event.target as HTMLInputElement;
     const query = input.value.trim();
 
     if (query.length < 2) {
-      this.subredditSearchResults.set([]);
-      this.searchingSubreddits.set(false);
+      this.searchService.subredditSearchResults.set([]);
+      this.searchService.searchingSubreddits.set(false);
       return;
     }
 
@@ -2043,82 +1923,31 @@ export class FeedFormComponent implements OnInit, OnDestroy {
     this.subredditSearchTimeout = setTimeout(() => {
       const currentValue = this.feedFormGroup.get("identifier")?.value?.trim();
       if (currentValue === query && query.length >= 2) {
-        this.searchSubreddits(query);
+        this.searchService.searchSubreddits(query);
       }
     }, 500);
   }
 
   /**
-   * Search Reddit subreddits using TRPC.
+   * Handle subreddit selection from autocomplete.
    */
-  private searchSubreddits(query: string) {
-    if (query.length < 2) {
-      this.subredditSearchResults.set([]);
-      this.searchingSubreddits.set(false);
-      return;
-    }
-
-    this.searchingSubreddits.set(true);
-
-    from(
-      this.trpc.client.aggregator.searchSubreddits.query({
-        query: query,
-        limit: 25,
-      }),
-    )
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (results) => {
-          this.subredditSearchResults.set(
-            results.map((r) => ({
-              name: r.name,
-              displayName: r.displayName,
-              title: r.title,
-            })),
-          );
-          this.searchingSubreddits.set(false);
-        },
-        error: (error) => {
-          if (this.destroy$.closed) return;
-          console.error("Error searching subreddits:", error);
-          this.subredditSearchResults.set([]);
-          this.searchingSubreddits.set(false);
-        },
-      });
-  }
-
-  /**
-   * Display function for subreddit autocomplete.
-   */
-  displaySubreddit(
+  onSubredditSelected(
     subreddit:
       | string
       | { name: string; displayName: string; title: string }
+      | { option: { value: string | { name: string } } }
       | null,
-  ): string {
-    if (!subreddit) {
-      return "";
-    }
-    // If it's already a string (the name), return it
-    if (typeof subreddit === "string") {
-      return subreddit;
-    }
-    // If it's an object, return the name
-    return subreddit.name || "";
-  }
-
-  /**
-   * Handle subreddit selection from autocomplete.
-   */
-  onSubredditSelected(subreddit: any) {
+  ): void {
     // Handle both event object and direct subreddit value
     const value =
-      typeof subreddit === "object" && subreddit.option
+      typeof subreddit === "object" && subreddit && "option" in subreddit
         ? subreddit.option.value
         : subreddit;
     if (value) {
       const subredditName =
-        typeof value === "string" ? value : value.name || value;
+        typeof value === "string"
+          ? value
+          : (value as { name: string }).name || value;
       this.feedFormGroup.patchValue({ identifier: subredditName });
     }
   }
@@ -2126,7 +1955,7 @@ export class FeedFormComponent implements OnInit, OnDestroy {
   /**
    * Handle channel search input.
    */
-  onChannelSearch(event: Event) {
+  onChannelSearch(event: Event): void {
     const input = event.target as HTMLInputElement;
     const query = input.value?.trim() || "";
 
@@ -2139,48 +1968,15 @@ export class FeedFormComponent implements OnInit, OnDestroy {
     this.channelSearchTimeout = setTimeout(() => {
       const currentValue = this.feedFormGroup.get("identifier")?.value?.trim();
       if (currentValue === query && query.length >= 2) {
-        this.searchChannels(query);
+        this.searchService.searchChannels(query);
       }
     }, 500);
   }
 
   /**
-   * Search YouTube channels using TRPC.
+   * Handle channel selection from autocomplete.
    */
-  private searchChannels(query: string) {
-    if (query.length < 2) {
-      this.channelSearchResults.set([]);
-      this.searchingChannels.set(false);
-      return;
-    }
-
-    this.searchingChannels.set(true);
-
-    from(
-      this.trpc.client.aggregator.searchChannels.query({
-        query: query,
-        limit: 25,
-      }),
-    )
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (results) => {
-          this.channelSearchResults.set(results);
-          this.searchingChannels.set(false);
-        },
-        error: (error) => {
-          if (this.destroy$.closed) return;
-          console.error("Error searching YouTube channels:", error);
-          this.channelSearchResults.set([]);
-          this.searchingChannels.set(false);
-        },
-      });
-  }
-
-  /**
-   * Display function for channel autocomplete.
-   */
-  displayChannel(
+  onChannelSelected(
     channel:
       | string
       | {
@@ -2188,46 +1984,20 @@ export class FeedFormComponent implements OnInit, OnDestroy {
           title: string;
           handle: string | null;
         }
+      | { option: { value: { channelId: string; handle: string | null } } }
       | null,
-  ): string {
-    if (!channel) {
-      return "";
-    }
-    // If it's already a string, return it as-is (could be handle, channelId, or URL)
-    if (typeof channel === "string") {
-      return channel;
-    }
-    // If it's an object, return the handle (with @) or channelId
-    return channel.handle ? `@${channel.handle}` : channel.channelId;
-  }
-
-  /**
-   * Handle channel selection from autocomplete.
-   */
-  onChannelSelected(channel: any) {
+  ): void {
     // Handle both event object and direct channel value
     const value =
-      typeof channel === "object" && channel.option
+      typeof channel === "object" && channel && "option" in channel
         ? channel.option.value
         : channel;
-    if (value && typeof value === "object") {
+    if (value && typeof value === "object" && "channelId" in value) {
       // Prefer handle if available, otherwise use channelId
       // The YouTube aggregator can resolve both
       const identifier = value.handle ? `@${value.handle}` : value.channelId;
       this.feedFormGroup.patchValue({ identifier });
     }
-  }
-
-  /**
-   * Format subscriber count for display.
-   */
-  formatSubscriberCount(count: number): string {
-    if (count >= 1000000) {
-      return `${(count / 1000000).toFixed(1)}M subscribers`;
-    } else if (count >= 1000) {
-      return `${(count / 1000).toFixed(1)}K subscribers`;
-    }
-    return `${count} subscribers`;
   }
 
   /**
@@ -2379,7 +2149,7 @@ export class FeedFormComponent implements OnInit, OnDestroy {
   /**
    * Handle group option selection from autocomplete.
    */
-  onGroupSelected(event: any): void {
+  onGroupSelected(event: { option: { value: Group } }): void {
     const group = event.option.value;
     if (group && typeof group === "object" && group.id) {
       this.selectGroup(group);
@@ -2447,17 +2217,11 @@ export class FeedFormComponent implements OnInit, OnDestroy {
     this.creating.set(true);
 
     // Collect aggregator options (filtered for managed aggregators)
-    const aggregatorOptions: Record<string, any> = {};
     const filteredOptions = this.getFilteredOptions();
-    if (filteredOptions) {
-      Object.keys(filteredOptions).forEach((key) => {
-        const fieldName = `option_${key}`;
-        const value = this.feedFormGroup.get(fieldName)?.value;
-        if (value !== null && value !== undefined && value !== "") {
-          aggregatorOptions[key] = value;
-        }
-      });
-    }
+    const aggregatorOptions = this.validationService.collectAggregatorOptions(
+      this.feedFormGroup,
+      filteredOptions,
+    );
 
     // Determine feed type from aggregator
     const agg = this.selectedAggregator();

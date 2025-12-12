@@ -4,10 +4,10 @@
  * All aggregators must extend this class.
  */
 
-import type { Feed, Article } from "../../db/types";
+import type { Feed, Article } from "@server/db/types";
 import type { RawArticle, AggregatorOptions, OptionsSchema } from "./types";
-import { logger } from "../../utils/logger";
-import { createLogger } from "../../utils/logger";
+import { logger } from "@server/utils/logger";
+import { createLogger } from "@server/utils/logger";
 
 export abstract class BaseAggregator {
   protected feed: Feed | null = null;

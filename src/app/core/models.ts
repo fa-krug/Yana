@@ -193,7 +193,7 @@ export interface AggregatorOption {
   type: "boolean" | "integer" | "float" | "string" | "password" | "choice";
   label: string;
   helpText?: string;
-  default?: any;
+  default?: boolean | number | string;
   required?: boolean;
   min?: number;
   max?: number;

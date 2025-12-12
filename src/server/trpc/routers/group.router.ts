@@ -15,12 +15,12 @@ import {
   updateGroup,
   deleteGroup,
   getFeedGroups,
-} from "../../services/group.service";
+} from "@server/services/group.service";
 import {
   NotFoundError,
   PermissionDeniedError,
   ConflictError,
-} from "../../errors";
+} from "@server/errors";
 
 /**
  * Helper to convert date to ISO string.
@@ -38,9 +38,22 @@ const toISOString = (
 /**
  * Convert group object to API format.
  */
-const formatGroup = (group: any) => {
+const formatGroup = (group: {
+  id: number;
+  userId: number | null;
+  name: string;
+  createdAt: Date;
+  updatedAt: Date;
+}): {
+  id: number;
+  userId?: number;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+} => {
   return {
     ...group,
+    userId: group.userId ?? undefined,
     createdAt: toISOString(group.createdAt),
     updatedAt: toISOString(group.updatedAt),
   };

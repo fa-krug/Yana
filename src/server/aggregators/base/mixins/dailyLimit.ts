@@ -2,8 +2,9 @@
  * Daily limit distribution mixin for BaseAggregator.
  */
 
-import type { Feed } from "../../../db/types";
-import { db, articles } from "../../../db";
+import type pino from "pino";
+import type { Feed } from "@server/db/types";
+import { db, articles } from "@server/db";
 import { eq, and, gte, desc } from "drizzle-orm";
 
 /**
@@ -12,7 +13,7 @@ import { eq, and, gte, desc } from "drizzle-orm";
 export interface DailyLimitMixin {
   readonly feed: Feed | null;
   readonly defaultDailyLimit: number;
-  readonly logger: any;
+  readonly logger: pino.Logger;
   readonly id: string;
   getMostRecentPostTimeToday(): Promise<Date | null>;
   getDailyPostLimit(): number;

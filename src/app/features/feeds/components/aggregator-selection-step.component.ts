@@ -15,8 +15,8 @@ import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatPaginatorModule, PageEvent } from "@angular/material/paginator";
 import { MatChipsModule } from "@angular/material/chips";
 import { MatStepperModule } from "@angular/material/stepper";
-import { AggregatorService } from "../../../core/services/aggregator.service";
-import { Aggregator } from "../../../core/models";
+import { AggregatorService } from "@app/core/services/aggregator.service";
+import { Aggregator } from "@app/core/models";
 
 @Component({
   selector: "app-aggregator-selection-step",

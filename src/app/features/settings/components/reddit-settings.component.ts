@@ -12,7 +12,7 @@ import { MatButtonModule } from "@angular/material/button";
 import { MatCheckboxModule } from "@angular/material/checkbox";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
-import { UserSettingsService } from "../../../core/services/user-settings.service";
+import { UserSettingsService } from "@app/core/services/user-settings.service";
 
 @Component({
   selector: "app-reddit-settings",
@@ -264,21 +264,31 @@ export class RedditSettingsComponent {
     this.redditForm.get("userAgent")?.setErrors(null);
   }
 
-  private extractRedditFieldErrors(error: any): {
+  private extractRedditFieldErrors(error: unknown): {
     clientId?: string;
     clientSecret?: string;
     userAgent?: string;
     general?: string;
   } | null {
-    let fieldErrors = error?.data?.fieldErrors;
+    const getNestedValue = (obj: unknown, ...paths: string[]): unknown => {
+      for (const path of paths) {
+        if (typeof obj === "object" && obj !== null && path in obj) {
+          obj = (obj as Record<string, unknown>)[path];
+        } else {
+          return undefined;
+        }
+      }
+      return obj;
+    };
+
+    let fieldErrors =
+      getNestedValue(error, "data", "fieldErrors") ||
+      getNestedValue(error, "shape", "data", "fieldErrors");
 
     if (!fieldErrors) {
-      fieldErrors = error?.shape?.data?.fieldErrors;
-    }
-
-    if (!fieldErrors && error?.data?.cause) {
-      const cause = error.data.cause;
+      const cause = getNestedValue(error, "data", "cause");
       if (
+        cause &&
         typeof cause === "object" &&
         ("clientId" in cause || "clientSecret" in cause || "general" in cause)
       ) {
@@ -286,27 +296,60 @@ export class RedditSettingsComponent {
       }
     }
 
-    if (fieldErrors && typeof fieldErrors === "object") {
+    if (
+      fieldErrors &&
+      typeof fieldErrors === "object" &&
+      fieldErrors !== null
+    ) {
+      const err = fieldErrors as Record<string, unknown>;
       return {
-        clientId: fieldErrors.clientId,
-        clientSecret: fieldErrors.clientSecret,
-        userAgent: fieldErrors.userAgent,
-        general: fieldErrors.general,
+        clientId:
+          typeof err["clientId"] === "string" ? err["clientId"] : undefined,
+        clientSecret:
+          typeof err["clientSecret"] === "string"
+            ? err["clientSecret"]
+            : undefined,
+        userAgent:
+          typeof err["userAgent"] === "string" ? err["userAgent"] : undefined,
+        general:
+          typeof err["general"] === "string" ? err["general"] : undefined,
       };
     }
 
     return null;
   }
 
-  private extractRedditErrorMessage(error: any): string {
-    if (error?.data?.message) {
-      return error.data.message;
+  private extractRedditErrorMessage(error: unknown): string {
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "data" in error &&
+      typeof (error as { data?: unknown }).data === "object" &&
+      (error as { data?: { message?: unknown } }).data !== null &&
+      "message" in (error as { data: { message?: unknown } }).data &&
+      typeof (error as { data: { message: unknown } }).data.message === "string"
+    ) {
+      return (error as { data: { message: string } }).data.message;
     }
-    if (error?.error?.message) {
-      return error.error.message;
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "error" in error &&
+      typeof (error as { error?: unknown }).error === "object" &&
+      (error as { error?: { message?: unknown } }).error !== null &&
+      "message" in (error as { error: { message?: unknown } }).error &&
+      typeof (error as { error: { message: unknown } }).error.message ===
+        "string"
+    ) {
+      return (error as { error: { message: string } }).error.message;
     }
-    if (error?.message) {
-      return error.message;
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "message" in error &&
+      typeof (error as { message: unknown }).message === "string"
+    ) {
+      return (error as { message: string }).message;
     }
     return "Failed to update Reddit settings";
   }

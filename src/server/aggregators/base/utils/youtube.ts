@@ -2,7 +2,7 @@
  * YouTube utility functions.
  */
 
-import { logger } from "../../../utils/logger";
+import { logger } from "@server/utils/logger";
 
 /**
  * Extract YouTube video ID from URL.

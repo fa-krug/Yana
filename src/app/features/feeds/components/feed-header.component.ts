@@ -12,7 +12,7 @@ import { MatChipsModule } from "@angular/material/chips";
 import { MatMenuModule } from "@angular/material/menu";
 import { MatTooltipModule } from "@angular/material/tooltip";
 import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
-import { Feed } from "../../../core/models";
+import { Feed } from "@app/core/models";
 
 @Component({
   selector: "app-feed-header",

@@ -3,7 +3,7 @@
  */
 
 import { ContentFetchError, ParseError } from "./exceptions";
-import { logger } from "../../utils/logger";
+import { logger } from "@server/utils/logger";
 
 export type ErrorType =
   | "network"

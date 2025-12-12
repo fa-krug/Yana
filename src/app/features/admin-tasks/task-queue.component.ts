@@ -35,7 +35,7 @@ import {
   type Task,
   type TaskFilters,
   type PaginatedTasks,
-} from "../../core/services/admin-tasks.service";
+} from "@app/core/services/admin-tasks.service";
 import { TaskDetailsDialogComponent } from "./task-details-dialog.component";
 
 @Component({

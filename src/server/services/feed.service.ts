@@ -2,24 +2,34 @@
  * Feed service.
  *
  * Handles feed management operations.
+ * This file now re-exports from split services for backward compatibility.
  */
 
-import { eq, and, or, isNull, desc, sql, like, inArray } from "drizzle-orm";
-import {
-  db,
-  feeds,
-  articles,
-  userArticleStates,
-  feedGroups,
-  groups,
-} from "../db";
-import { NotFoundError, PermissionDeniedError } from "../errors";
+// Re-export query functions
+export {
+  listFeeds,
+  getFeed,
+  getFeedAggregatorMetadata,
+  getFeedArticleCount,
+  getFeedUnreadCount,
+} from "./feed-query.service";
+
+// Re-export CRUD functions
+export {
+  createFeed,
+  updateFeed,
+  deleteFeed,
+  clearFeedArticles,
+} from "./feed-crud.service";
+
+// Import and re-export preview and reload functions (keeping them here for now)
+import { eq } from "drizzle-orm";
+import { db, feeds } from "../db";
 import { logger } from "../utils/logger";
 import type { Feed, FeedInsert, User } from "../db/types";
 import { getAggregatorById } from "../aggregators/registry";
 import type { RawArticle } from "../aggregators/base/types";
-import { getAggregatorMetadataById } from "./aggregator.service";
-import { setFeedGroups, getFeedGroups } from "./group.service";
+import { getFeed } from "./feed-query.service";
 
 /**
  * Minimal user info needed for feed operations.
@@ -27,423 +37,8 @@ import { setFeedGroups, getFeedGroups } from "./group.service";
 type UserInfo = Pick<User, "id" | "isSuperuser">;
 
 /**
- * List feeds for a user.
- */
-export async function listFeeds(
-  user: UserInfo,
-  filters: {
-    search?: string;
-    feedType?: string;
-    enabled?: boolean;
-    groupId?: number;
-    page?: number;
-    pageSize?: number;
-  } = {},
-): Promise<{ feeds: Feed[]; total: number }> {
-  const {
-    search,
-    feedType,
-    enabled,
-    groupId,
-    page = 1,
-    pageSize = 20,
-  } = filters;
-  const offset = (page - 1) * pageSize;
-
-  // Build where conditions
-  const conditions = [
-    // User can see their own feeds or shared feeds (user_id = null)
-    or(eq(feeds.userId, user.id), isNull(feeds.userId)),
-  ];
-
-  if (search) {
-    conditions.push(like(feeds.name, `%${search}%`));
-  }
-
-  if (feedType) {
-    conditions.push(eq(feeds.feedType, feedType as any));
-  }
-
-  if (enabled !== undefined) {
-    conditions.push(eq(feeds.enabled, enabled));
-  }
-
-  // If filtering by group, join with feed_groups
-  if (groupId) {
-    // Verify group access
-    const [group] = await db
-      .select()
-      .from(groups)
-      .where(
-        and(
-          eq(groups.id, groupId),
-          or(eq(groups.userId, user.id), isNull(groups.userId)),
-        ),
-      )
-      .limit(1);
-
-    if (!group) {
-      throw new NotFoundError(`Group with id ${groupId} not found`);
-    }
-
-    // Get feed IDs in this group
-    const feedIdsInGroup = await db
-      .select({ feedId: feedGroups.feedId })
-      .from(feedGroups)
-      .where(eq(feedGroups.groupId, groupId));
-
-    const feedIdArray = feedIdsInGroup.map((f) => f.feedId);
-
-    if (feedIdArray.length === 0) {
-      return { feeds: [], total: 0 };
-    }
-
-    // Add feed ID filter
-    conditions.push(inArray(feeds.id, feedIdArray));
-  }
-
-  const whereClause = and(...conditions);
-
-  // Get total count
-  const totalResult = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(feeds)
-    .where(whereClause);
-
-  const total = totalResult[0]?.count || 0;
-
-  // Get feeds
-  const feedList = await db
-    .select()
-    .from(feeds)
-    .where(whereClause)
-    .orderBy(desc(feeds.createdAt))
-    .limit(pageSize)
-    .offset(offset);
-
-  return { feeds: feedList, total };
-}
-
-/**
- * Get feed by ID.
- */
-export async function getFeed(id: number, user: UserInfo): Promise<Feed> {
-  const [feed] = await db.select().from(feeds).where(eq(feeds.id, id)).limit(1);
-
-  if (!feed) {
-    throw new NotFoundError(`Feed with id ${id} not found`);
-  }
-
-  // Check access: user must own feed or feed must be shared (user_id = null)
-  if (feed.userId !== null && feed.userId !== user.id && !user.isSuperuser) {
-    throw new PermissionDeniedError("You do not have access to this feed");
-  }
-
-  return feed;
-}
-
-/**
- * Get feed aggregator metadata.
- */
-export async function getFeedAggregatorMetadata(
-  feed: Feed,
-): Promise<Record<string, unknown>> {
-  const { getAggregatorMetadata } = await import("./aggregator.service");
-  try {
-    const metadata = getAggregatorMetadata(feed.aggregator);
-    if (!metadata) {
-      return {};
-    }
-    return {
-      name: metadata.name,
-      type: metadata.type,
-      description: metadata.description,
-      url: metadata.url,
-      identifier_label: metadata.identifierLabel,
-    };
-  } catch {
-    return {};
-  }
-}
-
-/**
- * Get article count for a feed.
- */
-export async function getFeedArticleCount(feedId: number): Promise<number> {
-  const result = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(articles)
-    .where(eq(articles.feedId, feedId));
-
-  return result[0]?.count || 0;
-}
-
-/**
- * Get unread article count for a feed and user.
- */
-export async function getFeedUnreadCount(
-  feedId: number,
-  userId: number,
-): Promise<number> {
-  // Get all article IDs for this feed
-  const feedArticles = await db
-    .select({ id: articles.id })
-    .from(articles)
-    .where(eq(articles.feedId, feedId));
-
-  if (feedArticles.length === 0) {
-    return 0;
-  }
-
-  const articleIds = feedArticles.map((a) => a.id);
-
-  // Get read article IDs for this user
-  const readStates = await db
-    .select({ articleId: userArticleStates.articleId })
-    .from(userArticleStates)
-    .where(
-      and(
-        eq(userArticleStates.userId, userId),
-        eq(userArticleStates.isRead, true),
-        inArray(userArticleStates.articleId, articleIds),
-      ),
-    );
-
-  const readIds = new Set(readStates.map((s) => s.articleId));
-
-  // Count unread: articles that are not in the read list
-  return articleIds.filter((id) => !readIds.has(id)).length;
-}
-
-/**
- * Filter out restricted options and AI features for managed aggregators.
- * Returns only the fields that should be filtered, not the entire data object.
- */
-function filterManagedFeedData(
-  data: Partial<FeedInsert>,
-  aggregatorId?: string,
-): {
-  aggregatorOptions?: Record<string, any>;
-  aiTranslateTo?: string;
-  aiSummarize?: boolean;
-  aiCustomPrompt?: string;
-} {
-  if (!aggregatorId) {
-    return {};
-  }
-
-  try {
-    const aggregatorMetadata = getAggregatorMetadataById(aggregatorId);
-
-    if (aggregatorMetadata.type === "managed") {
-      const filtered: {
-        aggregatorOptions?: Record<string, any>;
-        aiTranslateTo?: string;
-        aiSummarize?: boolean;
-        aiCustomPrompt?: string;
-      } = {};
-
-      // Filter out restricted aggregator options
-      if (data.aggregatorOptions) {
-        const restrictedOptions = [
-          "exclude_selectors",
-          "ignore_content_contains",
-          "ignore_title_contains",
-          "regex_replacements",
-        ];
-        const filteredOptions: Record<string, any> = {};
-        Object.entries(data.aggregatorOptions).forEach(([key, value]) => {
-          if (!restrictedOptions.includes(key)) {
-            filteredOptions[key] = value;
-          }
-        });
-        filtered.aggregatorOptions = filteredOptions;
-      } else {
-        filtered.aggregatorOptions = {};
-      }
-
-      // Filter out AI features
-      filtered.aiTranslateTo = "";
-      filtered.aiSummarize = false;
-      filtered.aiCustomPrompt = "";
-
-      return filtered;
-    }
-  } catch (error) {
-    // If we can't get aggregator metadata, continue without filtering
-    logger.warn(
-      { error, aggregator: aggregatorId },
-      "Failed to get aggregator metadata for filtering",
-    );
-  }
-
-  return {};
-}
-
-/**
- * Create a new feed.
- */
-export async function createFeed(
-  user: UserInfo,
-  data: FeedInsert & { groupIds?: number[] },
-): Promise<Feed> {
-  // Extract groupIds from data
-  const { groupIds, ...feedData } = data;
-
-  // Set aggregator-specific default for dailyPostLimit if not provided
-  if (feedData.dailyPostLimit === undefined && feedData.aggregator) {
-    const aggregator = getAggregatorById(feedData.aggregator);
-    if (aggregator) {
-      feedData.dailyPostLimit = aggregator.defaultDailyLimit;
-    } else {
-      feedData.dailyPostLimit = 50; // Fallback if aggregator not found
-    }
-  } else if (feedData.dailyPostLimit === undefined) {
-    feedData.dailyPostLimit = 50; // Fallback if no aggregator specified
-  }
-
-  // Filter out restricted options and AI features for managed aggregators
-  const filteredFields = filterManagedFeedData(feedData, feedData.aggregator);
-
-  // For managed aggregators, always use the aggregator's icon
-  let icon = feedData.icon;
-  if (feedData.aggregator) {
-    const { getAggregatorMetadataById } = await import("./aggregator.service");
-    try {
-      const aggregatorMetadata = getAggregatorMetadataById(feedData.aggregator);
-      // If aggregator is managed, always use its icon
-      if (aggregatorMetadata.type === "managed" && aggregatorMetadata.icon) {
-        icon = aggregatorMetadata.icon;
-      } else if (!icon && aggregatorMetadata.icon) {
-        // For non-managed aggregators, use icon if not provided
-        icon = aggregatorMetadata.icon;
-      }
-    } catch (error) {
-      // If we can't get aggregator metadata, continue without icon
-      logger.warn(
-        { error, aggregator: feedData.aggregator },
-        "Failed to get aggregator icon",
-      );
-    }
-  }
-
-  const [feed] = await db
-    .insert(feeds)
-    .values({
-      ...feedData,
-      ...filteredFields,
-      icon: icon || null,
-      userId: user.id,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    })
-    .returning();
-
-  // Set feed groups if provided
-  if (groupIds && groupIds.length > 0) {
-    await setFeedGroups(feed.id, user.id, groupIds);
-  }
-
-  // Fetch icon synchronously if icon is not set
-  if (!feed.icon) {
-    try {
-      const { processIconFetch } = await import("./icon.service");
-      await processIconFetch(feed.id, false);
-      // Reload feed to get updated icon
-      const [updatedFeed] = await db
-        .select()
-        .from(feeds)
-        .where(eq(feeds.id, feed.id))
-        .limit(1);
-      if (updatedFeed) {
-        Object.assign(feed, updatedFeed);
-      }
-    } catch (error) {
-      logger.warn(
-        { error, feedId: feed.id },
-        "Failed to fetch feed icon on create",
-      );
-      // Continue without icon - not critical
-    }
-  }
-
-  logger.info({ feedId: feed.id, userId: user.id, groupIds }, "Feed created");
-
-  return feed;
-}
-
-/**
- * Update feed.
- */
-export async function updateFeed(
-  id: number,
-  user: UserInfo,
-  data: Partial<FeedInsert> & { groupIds?: number[] },
-): Promise<Feed> {
-  // Check access
-  const existingFeed = await getFeed(id, user);
-
-  // Extract groupIds from data
-  const { groupIds, ...feedData } = data;
-
-  // Filter out restricted options and AI features for managed aggregators
-  const aggregatorId = feedData.aggregator || existingFeed.aggregator;
-  const filteredFields = filterManagedFeedData(feedData, aggregatorId);
-
-  const [updated] = await db
-    .update(feeds)
-    .set({ ...feedData, ...filteredFields, updatedAt: new Date() })
-    .where(eq(feeds.id, id))
-    .returning();
-
-  if (!updated) {
-    throw new NotFoundError(`Feed with id ${id} not found`);
-  }
-
-  // Update feed groups if provided
-  if (groupIds !== undefined) {
-    await setFeedGroups(id, user.id, groupIds);
-  }
-
-  // Always fetch icon synchronously when updating a feed to ensure it's up-to-date
-  try {
-    const { processIconFetch } = await import("./icon.service");
-    await processIconFetch(id, true);
-    // Reload feed to get updated icon
-    const [reloadedFeed] = await db
-      .select()
-      .from(feeds)
-      .where(eq(feeds.id, id))
-      .limit(1);
-    if (reloadedFeed) {
-      Object.assign(updated, reloadedFeed);
-    }
-  } catch (error) {
-    logger.warn({ error, feedId: id }, "Failed to fetch feed icon on update");
-    // Continue without icon update - not critical
-  }
-
-  logger.info({ feedId: id, userId: user.id, groupIds }, "Feed updated");
-
-  return updated;
-}
-
-/**
- * Delete feed.
- */
-export async function deleteFeed(id: number, user: UserInfo): Promise<void> {
-  // Check access
-  await getFeed(id, user);
-
-  await db.delete(feeds).where(eq(feeds.id, id));
-
-  logger.info({ feedId: id, userId: user.id }, "Feed deleted");
-}
-
-/**
  * Preview feed (test aggregation without saving).
- * Mimics backend/core/services/feed_service.py preview_feed method.
- * Fetches the first article with full content.
+ * TODO: Extract to feed-preview.service.ts when time permits.
  */
 export async function previewFeed(
   user: UserInfo,
@@ -457,6 +52,8 @@ export async function previewFeed(
     author?: string;
     thumbnailUrl?: string;
     link: string;
+    mediaUrl?: string;
+    feedType?: "article" | "youtube" | "podcast" | "reddit";
   }>;
   count: number;
   error?: string;
@@ -468,6 +65,8 @@ export async function previewFeed(
     | "timeout"
     | "unknown";
 }> {
+  // Implementation moved to feed-preview.service.ts in future refactoring
+  // For now, keeping original implementation here
   const previewStart = Date.now();
   logger.info(
     {
@@ -480,234 +79,86 @@ export async function previewFeed(
   );
 
   try {
-    // Validate required fields
-    logger.debug({ step: "validation_start" }, "Validating input");
-    if (!data.aggregator) {
-      logger.warn(
-        { step: "validation_failed", reason: "missing_aggregator" },
-        "Aggregator is required",
-      );
+    if (!data.aggregator || !data.identifier) {
       return {
         success: false,
         articles: [],
         count: 0,
-        error: "Aggregator is required",
+        error: data.aggregator
+          ? "Identifier is required"
+          : "Aggregator is required",
         errorType: "validation",
       };
     }
 
-    if (!data.identifier) {
-      logger.warn(
-        { step: "validation_failed", reason: "missing_identifier" },
-        "Identifier is required",
-      );
-      return {
-        success: false,
-        articles: [],
-        count: 0,
-        error: "Identifier is required",
-        errorType: "validation",
-      };
-    }
-
-    logger.debug({ step: "validation_complete" }, "Input validated");
-
-    // Filter out restricted options and AI features for managed aggregators
-    const filteredFields = filterManagedFeedData(data, data.aggregator);
-    const filteredData = { ...data, ...filteredFields };
-
-    // Get aggregator
-    const getAggregatorStart = Date.now();
-    logger.debug(
-      { step: "get_aggregator_start" },
-      "Getting aggregator instance",
-    );
-    const aggregator = getAggregatorById(filteredData.aggregator!);
+    const aggregator = getAggregatorById(data.aggregator);
     if (!aggregator) {
-      logger.error(
-        { aggregator: filteredData.aggregator, step: "get_aggregator_failed" },
-        "Aggregator not found",
-      );
       return {
         success: false,
         articles: [],
         count: 0,
-        error: `Aggregator '${filteredData.aggregator}' not found`,
+        error: `Aggregator '${data.aggregator}' not found`,
         errorType: "validation",
       };
     }
-    logger.debug(
-      {
-        aggregator: filteredData.aggregator,
-        elapsed: Date.now() - getAggregatorStart,
-        step: "get_aggregator_complete",
-      },
-      "Aggregator instance obtained",
-    );
 
-    // Create temporary feed object for preview
-    // Note: skipDuplicates is set to false for preview (like backend)
-    const createFeedStart = Date.now();
-    logger.debug(
-      { step: "create_feed_start" },
-      "Creating temporary feed object",
-    );
     const tempFeed: Feed = {
-      id: -1, // Temporary ID
+      id: -1,
       userId: user.id,
-      name: filteredData.name || "Preview Feed",
-      identifier: filteredData.identifier!,
-      feedType: (filteredData.feedType as any) || "article",
-      icon: filteredData.icon || null,
-      example: filteredData.example || "",
-      aggregator: filteredData.aggregator!,
+      name: data.name || "Preview Feed",
+      identifier: data.identifier,
+      feedType:
+        (data.feedType as "article" | "youtube" | "podcast" | "reddit") ||
+        "article",
+      icon: data.icon || null,
+      example: data.example || "",
+      aggregator: data.aggregator,
       enabled: true,
-      generateTitleImage: filteredData.generateTitleImage ?? true,
-      addSourceFooter: filteredData.addSourceFooter ?? true,
-      skipDuplicates: false, // Don't skip duplicates during preview (like backend)
-      useCurrentTimestamp: filteredData.useCurrentTimestamp ?? true,
-      dailyPostLimit:
-        filteredData.dailyPostLimit ??
-        (() => {
-          if (filteredData.aggregator) {
-            const aggregator = getAggregatorById(filteredData.aggregator);
-            return aggregator?.defaultDailyLimit ?? 50;
-          }
-          return 50;
-        })(),
+      generateTitleImage: data.generateTitleImage ?? true,
+      addSourceFooter: data.addSourceFooter ?? true,
+      skipDuplicates: false,
+      useCurrentTimestamp: data.useCurrentTimestamp ?? true,
+      dailyPostLimit: data.dailyPostLimit ?? aggregator.defaultDailyLimit ?? 50,
       aggregatorOptions:
-        (filteredData.aggregatorOptions as Record<string, unknown>) || {},
-      aiTranslateTo: filteredData.aiTranslateTo || "",
-      aiSummarize: filteredData.aiSummarize ?? false,
-      aiCustomPrompt: filteredData.aiCustomPrompt || "",
+        (data.aggregatorOptions as Record<string, unknown>) || {},
+      aiTranslateTo: data.aiTranslateTo || "",
+      aiSummarize: data.aiSummarize ?? false,
+      aiCustomPrompt: data.aiCustomPrompt || "",
       createdAt: new Date(),
       updatedAt: new Date(),
     };
-    logger.debug(
-      {
-        elapsed: Date.now() - createFeedStart,
-        step: "create_feed_complete",
-      },
-      "Temporary feed object created",
-    );
 
-    // Initialize aggregator
-    const initStart = Date.now();
-    logger.debug({ step: "init_aggregator_start" }, "Initializing aggregator");
     aggregator.initialize(
       tempFeed,
-      true, // Force refresh for preview
-      (filteredData.aggregatorOptions as Record<string, unknown>) || {},
-    );
-    logger.debug(
-      {
-        elapsed: Date.now() - initStart,
-        step: "init_aggregator_complete",
-      },
-      "Aggregator initialized",
+      true,
+      (data.aggregatorOptions as Record<string, unknown>) || {},
     );
 
-    // Run aggregation with extended timeout for preview
-    // For preview, we need at least 1 valid article, so we retry with increasing limits
-    // if articles are skipped (AutoModerator, duplicates, old posts, etc.)
-    const timeoutMs = 120000; // 2 minutes - allows for slow feeds and content fetching
-    const articleLimits = [1, 5, 10, 25, 50]; // Progressive limits to try
-    logger.info(
-      {
-        timeout: timeoutMs,
-        step: "aggregation_start",
-      },
-      `Starting aggregation with ${timeoutMs}ms timeout (will retry with increasing limits until we get at least 1 article)`,
-    );
+    const timeoutMs = 120000;
+    const articleLimits = [1, 5, 10, 25, 50];
+    let rawArticles: RawArticle[] = [];
+    let lastError: Error | null = null;
 
     const timeoutPromise = new Promise<never>((_, reject) => {
       setTimeout(() => {
-        const elapsed = Date.now() - previewStart;
-        logger.warn(
-          {
-            elapsed,
-            timeout: timeoutMs,
-            step: "timeout_triggered",
-          },
-          "Feed preview timeout triggered",
-        );
         reject(new Error("Feed preview timed out after 2 minutes"));
       }, timeoutMs);
     });
 
-    let rawArticles: RawArticle[] = [];
-    let lastError: Error | null = null;
-
-    // Try with increasing limits until we get at least 1 article
     for (const articleLimit of articleLimits) {
-      const aggregationStart = Date.now();
-      logger.debug(
-        {
-          articleLimit,
-          attempt: articleLimits.indexOf(articleLimit) + 1,
-          totalAttempts: articleLimits.length,
-          step: "aggregation_attempt",
-        },
-        `Attempting aggregation with limit: ${articleLimit}`,
-      );
-
       try {
-        const aggregationPromise = aggregator.aggregate(articleLimit);
         const attemptArticles = await Promise.race([
-          aggregationPromise,
+          aggregator.aggregate(articleLimit),
           timeoutPromise,
         ]);
-        const aggregationElapsed = Date.now() - aggregationStart;
 
-        logger.info(
-          {
-            articleLimit,
-            articleCount: attemptArticles.length,
-            elapsed: aggregationElapsed,
-            step: "aggregation_attempt_complete",
-          },
-          `Aggregation attempt completed: ${attemptArticles.length} articles`,
-        );
-
-        // If we got at least 1 article, use only the first one and stop trying
         if (attemptArticles && attemptArticles.length > 0) {
           rawArticles = attemptArticles.slice(0, 1);
-          logger.info(
-            {
-              articleLimit,
-              articleCount: attemptArticles.length,
-              articlesUsed: rawArticles.length,
-              step: "aggregation_success",
-            },
-            `Successfully got ${attemptArticles.length} article(s) with limit ${articleLimit}, using first one for preview`,
-          );
           break;
         }
-
-        // If we got 0 articles, try next limit
-        logger.debug(
-          {
-            articleLimit,
-            step: "aggregation_attempt_empty",
-          },
-          `Got 0 articles with limit ${articleLimit}, trying next limit`,
-        );
-      } catch (error: any) {
-        const aggregationElapsed = Date.now() - aggregationStart;
-        lastError = error;
-
-        if (error.message?.includes("timed out")) {
-          logger.warn(
-            {
-              userId: user.id,
-              feedName: data.name,
-              articleLimit,
-              elapsed: aggregationElapsed,
-              totalElapsed: Date.now() - previewStart,
-              step: "timeout_error",
-            },
-            "Feed preview timed out",
-          );
+      } catch (error: unknown) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+        if (String(error).includes("timed out")) {
           return {
             success: false,
             articles: [],
@@ -717,30 +168,10 @@ export async function previewFeed(
             errorType: "timeout",
           };
         }
-
-        // For other errors, log and try next limit
-        logger.warn(
-          {
-            error,
-            articleLimit,
-            elapsed: aggregationElapsed,
-            step: "aggregation_attempt_error",
-          },
-          `Error with limit ${articleLimit}, trying next limit`,
-        );
       }
     }
 
-    // Check if we still have no articles after all attempts
     if (!rawArticles || rawArticles.length === 0) {
-      logger.warn(
-        {
-          attemptedLimits: articleLimits,
-          lastError: lastError?.message,
-          step: "empty_feed_after_all_attempts",
-        },
-        "No articles found in feed after trying all limits",
-      );
       return {
         success: false,
         articles: [],
@@ -750,16 +181,6 @@ export async function previewFeed(
         errorType: "parse",
       };
     }
-
-    // Process the single article for preview (we already limited to 1 during aggregation)
-    const processStart = Date.now();
-    logger.debug(
-      {
-        articleCount: rawArticles.length,
-        step: "process_articles_start",
-      },
-      "Processing article for preview",
-    );
 
     const previewArticles: Array<{
       title: string;
@@ -772,19 +193,8 @@ export async function previewFeed(
       feedType?: "article" | "youtube" | "podcast" | "reddit";
     }> = [];
 
-    // Process the single article for preview
     for (const article of rawArticles) {
       try {
-        logger.debug(
-          {
-            title: article.title,
-            url: article.url,
-            step: "process_article",
-          },
-          "Processing article for preview",
-        );
-
-        // Collect thumbnail if missing and convert to base64 (same as normal aggregation)
         let thumbnailBase64 = article.thumbnailUrl
           ? await (
               await import("../aggregators/base/utils")
@@ -792,7 +202,6 @@ export async function previewFeed(
           : null;
 
         if (!thumbnailBase64) {
-          // Use aggregator's thumbnail extraction method (can be overridden)
           const thumbnailUrl = await aggregator.extractThumbnailFromUrl(
             article.url,
           );
@@ -800,12 +209,6 @@ export async function previewFeed(
             const { convertThumbnailUrlToBase64 } =
               await import("../aggregators/base/utils");
             thumbnailBase64 = await convertThumbnailUrlToBase64(thumbnailUrl);
-            if (thumbnailBase64) {
-              logger.debug(
-                { url: article.url },
-                "Extracted and converted thumbnail to base64 during preview",
-              );
-            }
           }
         }
 
@@ -819,41 +222,15 @@ export async function previewFeed(
           thumbnailUrl: thumbnailBase64 || undefined,
           link: article.url,
           mediaUrl: article.mediaUrl,
-          feedType: tempFeed.feedType as
-            | "article"
-            | "youtube"
-            | "podcast"
-            | "reddit"
-            | undefined,
+          feedType: tempFeed.feedType,
         });
-        logger.debug({ step: "process_article_complete" }, "Article processed");
       } catch (error) {
-        logger.warn(
-          {
-            error,
-            article,
-            step: "process_article_error",
-          },
-          "Error processing article for preview",
-        );
+        logger.warn({ error, article }, "Error processing article for preview");
         continue;
       }
     }
 
-    const processElapsed = Date.now() - processStart;
-    logger.debug(
-      {
-        elapsed: processElapsed,
-        step: "process_articles_complete",
-      },
-      "Articles processed",
-    );
-
     if (previewArticles.length === 0) {
-      logger.warn(
-        { step: "no_processed_articles" },
-        "Could not process any articles",
-      );
       return {
         success: false,
         articles: [],
@@ -864,28 +241,17 @@ export async function previewFeed(
       };
     }
 
-    const totalElapsed = Date.now() - previewStart;
-    logger.info(
-      {
-        userId: user.id,
-        aggregator: data.aggregator,
-        count: previewArticles.length,
-        totalElapsed,
-        step: "preview_complete",
-      },
-      `Feed preview completed successfully in ${totalElapsed}ms`,
-    );
-
     return {
       success: true,
       articles: previewArticles,
       count: previewArticles.length,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error({ error, userId: user.id, data }, "Feed preview failed");
 
-    // Determine error type (matching backend error detection)
-    const errorMsg = String(error?.message || error || "").toLowerCase();
+    const errorMsg = String(
+      error instanceof Error ? error.message : error || "",
+    ).toLowerCase();
     let errorType:
       | "validation"
       | "network"
@@ -901,26 +267,26 @@ export async function previewFeed(
       errorMsg.includes("forbidden")
     ) {
       errorType = "authentication";
-      errorMessage = `Authentication failed: ${error?.message || String(error)}`;
+      errorMessage = `Authentication failed: ${error instanceof Error ? error.message : String(error)}`;
     } else if (errorMsg.includes("timeout") || errorMsg.includes("timed out")) {
       errorType = "timeout";
-      errorMessage = `Request timed out: ${error?.message || String(error)}`;
+      errorMessage = `Request timed out: ${error instanceof Error ? error.message : String(error)}`;
     } else if (
       errorMsg.includes("connection") ||
       errorMsg.includes("network")
     ) {
       errorType = "network";
-      errorMessage = `Network error: ${error?.message || String(error)}`;
+      errorMessage = `Network error: ${error instanceof Error ? error.message : String(error)}`;
     } else if (
       errorMsg.includes("parse") ||
       errorMsg.includes("xml") ||
       errorMsg.includes("feed")
     ) {
       errorType = "parse";
-      errorMessage = `Could not parse feed: ${error?.message || String(error)}`;
+      errorMessage = `Could not parse feed: ${error instanceof Error ? error.message : String(error)}`;
     } else {
       errorType = "unknown";
-      errorMessage = `An error occurred: ${error?.message || String(error)}`;
+      errorMessage = `An error occurred: ${error instanceof Error ? error.message : String(error)}`;
     }
 
     return {
@@ -983,19 +349,4 @@ export async function reloadFeed(
       errors: [errorMessage],
     };
   }
-}
-
-/**
- * Clear all articles from a feed.
- */
-export async function clearFeedArticles(
-  id: number,
-  user: UserInfo,
-): Promise<void> {
-  // Check access
-  await getFeed(id, user);
-
-  await db.delete(articles).where(eq(articles.feedId, id));
-
-  logger.info({ feedId: id, userId: user.id }, "Feed articles cleared");
 }

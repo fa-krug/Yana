@@ -17,14 +17,14 @@ import {
   listUsers,
   updateUser,
   deleteUser,
-} from "../../services/user.service";
+} from "@server/services/user.service";
 import {
   adminUpdateUserSchema,
   adminCreateUserSchema,
   adminChangePasswordSchema,
   adminListUsersSchema,
-} from "../../validation/schemas";
-import { NotFoundError, PermissionDeniedError } from "../../errors";
+} from "@server/validation/schemas";
+import { NotFoundError, PermissionDeniedError } from "@server/errors";
 import { adminTasksRouter } from "./admin-tasks.router";
 
 /**

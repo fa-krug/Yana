@@ -11,18 +11,18 @@ import { MatSelectModule } from "@angular/material/select";
 import { MatAutocompleteModule } from "@angular/material/autocomplete";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatIconModule } from "@angular/material/icon";
-import { AggregatorDetail, Aggregator } from "../../../core/models";
+import { AggregatorDetail, Aggregator } from "@app/core/models";
 
 interface Subreddit {
   name: string;
   displayName: string;
-  title?: string;
+  title: string;
 }
 
 interface Channel {
   channelId: string;
   title: string;
-  handle?: string;
+  handle: string | null;
   thumbnailUrl?: string;
   subscriberCount?: number;
 }
@@ -279,10 +279,24 @@ export class IdentifierFieldComponent {
     this.subredditSearch.emit(event);
   }
 
-  protected onSubredditSelected(event: any): void {
-    const subreddit = event.option?.value;
+  protected onSubredditSelected(
+    event: { option: { value: Subreddit | string } } | Subreddit | string,
+  ): void {
+    const subreddit =
+      typeof event === "object" && event !== null && "option" in event
+        ? event.option.value
+        : event;
     if (subreddit) {
-      this.subredditSelected.emit(subreddit);
+      if (typeof subreddit === "string") {
+        // Convert string to Subreddit object
+        this.subredditSelected.emit({
+          name: subreddit,
+          displayName: subreddit,
+          title: subreddit,
+        });
+      } else {
+        this.subredditSelected.emit(subreddit as Subreddit);
+      }
     }
   }
 
@@ -290,10 +304,24 @@ export class IdentifierFieldComponent {
     this.channelSearch.emit(event);
   }
 
-  protected onChannelSelected(event: any): void {
-    const channel = event.option?.value;
+  protected onChannelSelected(
+    event: { option: { value: Channel | string } } | Channel | string,
+  ): void {
+    const channel =
+      typeof event === "object" && event !== null && "option" in event
+        ? event.option.value
+        : event;
     if (channel) {
-      this.channelSelected.emit(channel);
+      if (typeof channel === "string") {
+        // Convert string to Channel object
+        this.channelSelected.emit({
+          channelId: channel,
+          title: channel,
+          handle: null,
+        });
+      } else {
+        this.channelSelected.emit(channel as Channel);
+      }
     }
   }
 }

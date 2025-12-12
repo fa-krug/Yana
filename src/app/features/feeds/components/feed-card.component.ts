@@ -11,7 +11,7 @@ import { MatIconModule } from "@angular/material/icon";
 import { MatChipsModule } from "@angular/material/chips";
 import { MatMenuModule } from "@angular/material/menu";
 import { MatTooltipModule } from "@angular/material/tooltip";
-import { Feed } from "../../../core/models";
+import { Feed } from "@app/core/models";
 
 @Component({
   selector: "app-feed-card",

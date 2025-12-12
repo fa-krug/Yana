@@ -29,3 +29,6 @@ export {
   extractThumbnailUrlFromPageAndConvertToBase64,
   extractBase64ImageFromContent,
 } from "./thumbnails";
+
+// Header element utilities
+export { createHeaderElementFromUrl } from "./header-element";

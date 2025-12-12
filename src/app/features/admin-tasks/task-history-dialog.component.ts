@@ -22,7 +22,7 @@ import { MatChipsModule } from "@angular/material/chips";
 import {
   AdminTasksService,
   type TaskExecution,
-} from "../../core/services/admin-tasks.service";
+} from "@app/core/services/admin-tasks.service";
 
 @Component({
   selector: "app-task-history-dialog",

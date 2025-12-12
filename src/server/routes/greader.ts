@@ -156,7 +156,7 @@ router.post(
 
       res.setHeader("Content-Type", "text/plain");
       res.send("OK");
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (
         error instanceof NotFoundError ||
         error instanceof PermissionDeniedError

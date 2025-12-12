@@ -2,6 +2,8 @@
  * Utility methods mixin for BaseAggregator.
  */
 
+import type { RawArticle } from "../types";
+
 /**
  * Interface for aggregator with utility functionality.
  */
@@ -45,8 +47,8 @@ export async function collectFeedIcon(
 export async function extractMetadata(
   this: UtilitiesMixin,
   sourceData: unknown,
-  article: any,
-): Promise<Partial<any>> {
+  article: RawArticle,
+): Promise<Partial<Record<string, unknown>>> {
   // Default: no metadata extraction
   return {};
 }

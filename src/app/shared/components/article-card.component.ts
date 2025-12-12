@@ -10,8 +10,8 @@ import { MatButtonModule } from "@angular/material/button";
 import { MatIconModule } from "@angular/material/icon";
 import { MatChipsModule } from "@angular/material/chips";
 import { MatTooltipModule } from "@angular/material/tooltip";
-import { Article } from "../../core/models";
-import { getProxiedImageUrl } from "../../core/utils/image-proxy.util";
+import { Article } from "@app/core/models";
+import { getProxiedImageUrl } from "@app/core/utils/image-proxy.util";
 
 @Component({
   selector: "app-article-card",

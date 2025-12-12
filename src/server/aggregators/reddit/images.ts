@@ -2,12 +2,14 @@
  * Reddit image extraction utilities.
  */
 
-import { logger } from "../../utils/logger";
+import { logger } from "@server/utils/logger";
 import { extractYouTubeVideoId } from "../base/utils";
+import { extractThumbnailUrlFromPage } from "../base/utils/thumbnails";
 import {
   fixRedditMediaUrl,
   extractUrlsFromText,
   decodeHtmlEntitiesInUrl,
+  convertRedditPreviewUrl,
 } from "./urls";
 
 /**
@@ -153,9 +155,9 @@ export function extractAnimatedGifUrl(post: RedditPostData): string | null {
  * Extract high-quality header image URL from a Reddit post.
  * Prioritizes YouTube videos for embedding, then high-quality images suitable for use as header images.
  */
-export function extractHeaderImageUrl(
+export async function extractHeaderImageUrl(
   post: RedditPostData & { selftext?: string },
-): string | null {
+): Promise<string | null> {
   try {
     // Priority 0: Check for YouTube videos (highest priority - embed instead of image)
     // Check post URL first
@@ -237,29 +239,19 @@ export function extractHeaderImageUrl(
       }
     }
 
-    // Priority 2: Direct image posts - use URL directly
+    // Priority 2: Direct image posts - extract imageUrl from URL
     if (post.url) {
       const decodedUrl = decodeHtmlEntitiesInUrl(post.url);
-      const url = decodedUrl.toLowerCase();
-      if (
-        [".jpg", ".jpeg", ".png", ".webp", ".gif"].some((ext) =>
-          url.endsWith(ext),
-        )
-      ) {
-        logger.debug({ url: decodedUrl }, "Using direct image URL as header");
-        return decodedUrl;
-      }
-    }
 
-    // Priority 3: Video posts - use preview
-    if (post.url) {
-      const decodedUrl = decodeHtmlEntitiesInUrl(post.url);
-      if (decodedUrl.includes("v.redd.it")) {
-        const previewUrl = extractRedditVideoPreview(post);
-        if (previewUrl) {
-          logger.debug({ url: previewUrl }, "Using video preview as header");
-          return previewUrl;
-        }
+      // Ignore Reddit post URLs - they have pattern: /comments/{postId}/{title}/
+      // (not comment URLs which have /comments/{postId}/{title}/{commentId})
+      const redditPostUrlPattern =
+        /https?:\/\/[^\s]*reddit\.com\/r\/[^\/\s]+\/comments\/[a-zA-Z0-9]+\/[^\/\s]+\/?$/;
+      if (redditPostUrlPattern.test(decodedUrl)) {
+        logger.debug({ url: decodedUrl }, "Skipping Reddit post URL");
+        // Continue to next priority instead of returning
+      } else {
+        return decodedUrl;
       }
     }
 

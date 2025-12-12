@@ -8,7 +8,7 @@ import { createTRPCProxyClient, httpBatchLink } from "@trpc/client";
 import superjson from "superjson";
 // Import AppRouter type from server
 // Note: This import works because both src/app and src/server are in the same src directory
-import type { AppRouter } from "../../../server/trpc/router";
+import type { AppRouter } from "@server/trpc/router";
 
 /**
  * Check if we're running in a Node.js environment (SSR).
@@ -38,7 +38,9 @@ function getBaseUrl(): string {
  * Create tRPC client with HTTP link.
  * Uses cookies for session-based authentication.
  */
-export function createTRPCClient() {
+export function createTRPCClient(): ReturnType<
+  typeof createTRPCProxyClient<AppRouter>
+> {
   const baseUrl = getBaseUrl();
   const url = baseUrl ? `${baseUrl}/trpc` : "/trpc";
 

@@ -2,7 +2,7 @@
  * Twitter/X utility functions.
  */
 
-import { logger } from "../../../utils/logger";
+import { logger } from "@server/utils/logger";
 
 /**
  * Twitter/X hostnames that should be treated as the same platform.

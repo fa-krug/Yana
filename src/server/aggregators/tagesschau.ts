@@ -11,13 +11,7 @@ import type { RawArticle } from "./base/types";
 import { fetchArticleContent } from "./base/fetch";
 import { extractContent } from "./base/extract";
 import { standardizeContentFormat } from "./base/process";
-import {
-  sanitizeHtml,
-  extractImageFromUrl,
-  compressImage,
-  MAX_HEADER_IMAGE_WIDTH,
-  MAX_HEADER_IMAGE_HEIGHT,
-} from "./base/utils";
+import { sanitizeHtml, createHeaderElementFromUrl } from "./base/utils";
 import { logger } from "../utils/logger";
 import * as cheerio from "cheerio";
 
@@ -133,7 +127,9 @@ export class TagesschauAggregator extends FullWebsiteAggregator {
         // Determine if it's audio-only or video
         const isAudioOnly =
           streams.length > 0 &&
-          streams.every((stream: any) => stream.isAudioOnly === true);
+          streams.every(
+            (stream: { isAudioOnly?: boolean }) => stream.isAudioOnly === true,
+          );
 
         // Extract image/poster from player data
         let imageUrl: string | null = null;
@@ -232,27 +228,30 @@ export class TagesschauAggregator extends FullWebsiteAggregator {
             // For audio with image: convert image to base64 and place above player
             if (isAudioOnly && imageUrl) {
               try {
-                // Fetch and convert image to base64
-                const imageResult = await extractImageFromUrl(imageUrl, true);
-                if (imageResult) {
-                  const { imageData, contentType } = imageResult;
-                  const compressed = await compressImage(
-                    imageData,
-                    contentType,
-                    MAX_HEADER_IMAGE_WIDTH,
-                    MAX_HEADER_IMAGE_HEIGHT,
-                  );
-                  const imageB64 = compressed.imageData.toString("base64");
-                  const dataUri = `data:${compressed.contentType};base64,${imageB64}`;
+                // Use unified function to create header element (handles compression and base64)
+                const headerElement = await createHeaderElementFromUrl(
+                  imageUrl,
+                  "Article image",
+                );
 
-                  // Create separate divs: image above, player below
-                  return (
-                    `<div class="media-header">` +
-                    `<div class="media-image"><img src="${dataUri}" alt="Article image" style="max-width: 100%; height: auto; border-radius: 8px;"></div>` +
-                    `<div class="media-player" style="width: 100%;"><iframe src="${src}" width="100%" height="${height}" ` +
-                    `frameborder="0" allowfullscreen scrolling="no"></iframe></div>` +
-                    `</div>`
-                  );
+                if (headerElement) {
+                  // Extract img tag from the returned HTML (removes <p> wrapper)
+                  const imgMatch = headerElement.match(/<img[^>]*>/);
+                  if (imgMatch) {
+                    // Extract src from the img tag and create custom structure
+                    const srcMatch = imgMatch[0].match(/src=["']([^"']+)["']/);
+                    if (srcMatch) {
+                      const dataUri = srcMatch[1];
+                      // Create separate divs: image above, player below
+                      return (
+                        `<div class="media-header">` +
+                        `<div class="media-image"><img src="${dataUri}" alt="Article image" style="max-width: 100%; height: auto; border-radius: 8px;"></div>` +
+                        `<div class="media-player" style="width: 100%;"><iframe src="${src}" width="100%" height="${height}" ` +
+                        `frameborder="0" allowfullscreen scrolling="no"></iframe></div>` +
+                        `</div>`
+                      );
+                    }
+                  }
                 }
               } catch (error) {
                 logger.warn(
@@ -296,29 +295,33 @@ export class TagesschauAggregator extends FullWebsiteAggregator {
               // Create HTML5 audio player with image above (converted to base64)
               if (imageUrl) {
                 try {
-                  // Fetch and convert image to base64
-                  const imageResult = await extractImageFromUrl(imageUrl, true);
-                  if (imageResult) {
-                    const { imageData, contentType } = imageResult;
-                    const compressed = await compressImage(
-                      imageData,
-                      contentType,
-                      MAX_HEADER_IMAGE_WIDTH,
-                      MAX_HEADER_IMAGE_HEIGHT,
-                    );
-                    const imageB64 = compressed.imageData.toString("base64");
-                    const dataUri = `data:${compressed.contentType};base64,${imageB64}`;
+                  // Use unified function to create header element (handles compression and base64)
+                  const headerElement = await createHeaderElementFromUrl(
+                    imageUrl,
+                    "Article image",
+                  );
 
-                    // Create separate divs: image above, player below
-                    return (
-                      `<div class="media-header">` +
-                      `<div class="media-image"><img src="${dataUri}" alt="Article image" style="max-width: 100%; height: auto; border-radius: 8px;"></div>` +
-                      `<div class="media-player" style="width: 100%;"><audio controls preload="auto" style="width: 100%;">` +
-                      `<source src="${url}" type="${mimeType}">` +
-                      `Your browser does not support the audio element.` +
-                      `</audio></div>` +
-                      `</div>`
-                    );
+                  if (headerElement) {
+                    // Extract img tag from the returned HTML (removes <p> wrapper)
+                    const imgMatch = headerElement.match(/<img[^>]*>/);
+                    if (imgMatch) {
+                      // Extract src from the img tag and create custom structure
+                      const srcMatch =
+                        imgMatch[0].match(/src=["']([^"']+)["']/);
+                      if (srcMatch) {
+                        const dataUri = srcMatch[1];
+                        // Create separate divs: image above, player below
+                        return (
+                          `<div class="media-header">` +
+                          `<div class="media-image"><img src="${dataUri}" alt="Article image" style="max-width: 100%; height: auto; border-radius: 8px;"></div>` +
+                          `<div class="media-player" style="width: 100%;"><audio controls preload="auto" style="width: 100%;">` +
+                          `<source src="${url}" type="${mimeType}">` +
+                          `Your browser does not support the audio element.` +
+                          `</audio></div>` +
+                          `</div>`
+                        );
+                      }
+                    }
                   }
                 } catch (error) {
                   logger.warn(

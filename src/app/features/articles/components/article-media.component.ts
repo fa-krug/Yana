@@ -6,7 +6,7 @@ import { Component, inject, input } from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { DomSanitizer, SafeResourceUrl } from "@angular/platform-browser";
 import { MatIconModule } from "@angular/material/icon";
-import { ArticleDetail } from "../../../core/models";
+import { ArticleDetail } from "@app/core/models";
 
 @Component({
   selector: "app-article-media",

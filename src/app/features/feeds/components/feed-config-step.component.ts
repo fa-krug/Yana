@@ -15,7 +15,7 @@ import {
   Aggregator,
   Group,
   AggregatorOption,
-} from "../../../core/models";
+} from "@app/core/models";
 import { IdentifierFieldComponent } from "./identifier-field.component";
 import { GroupsSelectorComponent } from "./groups-selector.component";
 import { AggregatorOptionsComponent } from "./aggregator-options.component";
@@ -238,21 +238,54 @@ export class FeedConfigStepComponent {
     this.subredditSearch.emit(event);
   }
 
-  protected onSubredditSelected(subreddit: any): void {
-    this.subredditSelected.emit(subreddit);
+  protected onSubredditSelected(
+    subreddit:
+      | string
+      | { name: string; displayName: string; title: string }
+      | { option: { value: string | { name: string } } }
+      | null,
+  ): void {
+    const value =
+      typeof subreddit === "object" && subreddit && "option" in subreddit
+        ? subreddit.option.value
+        : subreddit;
+    this.subredditSelected.emit(
+      value as
+        | string
+        | { name: string; displayName: string; title: string }
+        | null,
+    );
   }
 
   protected onChannelSearch(event: Event): void {
     this.channelSearch.emit(event);
   }
 
-  protected onChannelSelected(channel: any): void {
-    this.channelSelected.emit(channel);
+  protected onChannelSelected(
+    channel:
+      | string
+      | { channelId: string; title: string; handle: string | null }
+      | { option: { value: { channelId: string; handle: string | null } } }
+      | null,
+  ): void {
+    const value =
+      typeof channel === "object" && channel && "option" in channel
+        ? channel.option.value
+        : channel;
+    this.channelSelected.emit(
+      value as
+        | string
+        | { channelId: string; title: string; handle: string | null }
+        | null,
+    );
   }
 
-  protected onGroupSelected(event: any): void {
-    const group = event.option?.value || event;
-    if (group && typeof group === "object" && group.id) {
+  protected onGroupSelected(event: { option: { value: Group } } | Group): void {
+    const group =
+      typeof event === "object" && event !== null && "option" in event
+        ? event.option.value
+        : event;
+    if (group && typeof group === "object" && "id" in group && group.id) {
       this.groupSelected.emit(group);
     }
   }

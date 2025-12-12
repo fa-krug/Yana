@@ -3,7 +3,7 @@
  */
 
 import type { RawArticle } from "../base/types";
-import { logger } from "../../utils/logger";
+import { logger } from "@server/utils/logger";
 import { buildPostContent } from "./content";
 import { extractHeaderImageUrl, extractThumbnailUrl } from "./images";
 import { decodeHtmlEntitiesInUrl } from "./urls";
@@ -107,7 +107,7 @@ export async function parseRedditPosts(
       subreddit,
       userId,
     );
-    const headerImageUrl = extractHeaderImageUrl(postData);
+    const headerImageUrl = await extractHeaderImageUrl(postData);
     const thumbnailUrl = extractThumbnailUrl(postData);
 
     // For article thumbnail: use header image if available, otherwise use thumbnail

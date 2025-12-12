@@ -3,7 +3,7 @@
  */
 
 import axios, { AxiosError } from "axios";
-import { logger } from "../../utils/logger";
+import { logger } from "@server/utils/logger";
 import { YouTubeAPIError } from "./errors";
 import {
   fetchVideosFromPlaylist,

@@ -125,7 +125,7 @@ export const logger = pino(loggerConfig);
  * @param context - Additional context to include in all log messages
  * @returns Child logger instance
  */
-export function createLogger(context: Record<string, unknown>) {
+export function createLogger(context: Record<string, unknown>): pino.Logger {
   return logger.child(context);
 }
 

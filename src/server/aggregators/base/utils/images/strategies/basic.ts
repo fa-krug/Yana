@@ -4,13 +4,16 @@
 
 import sharp from "sharp";
 import axios from "axios";
-import { logger } from "../../../../../utils/logger";
-import { extractYouTubeVideoId } from "../../youtube";
-import { isTwitterUrl, extractTweetId } from "../../twitter";
+import { logger } from "@server/utils/logger";
+import { extractYouTubeVideoId } from "@server/aggregators/base/utils/youtube";
+import {
+  isTwitterUrl,
+  extractTweetId,
+} from "@server/aggregators/base/utils/twitter";
 import {
   MAX_HEADER_IMAGE_WIDTH,
   MAX_HEADER_IMAGE_HEIGHT,
-} from "../../compression";
+} from "@server/aggregators/base/utils/compression";
 import { fetchSingleImage } from "../fetch";
 
 const MAX_IMAGE_WIDTH = 600;
@@ -24,7 +27,7 @@ export async function handleDirectImageUrl(
   isHeaderImage: boolean,
 ): Promise<{ imageData: Buffer; contentType: string } | null> {
   const result = await fetchSingleImage(url);
-  if (result.imageData && result.imageData.length > 5000) {
+  if (result.imageData && result.imageData.length > 4000) {
     const urlPath = new URL(url).pathname.toLowerCase();
     const isSvg =
       result.contentType === "image/svg+xml" || urlPath.endsWith(".svg");
@@ -69,7 +72,7 @@ export async function handleDirectImageUrl(
       if (
         metadata.width &&
         metadata.height &&
-        (metadata.width < 100 || metadata.height < 100)
+        (metadata.width < 100 || metadata.height < 50)
       ) {
         logger.debug(
           {

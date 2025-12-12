@@ -3,13 +3,13 @@
  */
 
 import { eq, and, or, isNull, inArray } from "drizzle-orm";
-import { db, feeds, groups, feedGroups } from "../../db";
+import { db, feeds, groups, feedGroups } from "@server/db";
 import {
   NotFoundError,
   PermissionDeniedError,
   ValidationError,
-} from "../../errors";
-import { logger } from "../../utils/logger";
+} from "@server/errors";
+import { logger } from "@server/utils/logger";
 
 /**
  * List subscriptions for a user.

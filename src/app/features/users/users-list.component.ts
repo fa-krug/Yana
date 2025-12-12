@@ -45,14 +45,14 @@ import {
   AdminUsersService,
   User,
   PaginatedUsers,
-} from "../../core/services/admin-users.service";
+} from "@app/core/services/admin-users.service";
 import { UserEditDialogComponent } from "./user-edit-dialog.component";
 import { UserCreateDialogComponent } from "./user-create-dialog.component";
 import { AdminChangePasswordDialogComponent } from "./admin-change-password-dialog.component";
 import {
   ConfirmDialogComponent,
   ConfirmDialogData,
-} from "../../shared/components/confirm-dialog.component";
+} from "@app/shared/components/confirm-dialog.component";
 
 @Component({
   selector: "app-users-list",

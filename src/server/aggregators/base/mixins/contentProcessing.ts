@@ -2,8 +2,9 @@
  * Content processing mixin for BaseAggregator.
  */
 
+import type pino from "pino";
 import type { RawArticle } from "../types";
-import type { Feed } from "../../../db/types";
+import type { Feed } from "@server/db/types";
 
 /**
  * Interface for aggregator with content processing functionality.
@@ -12,7 +13,7 @@ export interface ContentProcessingMixin {
   readonly id: string;
   readonly feed: Feed | null;
   readonly selectorsToRemove: string[];
-  readonly logger: any;
+  readonly logger: pino.Logger;
   removeElementsBySelectors(html: string, article: RawArticle): Promise<string>;
 }
 

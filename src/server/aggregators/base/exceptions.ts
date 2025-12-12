@@ -2,7 +2,7 @@
  * Aggregator-specific exceptions.
  */
 
-import { AggregationError } from "../../errors";
+import { AggregationError } from "@server/errors";
 
 export class ContentFetchError extends AggregationError {
   constructor(

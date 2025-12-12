@@ -4,7 +4,7 @@
 
 import * as cheerio from "cheerio";
 import type { AnyNode, Element } from "domhandler";
-import { logger } from "../../utils/logger";
+import { logger } from "@server/utils/logger";
 import { removeElementsBySelectors } from "./utils";
 
 export interface ExtractOptions {

@@ -3,7 +3,7 @@
  */
 
 import type { RawArticle } from "../base/types";
-import { logger } from "../../utils/logger";
+import { logger } from "@server/utils/logger";
 import { buildVideoContent } from "./content";
 import type { YouTubeVideo } from "./videos";
 

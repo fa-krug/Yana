@@ -32,9 +32,9 @@ import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
 import { MatIconModule } from "@angular/material/icon";
 
 // Application
-import { HeaderComponent } from "../../layouts/header.component";
-import { AuthService } from "../../core/services/auth.service";
-import { LoginResponse } from "../../core/models";
+import { HeaderComponent } from "@app/layouts/header.component";
+import { AuthService } from "@app/core/services/auth.service";
+import { LoginResponse } from "@app/core/models";
 
 @Component({
   selector: "app-login",

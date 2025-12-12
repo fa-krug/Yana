@@ -2,7 +2,7 @@
  * Reddit URL utilities.
  */
 
-import { logger } from "../../utils/logger";
+import { logger } from "@server/utils/logger";
 import { getRedditAccessToken } from "./auth";
 import axios from "axios";
 

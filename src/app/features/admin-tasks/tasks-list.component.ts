@@ -25,7 +25,7 @@ import { MatChipsModule } from "@angular/material/chips";
 import {
   AdminTasksService,
   type ScheduledTask,
-} from "../../core/services/admin-tasks.service";
+} from "@app/core/services/admin-tasks.service";
 import { TaskHistoryDialogComponent } from "./task-history-dialog.component";
 
 @Component({

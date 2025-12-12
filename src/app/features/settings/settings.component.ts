@@ -10,7 +10,7 @@ import { CommonModule } from "@angular/common";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
 import { MatIconModule } from "@angular/material/icon";
-import { UserSettingsService } from "../../core/services/user-settings.service";
+import { UserSettingsService } from "@app/core/services/user-settings.service";
 import { ProfileSettingsComponent } from "./components/profile-settings.component";
 import { RedditSettingsComponent } from "./components/reddit-settings.component";
 import { YouTubeSettingsComponent } from "./components/youtube-settings.component";

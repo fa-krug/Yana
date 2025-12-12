@@ -9,7 +9,7 @@ import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatInputModule } from "@angular/material/input";
 import { MatSelectModule } from "@angular/material/select";
 import { MatIconModule } from "@angular/material/icon";
-import { GroupService } from "../../../core/services/group.service";
+import { GroupService } from "@app/core/services/group.service";
 
 @Component({
   selector: "app-feed-filters",

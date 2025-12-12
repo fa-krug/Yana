@@ -18,15 +18,15 @@ import {
   getArticleNavigation,
   markArticleReadOnView,
   enrichArticleData,
-} from "../../services/article.service";
-import { getFeed } from "../../services/feed.service";
+} from "@server/services/article.service";
+import { getFeed } from "@server/services/feed.service";
 import {
   articleListSchema,
   markArticlesSchema,
-} from "../../validation/schemas";
-import { NotFoundError, PermissionDeniedError } from "../../errors";
-import { logger } from "../../utils/logger";
-import { getTask } from "../../services/taskQueue.service";
+} from "@server/validation/schemas";
+import { NotFoundError, PermissionDeniedError } from "@server/errors";
+import { logger } from "@server/utils/logger";
+import { getTask } from "@server/services/taskQueue.service";
 
 /**
  * Article list input schema.

@@ -4,11 +4,11 @@
 
 import * as cheerio from "cheerio";
 import sharp from "sharp";
-import { logger } from "../../../../../utils/logger";
+import { logger } from "@server/utils/logger";
 import {
   MAX_HEADER_IMAGE_WIDTH,
   MAX_HEADER_IMAGE_HEIGHT,
-} from "../../compression";
+} from "@server/aggregators/base/utils/compression";
 
 const MAX_IMAGE_WIDTH = 600;
 const MAX_IMAGE_HEIGHT = 600;
@@ -17,7 +17,10 @@ const MAX_IMAGE_HEIGHT = 600;
  * Handle inline SVG extraction from page.
  */
 export async function handleInlineSvg(
-  page: any,
+  page: {
+    evaluate: (fn: () => unknown) => Promise<unknown>;
+    locator?: (selector: string) => any;
+  } | null,
   $: cheerio.CheerioAPI,
   html: string,
   url: string,
@@ -45,7 +48,7 @@ export async function handleInlineSvg(
         ) {
           // Try to find the parent element on the page
           const parentSelector = parent.length > 0 ? `:has(> svg)` : null;
-          if (parentSelector) {
+          if (parentSelector && page && page.locator) {
             try {
               const parentElement = await page
                 .locator("svg")
@@ -63,165 +66,167 @@ export async function handleInlineSvg(
       }
 
       // Try to extract SVG with its background color
-      const svgLocator = page.locator("svg").first();
-      if ((await svgLocator.count()) > 0) {
-        // Get SVG HTML, background color, and text color from parent
-        const svgData = await svgLocator.evaluate((svg: SVGSVGElement) => {
-          const parent = svg.parentElement;
-          const parentStyle = parent ? window.getComputedStyle(parent) : null;
-          const svgStyle = window.getComputedStyle(svg);
+      if (page && page.locator) {
+        const svgLocator = page.locator("svg").first();
+        if ((await svgLocator.count()) > 0) {
+          // Get SVG HTML, background color, and text color from parent
+          const svgData = await svgLocator.evaluate((svg: SVGSVGElement) => {
+            const parent = svg.parentElement;
+            const parentStyle = parent ? window.getComputedStyle(parent) : null;
+            const svgStyle = window.getComputedStyle(svg);
 
-          // Get background color from parent or SVG itself
-          let backgroundColor: string | null = null;
-          if (parentStyle) {
-            const bgColor = parentStyle.backgroundColor;
-            if (
-              bgColor &&
-              bgColor !== "rgba(0, 0, 0, 0)" &&
-              bgColor !== "transparent"
-            ) {
-              backgroundColor = bgColor;
-            }
-          }
-          if (!backgroundColor) {
-            const bgColor = svgStyle.backgroundColor;
-            if (
-              bgColor &&
-              bgColor !== "rgba(0, 0, 0, 0)" &&
-              bgColor !== "transparent"
-            ) {
-              backgroundColor = bgColor;
-            }
-          }
-
-          // Get text/foreground color from parent or SVG itself
-          let textColor: string | null = null;
-          if (parentStyle) {
-            const color = parentStyle.color;
-            if (color && color !== "rgba(0, 0, 0, 0)") {
-              textColor = color;
-            }
-          }
-          if (!textColor) {
-            const color = svgStyle.color;
-            if (color && color !== "rgba(0, 0, 0, 0)") {
-              textColor = color;
-            }
-          }
-
-          // Also check for fill color in SVG elements (common for SVG icons)
-          if (!textColor) {
-            const firstElement = svg.querySelector(
-              "path, circle, rect, polygon, text",
-            );
-            if (firstElement) {
-              const elementStyle = window.getComputedStyle(firstElement);
-              const fill = elementStyle.fill;
-              if (fill && fill !== "none" && fill !== "rgba(0, 0, 0, 0)") {
-                textColor = fill;
+            // Get background color from parent or SVG itself
+            let backgroundColor: string | null = null;
+            if (parentStyle) {
+              const bgColor = parentStyle.backgroundColor;
+              if (
+                bgColor &&
+                bgColor !== "rgba(0, 0, 0, 0)" &&
+                bgColor !== "transparent"
+              ) {
+                backgroundColor = bgColor;
               }
             }
-          }
+            if (!backgroundColor) {
+              const bgColor = svgStyle.backgroundColor;
+              if (
+                bgColor &&
+                bgColor !== "rgba(0, 0, 0, 0)" &&
+                bgColor !== "transparent"
+              ) {
+                backgroundColor = bgColor;
+              }
+            }
 
-          // Get SVG dimensions
-          const viewBox = svg.viewBox.baseVal;
-          const width = svg.width.baseVal.value || viewBox.width || 100;
-          const height = svg.height.baseVal.value || viewBox.height || 100;
+            // Get text/foreground color from parent or SVG itself
+            let textColor: string | null = null;
+            if (parentStyle) {
+              const color = parentStyle.color;
+              if (color && color !== "rgba(0, 0, 0, 0)") {
+                textColor = color;
+              }
+            }
+            if (!textColor) {
+              const color = svgStyle.color;
+              if (color && color !== "rgba(0, 0, 0, 0)") {
+                textColor = color;
+              }
+            }
 
-          // Get SVG outer HTML
-          const svgHtml = svg.outerHTML;
-
-          return {
-            svgHtml,
-            backgroundColor,
-            textColor,
-            width,
-            height,
-          };
-        });
-
-        if (svgData && svgData.svgHtml) {
-          logger.debug(
-            {
-              hasBackground: !!svgData.backgroundColor,
-              backgroundColor: svgData.backgroundColor,
-              hasTextColor: !!svgData.textColor,
-              textColor: svgData.textColor,
-              width: svgData.width,
-              height: svgData.height,
-            },
-            "Extracted SVG with background and text color",
-          );
-
-          // Extract inner SVG content (without the outer <svg> tag)
-          let innerSvgContent = svgData.svgHtml
-            .replace(/^<svg[^>]*>/, "")
-            .replace(/<\/svg>$/, "");
-
-          // Apply text color to SVG elements if it exists and elements don't have explicit fill
-          if (svgData.textColor) {
-            // Add fill to elements that don't have it, or replace existing fill with text color
-            innerSvgContent = innerSvgContent.replace(
-              /<(path|circle|rect|polygon|polyline|line|ellipse|text|g)([^>]*?)>/gi,
-              (match: string, tag: string, attrs: string) => {
-                // Check if element already has fill attribute
-                if (!attrs.match(/\bfill\s*=/i)) {
-                  // Add fill attribute with text color
-                  return `<${tag}${attrs} fill="${svgData.textColor}">`;
-                } else {
-                  // Replace existing fill with text color
-                  return `<${tag}${attrs.replace(/\bfill\s*=\s*["'][^"']*["']/gi, `fill="${svgData.textColor}"`)}>`;
+            // Also check for fill color in SVG elements (common for SVG icons)
+            if (!textColor) {
+              const firstElement = svg.querySelector(
+                "path, circle, rect, polygon, text",
+              );
+              if (firstElement) {
+                const elementStyle = window.getComputedStyle(firstElement);
+                const fill = elementStyle.fill;
+                if (fill && fill !== "none" && fill !== "rgba(0, 0, 0, 0)") {
+                  textColor = fill;
                 }
+              }
+            }
+
+            // Get SVG dimensions
+            const viewBox = svg.viewBox.baseVal;
+            const width = svg.width.baseVal.value || viewBox.width || 100;
+            const height = svg.height.baseVal.value || viewBox.height || 100;
+
+            // Get SVG outer HTML
+            const svgHtml = svg.outerHTML;
+
+            return {
+              svgHtml,
+              backgroundColor,
+              textColor,
+              width,
+              height,
+            };
+          });
+
+          if (svgData && svgData.svgHtml) {
+            logger.debug(
+              {
+                hasBackground: !!svgData.backgroundColor,
+                backgroundColor: svgData.backgroundColor,
+                hasTextColor: !!svgData.textColor,
+                textColor: svgData.textColor,
+                width: svgData.width,
+                height: svgData.height,
               },
+              "Extracted SVG with background and text color",
             );
-          }
 
-          // Create SVG with background rectangle if background color exists
-          let finalSvgHtml = svgData.svgHtml;
-          if (svgData.backgroundColor || svgData.textColor) {
-            // Add padding (10% on each side) to create breathing room
-            const padding = Math.min(svgData.width, svgData.height) * 0.1;
-            const paddedWidth = svgData.width + padding * 2;
-            const paddedHeight = svgData.height + padding * 2;
+            // Extract inner SVG content (without the outer <svg> tag)
+            let innerSvgContent = svgData.svgHtml
+              .replace(/^<svg[^>]*>/, "")
+              .replace(/<\/svg>$/, "");
 
-            // Wrap SVG in a new SVG with background rectangle and updated content
-            const bgSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="${paddedWidth}" height="${paddedHeight}" viewBox="0 0 ${paddedWidth} ${paddedHeight}">
+            // Apply text color to SVG elements if it exists and elements don't have explicit fill
+            if (svgData.textColor) {
+              // Add fill to elements that don't have it, or replace existing fill with text color
+              innerSvgContent = innerSvgContent.replace(
+                /<(path|circle|rect|polygon|polyline|line|ellipse|text|g)([^>]*?)>/gi,
+                (match: string, tag: string, attrs: string) => {
+                  // Check if element already has fill attribute
+                  if (!attrs.match(/\bfill\s*=/i)) {
+                    // Add fill attribute with text color
+                    return `<${tag}${attrs} fill="${svgData.textColor}">`;
+                  } else {
+                    // Replace existing fill with text color
+                    return `<${tag}${attrs.replace(/\bfill\s*=\s*["'][^"']*["']/gi, `fill="${svgData.textColor}"`)}>`;
+                  }
+                },
+              );
+            }
+
+            // Create SVG with background rectangle if background color exists
+            let finalSvgHtml = svgData.svgHtml;
+            if (svgData.backgroundColor || svgData.textColor) {
+              // Add padding (10% on each side) to create breathing room
+              const padding = Math.min(svgData.width, svgData.height) * 0.1;
+              const paddedWidth = svgData.width + padding * 2;
+              const paddedHeight = svgData.height + padding * 2;
+
+              // Wrap SVG in a new SVG with background rectangle and updated content
+              const bgSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="${paddedWidth}" height="${paddedHeight}" viewBox="0 0 ${paddedWidth} ${paddedHeight}">
 ${svgData.backgroundColor ? `  <rect width="100%" height="100%" fill="${svgData.backgroundColor}"/>` : ""}
   <g transform="translate(${padding}, ${padding})">
     ${innerSvgContent}
   </g>
 </svg>`;
-            finalSvgHtml = bgSvg;
+              finalSvgHtml = bgSvg;
+            }
+
+            // Convert to PNG
+            const targetSize = isHeaderImage
+              ? {
+                  width: MAX_HEADER_IMAGE_WIDTH,
+                  height: MAX_HEADER_IMAGE_HEIGHT,
+                }
+              : { width: MAX_IMAGE_WIDTH, height: MAX_IMAGE_HEIGHT };
+
+            const converted = await sharp(Buffer.from(finalSvgHtml, "utf-8"))
+              .resize(targetSize.width, targetSize.height, {
+                fit: "inside",
+                withoutEnlargement: false,
+              })
+              .png()
+              .toBuffer();
+
+            logger.debug(
+              {
+                originalSize: finalSvgHtml.length,
+                convertedSize: converted.length,
+              },
+              "Successfully converted SVG with background to PNG",
+            );
+
+            return {
+              imageData: converted,
+              contentType: "image/png",
+            };
           }
-
-          // Convert to PNG
-          const targetSize = isHeaderImage
-            ? {
-                width: MAX_HEADER_IMAGE_WIDTH,
-                height: MAX_HEADER_IMAGE_HEIGHT,
-              }
-            : { width: MAX_IMAGE_WIDTH, height: MAX_IMAGE_HEIGHT };
-
-          const converted = await sharp(Buffer.from(finalSvgHtml, "utf-8"))
-            .resize(targetSize.width, targetSize.height, {
-              fit: "inside",
-              withoutEnlargement: false,
-            })
-            .png()
-            .toBuffer();
-
-          logger.debug(
-            {
-              originalSize: finalSvgHtml.length,
-              convertedSize: converted.length,
-            },
-            "Successfully converted SVG with background to PNG",
-          );
-
-          return {
-            imageData: converted,
-            contentType: "image/png",
-          };
         }
       }
     } catch (error) {

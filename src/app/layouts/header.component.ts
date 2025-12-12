@@ -17,9 +17,9 @@ import { MatIconModule } from "@angular/material/icon";
 import { MatMenuModule } from "@angular/material/menu";
 import { MatDividerModule } from "@angular/material/divider";
 import { MatTooltipModule } from "@angular/material/tooltip";
-import { AuthService } from "../core/services/auth.service";
-import { ThemeService } from "../core/services/theme.service";
-import { KeyboardShortcutsService } from "../core/services/keyboard-shortcuts.service";
+import { AuthService } from "@app/core/services/auth.service";
+import { ThemeService } from "@app/core/services/theme.service";
+import { KeyboardShortcutsService } from "@app/core/services/keyboard-shortcuts.service";
 
 @Component({
   selector: "app-header",

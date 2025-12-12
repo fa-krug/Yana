@@ -5,7 +5,7 @@
 import Parser from "rss-parser";
 import { chromium, type Browser } from "playwright";
 import axios from "axios";
-import { logger } from "../../utils/logger";
+import { logger } from "@server/utils/logger";
 import { ContentFetchError } from "./exceptions";
 
 let browser: Browser | null = null;

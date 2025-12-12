@@ -4,6 +4,7 @@
  * Sets up tRPC HTTP handler for Express.
  */
 
+import type { Express } from "express";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { appRouter } from "./router";
 import { createContext } from "./context";
@@ -12,7 +13,9 @@ import { logger } from "../utils/logger";
 /**
  * Create tRPC Express middleware.
  */
-export function createTRPCMiddleware() {
+export function createTRPCMiddleware(): ReturnType<
+  typeof createExpressMiddleware
+> {
   return createExpressMiddleware({
     router: appRouter,
     createContext,

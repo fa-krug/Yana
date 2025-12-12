@@ -20,19 +20,20 @@ import {
   getFeedAggregatorMetadata,
   getFeedArticleCount,
   getFeedUnreadCount,
-} from "../../services/feed.service";
-import { getFeedGroups } from "../../services/group.service";
+} from "@server/services/feed.service";
+import { getFeedGroups } from "@server/services/group.service";
 import {
   listArticles,
   enrichArticleData,
-} from "../../services/article.service";
+} from "@server/services/article.service";
+import type { Feed } from "@server/db/types";
 import {
   createFeedSchema,
   updateFeedSchema,
   articleListSchema,
   idParamSchema,
-} from "../../validation/schemas";
-import { NotFoundError, PermissionDeniedError } from "../../errors";
+} from "@server/validation/schemas";
+import { NotFoundError, PermissionDeniedError } from "@server/errors";
 
 /**
  * Feed list input schema.
@@ -62,13 +63,52 @@ const toISOString = (
 /**
  * Convert feed object to API format (null to undefined for icon, dates to strings).
  */
-const formatFeed = async (feed: any, userId: number) => {
+const formatFeed = async (
+  feed: Feed & {
+    lastAggregated?: Date;
+    articleCount?: number;
+    unreadCount?: number;
+    aggregatorMetadata?: unknown;
+  },
+  userId: number,
+): Promise<{
+  id: number;
+  userId?: number;
+  name: string;
+  identifier: string;
+  feedType: "article" | "youtube" | "podcast" | "reddit";
+  icon?: string;
+  example: string;
+  aggregator: string;
+  enabled: boolean;
+  generateTitleImage: boolean;
+  addSourceFooter: boolean;
+  skipDuplicates: boolean;
+  useCurrentTimestamp: boolean;
+  dailyPostLimit: number;
+  aggregatorOptions: Record<string, unknown>;
+  aiTranslateTo: string;
+  aiSummarize: boolean;
+  aiCustomPrompt: string;
+  createdAt: string;
+  updatedAt: string;
+  lastAggregated?: string;
+  groups: Array<{
+    id: number;
+    name: string;
+    createdAt: string;
+    updatedAt: string;
+  }>;
+}> => {
   // Get groups for this feed
   const groups = await getFeedGroups(feed.id, userId).catch(() => []);
 
   return {
     ...feed,
+    userId: feed.userId ?? undefined,
     icon: feed.icon ?? undefined,
+    aggregatorOptions:
+      (feed.aggregatorOptions as Record<string, unknown>) ?? {},
     createdAt: toISOString(feed.createdAt),
     updatedAt: toISOString(feed.updatedAt),
     lastAggregated: feed.lastAggregated

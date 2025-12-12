@@ -9,7 +9,7 @@ import { MatIconModule } from "@angular/material/icon";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatStepperModule } from "@angular/material/stepper";
 import { MatCardModule } from "@angular/material/card";
-import { FeedPreviewResponse } from "../../../core/models";
+import { FeedPreviewResponse } from "@app/core/models";
 import { PreviewArticleCardComponent } from "./preview-article-card.component";
 
 @Component({

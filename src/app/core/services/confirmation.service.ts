@@ -8,7 +8,7 @@ import { Observable } from "rxjs";
 import {
   ConfirmDialogComponent,
   ConfirmDialogData,
-} from "../../shared/components/confirm-dialog.component";
+} from "@app/shared/components/confirm-dialog.component";
 
 @Injectable({ providedIn: "root" })
 export class ConfirmationService {

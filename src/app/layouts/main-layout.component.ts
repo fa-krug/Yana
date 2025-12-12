@@ -28,8 +28,8 @@ import { MatToolbarModule } from "@angular/material/toolbar";
 import { MatIconModule } from "@angular/material/icon";
 import { BreakpointObserver, Breakpoints } from "@angular/cdk/layout";
 import { HeaderComponent } from "./header.component";
-import { AuthService } from "../core/services/auth.service";
-import { BreadcrumbComponent } from "../core/components/breadcrumb.component";
+import { AuthService } from "@app/core/services/auth.service";
+import { BreadcrumbComponent } from "@app/core/components/breadcrumb.component";
 
 @Component({
   selector: "app-main-layout",

@@ -10,6 +10,7 @@ import {
   signal,
   computed,
   ChangeDetectionStrategy,
+  isDevMode,
 } from "@angular/core";
 import { CommonModule } from "@angular/common";
 import {
@@ -38,14 +39,14 @@ import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
 import { PageEvent } from "@angular/material/paginator";
 
-import { FeedService } from "../../core/services/feed.service";
+import { FeedService } from "@app/core/services/feed.service";
 import {
   ArticleService,
   ArticleFilters,
-} from "../../core/services/article.service";
-import { BreadcrumbService } from "../../core/services/breadcrumb.service";
-import { ConfirmationService } from "../../core/services/confirmation.service";
-import { Feed, Article } from "../../core/models";
+} from "@app/core/services/article.service";
+import { BreadcrumbService } from "@app/core/services/breadcrumb.service";
+import { ConfirmationService } from "@app/core/services/confirmation.service";
+import { Feed, Article } from "@app/core/models";
 import { FeedHeaderComponent } from "./components/feed-header.component";
 import { FeedArticlesListComponent } from "./components/feed-articles-list.component";
 
@@ -233,13 +234,16 @@ export class FeedDetailComponent implements OnInit, OnDestroy {
       });
 
     // Auto-refresh articles every 30 seconds (silent to avoid UI glitches)
-    interval(30000)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe(() => {
-        if (!this.articleService.loading() && this.feed()) {
-          this.loadArticles(false, true);
-        }
-      });
+    // Disabled in development mode
+    if (!isDevMode()) {
+      interval(30000)
+        .pipe(takeUntil(this.destroy$))
+        .subscribe(() => {
+          if (!this.articleService.loading() && this.feed()) {
+            this.loadArticles(false, true);
+          }
+        });
+    }
   }
 
   ngOnDestroy() {

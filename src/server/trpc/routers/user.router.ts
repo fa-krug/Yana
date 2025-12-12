@@ -11,22 +11,22 @@ import { getAuthenticatedUser } from "../procedures";
 import {
   getUserSettings,
   updateUserSettings,
-} from "../../services/userSettings.service";
+} from "@server/services/userSettings.service";
 import {
   getUserById,
   updateUserProfile,
   updateUserPassword,
   authenticateUser,
-} from "../../services/user.service";
+} from "@server/services/user.service";
 import {
   updateUserSettingsSchema,
   updateProfileSchema,
   updatePasswordSchema,
-} from "../../validation/schemas";
-import { AuthenticationError } from "../../errors";
-import { testRedditCredentials } from "../../services/reddit.service";
-import { testYouTubeCredentials } from "../../services/youtube.service";
-import { testOpenAICredentials } from "../../services/openai.service";
+} from "@server/validation/schemas";
+import { AuthenticationError } from "@server/errors";
+import { testRedditCredentials } from "@server/services/reddit.service";
+import { testYouTubeCredentials } from "@server/services/youtube.service";
+import { testOpenAICredentials } from "@server/services/openai.service";
 
 /**
  * User router.

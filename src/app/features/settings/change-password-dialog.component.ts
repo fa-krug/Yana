@@ -13,7 +13,7 @@ import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
 import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatInputModule } from "@angular/material/input";
 import { MatButtonModule } from "@angular/material/button";
-import { UserSettingsService } from "../../core/services/user-settings.service";
+import { UserSettingsService } from "@app/core/services/user-settings.service";
 
 @Component({
   selector: "app-change-password-dialog",
@@ -403,53 +403,101 @@ export class ChangePasswordDialogComponent {
     this.confirmPasswordError = null;
   }
 
-  private extractErrorMessage(error: any): string {
+  private extractErrorMessage(error: unknown): string {
     // Try to extract detailed error message from various error response formats
 
     // API validation errors (422) - format: { "detail": [...] }
-    if (error?.error?.detail) {
-      if (Array.isArray(error.error.detail)) {
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "error" in error &&
+      typeof (error as { error?: unknown }).error === "object" &&
+      (error as { error?: { detail?: unknown } }).error !== null &&
+      "detail" in (error as { error: { detail?: unknown } }).error
+    ) {
+      const detail = (error as { error: { detail: unknown } }).error.detail;
+      if (Array.isArray(detail)) {
         // Format: [{"loc": ["body", "field"], "msg": "message", "type": "type"}]
-        const messages = error.error.detail.map((item: any) => {
+        const messages = detail.map((item: unknown) => {
           if (typeof item === "string") {
             return item;
           }
-          if (item?.msg) {
+          if (
+            typeof item === "object" &&
+            item !== null &&
+            "msg" in item &&
+            typeof (item as { msg?: unknown }).msg === "string"
+          ) {
+            const itemObj = item as { msg: string; loc?: unknown[] };
             const field =
-              item.loc && item.loc.length > 1
-                ? item.loc[item.loc.length - 1]
+              itemObj.loc &&
+              Array.isArray(itemObj.loc) &&
+              itemObj.loc.length > 1
+                ? String(itemObj.loc[itemObj.loc.length - 1])
                 : "";
-            return field ? `${field}: ${item.msg}` : item.msg;
+            return field ? `${field}: ${itemObj.msg}` : itemObj.msg;
           }
           return JSON.stringify(item);
         });
         return messages.join("; ");
       }
-      if (typeof error.error.detail === "string") {
-        return error.error.detail;
+      if (typeof detail === "string") {
+        return detail;
       }
     }
 
     // Standard message format
-    if (error?.error?.message) {
-      return error.error.message;
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "error" in error &&
+      typeof (error as { error?: unknown }).error === "object" &&
+      (error as { error?: { message?: unknown } }).error !== null &&
+      "message" in (error as { error: { message?: unknown } }).error &&
+      typeof (error as { error: { message: unknown } }).error.message ===
+        "string"
+    ) {
+      return (error as { error: { message: string } }).error.message;
     }
 
     // Non-field errors
-    if (error?.error?.non_field_errors) {
-      return Array.isArray(error.error.non_field_errors)
-        ? error.error.non_field_errors.join(" ")
-        : error.error.non_field_errors;
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "error" in error &&
+      typeof (error as { error?: unknown }).error === "object" &&
+      (error as { error?: { non_field_errors?: unknown } }).error !== null &&
+      "non_field_errors" in
+        (error as { error: { non_field_errors?: unknown } }).error
+    ) {
+      const nonFieldErrors = (error as { error: { non_field_errors: unknown } })
+        .error.non_field_errors;
+      if (Array.isArray(nonFieldErrors)) {
+        return nonFieldErrors.map(String).join(" ");
+      }
+      if (typeof nonFieldErrors === "string") {
+        return nonFieldErrors;
+      }
     }
 
     // String error
-    if (typeof error?.error === "string") {
-      return error.error;
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "error" in error &&
+      typeof (error as { error?: unknown }).error === "string"
+    ) {
+      return (error as { error: string }).error;
     }
 
     // Top-level message
-    if (error?.message) {
-      return error.message;
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "message" in error &&
+      typeof (error as { message: unknown }).message === "string"
+    ) {
+      return (error as { message: string }).message;
     }
 
     // Default fallback

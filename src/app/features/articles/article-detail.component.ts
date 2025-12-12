@@ -41,11 +41,11 @@ import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
 import { MatDialog, MatDialogModule } from "@angular/material/dialog";
 
 // Application
-import { ArticleService } from "../../core/services/article.service";
-import { BreadcrumbService } from "../../core/services/breadcrumb.service";
-import { ArticleActionsService } from "../../core/services/article-actions.service";
-import { ArticleDetail } from "../../core/models";
-import { ConfirmDialogComponent } from "../../shared/components/confirm-dialog.component";
+import { ArticleService } from "@app/core/services/article.service";
+import { BreadcrumbService } from "@app/core/services/breadcrumb.service";
+import { ArticleActionsService } from "@app/core/services/article-actions.service";
+import { ArticleDetail } from "@app/core/models";
+import { ConfirmDialogComponent } from "@app/shared/components/confirm-dialog.component";
 import { ArticleToolbarComponent } from "./components/article-toolbar.component";
 import { ArticleContentComponent } from "./components/article-content.component";
 

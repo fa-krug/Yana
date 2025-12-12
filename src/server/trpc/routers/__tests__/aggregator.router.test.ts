@@ -6,8 +6,8 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { appRouter } from "../../router";
-import { createContext } from "../../context";
+import { appRouter } from "@server/trpc/router";
+import { createContext } from "@server/trpc/context";
 import type { Request, Response } from "express";
 import type { Session } from "express-session";
 

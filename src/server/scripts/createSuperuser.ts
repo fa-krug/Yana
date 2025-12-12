@@ -5,7 +5,7 @@
  *   tsx src/server/scripts/createSuperuser.ts <username> <email> <password>
  */
 
-import { createUser, updateUserPassword } from "../services/user.service";
+import { createUser } from "../services/user.service";
 import { db, users } from "../db";
 import { eq } from "drizzle-orm";
 import { logger } from "../utils/logger";
@@ -24,15 +24,14 @@ async function createSuperuser(
       .limit(1);
 
     if (existing.length > 0) {
-      // Update password and superuser status
-      await updateUserPassword(existing[0].id, password);
-      await db
-        .update(users)
-        .set({ isSuperuser: true, isStaff: true })
-        .where(eq(users.id, existing[0].id));
-
-      logger.info({ username }, "User updated to superuser with new password");
-      console.log(`User "${username}" updated to superuser with new password`);
+      // User already exists - do nothing
+      logger.info(
+        { username, userId: existing[0].id },
+        "User already exists, skipping creation",
+      );
+      console.log(
+        `User "${username}" already exists, skipping superuser creation`,
+      );
     } else {
       // Create new superuser
       const user = await createUser(username, email, password);

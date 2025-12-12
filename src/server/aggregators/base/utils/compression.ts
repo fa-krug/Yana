@@ -3,7 +3,7 @@
  */
 
 import sharp from "sharp";
-import { logger } from "../../../utils/logger";
+import { logger } from "@server/utils/logger";
 
 // Image compression settings
 const MAX_IMAGE_WIDTH = 600;

@@ -2,6 +2,8 @@
  * Rate limiting mixin for BaseAggregator.
  */
 
+import type pino from "pino";
+
 /**
  * Interface for aggregator with rate limiting functionality.
  */
@@ -9,7 +11,7 @@ export interface RateLimitingMixin {
   readonly id: string;
   readonly feed: { id: number } | null;
   readonly rateLimitDelay: number;
-  readonly logger: any;
+  readonly logger: pino.Logger;
 }
 
 /**

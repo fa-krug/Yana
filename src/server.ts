@@ -296,8 +296,11 @@ function initializeBackgroundServices(): void {
     logger.info("Worker pool disabled (WORKER_POOL_ENABLED=false)");
   }
 
-  // Start scheduler
-  if (process.env["SCHEDULER_ENABLED"] !== "false") {
+  // Start scheduler (disabled in development mode)
+  // In development, only manual syncs are allowed (via API endpoints)
+  const schedulerEnabled =
+    process.env["SCHEDULER_ENABLED"] !== "false" && !isDevelopment;
+  if (schedulerEnabled) {
     try {
       startScheduler();
       logger.info("Scheduler initialized");
@@ -305,7 +308,11 @@ function initializeBackgroundServices(): void {
       logger.error({ error }, "Failed to start scheduler");
     }
   } else {
-    logger.info("Scheduler disabled (SCHEDULER_ENABLED=false)");
+    if (isDevelopment) {
+      logger.info("Scheduler disabled (development mode - use manual syncs)");
+    } else {
+      logger.info("Scheduler disabled (SCHEDULER_ENABLED=false)");
+    }
   }
 
   // Register shutdown handlers for graceful cleanup
@@ -344,13 +351,23 @@ function initializeBackgroundServices(): void {
  * The server listens on the port defined by the `PORT` environment variable, or defaults to 3000.
  */
 if (isMainModule(import.meta.url)) {
-  const port = process.env["PORT"] || 3000;
-  app.listen(port, () => {
-    logger.info({ port }, "Node Express server listening");
+  const port = process.env["PORT"] ? Number(process.env["PORT"]) : 3000;
+  const host = isDevelopment ? "0.0.0.0" : undefined;
+  const callback = () => {
+    logger.info(
+      { port, host: host || "localhost" },
+      "Node Express server listening",
+    );
 
     // Initialize background services when server starts listening
     initializeBackgroundServices();
-  });
+  };
+
+  if (host) {
+    app.listen(port, host, callback);
+  } else {
+    app.listen(port, callback);
+  }
 } else {
   // Even if not the main module, initialize background services
   // This ensures they start when the server is imported/used

@@ -16,15 +16,16 @@ import {
   sql,
   notInArray,
 } from "drizzle-orm";
+import type { SQLiteSelectBuilder } from "drizzle-orm/sqlite-core";
+import { db, articles, feeds, userArticleStates } from "@server/db";
+import { cache } from "@server/utils/cache";
+import { filterArticlesByStream } from "./stream-filter.service";
 import {
-  db,
-  articles,
-  feeds,
-  userArticleStates,
-  groups,
-  feedGroups,
-} from "../../db";
-import { cache } from "../../utils/cache";
+  parseItemId,
+  toHexId,
+  getSiteUrl,
+  formatStreamItem,
+} from "./stream-format.service";
 
 const STATE_READ = "user/-/state/com.google/read";
 const STATE_STARRED = "user/-/state/com.google/starred";
@@ -148,7 +149,12 @@ export async function getStreamContents(
 
   // Apply stream filtering if not filtering by item IDs
   if (!itemIds || itemIds.length === 0) {
-    articleQuery = await filterArticlesByStream(articleQuery, streamId, userId);
+    const filteredQuery = await filterArticlesByStream(
+      articleQuery,
+      streamId,
+      userId,
+    );
+    articleQuery = filteredQuery as unknown as typeof articleQuery;
   }
 
   // Order and limit - fetch only what we need for pagination
@@ -188,28 +194,9 @@ export async function getStreamContents(
       categories.push(STATE_STARRED);
     }
 
-    const timestampSec = Math.floor(article.date.getTime() / 1000);
-    const updatedSec = Math.floor(article.updatedAt.getTime() / 1000);
-    const timestampUsec = timestampSec * 1000000;
-    const crawlTimeMsec = timestampSec * 1000;
-
-    return {
-      id: `tag:google.com,2005:reader/item/${toHexId(article.id)}`,
-      title: article.name,
-      published: timestampSec,
-      updated: updatedSec,
-      crawlTimeMsec: String(crawlTimeMsec),
-      timestampUsec: String(timestampUsec),
-      alternate: [{ href: article.url }],
-      canonical: [{ href: article.url }],
-      categories,
-      origin: {
-        streamId: `feed/${article.feedId}`,
-        title: article.feedName,
-        htmlUrl: getSiteUrl(article),
-      },
-      summary: { content: article.content },
-    };
+    const formatted = formatStreamItem(article);
+    formatted.categories = categories;
+    return formatted;
   });
 
   const response: {
@@ -380,11 +367,12 @@ export async function getStreamItemIds(
         .innerJoin(feeds, eq(articles.feedId, feeds.id))
         .where(and(...starredConditions));
     } else {
-      articleQuery = await filterArticlesByStream(
+      const filteredQuery = await filterArticlesByStream(
         articleQuery,
         streamId,
         userId,
       );
+      articleQuery = filteredQuery as unknown as typeof articleQuery;
 
       // Debug: Check if query builder is valid
       if (!articleQuery || typeof articleQuery.orderBy !== "function") {
@@ -510,311 +498,4 @@ export async function getUnreadCount(
   cache.set(cacheKey, result, 30);
 
   return result;
-}
-
-/**
- * Filter articles by stream ID.
- */
-async function filterArticlesByStream(
-  query: any,
-  streamId: string,
-  userId: number,
-): Promise<any> {
-  if (!streamId || streamId === STATE_READING_LIST) {
-    return query;
-  }
-
-  if (streamId === STATE_STARRED) {
-    // Get starred article IDs directly from database
-    const starredIds = await db
-      .select({ articleId: userArticleStates.articleId })
-      .from(userArticleStates)
-      .where(
-        and(
-          eq(userArticleStates.userId, userId),
-          eq(userArticleStates.isSaved, true),
-        ),
-      );
-    const starredArticleIds = starredIds.map((s) => s.articleId);
-
-    if (starredArticleIds.length === 0) {
-      // No starred articles, return empty query with full selection
-      // This works for both getStreamContents (needs full) and getStreamItemIds (only uses id)
-      return db
-        .select({
-          id: articles.id,
-          name: articles.name,
-          url: articles.url,
-          date: articles.date,
-          updatedAt: articles.updatedAt,
-          content: articles.content,
-          feedId: articles.feedId,
-          feedName: feeds.name,
-          feedIdentifier: feeds.identifier,
-          feedType: feeds.feedType,
-        })
-        .from(articles)
-        .innerJoin(feeds, eq(articles.feedId, feeds.id))
-        .where(eq(articles.id, -1)); // Impossible condition
-    }
-
-    // Get accessible feed IDs for access control
-    const accessibleFeeds = await db
-      .select({ id: feeds.id })
-      .from(feeds)
-      .where(
-        and(
-          or(eq(feeds.userId, userId), isNull(feeds.userId)),
-          eq(feeds.enabled, true),
-        ),
-      );
-    const accessibleFeedIds = accessibleFeeds.map((f) => f.id);
-
-    if (accessibleFeedIds.length === 0) {
-      // No accessible feeds, return empty query with full selection
-      return db
-        .select({
-          id: articles.id,
-          name: articles.name,
-          url: articles.url,
-          date: articles.date,
-          updatedAt: articles.updatedAt,
-          content: articles.content,
-          feedId: articles.feedId,
-          feedName: feeds.name,
-          feedIdentifier: feeds.identifier,
-          feedType: feeds.feedType,
-        })
-        .from(articles)
-        .innerJoin(feeds, eq(articles.feedId, feeds.id))
-        .where(eq(articles.id, -1)); // Impossible condition
-    }
-
-    // Build a new query that filters by both starred IDs and accessible feed IDs
-    // Use full selection to work for both getStreamContents and getStreamItemIds
-    // getStreamItemIds will only use the id field, which is fine
-    return db
-      .select({
-        id: articles.id,
-        name: articles.name,
-        url: articles.url,
-        date: articles.date,
-        updatedAt: articles.updatedAt,
-        content: articles.content,
-        feedId: articles.feedId,
-        feedName: feeds.name,
-        feedIdentifier: feeds.identifier,
-        feedType: feeds.feedType,
-      })
-      .from(articles)
-      .innerJoin(feeds, eq(articles.feedId, feeds.id))
-      .where(
-        and(
-          inArray(articles.id, starredArticleIds),
-          inArray(articles.feedId, accessibleFeedIds),
-        ),
-      );
-  }
-
-  if (streamId.startsWith("feed/")) {
-    const feedId = parseInt(streamId.slice(5), 10);
-    if (!isNaN(feedId)) {
-      return db
-        .select({
-          id: articles.id,
-          name: articles.name,
-          url: articles.url,
-          date: articles.date,
-          updatedAt: articles.updatedAt,
-          content: articles.content,
-          feedId: articles.feedId,
-          feedName: feeds.name,
-          feedIdentifier: feeds.identifier,
-          feedType: feeds.feedType,
-        })
-        .from(articles)
-        .innerJoin(feeds, eq(articles.feedId, feeds.id))
-        .where(eq(articles.feedId, feedId));
-    }
-  }
-
-  if (streamId.startsWith("user/-/label/")) {
-    const labelName = streamId.slice(13);
-    if (labelName === "Reddit") {
-      return db
-        .select({
-          id: articles.id,
-          name: articles.name,
-          url: articles.url,
-          date: articles.date,
-          updatedAt: articles.updatedAt,
-          content: articles.content,
-          feedId: articles.feedId,
-          feedName: feeds.name,
-          feedIdentifier: feeds.identifier,
-          feedType: feeds.feedType,
-        })
-        .from(articles)
-        .innerJoin(feeds, eq(articles.feedId, feeds.id))
-        .where(
-          and(
-            eq(feeds.feedType, "reddit"),
-            or(eq(feeds.userId, userId), isNull(feeds.userId)),
-            eq(feeds.enabled, true),
-          ),
-        );
-    } else if (labelName === "YouTube") {
-      return db
-        .select({
-          id: articles.id,
-          name: articles.name,
-          url: articles.url,
-          date: articles.date,
-          updatedAt: articles.updatedAt,
-          content: articles.content,
-          feedId: articles.feedId,
-          feedName: feeds.name,
-          feedIdentifier: feeds.identifier,
-          feedType: feeds.feedType,
-        })
-        .from(articles)
-        .innerJoin(feeds, eq(articles.feedId, feeds.id))
-        .where(
-          and(
-            eq(feeds.feedType, "youtube"),
-            or(eq(feeds.userId, userId), isNull(feeds.userId)),
-            eq(feeds.enabled, true),
-          ),
-        );
-    } else if (labelName === "Podcasts") {
-      return db
-        .select({
-          id: articles.id,
-          name: articles.name,
-          url: articles.url,
-          date: articles.date,
-          updatedAt: articles.updatedAt,
-          content: articles.content,
-          feedId: articles.feedId,
-          feedName: feeds.name,
-          feedIdentifier: feeds.identifier,
-          feedType: feeds.feedType,
-        })
-        .from(articles)
-        .innerJoin(feeds, eq(articles.feedId, feeds.id))
-        .where(
-          and(
-            eq(feeds.feedType, "podcast"),
-            or(eq(feeds.userId, userId), isNull(feeds.userId)),
-            eq(feeds.enabled, true),
-          ),
-        );
-    } else {
-      // Get group feeds
-      const [group] = await db
-        .select({ id: groups.id })
-        .from(groups)
-        .where(
-          and(
-            eq(groups.name, labelName),
-            or(eq(groups.userId, userId), isNull(groups.userId)),
-          ),
-        )
-        .limit(1);
-
-      if (group) {
-        const groupFeedIds = await db
-          .select({ feedId: feedGroups.feedId })
-          .from(feedGroups)
-          .where(eq(feedGroups.groupId, group.id));
-
-        const feedIds = groupFeedIds.map((g) => g.feedId);
-        if (feedIds.length > 0) {
-          return db
-            .select({
-              id: articles.id,
-              name: articles.name,
-              url: articles.url,
-              date: articles.date,
-              updatedAt: articles.updatedAt,
-              content: articles.content,
-              feedId: articles.feedId,
-              feedName: feeds.name,
-              feedIdentifier: feeds.identifier,
-              feedType: feeds.feedType,
-            })
-            .from(articles)
-            .innerJoin(feeds, eq(articles.feedId, feeds.id))
-            .where(inArray(articles.feedId, feedIds));
-        }
-      }
-    }
-  }
-
-  return query;
-}
-
-/**
- * Parse item ID.
- */
-function parseItemId(itemId: string): number {
-  if (itemId.startsWith("tag:google.com,2005:reader/item/")) {
-    const hexId = itemId.slice(32);
-    return parseInt(hexId, 16);
-  } else if (itemId.length === 16) {
-    try {
-      return parseInt(itemId, 16);
-    } catch {
-      // Fall through
-    }
-  }
-  try {
-    return parseInt(itemId, 10);
-  } catch {
-    return 0;
-  }
-}
-
-/**
- * Convert article ID to hex format.
- */
-function toHexId(articleId: number): string {
-  return articleId.toString(16).padStart(16, "0");
-}
-
-/**
- * Get site URL for a feed.
- */
-function getSiteUrl(article: {
-  feedIdentifier: string;
-  feedType: string;
-}): string {
-  if (article.feedType === "reddit") {
-    const subreddit = article.feedIdentifier.replace(/^r\//, "");
-    return `https://www.reddit.com/r/${subreddit}`;
-  }
-
-  if (article.feedType === "youtube") {
-    const identifier = article.feedIdentifier;
-    if (identifier.startsWith("UC") && identifier.length >= 24) {
-      return `https://www.youtube.com/channel/${identifier}`;
-    } else if (identifier.startsWith("@")) {
-      return `https://www.youtube.com/${identifier}`;
-    }
-    return "https://www.youtube.com";
-  }
-
-  if (
-    article.feedIdentifier.startsWith("http://") ||
-    article.feedIdentifier.startsWith("https://")
-  ) {
-    try {
-      const url = new URL(article.feedIdentifier);
-      return `${url.protocol}//${url.host}`;
-    } catch {
-      return article.feedIdentifier;
-    }
-  }
-
-  return article.feedIdentifier;
 }

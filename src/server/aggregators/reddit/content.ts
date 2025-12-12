@@ -2,7 +2,7 @@
  * Reddit content building utilities.
  */
 
-import { logger } from "../../utils/logger";
+import { logger } from "@server/utils/logger";
 import { convertRedditMarkdown, escapeHtml } from "./markdown";
 import { fixRedditMediaUrl, decodeHtmlEntitiesInUrl } from "./urls";
 import { extractAnimatedGifUrl, extractRedditVideoPreview } from "./images";
@@ -100,24 +100,40 @@ export async function buildPostContent(
       url.toLowerCase().endsWith(".gif") ||
       url.toLowerCase().endsWith(".gifv")
     ) {
+      // Try to get animated GIF URL first
       const gifUrl = extractAnimatedGifUrl(post as any);
       if (gifUrl) {
-        contentParts.push(`<p><img src="${gifUrl}" alt="Animated GIF"></p>`);
+        const fixedUrl = fixRedditMediaUrl(gifUrl);
+        if (fixedUrl) {
+          contentParts.push(
+            `<p><img src="${fixedUrl}" alt="Animated GIF"></p>`,
+          );
+        }
       } else {
         const finalUrl = url.toLowerCase().endsWith(".gifv")
           ? url.slice(0, -1)
           : url;
         const fixedUrl = fixRedditMediaUrl(finalUrl);
-        contentParts.push(`<p><img src="${fixedUrl}" alt="Animated GIF"></p>`);
+        if (fixedUrl) {
+          contentParts.push(
+            `<p><img src="${fixedUrl}" alt="Animated GIF"></p>`,
+          );
+        }
       }
     } else if (
       [".jpg", ".jpeg", ".png", ".webp"].some((ext) =>
         url.toLowerCase().endsWith(ext),
       )
     ) {
+      // Direct image URL - just add as link, standardizeContentFormat will handle header element
       const fixedUrl = fixRedditMediaUrl(url);
-      contentParts.push(`<p><img src="${fixedUrl}" alt="Post image"></p>`);
+      if (fixedUrl) {
+        contentParts.push(
+          `<p><a href="${fixedUrl}">${escapeHtml(fixedUrl)}</a></p>`,
+        );
+      }
     } else if (url.includes("v.redd.it")) {
+      // Reddit video - extract preview
       const previewUrl = extractRedditVideoPreview(post as any);
       if (previewUrl) {
         contentParts.push(
@@ -129,6 +145,7 @@ export async function buildPostContent(
       // Create a link - standardize_format will convert it to an embed
       contentParts.push(`<p><a href="${url}">▶ View Video on YouTube</a></p>`);
     } else {
+      // For other URLs, just add as link - standardizeContentFormat will handle image extraction
       contentParts.push(`<p><a href="${url}">${escapeHtml(url)}</a></p>`);
     }
   }

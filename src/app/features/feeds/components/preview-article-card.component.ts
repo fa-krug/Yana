@@ -7,7 +7,7 @@ import { CommonModule } from "@angular/common";
 import { DomSanitizer, SafeResourceUrl } from "@angular/platform-browser";
 import { MatCardModule } from "@angular/material/card";
 import { MatIconModule } from "@angular/material/icon";
-import { PreviewArticle } from "../../../core/models";
+import { PreviewArticle } from "@app/core/models";
 
 @Component({
   selector: "app-preview-article-card",

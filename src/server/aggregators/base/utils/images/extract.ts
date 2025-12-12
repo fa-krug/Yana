@@ -3,7 +3,7 @@
  */
 
 import * as cheerio from "cheerio";
-import { logger } from "../../../../utils/logger";
+import { logger } from "@server/utils/logger";
 import {
   handleDirectImageUrl,
   handleYouTubeThumbnail,

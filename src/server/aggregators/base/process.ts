@@ -13,8 +13,9 @@ import {
   MAX_HEADER_IMAGE_HEIGHT,
   extractYouTubeVideoId,
   getYouTubeProxyUrl,
+  createHeaderElementFromUrl,
 } from "./utils";
-import { logger } from "../../utils/logger";
+import { logger } from "@server/utils/logger";
 
 /**
  * Standardize content format across all feeds.
@@ -136,64 +137,131 @@ export async function standardizeContentFormat(
         firstUrl = article.url;
       }
 
-      // Check if the URL is a YouTube video - embed it instead of extracting image
-      const videoId = firstUrl ? extractYouTubeVideoId(firstUrl) : null;
-      if (videoId) {
-        // Embed YouTube video as iframe instead of extracting thumbnail
-        const embedUrl = getYouTubeProxyUrl(videoId);
-        const embedHtml =
-          `<div class="youtube-embed-container">` +
-          `<iframe src="${embedUrl}" ` +
-          `title="YouTube video player" ` +
-          `frameborder="0" ` +
-          `allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" ` +
-          `allowfullscreen></iframe>` +
-          `</div>`;
+      // Use the unified header element creation function
+      // This handles YouTube embeds, image extraction, compression, and base64 encoding
+      if (firstUrl) {
+        // Final safety check: ensure URL is valid before attempting extraction
+        if (
+          !firstUrl.includes("${") &&
+          !firstUrl.includes("%7B") &&
+          !firstUrl.includes("%24%7B") &&
+          (firstUrl.startsWith("http") || firstUrl.startsWith("data:"))
+        ) {
+          // Handle data URI separately (already base64 encoded)
+          if (firstUrl.startsWith("data:")) {
+            logger.debug("First image is already a data URI, extracting data");
+            try {
+              // Parse data URI: data:image/png;base64,iVBORw0KG...
+              if (firstUrl.includes(";base64,")) {
+                const [header, encoded] = firstUrl.split(";base64,", 2);
+                let contentType = header.split(":")[1] || "image/jpeg";
 
-        contentParts.push(embedHtml);
-        logger.debug(
-          { videoId, url: firstUrl },
-          "Embedded YouTube video instead of header image",
-        );
+                // CRITICAL: Validate that data URI is actually an image
+                if (!contentType.startsWith("image/")) {
+                  logger.warn(
+                    { contentType },
+                    "Data URI has non-image content type, skipping",
+                  );
+                } else {
+                  const imageData = Buffer.from(encoded, "base64");
 
-        // Remove the original link/image element if it was in the content
-        if (firstElement && firstElement.length > 0) {
-          const parent = firstElement.parent();
-          firstElement.remove();
-          // Remove empty parent containers recursively
-          let currentParent = parent;
-          while (currentParent.length > 0) {
-            const tagName = currentParent.get(0)?.tagName?.toLowerCase();
-            if (tagName === "body" || tagName === "html") {
-              break;
+                  // Additional validation: Try to parse as image with sharp
+                  try {
+                    await sharp(imageData).metadata(); // This will throw if not a valid image
+
+                    // Compress the image with higher resolution for header images
+                    const compressed = await compressImage(
+                      imageData,
+                      contentType,
+                      MAX_HEADER_IMAGE_WIDTH,
+                      MAX_HEADER_IMAGE_HEIGHT,
+                    );
+                    const compressedData = compressed.imageData;
+                    const outputType = compressed.contentType;
+
+                    // Convert to base64
+                    const imageB64 = compressedData.toString("base64");
+                    const dataUri = `data:${outputType};base64,${imageB64}`;
+
+                    // Add image at the top
+                    contentParts.push(
+                      `<p><img src="${dataUri}" alt="Article image" style="max-width: 100%; height: auto;"></p>`,
+                    );
+                    logger.debug("Added compressed data URI image to content");
+                  } catch (error) {
+                    logger.warn(
+                      { error, contentType },
+                      "Data URI claims to be image but failed validation",
+                    );
+                  }
+                }
+              }
+            } catch (error) {
+              logger.error({ error }, "Failed to parse data URI");
             }
-            const text = currentParent.text().trim();
-            const hasChildren = currentParent.children().length > 0;
-            if (!text && !hasChildren) {
-              const nextParent = currentParent.parent();
-              currentParent.remove();
-              currentParent = nextParent;
-            } else {
-              break;
-            }
-          }
-          logger.debug("Removed original YouTube link/image from content");
-        }
+          } else {
+            // Use unified function for regular URLs (handles YouTube, Twitter, Reddit, images, etc.)
+            const headerElement = await createHeaderElementFromUrl(
+              firstUrl,
+              "Article image",
+            );
 
-        // Also remove any other YouTube links with the same video ID from content
-        // This handles cases where headerImageUrl is a YouTube URL but the link also appears in content
-        if (isUsingHeaderImage) {
-          // Remove duplicate YouTube links
-          $("a[href]").each((_, element) => {
-            const href = $(element).attr("href");
-            if (href) {
-              try {
-                const linkVideoId = extractYouTubeVideoId(
-                  new URL(href, baseUrl).toString(),
-                );
-                if (linkVideoId === videoId) {
-                  const parent = $(element).parent();
-                  $(element).remove();
+            if (headerElement) {
+              contentParts.push(headerElement);
+
+              // Save thumbnail URL (will be converted to base64 by aggregation service)
+              article.thumbnailUrl = firstUrl;
+              logger.debug({ url: firstUrl }, "Saved thumbnail URL");
+
+              // Check if it's a YouTube embed to handle duplicate removal
+              const videoId = extractYouTubeVideoId(firstUrl);
+              if (videoId && isUsingHeaderImage) {
+                // Remove duplicate YouTube links from content
+                $("a[href]").each((_, element) => {
+                  const href = $(element).attr("href");
+                  if (href) {
+                    try {
+                      const linkVideoId = extractYouTubeVideoId(
+                        new URL(href, baseUrl).toString(),
+                      );
+                      if (linkVideoId === videoId) {
+                        const parent = $(element).parent();
+                        $(element).remove();
+                        // Remove empty parent containers recursively
+                        let currentParent = parent;
+                        while (currentParent.length > 0) {
+                          const tagName = currentParent
+                            .get(0)
+                            ?.tagName?.toLowerCase();
+                          if (tagName === "body" || tagName === "html") {
+                            break;
+                          }
+                          const text = currentParent.text().trim();
+                          const hasChildren =
+                            currentParent.children().length > 0;
+                          if (!text && !hasChildren) {
+                            const nextParent = currentParent.parent();
+                            currentParent.remove();
+                            currentParent = nextParent;
+                          } else {
+                            break;
+                          }
+                        }
+                        logger.debug(
+                          "Removed duplicate YouTube link from content",
+                        );
+                      }
+                    } catch (error) {
+                      // Invalid URL, skip
+                    }
+                  }
+                });
+
+                // Remove first image from content if it exists (since we're using YouTube video instead)
+                const firstImg = $("img").first();
+                if (firstImg.length > 0) {
+                  const parent = firstImg.parent();
+                  firstImg.remove();
                   // Remove empty parent containers recursively
                   let currentParent = parent;
                   while (currentParent.length > 0) {
@@ -213,163 +281,47 @@ export async function standardizeContentFormat(
                       break;
                     }
                   }
-                  logger.debug("Removed duplicate YouTube link from content");
-                }
-              } catch (error) {
-                // Invalid URL, skip
-              }
-            }
-          });
-
-          // Remove first image from content if it exists (since we're using YouTube video instead)
-          const firstImg = $("img").first();
-          if (firstImg.length > 0) {
-            const parent = firstImg.parent();
-            firstImg.remove();
-            // Remove empty parent containers recursively
-            let currentParent = parent;
-            while (currentParent.length > 0) {
-              const tagName = currentParent.get(0)?.tagName?.toLowerCase();
-              if (tagName === "body" || tagName === "html") {
-                break;
-              }
-              const text = currentParent.text().trim();
-              const hasChildren = currentParent.children().length > 0;
-              if (!text && !hasChildren) {
-                const nextParent = currentParent.parent();
-                currentParent.remove();
-                currentParent = nextParent;
-              } else {
-                break;
-              }
-            }
-            logger.debug(
-              "Removed first image from content (using YouTube video instead)",
-            );
-          }
-        }
-      } else {
-        // Not a YouTube video - proceed with image extraction
-        // Extract image from the URL or data URI
-        let imageResult: { imageData: Buffer; contentType: string } | null =
-          null;
-
-        // Check if the URL is already a data URI (base64 encoded)
-        if (firstUrl && firstUrl.startsWith("data:")) {
-          logger.debug("First image is already a data URI, extracting data");
-          try {
-            // Parse data URI: data:image/png;base64,iVBORw0KG...
-            if (firstUrl.includes(";base64,")) {
-              const [header, encoded] = firstUrl.split(";base64,", 2);
-              let contentType = header.split(":")[1] || "image/jpeg";
-
-              // CRITICAL: Validate that data URI is actually an image
-              if (!contentType.startsWith("image/")) {
-                logger.warn(
-                  { contentType },
-                  "Data URI has non-image content type, skipping",
-                );
-              } else {
-                const imageData = Buffer.from(encoded, "base64");
-
-                // Additional validation: Try to parse as image with sharp
-                try {
-                  await sharp(imageData).metadata(); // This will throw if not a valid image
-                  imageResult = { imageData, contentType };
                   logger.debug(
-                    { contentType, size: imageData.length },
-                    "Extracted valid data URI image",
-                  );
-                } catch (error) {
-                  logger.warn(
-                    { error, contentType },
-                    "Data URI claims to be image but failed validation",
+                    "Removed first image from content (using YouTube video instead)",
                   );
                 }
               }
-            }
-          } catch (error) {
-            logger.error({ error }, "Failed to parse data URI");
-          }
-        } else if (firstUrl) {
-          // Extract image from regular URL
-          // Final safety check: ensure URL is valid before attempting extraction
-          if (
-            !firstUrl.includes("${") &&
-            !firstUrl.includes("%7B") &&
-            !firstUrl.includes("%24%7B") &&
-            firstUrl.startsWith("http")
-          ) {
-            // If this is a header_image_url, pass flag to skip width/height filtering
-            imageResult = await extractImageFromUrl(
-              firstUrl,
-              isUsingHeaderImage,
-            );
-          } else {
-            logger.debug(
-              { firstUrl },
-              "Skipping image extraction for invalid URL",
-            );
-          }
-        }
 
-        // Save thumbnail URL (will be converted to base64 by aggregation service)
-        if (imageResult && firstUrl) {
-          article.thumbnailUrl = firstUrl;
-          logger.debug({ url: firstUrl }, "Saved thumbnail URL");
-        }
-
-        // Add the header image if we found one
-        if (imageResult) {
-          const { imageData, contentType } = imageResult;
-
-          // Compress the image with higher resolution for header images
-          const compressed = await compressImage(
-            imageData,
-            contentType,
-            MAX_HEADER_IMAGE_WIDTH,
-            MAX_HEADER_IMAGE_HEIGHT,
-          );
-          const compressedData = compressed.imageData;
-          const outputType = compressed.contentType;
-
-          // Convert to base64
-          const imageB64 = compressedData.toString("base64");
-          const dataUri = `data:${outputType};base64,${imageB64}`;
-
-          // Add image at the top
-          contentParts.push(
-            `<p><img src="${dataUri}" alt="Article image" style="max-width: 100%; height: auto;"></p>`,
-          );
-          logger.debug("Added header image to content");
-
-          // Remove the original image from content if it was an img tag
-          if (
-            firstElement &&
-            firstElement.length > 0 &&
-            firstElement.get(0)?.tagName === "img"
-          ) {
-            const parent = firstElement.parent();
-            firstElement.remove();
-            // Remove empty parent containers recursively
-            let currentParent = parent;
-            while (currentParent.length > 0) {
-              const tagName = currentParent.get(0)?.tagName?.toLowerCase();
-              if (tagName === "body" || tagName === "html") {
-                break;
+              // Remove the original link/image element if it was in the content
+              if (firstElement && firstElement.length > 0) {
+                const parent = firstElement.parent();
+                firstElement.remove();
+                // Remove empty parent containers recursively
+                let currentParent = parent;
+                while (currentParent.length > 0) {
+                  const tagName = currentParent.get(0)?.tagName?.toLowerCase();
+                  if (tagName === "body" || tagName === "html") {
+                    break;
+                  }
+                  const text = currentParent.text().trim();
+                  const hasChildren = currentParent.children().length > 0;
+                  if (!text && !hasChildren) {
+                    const nextParent = currentParent.parent();
+                    currentParent.remove();
+                    currentParent = nextParent;
+                  } else {
+                    break;
+                  }
+                }
+                logger.debug("Removed original link/image from content");
               }
-              const text = currentParent.text().trim();
-              const hasChildren = currentParent.children().length > 0;
-              if (!text && !hasChildren) {
-                const nextParent = currentParent.parent();
-                currentParent.remove();
-                currentParent = nextParent;
-              } else {
-                break;
-              }
+            } else {
+              logger.debug(
+                { url: firstUrl },
+                "Failed to create header element from URL",
+              );
             }
-            logger.debug("Removed original image from content");
           }
+        } else {
+          logger.debug(
+            { firstUrl },
+            "Skipping header element creation for invalid URL",
+          );
         }
       }
     }

@@ -56,7 +56,7 @@ function validateMigration(
   }
 }
 
-async function runMigrations() {
+async function runMigrations(): Promise<void> {
   logger.info(
     { databasePath, migrationsFolder },
     "Starting database migrations",

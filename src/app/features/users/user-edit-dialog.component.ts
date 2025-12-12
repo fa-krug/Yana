@@ -21,11 +21,11 @@ import { MatDialog } from "@angular/material/dialog";
 import {
   AdminUsersService,
   User,
-} from "../../core/services/admin-users.service";
+} from "@app/core/services/admin-users.service";
 import {
   ConfirmDialogComponent,
   ConfirmDialogData,
-} from "../../shared/components/confirm-dialog.component";
+} from "@app/shared/components/confirm-dialog.component";
 
 @Component({
   selector: "app-user-edit-dialog",

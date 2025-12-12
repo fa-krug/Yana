@@ -12,7 +12,7 @@ import { MatChipsModule } from "@angular/material/chips";
 import { MatIconModule } from "@angular/material/icon";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatDividerModule } from "@angular/material/divider";
-import { Group } from "../../../core/models";
+import { Group } from "@app/core/models";
 
 @Component({
   selector: "app-groups-selector",
@@ -195,9 +195,12 @@ export class GroupsSelectorComponent {
     return value;
   }
 
-  protected onGroupSelected(event: any): void {
-    const group = event.option?.value;
-    if (group && typeof group === "object" && group.id) {
+  protected onGroupSelected(event: { option: { value: Group } } | Group): void {
+    const group =
+      typeof event === "object" && event !== null && "option" in event
+        ? event.option.value
+        : event;
+    if (group && typeof group === "object" && "id" in group && group.id) {
       this.groupSelected.emit(group);
     }
   }

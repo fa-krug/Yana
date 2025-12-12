@@ -13,11 +13,11 @@ import {
   getAggregatorDetail,
   getAggregatorOptions,
   getGroupedAggregatorMetadata,
-} from "../../services/aggregator.service";
-import { NotFoundError } from "../../errors";
-import { searchRedditSubreddits } from "../../services/reddit.service";
-import { searchYouTubeChannels } from "../../services/youtube.service";
-import { getUserSettings } from "../../services/userSettings.service";
+} from "@server/services/aggregator.service";
+import { NotFoundError } from "@server/errors";
+import { searchRedditSubreddits } from "@server/services/reddit.service";
+import { searchYouTubeChannels } from "@server/services/youtube.service";
+import { getUserSettings } from "@server/services/userSettings.service";
 import { getAuthenticatedUser } from "../middleware";
 
 /**

@@ -20,6 +20,7 @@ import {
   inject,
   signal,
   ChangeDetectionStrategy,
+  isDevMode,
 } from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { RouterModule, ActivatedRoute } from "@angular/router";
@@ -43,12 +44,12 @@ import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
 import { MatDialog, MatDialogModule } from "@angular/material/dialog";
 
 // Application
-import { FeedService, FeedFilters } from "../../core/services/feed.service";
-import { Feed } from "../../core/models";
-import { ConfirmDialogComponent } from "../../shared/components/confirm-dialog.component";
-import { ConfirmationService } from "../../core/services/confirmation.service";
-import { ArticleService } from "../../core/services/article.service";
-import { GroupService } from "../../core/services/group.service";
+import { FeedService, FeedFilters } from "@app/core/services/feed.service";
+import { Feed } from "@app/core/models";
+import { ConfirmDialogComponent } from "@app/shared/components/confirm-dialog.component";
+import { ConfirmationService } from "@app/core/services/confirmation.service";
+import { ArticleService } from "@app/core/services/article.service";
+import { GroupService } from "@app/core/services/group.service";
 import { FeedFiltersComponent } from "./components/feed-filters.component";
 import { FeedCardComponent } from "./components/feed-card.component";
 
@@ -296,13 +297,16 @@ export class FeedListComponent implements OnInit, OnDestroy {
       .subscribe(() => this.loadFeeds());
 
     // Auto-refresh every 30 seconds (silent to avoid UI glitches)
-    interval(30000)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe(() => {
-        if (!this.feedService.loading()) {
-          this.loadFeeds(true);
-        }
-      });
+    // Disabled in development mode
+    if (!isDevMode()) {
+      interval(30000)
+        .pipe(takeUntil(this.destroy$))
+        .subscribe(() => {
+          if (!this.feedService.loading()) {
+            this.loadFeeds(true);
+          }
+        });
+    }
   }
 
   ngOnDestroy() {

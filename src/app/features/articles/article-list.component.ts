@@ -37,12 +37,12 @@ import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
 import {
   ArticleService,
   ArticleFilters,
-} from "../../core/services/article.service";
-import { FeedService } from "../../core/services/feed.service";
-import { GroupService } from "../../core/services/group.service";
-import { Article } from "../../core/models";
+} from "@app/core/services/article.service";
+import { FeedService } from "@app/core/services/feed.service";
+import { GroupService } from "@app/core/services/group.service";
+import { Article } from "@app/core/models";
 import { ArticleFiltersComponent } from "./components/article-filters.component";
-import { ArticleCardComponent } from "../../shared/components/article-card.component";
+import { ArticleCardComponent } from "@app/shared/components/article-card.component";
 
 @Component({
   selector: "app-article-list",

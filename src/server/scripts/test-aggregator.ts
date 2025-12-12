@@ -205,7 +205,7 @@ function formatResults(results: TestResult[]): string {
 /**
  * Main function.
  */
-async function main() {
+async function main(): Promise<void> {
   const url = process.argv[2];
 
   if (!url) {

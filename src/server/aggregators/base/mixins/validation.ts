@@ -2,13 +2,15 @@
  * Validation mixin for BaseAggregator.
  */
 
+import type pino from "pino";
+
 /**
  * Interface for aggregator with validation functionality.
  */
 export interface ValidationMixin {
   readonly id: string;
   readonly feed: { id: number } | null;
-  readonly logger: any;
+  readonly logger: pino.Logger;
 }
 
 /**

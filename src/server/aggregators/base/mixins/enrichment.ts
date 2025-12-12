@@ -2,6 +2,7 @@
  * Article enrichment mixin for BaseAggregator.
  */
 
+import type pino from "pino";
 import type { RawArticle } from "../types";
 
 /**
@@ -10,7 +11,7 @@ import type { RawArticle } from "../types";
 export interface EnrichmentMixin {
   readonly id: string;
   readonly feed: { id: number } | null;
-  readonly logger: any;
+  readonly logger: pino.Logger;
   shouldFetchContent(article: RawArticle): boolean;
   getCachedContent(article: RawArticle): Promise<string | null>;
   fetchArticleContentInternal(

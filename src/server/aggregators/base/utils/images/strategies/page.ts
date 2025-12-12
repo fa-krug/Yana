@@ -4,11 +4,11 @@
 
 import * as cheerio from "cheerio";
 import sharp from "sharp";
-import { logger } from "../../../../../utils/logger";
+import { logger } from "@server/utils/logger";
 import {
   MAX_HEADER_IMAGE_WIDTH,
   MAX_HEADER_IMAGE_HEIGHT,
-} from "../../compression";
+} from "@server/aggregators/base/utils/compression";
 import { fetchSingleImage } from "../fetch";
 import { extractImageDimensions } from "../dimensions";
 

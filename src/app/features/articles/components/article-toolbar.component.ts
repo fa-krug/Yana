@@ -9,7 +9,7 @@ import { MatButtonModule } from "@angular/material/button";
 import { MatIconModule } from "@angular/material/icon";
 import { MatMenuModule } from "@angular/material/menu";
 import { MatTooltipModule } from "@angular/material/tooltip";
-import { ArticleDetail } from "../../../core/models";
+import { ArticleDetail } from "@app/core/models";
 
 @Component({
   selector: "app-article-toolbar",

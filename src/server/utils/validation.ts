@@ -19,7 +19,7 @@ import { ValidationError } from "../errors";
 export function validate(
   schema: z.ZodSchema,
   source: "body" | "query" | "params" = "body",
-) {
+): (req: Request, res: Response, next: NextFunction) => void {
   return (req: Request, res: Response, next: NextFunction): void => {
     try {
       const data = req[source];
@@ -49,7 +49,9 @@ export function validate(
  * @param schema - Zod schema for body validation
  * @returns Express middleware
  */
-export function validateBody(schema: z.ZodSchema) {
+export function validateBody(
+  schema: z.ZodSchema,
+): (req: Request, res: Response, next: NextFunction) => void {
   return validate(schema, "body");
 }
 
@@ -59,7 +61,9 @@ export function validateBody(schema: z.ZodSchema) {
  * @param schema - Zod schema for query validation
  * @returns Express middleware
  */
-export function validateQuery(schema: z.ZodSchema) {
+export function validateQuery(
+  schema: z.ZodSchema,
+): (req: Request, res: Response, next: NextFunction) => void {
   return validate(schema, "query");
 }
 
@@ -69,7 +73,9 @@ export function validateQuery(schema: z.ZodSchema) {
  * @param schema - Zod schema for params validation
  * @returns Express middleware
  */
-export function validateParams(schema: z.ZodSchema) {
+export function validateParams(
+  schema: z.ZodSchema,
+): (req: Request, res: Response, next: NextFunction) => void {
   return validate(schema, "params");
 }
 

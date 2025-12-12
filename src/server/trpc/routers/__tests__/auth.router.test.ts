@@ -3,12 +3,12 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { appRouter } from "../../router";
-import { createContext } from "../../context";
+import { appRouter } from "@server/trpc/router";
+import { createContext } from "@server/trpc/context";
 import type { Request, Response } from "express";
 import type { Session } from "express-session";
 import { setupTestDb, teardownTestDb } from "../../../../../tests/utils/testDb";
-import { db, users } from "../../../db";
+import { db, users } from "@server/db";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcrypt";
 
@@ -37,9 +37,14 @@ describe("Auth Router", () => {
         .returning();
 
       testUser = user;
-    } catch (error: any) {
+    } catch (error: unknown) {
       // If user already exists, try to get it
-      if (error?.code === "SQLITE_CONSTRAINT_UNIQUE") {
+      if (
+        typeof error === "object" &&
+        error !== null &&
+        "code" in error &&
+        (error as { code?: unknown }).code === "SQLITE_CONSTRAINT_UNIQUE"
+      ) {
         const existing = await db
           .select()
           .from(users)

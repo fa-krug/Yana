@@ -15,11 +15,14 @@ import {
   retryTask,
   clearTaskHistory,
   type TaskFilters,
-} from "../../services/taskQueue.service";
-import { getScheduler } from "../../scheduler";
-import { getExecutionHistory } from "../../services/taskHistory.service";
-import { getTaskMetrics, getWorkerPoolStatus } from "../../workers/monitoring";
-import { taskListSchema } from "../../validation/schemas";
+} from "@server/services/taskQueue.service";
+import { getScheduler } from "@server/scheduler";
+import { getExecutionHistory } from "@server/services/taskHistory.service";
+import {
+  getTaskMetrics,
+  getWorkerPoolStatus,
+} from "@server/workers/monitoring";
+import { taskListSchema } from "@server/validation/schemas";
 
 /**
  * Helper to convert date to ISO string.

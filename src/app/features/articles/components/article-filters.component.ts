@@ -9,8 +9,8 @@ import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatInputModule } from "@angular/material/input";
 import { MatSelectModule } from "@angular/material/select";
 import { MatIconModule } from "@angular/material/icon";
-import { FeedService } from "../../../core/services/feed.service";
-import { GroupService } from "../../../core/services/group.service";
+import { FeedService } from "@app/core/services/feed.service";
+import { GroupService } from "@app/core/services/group.service";
 
 @Component({
   selector: "app-article-filters",

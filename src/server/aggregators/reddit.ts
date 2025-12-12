@@ -407,7 +407,7 @@ export class RedditAggregator extends BaseAggregator {
 
     // Extract header image URL and store it in the article for processContent
     // This will be used by processContent to add the header image
-    const headerImageUrl = extractHeaderImageUrl(postData);
+    const headerImageUrl = await extractHeaderImageUrl(postData);
     if (headerImageUrl) {
       (article as RawArticle & { headerImageUrl?: string }).headerImageUrl =
         headerImageUrl;
@@ -453,7 +453,10 @@ export class RedditAggregator extends BaseAggregator {
     const headerImageUrl = (article as RawArticle & { headerImageUrl?: string })
       .headerImageUrl;
 
-    const generateTitleImage = this.feed?.generateTitleImage ?? true;
+    // Only generate title image if headerImageUrl is found
+    const generateTitleImage = headerImageUrl
+      ? (this.feed?.generateTitleImage ?? true)
+      : false;
     const addSourceFooter = this.feed?.addSourceFooter ?? true;
 
     // Use standardizeContentFormat with Reddit-specific header image

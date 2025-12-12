@@ -67,16 +67,24 @@ function formatDuration(seconds: number): string {
 /**
  * Extract audio enclosure from RSS entry.
  */
-function extractEnclosure(item: any): { url: string; type: string } {
+function extractEnclosure(item: Record<string, unknown>): {
+  url: string;
+  type: string;
+} {
   // Try enclosures array
   if (
-    item.enclosures &&
-    Array.isArray(item.enclosures) &&
-    item.enclosures.length > 0
+    item["enclosures"] &&
+    Array.isArray(item["enclosures"]) &&
+    (item["enclosures"] as unknown[]).length > 0
   ) {
-    for (const enclosure of item.enclosures) {
-      const url = enclosure.url || enclosure.href || "";
-      const mediaType = enclosure.type || "";
+    for (const enclosure of item["enclosures"] as unknown[]) {
+      const enclosureObj = enclosure as {
+        url?: string;
+        href?: string;
+        type?: string;
+      };
+      const url = enclosureObj.url || enclosureObj.href || "";
+      const mediaType = enclosureObj.type || "";
 
       // Look for audio types
       if (
@@ -89,11 +97,12 @@ function extractEnclosure(item: any): { url: string; type: string } {
   }
 
   // Try links with enclosure rel
-  if (item.links && Array.isArray(item.links)) {
-    for (const link of item.links) {
-      if (link.rel === "enclosure") {
-        const url = link.href || "";
-        const type = link.type || "";
+  if (item["links"] && Array.isArray(item["links"])) {
+    for (const link of item["links"] as unknown[]) {
+      const linkObj = link as { rel?: string; href?: string; type?: string };
+      if (linkObj.rel === "enclosure") {
+        const url = linkObj.href || "";
+        const type = linkObj.type || "";
         if (url) {
           return { url, type: type || "audio/mpeg" };
         }
@@ -111,23 +120,32 @@ function extractEnclosure(item: any): { url: string; type: string } {
  * - rss-parser typically converts itunes:duration to itunes_duration
  * - Some parsers keep the colon format
  */
-function extractDuration(item: any): number | null {
+function extractDuration(item: Record<string, unknown>): number | null {
   // Try itunes_duration (rss-parser format)
-  if (item.itunes_duration) {
-    const duration = parseDurationToSeconds(item.itunes_duration);
-    if (duration !== null) return duration;
+  if (item["itunes_duration"]) {
+    const durationValue = item["itunes_duration"];
+    if (typeof durationValue === "string") {
+      const duration = parseDurationToSeconds(durationValue);
+      if (duration !== null) return duration;
+    }
   }
 
   // Try itunes:duration (colon format)
   if (item["itunes:duration"]) {
-    const duration = parseDurationToSeconds(item["itunes:duration"]);
-    if (duration !== null) return duration;
+    const durationValue = item["itunes:duration"];
+    if (typeof durationValue === "string") {
+      const duration = parseDurationToSeconds(durationValue);
+      if (duration !== null) return duration;
+    }
   }
 
   // Try duration (generic)
-  if (item.duration) {
-    const duration = parseDurationToSeconds(item.duration);
-    if (duration !== null) return duration;
+  if (item["duration"]) {
+    const durationValue = item["duration"];
+    if (typeof durationValue === "string") {
+      const duration = parseDurationToSeconds(durationValue);
+      if (duration !== null) return duration;
+    }
   }
 
   return null;
@@ -140,12 +158,16 @@ function extractDuration(item: any): number | null {
  * - rss-parser typically converts itunes:image to itunes_image
  * - Some parsers keep the colon format
  */
-function extractImage(item: any): string {
+function extractImage(item: Record<string, unknown>): string {
   // Try itunes_image (rss-parser format)
-  if (item.itunes_image) {
-    const itunesImage = item.itunes_image;
-    if (typeof itunesImage === "object" && itunesImage.href) {
-      return itunesImage.href;
+  if (item["itunes_image"]) {
+    const itunesImage = item["itunes_image"];
+    if (
+      typeof itunesImage === "object" &&
+      itunesImage !== null &&
+      "href" in itunesImage
+    ) {
+      return (itunesImage as { href: string }).href;
     }
     if (typeof itunesImage === "string") {
       return itunesImage;
@@ -155,8 +177,12 @@ function extractImage(item: any): string {
   // Try itunes:image (colon format)
   if (item["itunes:image"]) {
     const itunesImage = item["itunes:image"];
-    if (typeof itunesImage === "object" && itunesImage.href) {
-      return itunesImage.href;
+    if (
+      typeof itunesImage === "object" &&
+      itunesImage !== null &&
+      "href" in itunesImage
+    ) {
+      return (itunesImage as { href: string }).href;
     }
     if (typeof itunesImage === "string") {
       return itunesImage;
@@ -164,22 +190,25 @@ function extractImage(item: any): string {
   }
 
   // Try image (RSS standard)
-  if (item.image) {
-    if (typeof item.image === "object") {
-      return item.image.href || item.image.url || "";
+  if (item["image"]) {
+    const image = item["image"];
+    if (typeof image === "object" && image !== null) {
+      const imgObj = image as { href?: string; url?: string };
+      return imgObj.href || imgObj.url || "";
     }
-    if (typeof item.image === "string") {
-      return item.image;
+    if (typeof image === "string") {
+      return image;
     }
   }
 
   // Try media_thumbnail (rss-parser format)
   if (
-    item.media_thumbnail &&
-    Array.isArray(item.media_thumbnail) &&
-    item.media_thumbnail.length > 0
+    item["media_thumbnail"] &&
+    Array.isArray(item["media_thumbnail"]) &&
+    (item["media_thumbnail"] as unknown[]).length > 0
   ) {
-    return item.media_thumbnail[0].url || "";
+    const thumb = (item["media_thumbnail"] as unknown[])[0] as { url?: string };
+    return thumb.url || "";
   }
 
   // Try media:thumbnail (colon format)
@@ -201,33 +230,47 @@ function extractImage(item: any): string {
  * - rss-parser typically converts itunes:summary to itunes_summary
  * - Some parsers keep the colon format
  */
-function extractDescription(item: any): string {
+function extractDescription(item: Record<string, unknown>): string {
   // Try content:encoded (full HTML)
-  if (item.content && Array.isArray(item.content)) {
-    for (const content of item.content) {
-      if (content.type === "text/html") {
-        return content.value || "";
+  if (item["content"] && Array.isArray(item["content"])) {
+    for (const content of item["content"] as unknown[]) {
+      const contentObj = content as { type?: string; value?: string };
+      if (contentObj.type === "text/html") {
+        return contentObj.value || "";
       }
     }
   }
 
   // Try content_encoded (rss-parser format)
-  if (item.content_encoded) {
-    return item.content_encoded;
+  if (item["content_encoded"]) {
+    const contentEncoded = item["content_encoded"];
+    if (typeof contentEncoded === "string") {
+      return contentEncoded;
+    }
   }
 
   // Try itunes_summary (rss-parser format)
-  if (item.itunes_summary) {
-    return item.itunes_summary;
+  if (item["itunes_summary"]) {
+    const itunesSummary = item["itunes_summary"];
+    if (typeof itunesSummary === "string") {
+      return itunesSummary;
+    }
   }
 
   // Try itunes:summary (colon format)
   if (item["itunes:summary"]) {
-    return item["itunes:summary"];
+    const itunesSummary = item["itunes:summary"];
+    if (typeof itunesSummary === "string") {
+      return itunesSummary;
+    }
   }
 
   // Try description
-  return item.summary || item.description || "";
+  const summary = item["summary"];
+  const description = item["description"];
+  if (typeof summary === "string") return summary;
+  if (typeof description === "string") return description;
+  return "";
 }
 
 export class PodcastAggregator extends BaseAggregator {

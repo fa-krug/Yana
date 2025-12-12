@@ -4,7 +4,7 @@
 
 import * as cheerio from "cheerio";
 import axios from "axios";
-import { logger } from "../../../utils/logger";
+import { logger } from "@server/utils/logger";
 import { fetchSingleImage } from "./images";
 
 /**

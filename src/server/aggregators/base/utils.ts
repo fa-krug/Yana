@@ -8,7 +8,7 @@
 export * from "./utils/index";
 
 // Core utilities (article filtering)
-import { logger } from "../../utils/logger";
+import { logger } from "@server/utils/logger";
 
 /**
  * Check if article should be skipped.

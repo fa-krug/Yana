@@ -2,6 +2,7 @@
  * Article filtering mixin for BaseAggregator.
  */
 
+import type pino from "pino";
 import type { RawArticle } from "../types";
 
 /**
@@ -10,7 +11,7 @@ import type { RawArticle } from "../types";
 export interface FilteringMixin {
   readonly id: string;
   readonly feed: { id: number } | null;
-  readonly logger: any;
+  readonly logger: pino.Logger;
   isExistingUrl(url: string): boolean;
   shouldSkipArticle(article: RawArticle): boolean;
   applyArticleFilters(articles: RawArticle[]): Promise<RawArticle[]>;

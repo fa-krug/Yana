@@ -9,7 +9,7 @@ import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatInputModule } from "@angular/material/input";
 import { MatSelectModule } from "@angular/material/select";
 import { MatCheckboxModule } from "@angular/material/checkbox";
-import { AggregatorOption } from "../../../core/models";
+import { AggregatorOption } from "@app/core/models";
 
 @Component({
   selector: "app-aggregator-options",

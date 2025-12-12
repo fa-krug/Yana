@@ -17,7 +17,7 @@ import { MatButtonModule } from "@angular/material/button";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatDialog, MatDialogModule } from "@angular/material/dialog";
 import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
-import { UserSettingsService } from "../../../core/services/user-settings.service";
+import { UserSettingsService } from "@app/core/services/user-settings.service";
 import { ChangePasswordDialogComponent } from "../change-password-dialog.component";
 
 @Component({
