@@ -1,6 +1,6 @@
 ---
 description: Common CLI commands reference
-globs: ["**/management/commands/*.py"]
+globs: ["**/scripts/**/*.ts", "package.json"]
 alwaysApply: false
 ---
 
@@ -9,86 +9,46 @@ alwaysApply: false
 ## Development Setup
 
 ```bash
-# Activate virtual environment (required for all commands)
-source .venv/bin/activate
-
 # Install dependencies
-pip install -r requirements.txt
-playwright install chromium && playwright install-deps chromium
+npm install
+
+# Install Playwright browsers
+npx playwright install chromium
 
 # Database setup
-python manage.py migrate
-python manage.py createsuperuser
+npm run db:migrate
 
 # Run server
-python manage.py runserver
+npm start
 ```
 
 ## Code Quality
 
 ```bash
-# Activate virtual environment first
-source .venv/bin/activate
+# Format code
+npm run format
 
-# Linting
-ruff check .              # Check for issues
-ruff check --fix .        # Auto-fix issues
-ruff format .             # Format code
+# Check formatting
+npm run format:check
 
 # Run tests
-python manage.py test core api social --verbosity=1
+npm test
 
-# Check migrations
-python manage.py makemigrations --check
-```
-
-## Aggregation
-
-```bash
-# Aggregate all enabled feeds
-python manage.py aggregate
-
-# Force re-download all articles
-python manage.py aggregate --force
-
-# Aggregate specific feeds by name
-python manage.py aggregate --feeds "Heise" "Tagesschau"
-```
-
-## Django-Q2 Task Queue
-
-```bash
-# Set up scheduled tasks (run once)
-python manage.py setup_schedule
-
-# Start task queue worker (keep running)
-python manage.py qcluster
-
-# Delete all schedules
-python manage.py setup_schedule --delete
-```
-
-## Managed Feeds
-
-```bash
-# Sync managed feeds from aggregators to database
-python manage.py sync_managed_feeds
-
-# List available aggregators
-python manage.py sync_managed_feeds --list
+# Run tests with coverage
+npm run test:coverage
 ```
 
 ## Database
 
 ```bash
-# Django shell
-python manage.py shell
+# Generate migrations
+npm run db:generate
 
-# Database shell
-python manage.py dbshell
+# Run migrations
+npm run db:migrate
 
-# Show migration status
-python manage.py showmigrations
+# Open database studio
+npm run db:studio
 ```
 
 ## Docker
@@ -110,11 +70,12 @@ docker logs -f aggregato
 
 ## Scheduled Tasks
 
+Scheduled tasks are configured via cron jobs or task schedulers:
+
 | Task | Default Schedule | Description |
 |------|------------------|-------------|
 | `aggregate_all_feeds` | `*/30 * * * *` | Aggregate all feeds and subreddits |
 | `delete_old_articles` | `0 1 * * *` | Delete articles older than 2 months |
-| `clean_django_q_history` | `0 2 * * *` | Clean task history older than 7 days |
 
 Common cron patterns:
 - `0 * * * *` - Every hour

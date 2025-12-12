@@ -6,11 +6,9 @@ This directory contains git hooks that are automatically installed when using Cl
 
 The `pre-commit` hook runs before every git commit to ensure code quality:
 
-1. **Ruff linting** with auto-fix (Python backend)
-2. **Ruff formatting** (Python backend)
-3. **Prettier formatting** check and auto-fix (Frontend)
-4. **Dependency installation** (if needed)
-5. **Full test suite** (all Django tests: core, api, social, api_v1, aggregators, and standalone tests)
+1. **Prettier formatting** check and auto-fix (Frontend)
+2. **Dependency installation** (if needed)
+3. **Full test suite** (all tests)
 
 ### ⚠️ CRITICAL: Failures Are Blocking
 
@@ -25,10 +23,7 @@ The hook displays prominent error messages with clear instructions when failures
 
 ## Automatic Installation
 
-When you start a Claude Code session, the `.claude/hooks/session-start` hook automatically:
-- Copies `hooks/pre-commit` to `.git/hooks/pre-commit`
-- Makes it executable
-- Ensures the hook is always up to date
+Cursor hooks are automatically used via `.cursor/hooks/pre-commit.sh`. For traditional git hooks, install manually:
 
 ## Manual Installation
 

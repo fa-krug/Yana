@@ -37,7 +37,7 @@ For multi-step tasks, create a plan:
 2. [Action with affected files]
 
 ## Files to Modify
-- `path/to/file.py` - [What changes]
+- `path/to/file.ts` - [What changes]
 
 ## Questions
 - [Any unclear requirements]
@@ -47,7 +47,7 @@ For multi-step tasks, create a plan:
 
 - **Limit file reading** - Use `offset`/`limit` for large files
 - **Grep before Read** - Search first, then read specific files
-- **Skip dependencies** - Don't read node_modules, venv, .git
+- **Skip dependencies** - Don't read node_modules, .git
 - **Batch operations** - Combine related edits
 
 ## File Size Limits
@@ -128,25 +128,14 @@ BREAKING CHANGE: Authentication now requires API key instead of username/passwor
 
 ## Before Committing
 
-**MANDATORY: Run ruff and tests before every commit.**
-
-**IMPORTANT: Always activate the virtual environment first.**
+**MANDATORY: Run formatting and tests before every commit.**
 
 ```bash
-# Activate virtual environment
-source .venv/bin/activate
+# 1. Check formatting
+npm run format:check
 
-# 1. Run linter with auto-fix
-ruff check --fix .
-
-# 2. Format code
-ruff format .
-
-# 3. Run ALL tests
-python manage.py test core api social --verbosity=1
-
-# 4. Check for missing migrations
-python manage.py makemigrations --check
+# 2. Run ALL tests
+npm test
 ```
 
 **Do NOT commit if any of these fail.** Fix issues first.
@@ -156,7 +145,7 @@ Pre-commit hooks enforce this automatically, but always run manually to catch is
 ### Quick Validation Command
 
 ```bash
-source .venv/bin/activate && ruff check --fix . && ruff format . && python manage.py test core api social
+npm run format:check && npm test
 ```
 
 ## Question Requests
@@ -174,13 +163,10 @@ Critically evaluate requests and suggest better approaches when appropriate:
 
 Pre-commit hooks automatically run before commits:
 
-1. `ruff check --fix backend/` - Lint and auto-fix
-2. `ruff format backend/` - Format code
-3. Prettier formatting for frontend (if frontend directory exists)
-4. Dependency installation check
-5. `python manage.py test core api social` - Run all tests
-
-**Note:** For manual testing, always activate the virtual environment first: `source .venv/bin/activate`
+1. Prettier formatting check and auto-fix
+2. Frontend dependency installation check (if needed)
+3. Frontend tests
+4. Frontend formatting verification
 
 **Commits are BLOCKED if any step fails.**
 

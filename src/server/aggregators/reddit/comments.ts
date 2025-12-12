@@ -79,27 +79,20 @@ export async function fetchPostComments(
       return [];
     }
 
-    // Flatten comment tree and sort by score
-    const allComments: RedditComment["data"][] = [];
-    const flattenComments = (comments: RedditComment[]) => {
-      for (const comment of comments) {
-        if (
-          comment.data.body &&
-          comment.data.body !== "[deleted]" &&
-          comment.data.body !== "[removed]"
-        ) {
-          allComments.push(comment.data);
-        }
-        if (comment.data.replies?.data?.children) {
-          flattenComments(comment.data.replies.data.children);
-        }
+    // Collect only top-level comments (direct replies to the post, not nested replies)
+    const topLevelComments: RedditComment["data"][] = [];
+    for (const comment of commentsData.data.children) {
+      if (
+        comment.data.body &&
+        comment.data.body !== "[deleted]" &&
+        comment.data.body !== "[removed]"
+      ) {
+        topLevelComments.push(comment.data);
       }
-    };
-
-    flattenComments(commentsData.data.children);
+    }
 
     // Sort by score (descending) and filter out bots
-    const filtered = allComments
+    const filtered = topLevelComments
       .filter((comment) => {
         const author = comment.author?.toLowerCase() || "";
         return (

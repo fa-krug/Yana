@@ -1,4 +1,7 @@
 {
   "version": 1,
-  "hooks": {}
+  "hooks": {
+    "beforeShellExecution": ".cursor/hooks/pre-commit.sh",
+    "afterFileEdit": ".cursor/hooks/format-and-fix.sh"
+  }
 }

@@ -21,22 +21,17 @@ The hooks configuration defines which scripts run for different hook events:
 
 Runs when the agent attempts to execute a git commit command. Performs:
 
-1. **Install Backend Dependencies** - Checks and installs Python dependencies if missing
-2. **Install Frontend Dependencies** - Checks and installs npm packages if missing
-3. **Fix Backend Linting** - Runs `ruff check --fix` to auto-fix linting issues
-4. **Fix Backend Formatting** - Runs `ruff format` to auto-format code
-5. **Fix Frontend Formatting** - Runs `prettier format` to auto-format frontend code
-6. **Run Backend Tests** - Executes all Django tests (core, api, social, etc.)
-7. **Run Frontend Tests** - Executes Angular tests in non-interactive mode
-8. **Final Verification** - Runs ruff and prettier checks one more time
+1. **Install Frontend Dependencies** - Checks and installs npm packages if missing
+2. **Fix Frontend Formatting** - Runs `prettier format` to auto-format frontend code
+3. **Run Frontend Tests** - Executes tests in non-interactive mode
+4. **Final Verification** - Runs prettier checks one more time
 
 If any step fails, the commit is **blocked** with a clear error message.
 
 ### `format-and-fix.sh`
 
 Runs automatically after the agent edits any file. Formats:
-- Python files in `backend/` using ruff
-- TypeScript/HTML/SCSS/JSON files in `frontend/` using prettier
+- TypeScript/HTML/SCSS/JSON files using prettier
 
 ## How It Works
 
@@ -48,9 +43,7 @@ Runs automatically after the agent edits any file. Formats:
 ## Requirements
 
 - `jq` - For JSON parsing (usually pre-installed)
-- `python3` - For backend operations
 - `npm` - For frontend operations
-- `ruff` - Python linter/formatter (installed via requirements.txt)
 - `prettier` - Frontend formatter (installed via npm)
 
 ## Testing
@@ -62,7 +55,7 @@ To test the hooks manually:
 echo '{"command":"git commit -m test","cwd":"/workspace"}' | ./.cursor/hooks/pre-commit.sh
 
 # Test the format hook with a mock file edit
-echo '{"file_path":"/workspace/backend/test.py","edits":[]}' | ./.cursor/hooks/format-and-fix.sh
+echo '{"file_path":"/workspace/src/server/test.ts","edits":[]}' | ./.cursor/hooks/format-and-fix.sh
 ```
 
 ## Documentation

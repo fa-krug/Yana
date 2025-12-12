@@ -1,6 +1,6 @@
 ---
 description: Testing patterns and examples
-globs: ["**/test*.py", "**/tests.py"]
+globs: ["**/*.test.ts", "**/*.spec.ts", "**/__tests__/**/*.ts"]
 alwaysApply: false
 ---
 
@@ -8,153 +8,135 @@ alwaysApply: false
 
 ## Running Tests
 
-**IMPORTANT: Always activate the virtual environment first.**
-
 ```bash
-# Activate virtual environment
-source .venv/bin/activate
-
 # Run all tests
-python manage.py test core api social --verbosity=1
+npm test
 
-# Run specific test file
-python manage.py test core.tests.FeedModelTest
+# Run tests in watch mode
+npm run test:watch
 
-# Run with coverage (if installed)
-coverage run manage.py test && coverage report
-```
-
-**One-liner for CI/scripts:**
-```bash
-source .venv/bin/activate && python manage.py test core api social --verbosity=1
+# Run with coverage
+npm run test:coverage
 ```
 
 ## Test Structure
 
-Reference: `core/tests.py`
+Reference: `src/server/aggregators/__tests__/aggregator.test.ts`
 
-```python
-from django.test import TestCase, Client
-from django.contrib.auth.models import User
-from django.utils import timezone
+```typescript
+import { describe, it, expect, beforeEach } from "vitest";
+import { db } from "../../db";
 
-from core.models import Feed, Article
+describe("FeedService", () => {
+  beforeEach(async () => {
+    // Set up test data
+    await db.feed.create({
+      data: {
+        name: "Test Feed",
+        url: "https://example.com/feed.xml",
+        aggregator: "full_website",
+      },
+    });
+  });
 
-
-class FeedModelTest(TestCase):
-    """Tests for the Feed model."""
-
-    def setUp(self) -> None:
-        """Set up test data."""
-        self.feed = Feed.objects.create(
-            name="Test Feed",
-            url="https://example.com/feed.xml",
-            aggregator="full_website",
-        )
-
-    def test_feed_creation(self) -> None:
-        """Test that a feed can be created with valid data."""
-        self.assertEqual(self.feed.name, "Test Feed")
-        self.assertIsNotNone(self.feed.created_at)
-
-    def test_feed_str(self) -> None:
-        """Test the string representation."""
-        self.assertEqual(str(self.feed), "Test Feed")
+  it("should create a feed with valid data", async () => {
+    const feed = await db.feed.findFirst({
+      where: { name: "Test Feed" },
+    });
+    expect(feed).toBeDefined();
+    expect(feed?.name).toBe("Test Feed");
+  });
+});
 ```
 
-## Testing Views with Authentication
+## Testing API Routes with Authentication
 
-```python
-class FeedViewTest(TestCase):
-    def setUp(self) -> None:
-        self.client = Client()
-        self.user = User.objects.create_user(
-            username="testuser", password="testpass"
-        )
-        self.client.login(username="testuser", password="testpass")
+```typescript
+import { describe, it, expect, beforeEach } from "vitest";
+import { createTestUser, createTestFeed } from "../test-utils";
 
-        self.feed = Feed.objects.create(
-            name="Test Feed",
-            url="https://example.com/feed.xml",
-            aggregator="full_website",
-            user=self.user,  # Assign to test user
-        )
+describe("FeedRouter", () => {
+  let user: User;
+  let feed: Feed;
 
-    def test_feed_requires_auth(self) -> None:
-        """Test that unauthenticated access returns 401."""
-        client = Client()  # New unauthenticated client
-        response = client.get(f"/feeds/{self.feed.id}/rss.xml")
-        self.assertEqual(response.status_code, 401)
+  beforeEach(async () => {
+    user = await createTestUser("testuser", "testpass");
+    feed = await createTestFeed({
+      name: "Test Feed",
+      url: "https://example.com/feed.xml",
+      userId: user.id,
+    });
+  });
 
-    def test_user_cannot_access_other_feed(self) -> None:
-        """Test user isolation."""
-        other_user = User.objects.create_user(
-            username="other", password="pass"
-        )
-        other_feed = Feed.objects.create(
-            name="Other Feed",
-            url="https://other.com/feed.xml",
-            user=other_user,
-        )
+  it("should require authentication", async () => {
+    const caller = appRouter.createCaller({ user: null });
+    await expect(
+      caller.feed.getById({ feedId: feed.id })
+    ).rejects.toThrow("UNAUTHORIZED");
+  });
 
-        response = self.client.get(f"/feeds/{other_feed.id}/rss.xml")
-        self.assertEqual(response.status_code, 403)
+  it("should enforce user isolation", async () => {
+    const otherUser = await createTestUser("other", "pass");
+    const otherFeed = await createTestFeed({
+      name: "Other Feed",
+      url: "https://other.com/feed.xml",
+      userId: otherUser.id,
+    });
+
+    const caller = appRouter.createCaller({ user });
+    await expect(
+      caller.feed.getById({ feedId: otherFeed.id })
+    ).rejects.toThrow("FORBIDDEN");
+  });
+});
 ```
 
 ## Mocking External Services
 
-```python
-from unittest.mock import MagicMock, patch
+```typescript
+import { describe, it, expect, vi } from "vitest";
+import { fetchFeed } from "../aggregators/base/fetch";
 
+describe("Aggregator", () => {
+  it("should fetch RSS feed", async () => {
+    const mockParse = vi.fn().mockResolvedValue({
+      bozo: false,
+      entries: [{ title: "Test Entry", link: "https://example.com/1" }],
+    });
 
-class AggregatorTest(TestCase):
-    @patch("feedparser.parse")
-    def test_fetch_feed(self, mock_parse: MagicMock) -> None:
-        """Test RSS feed fetching."""
-        mock_parse.return_value = MagicMock(
-            bozo=False,
-            entries=[{"title": "Test Entry", "link": "https://example.com/1"}]
-        )
+    vi.mock("rss-parser", () => ({
+      default: vi.fn().mockImplementation(() => ({
+        parseURL: mockParse,
+      })),
+    }));
 
-        from aggregators.base import fetch_feed
-        result = fetch_feed("https://example.com/feed.xml")
-
-        mock_parse.assert_called_once()
-        self.assertEqual(len(result.entries), 1)
-
-    @patch("core.models.Feed.get_aggregator_class")
-    def test_aggregate_command(self, mock_get_class: MagicMock) -> None:
-        """Test aggregation with mocked aggregator."""
-        mock_instance = MagicMock()
-        mock_instance.aggregate.return_value = 5
-        mock_get_class.return_value = MagicMock(return_value=mock_instance)
-
-        from django.core.management import call_command
-        from io import StringIO
-
-        out = StringIO()
-        call_command("aggregate", stdout=out)
-
-        self.assertIn("5 new articles", out.getvalue())
+    const result = await fetchFeed("https://example.com/feed.xml");
+    expect(mockParse).toHaveBeenCalledOnce();
+    expect(result.entries).toHaveLength(1);
+  });
+});
 ```
 
 ## Testing HTML Content
 
-```python
-def test_sanitize_html(self) -> None:
-    """Test HTML sanitization removes dangerous elements."""
-    from aggregators.base import sanitize_html
+```typescript
+import { describe, it, expect } from "vitest";
+import { sanitizeHtml } from "../aggregators/base/utils";
 
-    html = '<p>Hello</p><script>alert("xss")</script>'
-    sanitized = sanitize_html(html)
+describe("sanitizeHtml", () => {
+  it("should remove dangerous elements", () => {
+    const html = '<p>Hello</p><script>alert("xss")</script>';
+    const sanitized = sanitizeHtml(html);
 
-    self.assertIn("<p>Hello</p>", sanitized)
-    self.assertNotIn("<script>", sanitized)
+    expect(sanitized).toContain("<p>Hello</p>");
+    expect(sanitized).not.toContain("<script>");
+  });
+});
 ```
 
 ## Important Notes
 
-- **Playwright won't work** in test environment. Mock it or use `requests`.
-- Always use type hints on test methods (`-> None`)
-- Clean up test data in `tearDown()` if needed
+- **Playwright won't work** in test environment. Mock it or use `fetch`.
+- Always use type annotations on test functions
+- Clean up test data in `afterEach()` if needed
 - Test both success and error paths

@@ -8,8 +8,8 @@ INPUT=$(cat)
 # Parse file path from JSON using jq
 FILE_PATH=$(echo "$INPUT" | jq -r '.file_path // ""')
 
-# Only process files in backend or frontend directories
-if echo "$FILE_PATH" | grep -qE "(backend/|frontend/)"; then
+# Only process files in frontend directory
+if echo "$FILE_PATH" | grep -qE "frontend/"; then
     GIT_ROOT=$(dirname "$FILE_PATH")
     while [ ! -d "$GIT_ROOT/.git" ] && [ "$GIT_ROOT" != "/" ]; do
         GIT_ROOT=$(dirname "$GIT_ROOT")
@@ -17,12 +17,6 @@ if echo "$FILE_PATH" | grep -qE "(backend/|frontend/)"; then
     
     if [ -d "$GIT_ROOT/.git" ]; then
         cd "$GIT_ROOT" || exit 0
-        
-        # Format backend Python files
-        if echo "$FILE_PATH" | grep -qE "backend/.*\.py$"; then
-            python3 -m ruff check --fix "$FILE_PATH" 2>&1 >/dev/null || true
-            python3 -m ruff format "$FILE_PATH" 2>&1 >/dev/null || true
-        fi
         
         # Format frontend files
         if echo "$FILE_PATH" | grep -qE "frontend/.*\.(ts|html|scss|json)$"; then

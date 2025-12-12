@@ -1,0 +1,390 @@
+---
+description: Angular 21 best practices and conventions
+globs: ["src/app/**/*.ts", "src/app/**/*.html"]
+alwaysApply: false
+---
+
+# Angular 21 Best Practices
+
+## Standalone Components
+
+### Always Use Standalone Components
+
+Angular 21 uses standalone components by default. **Never use NgModules** for new components.
+
+```typescript
+// ✅ Good - Standalone component
+import { Component } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { RouterModule } from '@angular/router';
+import { MatButtonModule } from '@angular/material/button';
+
+@Component({
+  selector: 'app-user-profile',
+  standalone: true,
+  imports: [CommonModule, RouterModule, MatButtonModule],
+  template: `
+    <h2>User Profile</h2>
+    <button mat-button (click)="save()">Save</button>
+  `,
+})
+export class UserProfileComponent {
+  save(): void {
+    // ...
+  }
+}
+```
+
+### Component Structure
+
+```typescript
+// ✅ Good - Proper component structure
+import { Component, OnInit, OnDestroy, signal, computed, effect } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { RouterModule } from '@angular/router';
+
+@Component({
+  selector: 'app-article-list',
+  standalone: true,
+  imports: [CommonModule, RouterModule],
+  templateUrl: './article-list.component.html',
+  styleUrl: './article-list.component.scss',
+})
+export class ArticleListComponent implements OnInit, OnDestroy {
+  // 1. Properties (signals first, then regular properties)
+  articles = signal<Article[]>([]);
+  loading = signal(false);
+  searchTerm = signal('');
+  
+  // 2. Computed signals
+  filteredArticles = computed(() => {
+    const term = this.searchTerm().toLowerCase();
+    return this.articles().filter(article => 
+      article.title.toLowerCase().includes(term)
+    );
+  });
+  
+  // 3. Regular properties
+  private destroy$ = new Subject<void>();
+  
+  // 4. Constructor (dependency injection)
+  constructor(
+    private articleService: ArticleService,
+    private router: Router
+  ) {}
+  
+  // 5. Lifecycle hooks
+  ngOnInit(): void {
+    this.loadArticles();
+  }
+  
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+  
+  // 6. Public methods
+  loadArticles(): void {
+    // ...
+  }
+  
+  // 7. Private methods
+  private handleError(error: Error): void {
+    // ...
+  }
+}
+```
+
+## Signals
+
+### Use Signals for Reactive State
+
+**Prefer signals over RxJS Observables** for component state:
+
+```typescript
+// ✅ Good - Signals for component state
+import { Component, signal, computed, effect } from '@angular/core';
+
+@Component({
+  selector: 'app-counter',
+  standalone: true,
+  template: `
+    <p>Count: {{ count() }}</p>
+    <p>Double: {{ doubleCount() }}</p>
+    <button (click)="increment()">Increment</button>
+  `,
+})
+export class CounterComponent {
+  count = signal(0);
+  
+  // Computed signal
+  doubleCount = computed(() => this.count() * 2);
+  
+  // Effect for side effects
+  constructor() {
+    effect(() => {
+      console.log('Count changed:', this.count());
+    });
+  }
+  
+  increment(): void {
+    this.count.update(value => value + 1);
+  }
+  
+  reset(): void {
+    this.count.set(0);
+  }
+}
+```
+
+### Signals vs Observables
+
+```typescript
+// ✅ Good - Use signals for component state
+export class ArticleListComponent {
+  articles = signal<Article[]>([]);
+  loading = signal(false);
+}
+
+// ✅ Good - Use Observables for async operations (HTTP, events)
+export class ArticleService {
+  getArticles(): Observable<Article[]> {
+    return this.http.get<Article[]>('/api/articles');
+  }
+}
+
+// ✅ Good - Convert Observable to signal in component
+export class ArticleListComponent {
+  articles = toSignal(
+    this.articleService.getArticles(),
+    { initialValue: [] }
+  );
+}
+```
+
+## Dependency Injection
+
+### Use Constructor Injection
+
+```typescript
+// ✅ Good - Constructor injection
+@Component({
+  // ...
+})
+export class ArticleListComponent {
+  constructor(
+    private articleService: ArticleService,
+    private router: Router,
+    private cdr: ChangeDetectorRef
+  ) {}
+}
+
+// ❌ Bad - Property injection (only use for optional dependencies)
+export class ArticleListComponent {
+  @Optional() @Inject(CUSTOM_SERVICE) private customService?: CustomService;
+}
+```
+
+### Provide Services at Component Level When Needed
+
+```typescript
+// ✅ Good - Provide service at component level for component-specific instance
+@Component({
+  selector: 'app-article-editor',
+  standalone: true,
+  providers: [ArticleEditorService], // New instance per component
+  // ...
+})
+export class ArticleEditorComponent {
+  constructor(private editorService: ArticleEditorService) {}
+}
+```
+
+## Template Syntax
+
+### Use Control Flow Syntax (Angular 17+)
+
+```typescript
+// ✅ Good - New control flow syntax
+@Component({
+  template: `
+    @if (loading()) {
+      <mat-spinner></mat-spinner>
+    } @else if (articles().length === 0) {
+      <p>No articles found</p>
+    } @else {
+      @for (article of articles(); track article.id) {
+        <app-article-card [article]="article"></app-article-card>
+      }
+    }
+    
+    @switch (status()) {
+      @case ('loading') {
+        <mat-spinner></mat-spinner>
+      }
+      @case ('error') {
+        <p>Error occurred</p>
+      }
+      @default {
+        <p>Content loaded</p>
+      }
+    }
+  `,
+})
+```
+
+### Use Signals in Templates
+
+```typescript
+// ✅ Good - Call signals in templates
+@Component({
+  template: `
+    <p>Count: {{ count() }}</p>
+    <button (click)="increment()">Increment</button>
+  `,
+})
+export class CounterComponent {
+  count = signal(0);
+  increment(): void {
+    this.count.update(v => v + 1);
+  }
+}
+```
+
+## Input/Output
+
+### Use Signal Inputs and Outputs (Angular 17.1+)
+
+```typescript
+// ✅ Good - Signal inputs
+import { Component, input, output } from '@angular/core';
+
+@Component({
+  selector: 'app-article-card',
+  standalone: true,
+  template: `
+    <h3>{{ article().title }}</h3>
+    <button (click)="onClick()">View</button>
+  `,
+})
+export class ArticleCardComponent {
+  // Required input
+  article = input.required<Article>();
+  
+  // Optional input with default
+  showActions = input(false);
+  
+  // Output
+  clicked = output<Article>();
+  
+  onClick(): void {
+    this.clicked.emit(this.article());
+  }
+}
+```
+
+### Traditional Input/Output (if needed)
+
+```typescript
+// ✅ Good - Traditional inputs for complex scenarios
+import { Component, Input, Output, EventEmitter } from '@angular/core';
+
+@Component({
+  selector: 'app-article-card',
+  standalone: true,
+  // ...
+})
+export class ArticleCardComponent {
+  @Input({ required: true }) article!: Article;
+  @Input() showActions = false;
+  @Output() clicked = new EventEmitter<Article>();
+}
+```
+
+## Services
+
+### Use Injectable Services
+
+```typescript
+// ✅ Good - Injectable service
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs';
+
+@Injectable({
+  providedIn: 'root', // Singleton service
+})
+export class ArticleService {
+  constructor(private http: HttpClient) {}
+  
+  getArticles(): Observable<Article[]> {
+    return this.http.get<Article[]>('/api/articles');
+  }
+  
+  getArticle(id: string): Observable<Article> {
+    return this.http.get<Article>(`/api/articles/${id}`);
+  }
+}
+```
+
+## Routing
+
+### Use Standalone Route Configuration
+
+```typescript
+// ✅ Good - Standalone routes
+import { Routes } from '@angular/router';
+import { ArticleListComponent } from './article-list.component';
+import { ArticleDetailComponent } from './article-detail.component';
+
+export const articleRoutes: Routes = [
+  {
+    path: '',
+    component: ArticleListComponent,
+  },
+  {
+    path: ':id',
+    component: ArticleDetailComponent,
+  },
+];
+
+// In app.routes.ts
+export const routes: Routes = [
+  {
+    path: 'articles',
+    loadChildren: () => import('./features/articles/articles.routes').then(m => m.articleRoutes),
+  },
+];
+```
+
+## Change Detection
+
+### Use OnPush Change Detection Strategy
+
+```typescript
+// ✅ Good - OnPush for better performance
+import { ChangeDetectionStrategy } from '@angular/core';
+
+@Component({
+  selector: 'app-article-list',
+  standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  // ...
+})
+export class ArticleListComponent {
+  // Use signals or markForCheck() when needed
+}
+```
+
+## Best Practices Summary
+
+1. ✅ **Always use standalone components**
+2. ✅ **Use signals for component state**
+3. ✅ **Use Observables for async operations (HTTP, events)**
+4. ✅ **Use constructor injection for dependencies**
+5. ✅ **Use new control flow syntax (`@if`, `@for`, `@switch`)**
+6. ✅ **Use signal inputs/outputs when possible**
+7. ✅ **Provide services at appropriate level**
+8. ✅ **Use OnPush change detection for performance**
+9. ✅ **Organize component code: signals → properties → constructor → lifecycle → methods**
+10. ✅ **Use path aliases for imports (`@app/*`, `@server/*`)**

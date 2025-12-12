@@ -2,202 +2,156 @@
 
 ## Core Rules
 
-1. **Class attributes only** - No `@property` unless computed at runtime. Use `""` for empty URLs, not properties.
-2. **No empty lines between attributes** - Keep all attributes together.
-3. **Always use identifier** - Use `feed.identifier` or `feed_identifier` parameter, never `feed.url`.
-4. **Override granular methods** - Override `extract_content()`, `should_skip_article()`, `fetch_article_html()`, etc. Never override `aggregate()` or `process_article()`.
-5. **Call super() when extending** - Preserve base behavior unless completely replacing.
+1. **Class properties only** - Use readonly properties for metadata. Use `""` for empty URLs.
+2. **No empty lines between properties** - Keep all properties together.
+3. **Always use identifier** - Use `feed.identifier` or `feedIdentifier` parameter, never `feed.url`.
+4. **Override granular methods** - Override `extractContent()`, `shouldSkipArticle()`, `fetchArticleHtml()`, etc. Never override `aggregate()` or `processArticle()`.
+5. **Call super when extending** - Preserve base behavior unless completely replacing.
 
-```python
-class MyAggregator(BaseAggregator):
-    id = "my_aggregator"
-    type = "managed"
-    name = "My Site"
-    url = "https://example.com/feed.xml"
-    description = "Description"
-    wait_for_selector = ".content"
-    selectors_to_remove = [".ad", "script"]
-    
-    def fetch_rss_feed(self, feed_identifier: str) -> Any:
-        return fetch_feed(feed_identifier)  # Use identifier, not self.feed.url
-    
-    def should_skip_article(self, article: RawArticle) -> tuple[bool, str | None]:
-        if "[SPONSORED]" in article.title:
-            return True, "Skipping sponsored"
-        return super().should_skip_article(article)
-```
+```typescript
+export class MyAggregator extends FullWebsiteAggregator {
+  override readonly id = "my_aggregator";
+  override readonly type: "managed" | "custom" | "social" = "managed";
+  override readonly name = "My Site";
+  override readonly url = "https://example.com/feed.xml";
+  override readonly description = "Description";
+  override readonly waitForSelector = ".content";
+  override readonly selectorsToRemove = [".ad", "script"];
 
-## Pydantic Validation
+  override async fetchRssFeed(feedIdentifier: string): Promise<any> {
+    return fetchFeed(feedIdentifier); // Use identifier, not this.feed.url
+  }
 
-Validate aggregator configuration in `__init__`:
-
-```python
-from pydantic import BaseModel, Field
-
-class MyAggregatorConfig(BaseModel):
-    id: str
-    type: str = Field(pattern="^(managed|custom|social)$")
-    name: str = Field(min_length=1)
-    url: str = ""
-    description: str = Field(min_length=1)
-    wait_for_selector: str | None = None
-    selectors_to_remove: list[str] = Field(default_factory=list)
-    options: dict = Field(default_factory=dict)
-
-class MyAggregator(BaseAggregator):
-    id = "my_aggregator"
-    type = "managed"
-    name = "My Site"
-    url = "https://example.com/feed.xml"
-    description = "Description"
-    wait_for_selector = ".content"
-    selectors_to_remove = [".ad"]
-    options = {}
-    
-    def __init__(self):
-        super().__init__()
-        MyAggregatorConfig(
-            id=self.id, type=self.type, name=self.name,
-            url=self.url, description=self.description,
-            wait_for_selector=self.wait_for_selector,
-            selectors_to_remove=self.selectors_to_remove,
-            options=self.options,
-        )
+  override shouldSkipArticle(article: RawArticle): [boolean, string | null] {
+    if (article.title.includes("[SPONSORED]")) {
+      return [true, "Skipping sponsored"];
+    }
+    return super.shouldSkipArticle(article);
+  }
+}
 ```
 
 ## Error Handling
 
 Handle errors with fallbacks and logging:
 
-```python
-def extract_content(self, article: RawArticle) -> None:
-    try:
-        soup = BeautifulSoup(article.html, "html.parser")
-        content = soup.select_one(".article-body")
-        if not content:
-            self.logger.warning(f"Selector not found in {article.url}")
-            return  # Keep full HTML as fallback
-        article.html = str(content)
-    except Exception as e:
-        self.logger.error(f"Extraction failed: {e}", exc_info=True)
-        # Don't modify article.html - let fallback handle it
+```typescript
+override extractContent(article: RawArticle): void {
+  try {
+    const $ = cheerio.load(article.html);
+    const content = $(".article-body").first();
+    if (content.length === 0) {
+      this.logger.warn({ url: article.url }, "Selector not found");
+      return; // Keep full HTML as fallback
+    }
+    article.html = content.html() || article.html;
+  } catch (error) {
+    this.logger.error({ error, url: article.url }, "Extraction failed");
+    // Don't modify article.html - let fallback handle it
+  }
+}
 ```
 
-Rules: Use `self.logger`, log warnings for expected failures, errors with `exc_info=True` for unexpected, always provide fallback, never let exceptions propagate.
+Rules: Use `this.logger`, log warnings for expected failures, errors with context for unexpected, always provide fallback, never let exceptions propagate.
 
 ## Testing
 
 Write tests for all overridden methods:
 
-```python
-import pytest
-from aggregators.base import RawArticle
-from aggregators.my_aggregator import MyAggregator
+```typescript
+import { describe, it, expect, beforeEach } from "vitest";
+import { MyAggregator } from "../my_aggregator";
+import type { RawArticle } from "../base/types";
 
-@pytest.fixture
-def aggregator():
-    return MyAggregator()
+describe("MyAggregator", () => {
+  let aggregator: MyAggregator;
+  let article: RawArticle;
 
-@pytest.fixture
-def article():
-    return RawArticle(url="https://example.com/article", title="Test", date=timezone.now(), content="<p>Test</p>")
+  beforeEach(() => {
+    aggregator = new MyAggregator();
+    article = {
+      url: "https://example.com/article",
+      title: "Test",
+      date: new Date(),
+      html: "<p>Test</p>",
+    };
+  });
 
-def test_extract_content(aggregator, article):
-    article.html = '<div class="article-body"><p>Content</p></div>'
-    aggregator.extract_content(article)
-    assert "Content" in article.html
+  it("should extract content", () => {
+    article.html = '<div class="article-body"><p>Content</p></div>';
+    aggregator.extractContent(article);
+    expect(article.html).toContain("Content");
+  });
 
-def test_should_skip_article(aggregator, article):
-    article.title = "[SPONSORED] Test"
-    should_skip, reason = aggregator.should_skip_article(article)
-    assert should_skip is True
+  it("should skip sponsored articles", () => {
+    article.title = "[SPONSORED] Test";
+    const [shouldSkip, reason] = aggregator.shouldSkipArticle(article);
+    expect(shouldSkip).toBe(true);
+  });
 
-def test_error_handling(aggregator, article):
-    article.html = "invalid html"
-    aggregator.extract_content(article)  # Should not raise
+  it("should handle errors gracefully", () => {
+    article.html = "invalid html";
+    expect(() => aggregator.extractContent(article)).not.toThrow();
+  });
+});
 ```
 
 Coverage: All overridden methods, error paths, edge cases, options, identifier validation.
 
 ## Options
 
-```python
-options = {
-    "option_name": {
-        "type": "boolean" | "integer" | "string" | "select",
-        "label": "Label",
-        "help_text": "Description",
-        "default": value,
-        "min": 0, "max": 100,  # For integer
-        "choices": [("val", "Label")],  # For select
-    }
-}
+```typescript
+override readonly options: OptionsSchema = {
+  option_name: {
+    type: "boolean" | "integer" | "string" | "select",
+    label: "Label",
+    helpText: "Description",
+    default: value,
+    min: 0,
+    max: 100, // For integer
+    choices: [["val", "Label"]], // For select
+  },
+};
 ```
 
-Access: `self.get_option("option_name", default)`
-
-## Module Wrapper
-
-```python
-def aggregate(feed, force_refresh=False, options=None):
-    aggregator = MyAggregator()
-    return aggregator.aggregate(feed, force_refresh, options or {})
-```
+Access: `this.getOption("option_name", default)`
 
 ## Example
 
-```python
-from bs4 import BeautifulSoup
-from pydantic import BaseModel, Field
-from aggregators.base import BaseAggregator, RawArticle
+```typescript
+import * as cheerio from "cheerio";
+import { FullWebsiteAggregator } from "./full_website";
+import type { RawArticle } from "./base/types";
 
-class ExampleAggregatorConfig(BaseModel):
-    id: str
-    type: str = Field(pattern="^(managed|custom|social)$")
-    name: str = Field(min_length=1)
-    url: str = ""
-    description: str = Field(min_length=1)
-    wait_for_selector: str | None = None
-    selectors_to_remove: list[str] = Field(default_factory=list)
-    options: dict = Field(default_factory=dict)
+export class ExampleAggregator extends FullWebsiteAggregator {
+  override readonly id = "example";
+  override readonly type: "managed" | "custom" | "social" = "managed";
+  override readonly name = "Example";
+  override readonly url = "https://example.com/feed.xml";
+  override readonly description = "Example aggregator";
+  override readonly waitForSelector = ".content";
+  override readonly selectorsToRemove = [".ad", "script"];
+  override readonly options: OptionsSchema = {};
 
-class ExampleAggregator(BaseAggregator):
-    id = "example"
-    type = "managed"
-    name = "Example"
-    url = "https://example.com/feed.xml"
-    description = "Example aggregator"
-    wait_for_selector = ".content"
-    selectors_to_remove = [".ad", "script"]
-    options = {}
-    
-    def __init__(self):
-        super().__init__()
-        ExampleAggregatorConfig(
-            id=self.id, type=self.type, name=self.name,
-            url=self.url, description=self.description,
-            wait_for_selector=self.wait_for_selector,
-            selectors_to_remove=self.selectors_to_remove,
-            options=self.options,
-        )
-    
-    def should_skip_article(self, article: RawArticle) -> tuple[bool, str | None]:
-        if "[SPONSORED]" in article.title:
-            return True, f"Skipping sponsored: {article.title}"
-        return super().should_skip_article(article)
-    
-    def extract_content(self, article: RawArticle) -> None:
-        try:
-            soup = BeautifulSoup(article.html, "html.parser")
-            content = soup.select_one(".article-body")
-            if not content:
-                self.logger.warning(f"Selector not found in {article.url}")
-                return
-            article.html = str(content)
-        except Exception as e:
-            self.logger.error(f"Extraction failed: {e}", exc_info=True)
+  override shouldSkipArticle(article: RawArticle): [boolean, string | null] {
+    if (article.title.includes("[SPONSORED]")) {
+      return [true, `Skipping sponsored: ${article.title}`];
+    }
+    return super.shouldSkipArticle(article);
+  }
 
-def aggregate(feed, force_refresh=False, options=None):
-    aggregator = ExampleAggregator()
-    return aggregator.aggregate(feed, force_refresh, options or {})
+  override extractContent(article: RawArticle): void {
+    try {
+      const $ = cheerio.load(article.html);
+      const content = $(".article-body").first();
+      if (content.length === 0) {
+        this.logger.warn({ url: article.url }, "Selector not found");
+        return;
+      }
+      article.html = content.html() || article.html;
+    } catch (error) {
+      this.logger.error({ error, url: article.url }, "Extraction failed");
+    }
+  }
+}
 ```
