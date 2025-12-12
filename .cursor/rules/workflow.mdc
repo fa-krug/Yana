@@ -50,6 +50,21 @@ For multi-step tasks, create a plan:
 - **Skip dependencies** - Don't read node_modules, venv, .git
 - **Batch operations** - Combine related edits
 
+## File Size Limits
+
+**MANDATORY: Keep files under 500 lines of code (LOC).**
+
+- **Maximum file size**: 500 LOC per file
+- **When a file exceeds 500 LOC**: Refactor by extracting functionality into separate modules/classes
+- **Refactoring approach**:
+  - Extract related functions into separate service classes or utility modules
+  - Split large classes into smaller, focused classes following Single Responsibility Principle
+  - Move helper functions to dedicated utility files
+  - Break down large functions into smaller, composable functions
+- **Exception**: Generated files, migrations, and configuration files may exceed this limit if necessary
+
+**Before adding new code to a file near or over 500 LOC, refactor first.**
+
 ## Commit Messages
 
 **MANDATORY: Always use Conventional Commits format.**

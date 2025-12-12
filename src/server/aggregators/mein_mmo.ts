@@ -8,7 +8,7 @@ import { FullWebsiteAggregator } from "./full_website";
 import type { RawArticle } from "./base/types";
 import { extractContent } from "./base/extract";
 import { standardizeContentFormat } from "./base/process";
-import { sanitizeHtml } from "./base/utils";
+import { sanitizeHtml, isTwitterUrl } from "./base/utils";
 import * as cheerio from "cheerio";
 import type { AnyNode } from "domhandler";
 import { ContentFetchError } from "./base/exceptions";
@@ -700,7 +700,7 @@ export class MeinMmoAggregator extends FullWebsiteAggregator {
       if (!youtubeLink) {
         const twitterLinks = $figure.find("a[href]").filter((_, linkEl) => {
           const href = $(linkEl).attr("href") || "";
-          return href.includes("twitter.com") || href.includes("x.com");
+          return isTwitterUrl(href);
         });
         if (twitterLinks.length > 0) {
           twitterLink = $(twitterLinks[0]).attr("href") || undefined;

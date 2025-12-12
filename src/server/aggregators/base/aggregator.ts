@@ -8,8 +8,6 @@ import type { Feed, Article } from "../../db/types";
 import type { RawArticle, AggregatorOptions, OptionsSchema } from "./types";
 import { logger } from "../../utils/logger";
 import { createLogger } from "../../utils/logger";
-import { db, articles } from "../../db";
-import { eq, and, gte, desc } from "drizzle-orm";
 
 export abstract class BaseAggregator {
   protected feed: Feed | null = null;
@@ -160,32 +158,8 @@ export abstract class BaseAggregator {
    * Override for custom validation.
    */
   protected async validate(): Promise<void> {
-    const startTime = Date.now();
-    this.logger.debug(
-      {
-        step: "validate",
-        subStep: "start",
-        aggregator: this.id,
-        feedId: this.feed?.id,
-      },
-      "Validating feed",
-    );
-
-    if (!this.feed) {
-      throw new Error("Feed not initialized");
-    }
-
-    const elapsed = Date.now() - startTime;
-    this.logger.debug(
-      {
-        step: "validate",
-        subStep: "complete",
-        aggregator: this.id,
-        feedId: this.feed?.id,
-        elapsed,
-      },
-      "Validation complete",
-    );
+    const validation = await import("./mixins/validation");
+    return validation.validate.call(this as any);
   }
 
   /**
@@ -199,31 +173,8 @@ export abstract class BaseAggregator {
    * Override for custom rate limiting logic.
    */
   protected async applyRateLimiting(): Promise<void> {
-    const startTime = Date.now();
-    this.logger.debug(
-      {
-        step: "fetchSourceData",
-        subStep: "applyRateLimiting",
-        aggregator: this.id,
-        feedId: this.feed?.id,
-        delay: this.rateLimitDelay,
-      },
-      "Applying rate limiting",
-    );
-
-    await new Promise((resolve) => setTimeout(resolve, this.rateLimitDelay));
-
-    const elapsed = Date.now() - startTime;
-    this.logger.debug(
-      {
-        step: "fetchSourceData",
-        subStep: "applyRateLimiting",
-        aggregator: this.id,
-        feedId: this.feed?.id,
-        elapsed,
-      },
-      "Rate limiting complete",
-    );
+    const rateLimiting = await import("./mixins/rateLimiting");
+    return rateLimiting.applyRateLimiting.call(this as any);
   }
 
   /**
@@ -242,8 +193,8 @@ export abstract class BaseAggregator {
     sourceData: unknown,
     article: RawArticle,
   ): Promise<Partial<RawArticle>> {
-    // Default: no metadata extraction
-    return {};
+    const utilities = await import("./mixins/utilities");
+    return utilities.extractMetadata.call(this as any, sourceData, article);
   }
 
   /**
@@ -253,60 +204,8 @@ export abstract class BaseAggregator {
   protected async filterArticles(
     articles: RawArticle[],
   ): Promise<RawArticle[]> {
-    const startTime = Date.now();
-    this.logger.info(
-      {
-        step: "filterArticles",
-        subStep: "start",
-        aggregator: this.id,
-        feedId: this.feed?.id,
-        initialCount: articles.length,
-      },
-      "Filtering articles",
-    );
-
-    let filtered = articles;
-
-    // Apply skip logic
-    filtered = filtered.filter((article) => {
-      const shouldSkip = this.shouldSkipArticle(article);
-      if (shouldSkip) {
-        this.logger.debug(
-          {
-            step: "filterArticles",
-            subStep: "shouldSkipArticle",
-            aggregator: this.id,
-            feedId: this.feed?.id,
-            url: article.url,
-            title: article.title,
-          },
-          "Article skipped",
-        );
-      }
-      return !shouldSkip;
-    });
-
-    // Apply article filters
-    filtered = await this.applyArticleFilters(filtered);
-
-    // Apply article limit
-    filtered = this.applyArticleLimit(filtered);
-
-    const elapsed = Date.now() - startTime;
-    this.logger.info(
-      {
-        step: "filterArticles",
-        subStep: "complete",
-        aggregator: this.id,
-        feedId: this.feed?.id,
-        initialCount: articles.length,
-        filteredCount: filtered.length,
-        elapsed,
-      },
-      "Article filtering complete",
-    );
-
-    return filtered;
+    const filtering = await import("./mixins/filtering");
+    return filtering.filterArticles.call(this as any, articles);
   }
 
   /**
@@ -325,8 +224,8 @@ export abstract class BaseAggregator {
   protected async applyArticleFilters(
     articles: RawArticle[],
   ): Promise<RawArticle[]> {
-    // Default: no filtering
-    return articles;
+    const filtering = await import("./mixins/filtering");
+    return filtering.applyArticleFilters.call(this as any, articles);
   }
 
   /**
@@ -345,239 +244,8 @@ export abstract class BaseAggregator {
   protected async enrichArticles(
     articles: RawArticle[],
   ): Promise<RawArticle[]> {
-    const startTime = Date.now();
-    const totalArticles = articles.length;
-    this.logger.info(
-      {
-        step: "enrichArticles",
-        subStep: "start",
-        aggregator: this.id,
-        feedId: this.feed?.id,
-        articleCount: totalArticles,
-      },
-      "Enriching articles",
-    );
-
-    const enriched: RawArticle[] = [];
-
-    for (let i = 0; i < articles.length; i++) {
-      const article = articles[i];
-      const articleStart = Date.now();
-
-      try {
-        this.logger.debug(
-          {
-            step: "enrichArticles",
-            subStep: "processArticle",
-            aggregator: this.id,
-            feedId: this.feed?.id,
-            progress: `${i + 1}/${totalArticles}`,
-            url: article.url,
-            title: article.title,
-          },
-          `Processing article ${i + 1}/${totalArticles}`,
-        );
-
-        // Check if content should be fetched
-        if (!this.shouldFetchContent(article)) {
-          this.logger.debug(
-            {
-              step: "enrichArticles",
-              subStep: "shouldFetchContent",
-              aggregator: this.id,
-              feedId: this.feed?.id,
-              url: article.url,
-              skip: true,
-            },
-            "Skipping content fetch",
-          );
-          enriched.push(article);
-          continue;
-        }
-
-        // Try to get cached content
-        let html: string | null = await this.getCachedContent(article);
-        let fromCache = false;
-
-        if (html) {
-          fromCache = true;
-          this.logger.debug(
-            {
-              step: "enrichArticles",
-              subStep: "getCachedContent",
-              aggregator: this.id,
-              feedId: this.feed?.id,
-              url: article.url,
-              cached: true,
-            },
-            "Using cached content",
-          );
-        } else {
-          // Fetch article content
-          try {
-            html = await this.fetchArticleContentInternal(article.url, article);
-            this.logger.debug(
-              {
-                step: "enrichArticles",
-                subStep: "fetchArticleContent",
-                aggregator: this.id,
-                feedId: this.feed?.id,
-                url: article.url,
-                cached: false,
-              },
-              "Fetched article content",
-            );
-          } catch (error) {
-            this.logger.warn(
-              {
-                step: "enrichArticles",
-                subStep: "fetchArticleContent",
-                aggregator: this.id,
-                feedId: this.feed?.id,
-                url: article.url,
-                error:
-                  error instanceof Error ? error : new Error(String(error)),
-                fallback: "summary",
-              },
-              "Failed to fetch content, using summary",
-            );
-            // Fallback to summary
-            article.content = article.summary || "";
-            enriched.push(article);
-            continue;
-          }
-        }
-
-        // Extract content
-        let extracted: string;
-        try {
-          extracted = await this.extractContent(html, article);
-        } catch (error) {
-          this.logger.warn(
-            {
-              step: "enrichArticles",
-              subStep: "extractContent",
-              aggregator: this.id,
-              feedId: this.feed?.id,
-              url: article.url,
-              error: error instanceof Error ? error : new Error(String(error)),
-              fallback: "original",
-            },
-            "Failed to extract content, using original HTML",
-          );
-          extracted = html;
-        }
-
-        // Validate content
-        const isValid = this.validateContent(extracted, article);
-        if (!isValid) {
-          this.logger.warn(
-            {
-              step: "enrichArticles",
-              subStep: "validateContent",
-              aggregator: this.id,
-              feedId: this.feed?.id,
-              url: article.url,
-              valid: false,
-              skipped: true,
-            },
-            "Content validation failed, skipping article",
-          );
-          continue;
-        }
-
-        // Process content
-        let processed: string;
-        try {
-          processed = await this.processContent(extracted, article);
-        } catch (error) {
-          this.logger.warn(
-            {
-              step: "enrichArticles",
-              subStep: "processContent",
-              aggregator: this.id,
-              feedId: this.feed?.id,
-              url: article.url,
-              error: error instanceof Error ? error : new Error(String(error)),
-              fallback: "extracted",
-            },
-            "Failed to process content, using extracted content",
-          );
-          processed = extracted;
-        }
-
-        // Extract images (optional)
-        try {
-          await this.extractImages(processed, article);
-        } catch (error) {
-          this.logger.debug(
-            {
-              step: "enrichArticles",
-              subStep: "extractImages",
-              aggregator: this.id,
-              feedId: this.feed?.id,
-              url: article.url,
-              error: error instanceof Error ? error : new Error(String(error)),
-            },
-            "Image extraction failed (non-critical)",
-          );
-        }
-
-        article.content = processed;
-
-        // Cache processed content
-        if (!fromCache) {
-          await this.setCachedContent(article, processed);
-        }
-
-        const articleElapsed = Date.now() - articleStart;
-        this.logger.debug(
-          {
-            step: "enrichArticles",
-            subStep: "processArticle",
-            aggregator: this.id,
-            feedId: this.feed?.id,
-            progress: `${i + 1}/${totalArticles}`,
-            url: article.url,
-            elapsed: articleElapsed,
-          },
-          `Article ${i + 1} processed`,
-        );
-
-        enriched.push(article);
-      } catch (error) {
-        this.logger.error(
-          {
-            step: "enrichArticles",
-            subStep: "processArticle",
-            aggregator: this.id,
-            feedId: this.feed?.id,
-            progress: `${i + 1}/${totalArticles}`,
-            url: article.url,
-            error: error instanceof Error ? error : new Error(String(error)),
-          },
-          "Error processing article",
-        );
-        // Continue with next article
-        continue;
-      }
-    }
-
-    const elapsed = Date.now() - startTime;
-    this.logger.info(
-      {
-        step: "enrichArticles",
-        subStep: "complete",
-        aggregator: this.id,
-        feedId: this.feed?.id,
-        initialCount: totalArticles,
-        enrichedCount: enriched.length,
-        elapsed,
-      },
-      "Article enrichment complete",
-    );
-
-    return enriched;
+    const enrichment = await import("./mixins/enrichment");
+    return enrichment.enrichArticles.call(this as any, articles);
   }
 
   /**
@@ -596,14 +264,8 @@ export abstract class BaseAggregator {
   protected async getCachedContent(
     article: RawArticle,
   ): Promise<string | null> {
-    if (this.forceRefresh) {
-      return null;
-    }
-
-    const { getCache, generateCacheKey } = await import("./cache");
-    const cache = getCache(this.id, this.cacheMaxSize, this.cacheTTL);
-    const key = generateCacheKey(this.id, article.url);
-    return cache.get(key);
+    const caching = await import("./mixins/caching");
+    return caching.getCachedContent.call(this as any, article);
   }
 
   /**
@@ -614,10 +276,8 @@ export abstract class BaseAggregator {
     article: RawArticle,
     content: string,
   ): Promise<void> {
-    const { getCache, generateCacheKey } = await import("./cache");
-    const cache = getCache(this.id, this.cacheMaxSize, this.cacheTTL);
-    const key = generateCacheKey(this.id, article.url);
-    cache.set(key, content);
+    const caching = await import("./mixins/caching");
+    return caching.setCachedContent.call(this as any, article, content);
   }
 
   /**
@@ -644,15 +304,8 @@ export abstract class BaseAggregator {
     html: string,
     article: RawArticle,
   ): Promise<string> {
-    const { extractContent } = await import("./extract");
-    let extracted = extractContent(html, {
-      selectorsToRemove: this.selectorsToRemove,
-    });
-
-    // Remove elements by selectors
-    extracted = await this.removeElementsBySelectors(extracted, article);
-
-    return extracted;
+    const contentProcessing = await import("./mixins/contentProcessing");
+    return contentProcessing.extractContent.call(this as any, html, article);
   }
 
   /**
@@ -663,8 +316,12 @@ export abstract class BaseAggregator {
     html: string,
     article: RawArticle,
   ): Promise<string> {
-    const { removeElementsBySelectors } = await import("./utils");
-    return removeElementsBySelectors(html, this.selectorsToRemove);
+    const contentProcessing = await import("./mixins/contentProcessing");
+    return contentProcessing.removeElementsBySelectors.call(
+      this as any,
+      html,
+      article,
+    );
   }
 
   /**
@@ -700,22 +357,8 @@ export abstract class BaseAggregator {
     html: string,
     article: RawArticle,
   ): Promise<string> {
-    // Default: use standardizeContentFormat
-    const { processContent: processContentUtil } = await import("./process");
-    const { sanitizeHtml } = await import("./utils");
-
-    // Sanitize HTML (remove scripts, rename attributes)
-    const sanitized = sanitizeHtml(html);
-
-    // Process content (standardize format with images and source link)
-    const generateTitleImage = this.feed?.generateTitleImage ?? true;
-    const addSourceFooter = this.feed?.addSourceFooter ?? true;
-    return await processContentUtil(
-      sanitized,
-      article,
-      generateTitleImage,
-      addSourceFooter,
-    );
+    const contentProcessing = await import("./mixins/contentProcessing");
+    return contentProcessing.processContent.call(this as any, html, article);
   }
 
   /**
@@ -726,8 +369,8 @@ export abstract class BaseAggregator {
     content: string,
     article: RawArticle,
   ): Promise<void> {
-    // Default: no image extraction
-    // Images are handled in processContent via standardizeContentFormat
+    const contentProcessing = await import("./mixins/contentProcessing");
+    return contentProcessing.extractImages.call(this as any, content, article);
   }
 
   /**
@@ -737,37 +380,8 @@ export abstract class BaseAggregator {
   protected async finalizeArticles(
     articles: RawArticle[],
   ): Promise<RawArticle[]> {
-    const startTime = Date.now();
-    this.logger.debug(
-      {
-        step: "finalizeArticles",
-        subStep: "start",
-        aggregator: this.id,
-        feedId: this.feed?.id,
-        articleCount: articles.length,
-      },
-      "Finalizing articles",
-    );
-
-    // Default: sort by published date (newest first)
-    const finalized = articles.sort((a, b) => {
-      return b.published.getTime() - a.published.getTime();
-    });
-
-    const elapsed = Date.now() - startTime;
-    this.logger.debug(
-      {
-        step: "finalizeArticles",
-        subStep: "complete",
-        aggregator: this.id,
-        feedId: this.feed?.id,
-        articleCount: finalized.length,
-        elapsed,
-      },
-      "Article finalization complete",
-    );
-
-    return finalized;
+    const contentProcessing = await import("./mixins/contentProcessing");
+    return contentProcessing.finalizeArticles.call(this as any, articles);
   }
 
   /**
@@ -775,8 +389,8 @@ export abstract class BaseAggregator {
    * Can be overridden by subclasses.
    */
   protected async processArticle(article: RawArticle): Promise<string> {
-    // Default: return content as-is
-    return article.content || article.summary || "";
+    const contentProcessing = await import("./mixins/contentProcessing");
+    return contentProcessing.processArticle.call(this as any, article);
   }
 
   /**
@@ -786,9 +400,8 @@ export abstract class BaseAggregator {
    * @returns Thumbnail URL or null if not found
    */
   async extractThumbnailFromUrl(url: string): Promise<string | null> {
-    // Default implementation uses generic extraction
-    const { extractThumbnailUrlFromPage } = await import("./utils");
-    return await extractThumbnailUrlFromPage(url);
+    const utilities = await import("./mixins/utilities");
+    return utilities.extractThumbnailFromUrl.call(this as any, url);
   }
 
   /**
@@ -816,8 +429,8 @@ export abstract class BaseAggregator {
    * @returns Icon URL or null if no icon available
    */
   async collectFeedIcon(): Promise<string | null> {
-    // Default: no feed icon collection
-    return null;
+    const utilities = await import("./mixins/utilities");
+    return utilities.collectFeedIcon.call(this as any);
   }
 
   // ============================================================================
@@ -838,56 +451,8 @@ export abstract class BaseAggregator {
    * @returns Number of posts to fetch (0 if quota exhausted or disabled)
    */
   async getDynamicFetchLimit(forceRefresh: boolean = false): Promise<number> {
-    const limit = this._getDailyPostLimit();
-
-    // Unlimited
-    if (limit === -1) {
-      return 100; // Safety maximum per run
-    }
-
-    // Disabled
-    if (limit === 0) {
-      return 0;
-    }
-
-    // Force refresh: fetch up to full daily limit
-    if (forceRefresh) {
-      return limit;
-    }
-
-    // Calculate distribution
-    const postsToday = await this.getPostsAddedToday();
-    const remainingQuota = limit - postsToday;
-
-    if (remainingQuota <= 0) {
-      const sourceName = this._getSourceName();
-      this.logger.info(
-        {
-          sourceName,
-          postsToday,
-          limit,
-        },
-        `Daily quota exhausted for ${sourceName}: ${postsToday}/${limit}`,
-      );
-      return 0; // Quota exhausted
-    }
-
-    const remainingRuns = await this.calculateRemainingRunsToday();
-    const dynamicLimit = Math.max(1, Math.ceil(remainingQuota / remainingRuns));
-
-    const sourceName = this._getSourceName();
-    this.logger.info(
-      {
-        sourceName,
-        dynamicLimit,
-        postsToday,
-        limit,
-        remainingRuns,
-      },
-      `Dynamic limit for ${sourceName}: ${dynamicLimit} posts (${postsToday}/${limit} today, ~${remainingRuns} runs left)`,
-    );
-
-    return dynamicLimit;
+    const dailyLimit = await import("./mixins/dailyLimit");
+    return dailyLimit.getDynamicFetchLimit.call(this as any, forceRefresh);
   }
 
   /**
@@ -896,25 +461,8 @@ export abstract class BaseAggregator {
    * @returns Number of posts added today
    */
   protected async getPostsAddedToday(): Promise<number> {
-    if (!this.feed) {
-      return 0;
-    }
-
-    const now = new Date();
-    const todayStart = new Date(now);
-    todayStart.setUTCHours(0, 0, 0, 0);
-
-    const result = await db
-      .select()
-      .from(articles)
-      .where(
-        and(
-          eq(articles.feedId, this.feed.id),
-          gte(articles.createdAt, todayStart),
-        ),
-      );
-
-    return result.length;
+    const dailyLimit = await import("./mixins/dailyLimit");
+    return dailyLimit.getPostsAddedToday.call(this as any);
   }
 
   /**
@@ -928,44 +476,8 @@ export abstract class BaseAggregator {
    * @returns Estimated number of remaining runs (at least 1 to avoid division by zero)
    */
   protected async calculateRemainingRunsToday(): Promise<number> {
-    const now = new Date();
-    const midnight = new Date(now);
-    midnight.setUTCDate(midnight.getUTCDate() + 1);
-    midnight.setUTCHours(0, 0, 0, 0);
-
-    const secondsUntilMidnight = (midnight.getTime() - now.getTime()) / 1000;
-
-    // Get most recent post added today
-    const recentPostTime = await this._getMostRecentPostTimeToday();
-
-    let secondsSinceLastRun: number;
-
-    if (recentPostTime) {
-      // Calculate time since last post was added
-      secondsSinceLastRun = (now.getTime() - recentPostTime.getTime()) / 1000;
-    } else {
-      // No posts today yet, estimate based on time since midnight
-      const todayStart = new Date(now);
-      todayStart.setUTCHours(0, 0, 0, 0);
-      const secondsSinceMidnight =
-        (now.getTime() - todayStart.getTime()) / 1000;
-
-      if (secondsSinceMidnight > 0) {
-        secondsSinceLastRun = secondsSinceMidnight;
-      } else {
-        // Edge case: very start of day
-        secondsSinceLastRun = 1800; // Assume 30 min default
-      }
-    }
-
-    // Avoid division by zero
-    if (secondsSinceLastRun <= 0) {
-      secondsSinceLastRun = 1800; // Default to 30 minutes
-    }
-
-    // Estimate remaining runs
-    const estimatedRuns = secondsUntilMidnight / secondsSinceLastRun;
-    return Math.max(1, Math.ceil(estimatedRuns));
+    const dailyLimit = await import("./mixins/dailyLimit");
+    return dailyLimit.calculateRemainingRunsToday.call(this as any);
   }
 
   /**
@@ -974,11 +486,8 @@ export abstract class BaseAggregator {
    * @returns Daily post limit (-1=unlimited, 0=disabled, n>0=target)
    */
   protected _getDailyPostLimit(): number {
-    if (this.feed && this.feed.dailyPostLimit !== undefined) {
-      return this.feed.dailyPostLimit;
-    }
-    // Use aggregator's default
-    return this.defaultDailyLimit;
+    const dailyLimit = require("./mixins/dailyLimit");
+    return dailyLimit.getDailyPostLimit.call(this as any);
   }
 
   /**
@@ -987,10 +496,8 @@ export abstract class BaseAggregator {
    * @returns Source name for logging
    */
   protected _getSourceName(): string {
-    if (this.feed) {
-      return this.feed.name || "Unknown Feed";
-    }
-    return "Unknown";
+    const dailyLimit = require("./mixins/dailyLimit");
+    return dailyLimit.getSourceName.call(this as any);
   }
 
   /**
@@ -999,26 +506,7 @@ export abstract class BaseAggregator {
    * @returns Datetime of most recent post, or null
    */
   protected async _getMostRecentPostTimeToday(): Promise<Date | null> {
-    if (!this.feed) {
-      return null;
-    }
-
-    const now = new Date();
-    const todayStart = new Date(now);
-    todayStart.setUTCHours(0, 0, 0, 0);
-
-    const result = await db
-      .select({ createdAt: articles.createdAt })
-      .from(articles)
-      .where(
-        and(
-          eq(articles.feedId, this.feed.id),
-          gte(articles.createdAt, todayStart),
-        ),
-      )
-      .orderBy(desc(articles.createdAt))
-      .limit(1);
-
-    return result.length > 0 ? result[0].createdAt : null;
+    const dailyLimit = await import("./mixins/dailyLimit");
+    return dailyLimit.getMostRecentPostTimeToday.call(this as any);
   }
 }

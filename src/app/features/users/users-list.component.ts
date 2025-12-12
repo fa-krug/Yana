@@ -379,16 +379,21 @@ export class UsersListComponent implements OnInit, OnDestroy {
       isSuperuser: this.superuserControl.value ?? undefined,
     };
 
-    this.usersService.listUsers(params).subscribe({
-      next: (data) => {
-        this.usersData.set(data);
-        this.loading.set(false);
-      },
-      error: (error) => {
-        this.snackBar.open("Failed to load users", "Close", { duration: 3000 });
-        this.loading.set(false);
-      },
-    });
+    this.usersService
+      .listUsers(params)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (data) => {
+          this.usersData.set(data);
+          this.loading.set(false);
+        },
+        error: (error) => {
+          this.snackBar.open("Failed to load users", "Close", {
+            duration: 3000,
+          });
+          this.loading.set(false);
+        },
+      });
   }
 
   onPageChange(event: PageEvent): void {
@@ -400,11 +405,14 @@ export class UsersListComponent implements OnInit, OnDestroy {
       width: "600px",
     });
 
-    dialogRef.afterClosed().subscribe((result) => {
-      if (result) {
-        this.loadUsers();
-      }
-    });
+    dialogRef
+      .afterClosed()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((result) => {
+        if (result) {
+          this.loadUsers();
+        }
+      });
   }
 
   openEditDialog(user: User): void {
@@ -413,18 +421,21 @@ export class UsersListComponent implements OnInit, OnDestroy {
       data: user,
     });
 
-    dialogRef.afterClosed().subscribe((result) => {
-      if (result) {
-        // If user was deleted, refresh the list
-        if (result === "deleted") {
-          this.snackBar.open("User deleted successfully", "Close", {
-            duration: 3000,
-            panelClass: ["success-snackbar"],
-          });
+    dialogRef
+      .afterClosed()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((result) => {
+        if (result) {
+          // If user was deleted, refresh the list
+          if (result === "deleted") {
+            this.snackBar.open("User deleted successfully", "Close", {
+              duration: 3000,
+              panelClass: ["success-snackbar"],
+            });
+          }
+          this.loadUsers();
         }
-        this.loadUsers();
-      }
-    });
+      });
   }
 
   openChangePasswordDialog(user: User): void {
@@ -433,14 +444,17 @@ export class UsersListComponent implements OnInit, OnDestroy {
       data: { userId: user.id, username: user.username },
     });
 
-    dialogRef.afterClosed().subscribe((result) => {
-      if (result) {
-        this.snackBar.open("Password changed successfully", "Close", {
-          duration: 3000,
-          panelClass: ["success-snackbar"],
-        });
-      }
-    });
+    dialogRef
+      .afterClosed()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((result) => {
+        if (result) {
+          this.snackBar.open("Password changed successfully", "Close", {
+            duration: 3000,
+            panelClass: ["success-snackbar"],
+          });
+        }
+      });
   }
 
   openDeleteDialog(user: User): void {
@@ -457,30 +471,40 @@ export class UsersListComponent implements OnInit, OnDestroy {
       data: dialogData,
     });
 
-    dialogRef.afterClosed().subscribe((confirmed) => {
-      if (confirmed) {
-        this.deleteUser(user);
-      }
-    });
+    dialogRef
+      .afterClosed()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((confirmed) => {
+        if (confirmed) {
+          this.deleteUser(user);
+        }
+      });
   }
 
   deleteUser(user: User): void {
     this.loading.set(true);
-    this.usersService.deleteUser(user.id).subscribe({
-      next: () => {
-        this.snackBar.open("User deleted successfully", "Close", {
-          duration: 3000,
-          panelClass: ["success-snackbar"],
-        });
-        this.loadUsers();
-      },
-      error: (error) => {
-        this.snackBar.open(error?.message || "Failed to delete user", "Close", {
-          duration: 3000,
-        });
-        this.loading.set(false);
-      },
-    });
+    this.usersService
+      .deleteUser(user.id)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: () => {
+          this.snackBar.open("User deleted successfully", "Close", {
+            duration: 3000,
+            panelClass: ["success-snackbar"],
+          });
+          this.loadUsers();
+        },
+        error: (error) => {
+          this.snackBar.open(
+            error?.message || "Failed to delete user",
+            "Close",
+            {
+              duration: 3000,
+            },
+          );
+          this.loading.set(false);
+        },
+      });
   }
 
   formatDate(dateString: string): string {

@@ -29,6 +29,66 @@ async function getBrowser(): Promise<Browser> {
 }
 
 /**
+ * Close browser instance.
+ */
+async function closeBrowser(): Promise<void> {
+  if (browser) {
+    try {
+      await browser.close();
+      logger.info("Oglaf Playwright browser closed");
+    } catch (error) {
+      logger.warn({ error }, "Error closing Oglaf Playwright browser");
+    } finally {
+      browser = null;
+    }
+  }
+}
+
+// Register shutdown handlers to close browser on process exit
+let shutdownHandlersRegistered = false;
+function registerShutdownHandlers(): void {
+  if (shutdownHandlersRegistered) return;
+  shutdownHandlersRegistered = true;
+
+  const cleanup = async () => {
+    await closeBrowser();
+  };
+
+  // Handle graceful shutdown signals
+  process.on("SIGTERM", cleanup);
+  process.on("SIGINT", cleanup);
+
+  // Handle process exit (less graceful, but ensures cleanup)
+  process.on("exit", () => {
+    // Synchronous cleanup on exit
+    if (browser) {
+      try {
+        // Force close on exit (synchronous)
+        browser.close().catch(() => {
+          // Ignore errors during forced shutdown
+        });
+      } catch {
+        // Ignore errors during forced shutdown
+      }
+    }
+  });
+
+  // Handle uncaught exceptions and unhandled rejections
+  process.on("uncaughtException", async (error) => {
+    logger.error({ error }, "Uncaught exception, closing Oglaf browser");
+    await cleanup();
+  });
+
+  process.on("unhandledRejection", async (reason) => {
+    logger.error({ reason }, "Unhandled rejection, closing Oglaf browser");
+    await cleanup();
+  });
+}
+
+// Register handlers when module is loaded
+registerShutdownHandlers();
+
+/**
  * Fetch Oglaf comic content, handling the age confirmation page.
  * Returns both the HTML content and the page object for image fetching.
  */

@@ -212,7 +212,57 @@ export async function fetchArticleContent(
  */
 export async function closeBrowser(): Promise<void> {
   if (browser) {
-    await browser.close();
-    browser = null;
+    try {
+      await browser.close();
+      logger.info("Playwright browser closed");
+    } catch (error) {
+      logger.warn({ error }, "Error closing Playwright browser");
+    } finally {
+      browser = null;
+    }
   }
 }
+
+// Register shutdown handlers to close browser on process exit
+let shutdownHandlersRegistered = false;
+function registerShutdownHandlers(): void {
+  if (shutdownHandlersRegistered) return;
+  shutdownHandlersRegistered = true;
+
+  const cleanup = async () => {
+    await closeBrowser();
+  };
+
+  // Handle graceful shutdown signals
+  process.on("SIGTERM", cleanup);
+  process.on("SIGINT", cleanup);
+
+  // Handle process exit (less graceful, but ensures cleanup)
+  process.on("exit", () => {
+    // Synchronous cleanup on exit
+    if (browser) {
+      try {
+        // Force close on exit (synchronous)
+        browser.close().catch(() => {
+          // Ignore errors during forced shutdown
+        });
+      } catch {
+        // Ignore errors during forced shutdown
+      }
+    }
+  });
+
+  // Handle uncaught exceptions and unhandled rejections
+  process.on("uncaughtException", async (error) => {
+    logger.error({ error }, "Uncaught exception, closing browser");
+    await cleanup();
+  });
+
+  process.on("unhandledRejection", async (reason) => {
+    logger.error({ reason }, "Unhandled rejection, closing browser");
+    await cleanup();
+  });
+}
+
+// Register handlers when module is loaded
+registerShutdownHandlers();

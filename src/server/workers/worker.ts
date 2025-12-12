@@ -92,13 +92,35 @@ process.on("message", (message: TaskMessage) => {
   }
 });
 
+// Cleanup function to close Playwright browsers before exit
+async function cleanupBeforeExit(): Promise<void> {
+  try {
+    const { closeBrowser } = await import("../aggregators/base/fetch");
+    await closeBrowser();
+  } catch (error) {
+    logger.warn({ error }, "Error closing browser in worker cleanup");
+  }
+}
+
+// Handle graceful shutdown
+const gracefulShutdown = async (signal: string) => {
+  logger.info({ signal }, "Worker received shutdown signal");
+  await cleanupBeforeExit();
+  process.exit(0);
+};
+
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+
 // Handle uncaught errors
-process.on("uncaughtException", (error) => {
+process.on("uncaughtException", async (error) => {
   logger.error({ error }, "Uncaught exception in worker");
+  await cleanupBeforeExit();
   process.exit(1);
 });
 
-process.on("unhandledRejection", (reason, promise) => {
+process.on("unhandledRejection", async (reason, promise) => {
   logger.error({ reason, promise }, "Unhandled rejection in worker");
+  await cleanupBeforeExit();
   process.exit(1);
 });

@@ -21,6 +21,14 @@ const NODE_ENV = process.env["NODE_ENV"] || "development";
 const isDevelopment = NODE_ENV === "development";
 
 /**
+ * Check if workers are disabled (for debugging).
+ * When DISABLE_WORKERS=true, tasks run synchronously in the main process.
+ */
+function areWorkersDisabled(): boolean {
+  return process.env["DISABLE_WORKERS"] === "true";
+}
+
+/**
  * Get directory name in ESM-compatible way.
  * Supports both ESM (import.meta.url) and CommonJS (__dirname).
  * In ESM context (Vite), resolves to actual source file location.
@@ -61,6 +69,14 @@ export class WorkerPool {
   start(): void {
     if (this.running) {
       logger.warn("Worker pool already running");
+      return;
+    }
+
+    // Skip starting workers if disabled (for debugging)
+    if (areWorkersDisabled()) {
+      logger.info(
+        "Worker pool disabled (DISABLE_WORKERS=true). Tasks will run synchronously in main process.",
+      );
       return;
     }
 
@@ -254,6 +270,15 @@ export class WorkerPool {
     workerCount: number;
     activeWorkers: number;
   } {
+    // If workers are disabled, return status indicating no workers
+    if (areWorkersDisabled()) {
+      return {
+        running: false,
+        workerCount: 0,
+        activeWorkers: 0,
+      };
+    }
+
     const activeWorkers = this.workers.filter(
       (w) => w.connected && !w.killed,
     ).length;

@@ -40,7 +40,80 @@ export type PaginatedTasks = {
 export type TaskDetails = Task;
 
 /**
+ * Check if workers are disabled (for debugging).
+ * When DISABLE_WORKERS=true, tasks run synchronously in the main process.
+ */
+function areWorkersDisabled(): boolean {
+  return process.env["DISABLE_WORKERS"] === "true";
+}
+
+/**
+ * Process a task synchronously in the main process (for debugging).
+ * This allows breakpoints to work since code runs in the main process.
+ */
+async function processTaskSynchronously(
+  task: Task,
+): Promise<{ result?: Record<string, unknown>; error?: string }> {
+  logger.info(
+    { taskId: task.id, taskType: task.type },
+    "Processing task synchronously (workers disabled)",
+  );
+
+  try {
+    let result: unknown;
+
+    const payload =
+      typeof task.payload === "string"
+        ? JSON.parse(task.payload)
+        : task.payload;
+
+    switch (task.type) {
+      case "aggregate_feed": {
+        const { processFeedAggregation } =
+          await import("./aggregation.service");
+        const { feedId, forceRefresh } = payload as {
+          feedId: number;
+          forceRefresh: boolean;
+        };
+        result = await processFeedAggregation(feedId, forceRefresh);
+        break;
+      }
+
+      case "aggregate_article": {
+        const { processArticleReload } = await import("./aggregation.service");
+        const { articleId } = payload as { articleId: number };
+        await processArticleReload(articleId);
+        result = { success: true };
+        break;
+      }
+
+      case "fetch_icon": {
+        const { processIconFetch } = await import("./icon.service");
+        const { feedId, force } = payload as {
+          feedId: number;
+          force?: boolean;
+        };
+        await processIconFetch(feedId, force || false);
+        result = { success: true };
+        break;
+      }
+
+      default:
+        throw new Error(`Unknown task type: ${task.type}`);
+    }
+
+    return { result: result as Record<string, unknown> };
+  } catch (error) {
+    logger.error({ error, taskId: task.id }, "Task processing failed");
+    return {
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+/**
  * Enqueue a new task.
+ * If DISABLE_WORKERS=true, processes the task synchronously in the main process.
  */
 export async function enqueueTask(
   type: TaskType,
@@ -68,6 +141,34 @@ export async function enqueueTask(
     type,
     status: task.status,
   });
+
+  // If workers are disabled, process synchronously
+  if (areWorkersDisabled()) {
+    // Mark as running
+    await db
+      .update(tasks)
+      .set({
+        status: "running",
+        startedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(tasks.id, task.id));
+
+    getEventEmitter().emit("task-updated", {
+      taskId: task.id,
+      status: "running",
+    });
+
+    // Process synchronously
+    const { result, error } = await processTaskSynchronously(task);
+
+    // Update task status
+    if (error) {
+      await updateTaskStatus(task.id, "failed", undefined, error);
+    } else {
+      await updateTaskStatus(task.id, "completed", result);
+    }
+  }
 
   return task;
 }

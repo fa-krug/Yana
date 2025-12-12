@@ -253,6 +253,32 @@ app.use(notFoundHandler);
 app.use(errorHandler);
 
 /**
+ * Cleanup function to close Playwright browsers and other resources.
+ */
+async function cleanupResources(): Promise<void> {
+  logger.info("Cleaning up resources...");
+
+  // Close Playwright browsers
+  // Note: Oglaf browser cleanup is handled by its own shutdown handlers
+  try {
+    const { closeBrowser } = await import("./server/aggregators/base/fetch");
+    await closeBrowser();
+  } catch (error) {
+    logger.warn({ error }, "Error closing base fetch browser");
+  }
+
+  // Stop worker pool
+  try {
+    const workerPool = getWorkerPool();
+    await workerPool.stop();
+  } catch (error) {
+    logger.warn({ error }, "Error stopping worker pool");
+  }
+
+  logger.info("Resource cleanup complete");
+}
+
+/**
  * Initialize worker pool and scheduler.
  * These should start regardless of how the server is started (directly or via SSR).
  */
@@ -281,6 +307,36 @@ function initializeBackgroundServices(): void {
   } else {
     logger.info("Scheduler disabled (SCHEDULER_ENABLED=false)");
   }
+
+  // Register shutdown handlers for graceful cleanup
+  let shutdownHandlersRegistered = false;
+  const registerShutdownHandlers = () => {
+    if (shutdownHandlersRegistered) return;
+    shutdownHandlersRegistered = true;
+
+    const cleanup = async () => {
+      await cleanupResources();
+      process.exit(0);
+    };
+
+    process.on("SIGTERM", cleanup);
+    process.on("SIGINT", cleanup);
+
+    // Handle uncaught exceptions
+    process.on("uncaughtException", async (error) => {
+      logger.error({ error }, "Uncaught exception, shutting down");
+      await cleanupResources();
+      process.exit(1);
+    });
+
+    process.on("unhandledRejection", async (reason) => {
+      logger.error({ reason }, "Unhandled rejection, shutting down");
+      await cleanupResources();
+      process.exit(1);
+    });
+  };
+
+  registerShutdownHandlers();
 }
 
 /**

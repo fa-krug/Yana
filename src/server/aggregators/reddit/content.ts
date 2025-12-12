@@ -1,0 +1,162 @@
+/**
+ * Reddit content building utilities.
+ */
+
+import { logger } from "../../utils/logger";
+import { convertRedditMarkdown, escapeHtml } from "./markdown";
+import { fixRedditMediaUrl, decodeHtmlEntitiesInUrl } from "./urls";
+import { extractAnimatedGifUrl, extractRedditVideoPreview } from "./images";
+import { fetchPostComments, formatCommentHtml } from "./comments";
+
+/**
+ * Reddit post data interface.
+ */
+export interface RedditPostData {
+  id: string;
+  is_self: boolean;
+  selftext?: string;
+  url?: string;
+  permalink: string;
+  is_gallery?: boolean;
+  media_metadata?: Record<
+    string,
+    {
+      e: string;
+      s?: { u?: string; gif?: string; mp4?: string };
+    }
+  >;
+  gallery_data?: {
+    items?: Array<{ media_id: string; caption?: string }>;
+  };
+}
+
+/**
+ * Build post content with comments.
+ */
+export async function buildPostContent(
+  post: RedditPostData,
+  commentLimit: number,
+  subreddit: string,
+  userId: number,
+): Promise<string> {
+  const contentParts: string[] = [];
+
+  // Post content (selftext or link)
+  if (post.is_self && post.selftext) {
+    // Text post - convert Reddit markdown to HTML
+    const selftextHtml = await convertRedditMarkdown(post.selftext);
+    contentParts.push(`<div>${selftextHtml}</div>`);
+  } else if (
+    post.is_gallery &&
+    post.media_metadata &&
+    post.gallery_data?.items
+  ) {
+    // Reddit gallery - extract all images at high resolution
+    for (const item of post.gallery_data.items) {
+      const mediaId = item.media_id;
+      const caption = item.caption || "";
+      const mediaInfo = post.media_metadata[mediaId];
+
+      if (mediaInfo) {
+        // Check if it's an animated GIF
+        if (mediaInfo.e === "AnimatedImage") {
+          const gifUrl = mediaInfo.s?.gif || mediaInfo.s?.mp4;
+          if (gifUrl) {
+            const decoded = decodeURIComponent(gifUrl);
+            const decodedEntities = decodeHtmlEntitiesInUrl(decoded);
+            const fixedUrl = fixRedditMediaUrl(decodedEntities);
+            if (caption) {
+              contentParts.push(
+                `<figure><img src="${fixedUrl}" alt="${escapeHtml(caption)}"><figcaption>${escapeHtml(caption)}</figcaption></figure>`,
+              );
+            } else {
+              contentParts.push(
+                `<p><img src="${fixedUrl}" alt="Animated GIF"></p>`,
+              );
+            }
+          }
+        } else if (mediaInfo.e === "Image" && mediaInfo.s?.u) {
+          const decoded = decodeURIComponent(mediaInfo.s.u);
+          const decodedEntities = decodeHtmlEntitiesInUrl(decoded);
+          const imageUrl = fixRedditMediaUrl(decodedEntities);
+          if (caption) {
+            contentParts.push(
+              `<figure><img src="${imageUrl}" alt="${escapeHtml(caption)}"><figcaption>${escapeHtml(caption)}</figcaption></figure>`,
+            );
+          } else {
+            contentParts.push(
+              `<p><img src="${imageUrl}" alt="Gallery image"></p>`,
+            );
+          }
+        }
+      }
+    }
+  } else if (post.url) {
+    // Link post
+    const decodedUrl = decodeHtmlEntitiesInUrl(post.url);
+    const url = decodedUrl;
+
+    if (
+      url.toLowerCase().endsWith(".gif") ||
+      url.toLowerCase().endsWith(".gifv")
+    ) {
+      const gifUrl = extractAnimatedGifUrl(post as any);
+      if (gifUrl) {
+        contentParts.push(`<p><img src="${gifUrl}" alt="Animated GIF"></p>`);
+      } else {
+        const finalUrl = url.toLowerCase().endsWith(".gifv")
+          ? url.slice(0, -1)
+          : url;
+        const fixedUrl = fixRedditMediaUrl(finalUrl);
+        contentParts.push(`<p><img src="${fixedUrl}" alt="Animated GIF"></p>`);
+      }
+    } else if (
+      [".jpg", ".jpeg", ".png", ".webp"].some((ext) =>
+        url.toLowerCase().endsWith(ext),
+      )
+    ) {
+      const fixedUrl = fixRedditMediaUrl(url);
+      contentParts.push(`<p><img src="${fixedUrl}" alt="Post image"></p>`);
+    } else if (url.includes("v.redd.it")) {
+      const previewUrl = extractRedditVideoPreview(post as any);
+      if (previewUrl) {
+        contentParts.push(
+          `<p><img src="${previewUrl}" alt="Video thumbnail"></p>`,
+        );
+      }
+      contentParts.push(`<p><a href="${url}">▶ View Video</a></p>`);
+    } else if (url.includes("youtube.com") || url.includes("youtu.be")) {
+      // Create a link - standardize_format will convert it to an embed
+      contentParts.push(`<p><a href="${url}">▶ View Video on YouTube</a></p>`);
+    } else {
+      contentParts.push(`<p><a href="${url}">${escapeHtml(url)}</a></p>`);
+    }
+  }
+
+  // Comments section
+  const decodedPermalink = decodeHtmlEntitiesInUrl(post.permalink);
+  const permalink = `https://reddit.com${decodedPermalink}`;
+  contentParts.push(
+    `<h3><a href="${permalink}" target="_blank" rel="noopener">Comments</a></h3>`,
+  );
+
+  // Fetch and format comments
+  if (commentLimit > 0) {
+    const comments = await fetchPostComments(
+      subreddit,
+      post.id,
+      commentLimit,
+      userId,
+    );
+    if (comments.length > 0) {
+      const commentHtmls = await Promise.all(comments.map(formatCommentHtml));
+      contentParts.push(commentHtmls.join(""));
+    } else {
+      contentParts.push("<p><em>No comments yet.</em></p>");
+    }
+  } else {
+    contentParts.push("<p><em>Comments disabled.</em></p>");
+  }
+
+  return contentParts.join("");
+}
