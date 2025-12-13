@@ -4,6 +4,9 @@
  * This server serves the Angular SSR app and provides API endpoints.
  */
 
+// Load environment variables from .env file
+import { config } from "dotenv";
+
 // Import Angular compiler first to enable JIT compilation when needed
 import "@angular/compiler";
 
@@ -19,6 +22,10 @@ import session from "express-session";
 import cors from "cors";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+
+// Load .env file after resolve is imported
+config({ path: resolve(process.cwd(), ".env") });
+
 import { requestLogger } from "./server/middleware/requestLogger";
 import {
   errorHandler,

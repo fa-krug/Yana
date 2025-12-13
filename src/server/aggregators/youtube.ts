@@ -57,17 +57,10 @@
 
 import { BaseAggregator } from "./base/aggregator";
 import type { RawArticle } from "./base/types";
-import { logger } from "../utils/logger";
-import axios, { AxiosError } from "axios";
 import { getUserSettings } from "../services/userSettings.service";
-import { YouTubeAPIError, getYouTubeErrorMessage } from "./youtube/errors";
+import { YouTubeAPIError } from "./youtube/errors";
 import { resolveChannelId, validateYouTubeIdentifier } from "./youtube/channel";
-import { buildVideoContent } from "./youtube/content";
-import {
-  fetchVideosFromPlaylist,
-  fetchVideosViaSearch,
-  type YouTubeVideo,
-} from "./youtube/videos";
+import type { YouTubeVideo } from "./youtube/videos";
 import { parseYouTubeVideos } from "./youtube/parsing";
 import { fetchYouTubeChannelData } from "./youtube/fetching";
 
@@ -197,21 +190,6 @@ export class YouTubeAggregator extends BaseAggregator {
   }
 
   /**
-   * Main aggregation method.
-   *
-   * Fetches videos from YouTube channel using Data API v3.
-   *
-   * **API calls made:**
-   * 1. `channels.list(part="contentDetails", id=channel_id)` - Get uploads playlist ID
-   * 2. `playlistItems.list(playlistId=uploads_playlist_id)` - Get video IDs from playlist
-   * 3. `videos.list(part="snippet,statistics,contentDetails", id=video_ids)` - Get video details
-   *
-   * **Pagination:**
-   * - Fetches up to 50 videos per request (API limit)
-   * - Respects feed's `dailyPostLimit` if set
-   * - Continues pagination until limit reached or no more videos
-   */
-  /**
    * Validate YouTube channel identifier and resolve to channel ID.
    */
   protected override async validate(): Promise<void> {
@@ -259,14 +237,6 @@ export class YouTubeAggregator extends BaseAggregator {
     // Store channel ID for use in fetchSourceData
     // channelId is guaranteed to be non-null here due to the check above
     (this as any).__channelId = channelId;
-  }
-
-  /**
-   * Apply rate limiting for YouTube API.
-   */
-  protected override async applyRateLimiting(): Promise<void> {
-    // YouTube API has quota limits, apply rate limiting
-    await super.applyRateLimiting();
   }
 
   /**
@@ -338,18 +308,31 @@ export class YouTubeAggregator extends BaseAggregator {
   /**
    * Process content with YouTube-specific formatting.
    *
-   * Note: YouTube video embedding is now handled automatically by the base
-   * standardizeContentFormat function when it detects YouTube URLs, so this
-   * override is no longer needed for embedding. We keep it for potential
-   * future YouTube-specific processing.
+   * Passes the video URL as headerImageUrl to ensure createHeaderElementFromUrl
+   * creates the YouTube embed iframe at the top of the content.
    */
   protected override async processContent(
     html: string,
     article: RawArticle,
   ): Promise<string> {
-    // Use base implementation - it will automatically detect YouTube URLs
-    // and embed them as iframes instead of extracting thumbnails
-    return await super.processContent(html, article);
+    const { processContent: processContentUtil } =
+      await import("./base/process");
+    const { sanitizeHtml } = await import("./base/utils");
+
+    // Sanitize HTML (remove scripts, rename attributes)
+    const sanitized = sanitizeHtml(html);
+
+    // Process content with video URL as headerImageUrl
+    // This ensures createHeaderElementFromUrl creates the YouTube embed iframe
+    const generateTitleImage = this.feed?.generateTitleImage ?? true;
+    const addSourceFooter = this.feed?.addSourceFooter ?? true;
+    return await processContentUtil(
+      sanitized,
+      article,
+      generateTitleImage,
+      addSourceFooter,
+      article.url, // Pass video URL as headerImageUrl
+    );
   }
 
   /**
@@ -368,31 +351,6 @@ export class YouTubeAggregator extends BaseAggregator {
 
     // Use base selector removal
     return removeElementsBySelectors($.html(), this.selectorsToRemove);
-  }
-
-  /**
-   * Fetch videos from uploads playlist.
-   */
-  private async fetchVideosFromPlaylist(
-    playlistId: string,
-    maxResults: number,
-    apiKey: string,
-  ): Promise<YouTubeVideo[]> {
-    return fetchVideosFromPlaylist(playlistId, maxResults, apiKey);
-  }
-
-  /**
-   * Fallback method to fetch videos using search.list when uploads playlist is unavailable.
-   *
-   * This method uses search.list to find videos from a channel, which works even when
-   * the uploads playlist is not accessible or doesn't exist.
-   */
-  private async fetchVideosViaSearch(
-    channelId: string,
-    maxResults: number,
-    apiKey: string,
-  ): Promise<YouTubeVideo[]> {
-    return fetchVideosViaSearch(channelId, maxResults, apiKey);
   }
 
   /**

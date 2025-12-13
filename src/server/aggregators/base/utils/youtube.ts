@@ -56,7 +56,7 @@ export function extractYouTubeVideoId(url: string): string | null {
 
 /**
  * Get YouTube proxy URL for embedding.
- * Uses BASE_URL from environment if set, otherwise defaults to frontend port (4200) in development
+ * Always uses BASE_URL from environment if set, otherwise defaults to frontend port (4200) in development
  * or backend port (3000) in production.
  */
 export function getYouTubeProxyUrl(videoId: string): string {
