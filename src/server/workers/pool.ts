@@ -62,6 +62,8 @@ export class WorkerPool {
   private workers: ChildProcess[] = [];
   private running = false;
   private pollInterval: NodeJS.Timeout | null = null;
+  private fileWatchers: fs.FSWatcher[] = [];
+  private restartDebounceTimer: NodeJS.Timeout | null = null;
 
   /**
    * Start worker pool.
@@ -91,6 +93,11 @@ export class WorkerPool {
     // Start polling for tasks
     this.startPolling();
 
+    // Start file watching in development mode
+    if (isDevelopment) {
+      this.startFileWatching();
+    }
+
     // Handle graceful shutdown
     process.on("SIGTERM", () => this.stop());
     process.on("SIGINT", () => this.stop());
@@ -104,6 +111,15 @@ export class WorkerPool {
 
     this.running = false;
     logger.info("Stopping worker pool");
+
+    // Stop file watching
+    this.stopFileWatching();
+
+    // Clear restart debounce timer
+    if (this.restartDebounceTimer) {
+      clearTimeout(this.restartDebounceTimer);
+      this.restartDebounceTimer = null;
+    }
 
     // Stop polling
     if (this.pollInterval) {
@@ -260,6 +276,128 @@ export class WorkerPool {
       { taskId: task.id, workerId: availableWorker.pid },
       "Task assigned to worker",
     );
+  }
+
+  /**
+   * Restart all workers (kill existing and spawn new ones).
+   */
+  private async restartWorkers(): Promise<void> {
+    if (!this.running) return;
+
+    logger.info("Restarting workers due to code changes");
+
+    // Kill all existing workers
+    for (const worker of this.workers) {
+      worker.kill();
+    }
+
+    // Wait for workers to exit
+    await Promise.all(
+      this.workers.map(
+        (worker) =>
+          new Promise<void>((resolve) => {
+            worker.once("exit", () => resolve());
+          }),
+      ),
+    );
+
+    // Clear workers array
+    this.workers = [];
+
+    // Spawn new workers
+    while (this.workers.length < WORKER_COUNT && this.running) {
+      this.spawnWorker();
+    }
+
+    logger.info({ workerCount: this.workers.length }, "Workers restarted");
+  }
+
+  /**
+   * Start watching for file changes in development mode.
+   */
+  private startFileWatching(): void {
+    if (!isDevelopment) return;
+
+    const projectRoot = process.cwd();
+    const serverDir = path.join(projectRoot, "src/server");
+
+    // Directories to watch for code changes
+    const watchDirs = [
+      serverDir, // Watch root server directory for any direct file changes
+      path.join(serverDir, "aggregators"),
+      path.join(serverDir, "services"),
+      path.join(serverDir, "workers"),
+      path.join(serverDir, "utils"),
+      path.join(serverDir, "middleware"),
+      path.join(serverDir, "routes"),
+    ];
+
+    logger.info({ watchDirs }, "Starting file watching for worker restart");
+
+    for (const watchDir of watchDirs) {
+      if (!fs.existsSync(watchDir)) {
+        continue;
+      }
+
+      try {
+        // Use recursive watching (Node 18+)
+        const watcher = fs.watch(
+          watchDir,
+          { recursive: true },
+          (eventType, filename) => {
+            // Only watch for file changes (not directory changes)
+            if (!filename || filename.includes("node_modules")) {
+              return;
+            }
+
+            // Only restart on file changes (not deletions)
+            if (eventType === "change") {
+              const filePath = path.join(watchDir, filename);
+              // Only watch TypeScript files
+              if (filePath.endsWith(".ts") || filePath.endsWith(".js")) {
+                this.scheduleWorkerRestart();
+              }
+            }
+          },
+        );
+
+        this.fileWatchers.push(watcher);
+      } catch (error) {
+        logger.warn(
+          { error, watchDir },
+          "Failed to start file watcher for directory",
+        );
+      }
+    }
+  }
+
+  /**
+   * Stop file watching.
+   */
+  private stopFileWatching(): void {
+    for (const watcher of this.fileWatchers) {
+      watcher.close();
+    }
+    this.fileWatchers = [];
+  }
+
+  /**
+   * Schedule worker restart with debouncing.
+   * Prevents multiple restarts when multiple files change rapidly.
+   */
+  private scheduleWorkerRestart(): void {
+    // Clear existing timer
+    if (this.restartDebounceTimer) {
+      clearTimeout(this.restartDebounceTimer);
+    }
+
+    // Schedule restart after 1 second of no changes
+    this.restartDebounceTimer = setTimeout(() => {
+      this.restartWorkers().catch((error) => {
+        logger.error({ error }, "Failed to restart workers");
+      });
+      this.restartDebounceTimer = null;
+    }, 1000);
   }
 
   /**
