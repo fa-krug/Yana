@@ -153,9 +153,9 @@ export async function buildPostContent(
   // Comments section
   const decodedPermalink = decodeHtmlEntitiesInUrl(post.permalink);
   const permalink = `https://reddit.com${decodedPermalink}`;
-  contentParts.push(
+  const commentSectionParts: string[] = [
     `<h3><a href="${permalink}" target="_blank" rel="noopener">Comments</a></h3>`,
-  );
+  ];
 
   // Fetch and format comments
   if (commentLimit > 0) {
@@ -167,13 +167,16 @@ export async function buildPostContent(
     );
     if (comments.length > 0) {
       const commentHtmls = await Promise.all(comments.map(formatCommentHtml));
-      contentParts.push(commentHtmls.join(""));
+      commentSectionParts.push(commentHtmls.join(""));
     } else {
-      contentParts.push("<p><em>No comments yet.</em></p>");
+      commentSectionParts.push("<p><em>No comments yet.</em></p>");
     }
   } else {
-    contentParts.push("<p><em>Comments disabled.</em></p>");
+    commentSectionParts.push("<p><em>Comments disabled.</em></p>");
   }
+
+  // Wrap comments in section tag
+  contentParts.push(`<section>${commentSectionParts.join("")}</section>`);
 
   return contentParts.join("");
 }

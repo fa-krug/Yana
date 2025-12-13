@@ -10,6 +10,7 @@ import {
   or,
   isNull,
   desc,
+  asc,
   sql,
   like,
   inArray,
@@ -365,23 +366,37 @@ export async function getArticleNavigation(
     article.date instanceof Date ? article.date : new Date(article.date);
 
   // Get previous article (older)
+  // Use date DESC, then id DESC as tiebreaker to ensure deterministic ordering
   const [prev] = await db
     .select()
     .from(articles)
     .where(
-      and(eq(articles.feedId, article.feedId), lt(articles.date, articleDate)),
+      and(
+        eq(articles.feedId, article.feedId),
+        or(
+          lt(articles.date, articleDate),
+          and(eq(articles.date, articleDate), lt(articles.id, article.id)),
+        ),
+      ),
     )
-    .orderBy(desc(articles.date))
+    .orderBy(desc(articles.date), desc(articles.id))
     .limit(1);
 
   // Get next article (newer)
+  // Use date ASC, then id ASC as tiebreaker to ensure deterministic ordering
   const [next] = await db
     .select()
     .from(articles)
     .where(
-      and(eq(articles.feedId, article.feedId), gt(articles.date, articleDate)),
+      and(
+        eq(articles.feedId, article.feedId),
+        or(
+          gt(articles.date, articleDate),
+          and(eq(articles.date, articleDate), gt(articles.id, article.id)),
+        ),
+      ),
     )
-    .orderBy(articles.date)
+    .orderBy(asc(articles.date), asc(articles.id))
     .limit(1);
 
   return { prev: prev || null, next: next || null };

@@ -102,8 +102,10 @@ import { Aggregator } from "@app/core/models";
                     </mat-icon>
                   }
                 </div>
-                <mat-card-title>{{ agg.name }}</mat-card-title>
-                <mat-card-subtitle>{{ agg.id }}</mat-card-subtitle>
+                <div class="aggregator-header-content">
+                  <mat-card-title>{{ agg.name }}</mat-card-title>
+                  <mat-card-subtitle>{{ agg.id }}</mat-card-subtitle>
+                </div>
               </mat-card-header>
               <mat-card-content>
                 @if (agg.description) {

@@ -45,9 +45,9 @@ export async function buildVideoContent(
   }
 
   // Comments section
-  contentParts.push(
+  const commentSectionParts: string[] = [
     `<h3><a href="${videoUrl}" target="_blank" rel="noopener">Comments</a></h3>`,
-  );
+  ];
 
   // Fetch and format comments
   if (commentLimit > 0) {
@@ -71,13 +71,16 @@ export async function buildVideoContent(
 </blockquote>
 `;
       });
-      contentParts.push(commentHtmls.join(""));
+      commentSectionParts.push(commentHtmls.join(""));
     } else {
-      contentParts.push("<p><em>No comments yet.</em></p>");
+      commentSectionParts.push("<p><em>No comments yet.</em></p>");
     }
   } else {
-    contentParts.push("<p><em>Comments disabled.</em></p>");
+    commentSectionParts.push("<p><em>Comments disabled.</em></p>");
   }
+
+  // Wrap comments in section tag
+  contentParts.push(`<section>${commentSectionParts.join("\n")}</section>`);
 
   return contentParts.join("\n");
 }

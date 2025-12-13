@@ -424,15 +424,15 @@ import { FeedPreviewStepComponent } from "./components/feed-preview-step.compone
 
       .aggregator-card mat-card-header {
         display: flex;
-        flex-direction: column;
+        flex-direction: row;
         align-items: center;
-        text-align: center;
         padding: 24px 20px 16px 20px;
         background: linear-gradient(
           180deg,
           var(--mat-sys-surface-variant) 0%,
           transparent 100%
         );
+        gap: 16px;
       }
 
       .aggregator-icon {
@@ -441,8 +441,16 @@ import { FeedPreviewStepComponent } from "./components/feed-preview-step.compone
         display: flex;
         align-items: center;
         justify-content: center;
-        margin-bottom: 12px;
+        flex-shrink: 0;
         position: relative;
+      }
+
+      .aggregator-header-content {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
       }
 
       .aggregator-image {
@@ -492,6 +500,9 @@ import { FeedPreviewStepComponent } from "./components/feed-preview-step.compone
         font-weight: 500 !important;
         margin: 0 0 4px 0 !important;
         color: var(--mat-sys-on-surface) !important;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
 
       .aggregator-card mat-card-subtitle {
@@ -500,6 +511,9 @@ import { FeedPreviewStepComponent } from "./components/feed-preview-step.compone
         margin: 0 !important;
         font-family: monospace;
         color: var(--mat-sys-on-surface) !important;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
 
       .aggregator-card mat-card-content {

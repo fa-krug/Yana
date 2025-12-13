@@ -244,11 +244,11 @@ export class TagesschauAggregator extends FullWebsiteAggregator {
                       const dataUri = srcMatch[1];
                       // Create separate divs: image above, player below
                       return (
-                        `<div class="media-header">` +
+                        `<header class="media-header">` +
                         `<div class="media-image"><img src="${dataUri}" alt="Article image" style="max-width: 100%; height: auto; border-radius: 8px;"></div>` +
                         `<div class="media-player" style="width: 100%;"><iframe src="${src}" width="100%" height="${height}" ` +
                         `frameborder="0" allowfullscreen scrolling="no"></iframe></div>` +
-                        `</div>`
+                        `</header>`
                       );
                     }
                   }
@@ -261,19 +261,19 @@ export class TagesschauAggregator extends FullWebsiteAggregator {
               }
               // Fallback: use URL directly if conversion failed or returned null
               return (
-                `<div class="media-header">` +
+                `<header class="media-header">` +
                 `<div class="media-image"><img src="${imageUrl}" alt="Article image" style="max-width: 100%; height: auto; border-radius: 8px;"></div>` +
                 `<div class="media-player" style="width: 100%;"><iframe src="${src}" width="100%" height="${height}" ` +
                 `frameborder="0" allowfullscreen scrolling="no"></iframe></div>` +
-                `</div>`
+                `</header>`
               );
             } else {
               // For video, just embed the iframe (it may have its own poster)
               return (
-                `<div class="media-header">` +
+                `<header class="media-header">` +
                 `<div class="media-player" style="width: 100%;"><iframe src="${src}" width="100%" height="${height}" ` +
                 `frameborder="0" allowfullscreen scrolling="no"></iframe></div>` +
-                `</div>`
+                `</header>`
               );
             }
           }
@@ -312,13 +312,13 @@ export class TagesschauAggregator extends FullWebsiteAggregator {
                         const dataUri = srcMatch[1];
                         // Create separate divs: image above, player below
                         return (
-                          `<div class="media-header">` +
+                          `<header class="media-header">` +
                           `<div class="media-image"><img src="${dataUri}" alt="Article image" style="max-width: 100%; height: auto; border-radius: 8px;"></div>` +
                           `<div class="media-player" style="width: 100%;"><audio controls preload="auto" style="width: 100%;">` +
                           `<source src="${url}" type="${mimeType}">` +
                           `Your browser does not support the audio element.` +
                           `</audio></div>` +
-                          `</div>`
+                          `</header>`
                         );
                       }
                     }
@@ -331,22 +331,22 @@ export class TagesschauAggregator extends FullWebsiteAggregator {
                 }
                 // Fallback: use URL directly if conversion failed or returned null
                 return (
-                  `<div class="media-header">` +
+                  `<header class="media-header">` +
                   `<div class="media-image"><img src="${imageUrl}" alt="Article image" style="max-width: 100%; height: auto; border-radius: 8px;"></div>` +
                   `<div class="media-player" style="width: 100%;"><audio controls preload="auto" style="width: 100%;">` +
                   `<source src="${url}" type="${mimeType}">` +
                   `Your browser does not support the audio element.` +
                   `</audio></div>` +
-                  `</div>`
+                  `</header>`
                 );
               } else {
                 return (
-                  `<div class="media-header">` +
+                  `<header class="media-header">` +
                   `<audio controls preload="auto" style="width: 100%;">` +
                   `<source src="${url}" type="${mimeType}">` +
                   `Your browser does not support the audio element.` +
                   `</audio>` +
-                  `</div>`
+                  `</header>`
                 );
               }
             } else if (
@@ -356,12 +356,12 @@ export class TagesschauAggregator extends FullWebsiteAggregator {
               // Create HTML5 video player with poster image
               const posterAttr = imageUrl ? `poster="${imageUrl}"` : "";
               return (
-                `<div class="media-header">` +
+                `<header class="media-header">` +
                 `<div class="media-player" style="width: 100%;"><video controls preload="auto" ${posterAttr} style="width: 100%;">` +
                 `<source src="${url}" type="${mimeType}">` +
                 `Your browser does not support the video element.` +
                 `</video></div>` +
-                `</div>`
+                `</header>`
               );
             }
           }
@@ -462,12 +462,12 @@ export class TagesschauAggregator extends FullWebsiteAggregator {
       );
     }
 
-    // Use base processContent for standardization (but skip title image if media header exists)
-    const generateTitleImage =
-      !mediaHeader && (this.feed?.generateTitleImage ?? true);
+    // Use base processContent for standardization
+    // standardizeContentFormat will automatically detect existing header via <header> tag
+    const generateTitleImage = this.feed?.generateTitleImage ?? true;
     const addSourceFooter = this.feed?.addSourceFooter ?? true;
 
-    // Call base processContent but with custom generateTitleImage
+    // Call base processContent - it will check for existing header and skip if found
     const { processContent: processContentUtil } =
       await import("./base/process");
     const result = await processContentUtil(

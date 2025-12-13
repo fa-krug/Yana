@@ -20,14 +20,29 @@ import { logger } from "@server/utils/logger";
 /**
  * Standardize content format across all feeds.
  *
- * This function:
- * 1. Finds the first URL (link or image) in the content (if generate_title_image=true)
- * 2. Extracts an image from that URL (or uses meta tags, first image, or favicon)
- * 3. Compresses and inlines the image as base64
- * 4. Places the image at the top of the content
- * 5. Removes the original image tag if it was in the content
- * 6. Adds the content below the image
- * 7. Adds a source link at the bottom (float right) (if add_source_footer=true)
+ * This function wraps content in semantic HTML structure:
+ * <article>
+ *   <header>...</header>
+ *   <section>...main content...</section>
+ *   <section>...comments...</section>
+ *   <footer>...</footer>
+ * </article>
+ *
+ * Steps:
+ * 1. Checks if content is already wrapped in <article> tag
+ * 2. Checks if <header> already exists
+ * 3. If no header exists and generate_title_image=true:
+ *    - Finds the first URL (link or image) in the content
+ *    - Extracts an image from that URL (or uses meta tags, first image, or favicon)
+ *    - Compresses and inlines the image as base64
+ *    - Places the image in <header> tag
+ *    - Removes the original image tag if it was in the content
+ * 4. Wraps the remaining content in <section> tag (unless already in section)
+ * 5. Checks if <footer> already exists
+ * 6. If no footer exists and add_source_footer=true:
+ *    - Adds a source link in <footer> tag
+ *
+ * This prevents duplicate headers and footers when aggregators add them manually.
  */
 export async function standardizeContentFormat(
   content: string,
@@ -45,11 +60,32 @@ export async function standardizeContentFormat(
 
   try {
     const $ = cheerio.load(content);
+
+    // Check if content is already wrapped in <article> tag
+    const hasArticleWrapper = $("article").length > 0;
+
+    // Extract content from article if it exists, otherwise use full content
+    // If article exists, get its inner HTML; otherwise get body HTML
+    let bodyContent: string;
+    if (hasArticleWrapper) {
+      bodyContent = $("article").html() || "";
+    } else {
+      // Get body content, or if no body, get root HTML
+      const body = $("body");
+      bodyContent = body.length > 0 ? body.html() || "" : $.html();
+    }
+
+    // Re-parse the body content to work with it
+    const $body = cheerio.load(bodyContent);
+
+    // Check if header already exists
+    const hasExistingHeader = $body("header").length > 0;
+
     const contentParts: string[] = [];
 
-    // Extract and add header image if enabled
-    if (generateTitleImage) {
-      // Find the first URL (link or image)
+    // Extract and add header image if enabled and not already present
+    if (generateTitleImage && !hasExistingHeader) {
+      // Find the first URL (link or image) from body content
       let firstUrl: string | null = null;
       let firstElement: cheerio.Cheerio<Element> | null = null;
 
@@ -66,7 +102,7 @@ export async function standardizeContentFormat(
         );
       } else if (!firstUrl) {
         // First, try to find an image
-        const firstImg = $("img").first();
+        const firstImg = $body("img").first();
         if (firstImg.length > 0) {
           const imgSrc =
             firstImg.attr("src") ||
@@ -80,7 +116,7 @@ export async function standardizeContentFormat(
         }
 
         // If no image, try to find first link
-        const firstLink = $("a[href]").first();
+        const firstLink = $body("a[href]").first();
         if (!firstUrl && firstLink.length > 0) {
           const linkHref = firstLink.attr("href");
           if (linkHref) {
@@ -183,9 +219,9 @@ export async function standardizeContentFormat(
                     const imageB64 = compressedData.toString("base64");
                     const dataUri = `data:${outputType};base64,${imageB64}`;
 
-                    // Add image at the top
+                    // Add image in header
                     contentParts.push(
-                      `<p><img src="${dataUri}" alt="Article image" style="max-width: 100%; height: auto;"></p>`,
+                      `<header><p><img src="${dataUri}" alt="Article image" style="max-width: 100%; height: auto;"></p></header>`,
                     );
                     logger.debug("Added compressed data URI image to content");
                   } catch (error) {
@@ -207,7 +243,21 @@ export async function standardizeContentFormat(
             );
 
             if (headerElement) {
-              contentParts.push(headerElement);
+              // Wrap header element in <header> tag if not already wrapped
+              let wrappedHeader: string;
+              if (
+                headerElement.includes("<header>") ||
+                headerElement.includes("<header ")
+              ) {
+                wrappedHeader = headerElement;
+              } else {
+                // Remove any existing wrapper divs with data-article-header
+                const cleaned = headerElement
+                  .replace(/<div[^>]*data-article-header[^>]*>/gi, "")
+                  .replace(/<\/div>/gi, "");
+                wrappedHeader = `<header>${cleaned}</header>`;
+              }
+              contentParts.push(wrappedHeader);
 
               // Save thumbnail URL (will be converted to base64 by aggregation service)
               article.thumbnailUrl = firstUrl;
@@ -217,7 +267,7 @@ export async function standardizeContentFormat(
               const videoId = extractYouTubeVideoId(firstUrl);
               if (videoId && isUsingHeaderImage) {
                 // Remove duplicate YouTube links from content
-                $("a[href]").each((_, element) => {
+                $body("a[href]").each((_, element) => {
                   const href = $(element).attr("href");
                   if (href) {
                     try {
@@ -258,7 +308,7 @@ export async function standardizeContentFormat(
                 });
 
                 // Remove first image from content if it exists (since we're using YouTube video instead)
-                const firstImg = $("img").first();
+                const firstImg = $body("img").first();
                 if (firstImg.length > 0) {
                   const parent = firstImg.parent();
                   firstImg.remove();
@@ -326,24 +376,67 @@ export async function standardizeContentFormat(
       }
     }
 
-    // Add the remaining content
-    contentParts.push($.html());
+    // Check if footer already exists before removing anything
+    const hasExistingFooter = $body("footer").length > 0;
 
-    // Add source link at the bottom (float right) if enabled
-    if (addSourceFooter) {
-      contentParts.push(
-        `<a href="${article.url}" style="float: right;">Source</a>`,
-      );
-    }
+    // Extract comment sections (they should be preserved as-is)
+    const commentSections: string[] = [];
+    $body("section").each((_, el) => {
+      const $section = $body(el);
+      // Check if this section contains comments (has "Comments" in heading or text)
+      const sectionText = $section.text().toLowerCase();
+      const sectionHtml = $section.html() || "";
+      // Preserve sections that contain "Comments" (case-insensitive) or have comment-like structure
+      if (
+        sectionText.includes("comment") ||
+        sectionHtml.match(/<h[1-6][^>]*>.*[Cc]omment/i)
+      ) {
+        commentSections.push($section.toString());
+      }
+    });
 
-    return contentParts.join("");
+    // Remove header, footer, and comment sections from body content
+    $body("header").remove();
+    $body("footer").remove();
+    $body("section").remove();
+
+    const bodyHtml = $body.html() || "";
+
+    // Build the final structure
+    const headerHtml =
+      contentParts.find((part) => part.includes("<header>")) || "";
+
+    // Wrap main content in section tag (unless it's empty)
+    const mainContentSection = bodyHtml.trim()
+      ? `<section>${bodyHtml}</section>`
+      : "";
+
+    // Preserve comment sections
+    const commentSectionsHtml = commentSections.join("");
+
+    const footerHtml =
+      addSourceFooter && !hasExistingFooter
+        ? `<footer><a href="${article.url}" style="float: right;">Source</a></footer>`
+        : "";
+
+    // Wrap everything in <article> tag
+    const articleContent = `<article>${headerHtml}${mainContentSection}${commentSectionsHtml}${footerHtml}</article>`;
+
+    return articleContent;
   } catch (error) {
     logger.error({ error }, "Error standardizing content format");
-    // Fallback: add source link if enabled
-    if (addSourceFooter) {
-      return `${content}<a href="${article.url}" style="float: right;">Source</a>`;
+    // Fallback: wrap in article tag with footer if enabled
+    const $ = cheerio.load(content);
+    const hasExistingFooter = $("footer").length > 0;
+
+    let fallbackContent = content;
+    if (addSourceFooter && !hasExistingFooter) {
+      fallbackContent = `<article>${content}<footer><a href="${article.url}" style="float: right;">Source</a></footer></article>`;
+    } else if (!$("article").length) {
+      fallbackContent = `<article>${content}</article>`;
     }
-    return content;
+
+    return fallbackContent;
   }
 }
 

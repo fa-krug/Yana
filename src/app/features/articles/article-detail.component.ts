@@ -437,7 +437,21 @@ export class ArticleDetailComponent implements OnInit, OnDestroy {
                 // Task completed, fetch the updated article
                 this.articleService.getArticle(article.id).subscribe({
                   next: (refreshedArticle) => {
-                    this.article.set(refreshedArticle);
+                    // Preserve navigation data if it's missing
+                    const articleWithNavigation = {
+                      ...refreshedArticle,
+                      prevId:
+                        refreshedArticle.prevId ??
+                        refreshedArticle.prevArticleId ??
+                        article.prevId,
+                      nextId:
+                        refreshedArticle.nextId ??
+                        refreshedArticle.nextArticleId ??
+                        article.nextId,
+                    };
+                    this.article.set(articleWithNavigation);
+                    // Re-register article actions after reload
+                    this.registerArticleActions();
                     this.reloading.set(false);
                     this.snackBar.open(
                       "Article reloaded successfully",

@@ -422,9 +422,8 @@ export class HeiseAggregator extends FullWebsiteAggregator {
       }
 
       // Extract and format comments
-      const commentHtmlParts: string[] = [
-        `<h3><a href="${forumUrl}">Comments</a></h3>`,
-      ];
+      const commentHtmlParts: string[] = [];
+      const commentHeader = `<h3><a href="${forumUrl}">Comments</a></h3>`;
       let extractedCount = 0;
 
       commentElements.slice(0, maxComments).each((i, element) => {
@@ -532,7 +531,8 @@ export class HeiseAggregator extends FullWebsiteAggregator {
         },
         "Successfully extracted comments",
       );
-      return commentHtmlParts.join("\n");
+      // Wrap comments in section tag
+      return `<section>${commentHeader}${commentHtmlParts.join("\n")}</section>`;
     } catch (error) {
       if (error instanceof ContentFetchError) {
         this.logger.warn(

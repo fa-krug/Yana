@@ -24,7 +24,7 @@ import { AggregatorOption } from "@app/core/models";
   ],
   template: `
     @if (filteredOptions() && getObjectKeys(filteredOptions()).length > 0) {
-      <div class="aggregator-options-section">
+      <div class="aggregator-options-section" [formGroup]="feedFormGroup()">
         <h4>Aggregator Options</h4>
         @for (
           optionEntry of getObjectEntries(filteredOptions());

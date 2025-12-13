@@ -45,7 +45,11 @@ function filterManagedFeedData(
       } = {};
 
       // Filter out restricted aggregator options
-      if (data.aggregatorOptions) {
+      // Only process if aggregatorOptions is explicitly provided (not null or undefined)
+      if (
+        data.aggregatorOptions !== undefined &&
+        data.aggregatorOptions !== null
+      ) {
         const restrictedOptions = [
           "exclude_selectors",
           "ignore_content_contains",
@@ -59,9 +63,9 @@ function filterManagedFeedData(
           }
         });
         filtered.aggregatorOptions = filteredOptions;
-      } else {
-        filtered.aggregatorOptions = {};
       }
+      // If aggregatorOptions is undefined or null, don't set it in filtered
+      // This allows existing options to be preserved during update
 
       // Filter out AI features
       filtered.aiTranslateTo = "";

@@ -96,7 +96,6 @@
           "builder": "@angular/build:dev-server",
           "options": {
             "watch": true,
-            "poll": 1000,
             "host": "0.0.0.0"
           },
           "configurations": {
@@ -106,7 +105,6 @@
             "development": {
               "buildTarget": "frontend:build:development",
               "watch": true,
-              "poll": 1000,
               "host": "0.0.0.0"
             }
           },

@@ -75,10 +75,15 @@ export class FeedFormValidationService {
       }
 
       if (option.type === "boolean") {
-        formGroup.addControl(
-          fieldName,
-          this.fb.control(existingValue ?? false),
-        );
+        // For boolean options, use existing value if provided, otherwise use default
+        // Important: if existingValue is explicitly false, use it (don't fall back to default)
+        const initialValue =
+          existingValue !== undefined && existingValue !== null
+            ? Boolean(existingValue)
+            : option.default !== undefined
+              ? Boolean(option.default)
+              : false;
+        formGroup.addControl(fieldName, this.fb.control(initialValue));
       } else if (option.type === "integer" || option.type === "float") {
         formGroup.addControl(
           fieldName,
@@ -134,9 +139,48 @@ export class FeedFormValidationService {
     const aggregatorOptions: Record<string, unknown> = {};
     Object.keys(filteredOptions).forEach((key) => {
       const fieldName = `option_${key}`;
-      const value = formGroup.get(fieldName)?.value;
-      if (value !== null && value !== undefined && value !== "") {
-        aggregatorOptions[key] = value;
+      const control = formGroup.get(fieldName);
+      if (!control) {
+        return;
+      }
+      // Get the raw value from the form control
+      const rawValue = control.value;
+      const optionType = filteredOptions[key]?.type;
+
+      // For boolean options, always include the value (even if false)
+      // Ensure it's a proper boolean value
+      if (optionType === "boolean") {
+        // Angular Material checkbox should return boolean, but handle edge cases
+        // Convert to boolean: explicitly handle true/false values
+        let boolValue: boolean;
+        if (
+          rawValue === true ||
+          rawValue === "true" ||
+          rawValue === 1 ||
+          rawValue === "1"
+        ) {
+          boolValue = true;
+        } else if (
+          rawValue === false ||
+          rawValue === "false" ||
+          rawValue === 0 ||
+          rawValue === "0"
+        ) {
+          boolValue = false;
+        } else if (typeof rawValue === "boolean") {
+          boolValue = rawValue;
+        } else {
+          // Fallback: convert to boolean using Boolean() constructor
+          boolValue = Boolean(rawValue);
+        }
+        // Always include boolean values (both true and false)
+        aggregatorOptions[key] = boolValue;
+        return;
+      }
+
+      // For other types, exclude null, undefined, and empty strings
+      if (rawValue !== null && rawValue !== undefined && rawValue !== "") {
+        aggregatorOptions[key] = rawValue;
       }
     });
     return aggregatorOptions;

@@ -350,6 +350,17 @@ export class WorkerPool {
               return;
             }
 
+            // Ignore database files and other non-source files
+            if (
+              filename.includes(".sqlite3") ||
+              filename.includes(".db") ||
+              filename.includes(".log") ||
+              filename.includes(".tmp") ||
+              filename.includes(".cache")
+            ) {
+              return;
+            }
+
             // Only restart on file changes (not deletions)
             if (eventType === "change") {
               const filePath = path.join(watchDir, filename);

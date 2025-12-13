@@ -125,7 +125,33 @@ export class MeinMmoAggregator extends FullWebsiteAggregator {
     }
 
     // Use base fetchArticleContentInternal for single-page
-    return await super.fetchArticleContentInternal(url, article);
+    const html = await super.fetchArticleContentInternal(url, article);
+
+    // Check if article might be multi-page even if option is disabled
+    // This is just for logging/debugging - we don't fetch all pages
+    const { extractPageNumbers } = await import("./mein_mmo/fetching");
+    const pageNumbers = extractPageNumbers(
+      html,
+      this.logger,
+      this.id,
+      this.feed?.id,
+    );
+    if (pageNumbers.size > 1) {
+      this.logger.info(
+        {
+          step: "enrichArticles",
+          subStep: "fetchArticleContent",
+          aggregator: this.id,
+          feedId: this.feed?.id,
+          url,
+          pageCount: pageNumbers.size,
+          pages: Array.from(pageNumbers).sort((a, b) => a - b),
+        },
+        "Article appears to be multi-page, but traverse_multipage option is disabled. Enable 'Traverse multi-page articles' option to fetch all pages.",
+      );
+    }
+
+    return html;
   }
 
   /**

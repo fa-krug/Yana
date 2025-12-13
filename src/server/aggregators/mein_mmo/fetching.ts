@@ -191,7 +191,12 @@ export function extractPageNumbers(
   const pageNumbers = new Set<number>([1]); // Always include page 1
 
   // Look for pagination container (WordPress standard)
+  // Try multiple selectors to find pagination container
   let pagination = $("nav.navigation.pagination").first();
+  if (pagination.length === 0) {
+    // Try div.gp-pagination (Mein-MMO specific)
+    pagination = $("div.gp-pagination").first();
+  }
   if (pagination.length === 0) {
     // Fallback: look for ul.page-numbers
     pagination = $("ul.page-numbers").first();
@@ -201,10 +206,22 @@ export function extractPageNumbers(
     pagination = $("body");
   }
 
+  logger.debug(
+    {
+      step: "enrichArticles",
+      subStep: "fetchAllPages",
+      aggregator: aggregatorId,
+      feedId,
+      paginationContainer:
+        pagination.length > 0 ? pagination.get(0)?.tagName : "none",
+    },
+    "Found pagination container",
+  );
+
   // Look for page number links
   pagination.find("a.page-numbers, a.post-page-numbers").each((_, el) => {
     const $link = $(el);
-    // Try to get page number from link text
+    // Try to get page number from link text (handles nested spans)
     const text = $link.text().trim();
     if (/^\d+$/.test(text)) {
       pageNumbers.add(parseInt(text, 10));
@@ -215,9 +232,30 @@ export function extractPageNumbers(
           aggregator: aggregatorId,
           feedId,
           pageNumber: text,
+          source: "link_text",
         },
         "Found page number from link text",
       );
+    }
+
+    // Also try to extract from nested span.page-numbers
+    const nestedSpan = $link.find("span.page-numbers").first();
+    if (nestedSpan.length > 0) {
+      const spanText = nestedSpan.text().trim();
+      if (/^\d+$/.test(spanText)) {
+        pageNumbers.add(parseInt(spanText, 10));
+        logger.debug(
+          {
+            step: "enrichArticles",
+            subStep: "fetchAllPages",
+            aggregator: aggregatorId,
+            feedId,
+            pageNumber: spanText,
+            source: "nested_span",
+          },
+          "Found page number from nested span",
+        );
+      }
     }
 
     // Also try to extract from URL
@@ -235,6 +273,7 @@ export function extractPageNumbers(
             feedId,
             pageNumber: match[1],
             href,
+            source: "url",
           },
           "Found page number from URL",
         );
@@ -242,24 +281,47 @@ export function extractPageNumbers(
     }
   });
 
-  // Also check for span.page-numbers (current page indicator)
-  pagination.find("span.page-numbers, span.current").each((_, el) => {
-    const $span = $(el);
-    const text = $span.text().trim();
-    if (/^\d+$/.test(text)) {
-      pageNumbers.add(parseInt(text, 10));
-      logger.debug(
-        {
-          step: "enrichArticles",
-          subStep: "fetchAllPages",
-          aggregator: aggregatorId,
-          feedId,
-          pageNumber: text,
-        },
-        "Found current page number from span",
-      );
-    }
-  });
+  // Also check for span.page-numbers and span.post-page-numbers (current page indicator)
+  // This handles both nested and direct span elements
+  pagination
+    .find("span.page-numbers, span.post-page-numbers, span.current")
+    .each((_, el) => {
+      const $span = $(el);
+      const text = $span.text().trim();
+      if (/^\d+$/.test(text)) {
+        pageNumbers.add(parseInt(text, 10));
+        logger.debug(
+          {
+            step: "enrichArticles",
+            subStep: "fetchAllPages",
+            aggregator: aggregatorId,
+            feedId,
+            pageNumber: text,
+            source: "span",
+          },
+          "Found current page number from span",
+        );
+      }
+      // Also check nested span.page-numbers within span.post-page-numbers
+      const nestedSpan = $span.find("span.page-numbers").first();
+      if (nestedSpan.length > 0) {
+        const nestedText = nestedSpan.text().trim();
+        if (/^\d+$/.test(nestedText)) {
+          pageNumbers.add(parseInt(nestedText, 10));
+          logger.debug(
+            {
+              step: "enrichArticles",
+              subStep: "fetchAllPages",
+              aggregator: aggregatorId,
+              feedId,
+              pageNumber: nestedText,
+              source: "nested_span_in_span",
+            },
+            "Found page number from nested span in span",
+          );
+        }
+      }
+    });
 
   logger.info(
     {
