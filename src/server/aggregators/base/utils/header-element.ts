@@ -12,6 +12,9 @@ import {
   MAX_HEADER_IMAGE_HEIGHT,
 } from "./compression";
 import { extractYouTubeVideoId, getYouTubeProxyUrl } from "./youtube";
+import { extractPostInfoFromUrl } from "../../reddit/urls";
+import { fetchRedditIcon } from "@server/services/icon.service";
+import { fetchSingleImage } from "./images";
 
 /**
  * Create a header HTML element from a URL.
@@ -20,6 +23,7 @@ import { extractYouTubeVideoId, getYouTubeProxyUrl } from "./youtube";
  * - Direct image URLs: extracts, compresses, base64 encodes, returns <img>
  * - YouTube URLs: returns embedded <iframe>
  * - Twitter/X URLs: extracts image, compresses, base64 encodes, returns <img>
+ * - Reddit post URLs: uses subreddit thumbnail, compresses, base64 encodes, returns <img>
  * - Reddit image URLs: extracts, compresses, base64 encodes, returns <img>
  * - Other URLs: attempts to extract image from page, compresses, base64 encodes, returns <img>
  *
@@ -36,6 +40,72 @@ export async function createHeaderElementFromUrl(
   }
 
   try {
+    // Check if it's a Reddit post URL - use subreddit thumbnail
+    const postInfo = extractPostInfoFromUrl(url);
+    if (postInfo.subreddit) {
+      logger.debug(
+        { url, subreddit: postInfo.subreddit },
+        "Detected Reddit post URL, fetching subreddit thumbnail",
+      );
+
+      try {
+        // Fetch subreddit icon URL
+        const iconUrl = await fetchRedditIcon(postInfo.subreddit);
+
+        if (iconUrl) {
+          // Fetch the icon image
+          const imageResult = await fetchSingleImage(iconUrl);
+
+          if (imageResult.imageData && imageResult.contentType) {
+            // Compress the image with header image dimensions
+            const compressed = await compressImage(
+              imageResult.imageData,
+              imageResult.contentType,
+              MAX_HEADER_IMAGE_WIDTH,
+              MAX_HEADER_IMAGE_HEIGHT,
+            );
+            const compressedData = compressed.imageData;
+            const outputType = compressed.contentType;
+
+            // Convert to base64
+            const imageB64 = compressedData.toString("base64");
+            const dataUri = `data:${outputType};base64,${imageB64}`;
+
+            // Create img element with base64 data URI
+            const imgHtml = `<p><img src="${dataUri}" alt="${alt}" style="max-width: 100%; height: auto;"></p>`;
+
+            logger.debug(
+              {
+                url,
+                subreddit: postInfo.subreddit,
+                contentType: outputType,
+                size: compressedData.length,
+              },
+              "Created base64 image element from subreddit thumbnail",
+            );
+
+            return imgHtml;
+          } else {
+            logger.debug(
+              { url, subreddit: postInfo.subreddit, iconUrl },
+              "Failed to fetch subreddit icon image",
+            );
+          }
+        } else {
+          logger.debug(
+            { url, subreddit: postInfo.subreddit },
+            "No subreddit icon found",
+          );
+        }
+      } catch (error) {
+        logger.warn(
+          { error, url, subreddit: postInfo.subreddit },
+          "Failed to fetch subreddit thumbnail, falling back to default extraction",
+        );
+        // Fall through to default extraction
+      }
+    }
+
     // Check if it's a YouTube URL - return embed instead of image
     const videoId = extractYouTubeVideoId(url);
     if (videoId) {
