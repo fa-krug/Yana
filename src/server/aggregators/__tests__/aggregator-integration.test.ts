@@ -140,19 +140,22 @@ const AGGREGATOR_TESTS: AggregatorTestConfig[] = [
   },
   {
     aggregator: FullWebsiteAggregator,
-    testUrl: "https://www.heise.de/bestenlisten/testsieger/top-10-die-besten-saugroboter-mit-wischfunktion-im-test-besser-mit-walze/2dxtvlp",
+    testUrl:
+      "https://www.heise.de/bestenlisten/testsieger/top-10-die-besten-saugroboter-mit-wischfunktion-im-test-besser-mit-walze/2dxtvlp",
     identifier: "https://www.heise.de/rss/heise.rdf",
     expectedFields: ["title", "url", "published"],
   },
   {
     aggregator: FeedContentAggregator,
-    testUrl: "https://www.heise.de/bestenlisten/testsieger/top-10-die-besten-saugroboter-mit-wischfunktion-im-test-besser-mit-walze/2dxtvlp",
+    testUrl:
+      "https://www.heise.de/bestenlisten/testsieger/top-10-die-besten-saugroboter-mit-wischfunktion-im-test-besser-mit-walze/2dxtvlp",
     identifier: "https://www.heise.de/rss/heise.rdf",
     expectedFields: ["title", "url", "published", "summary"],
   },
   {
     aggregator: PodcastAggregator,
-    testUrl: "https://www.npr.org/2025/12/12/nx-s1-5642708/chicago-parking-meter-privitization",
+    testUrl:
+      "https://www.npr.org/2025/12/12/nx-s1-5642708/chicago-parking-meter-privitization",
     identifier: "https://feeds.npr.org/510289/podcast.xml",
     expectedFields: ["title", "url", "published"],
   },
@@ -166,7 +169,8 @@ const AGGREGATOR_TESTS: AggregatorTestConfig[] = [
   },
   {
     aggregator: RedditAggregator,
-    testUrl: "https://www.reddit.com/r/programming/comments/test123/test_reddit_post_title/",
+    testUrl:
+      "https://www.reddit.com/r/programming/comments/test123/test_reddit_post_title/",
     identifier: "programming",
     expectedFields: ["title", "url", "published"],
   },
@@ -283,7 +287,8 @@ describe("Aggregator Integration Tests", () => {
           const aggregatorId = aggregator.id;
 
           // Check if this is an API-based aggregator
-          const isApiBased = aggregatorId === "reddit" || aggregatorId === "youtube";
+          const isApiBased =
+            aggregatorId === "reddit" || aggregatorId === "youtube";
 
           if (isApiBased) {
             // Handle API-based aggregators (Reddit, YouTube)
@@ -317,12 +322,19 @@ describe("Aggregator Integration Tests", () => {
             if (aggregatorId === "reddit") {
               // Mock Reddit OAuth token request
               vi.spyOn(axios, "post").mockResolvedValue({
-                data: { access_token: "mock_token", token_type: "bearer", expires_in: 3600 },
+                data: {
+                  access_token: "mock_token",
+                  token_type: "bearer",
+                  expires_in: 3600,
+                },
               } as any);
 
               // Mock Reddit API calls
               vi.spyOn(axios, "get").mockImplementation((url: string) => {
-                if (url.includes("/r/programming/hot") || url.includes("/r/programming/new")) {
+                if (
+                  url.includes("/r/programming/hot") ||
+                  url.includes("/r/programming/new")
+                ) {
                   // Return mock Reddit posts response
                   return Promise.resolve({ data: apiFixture } as any);
                 }
@@ -356,7 +368,7 @@ describe("Aggregator Integration Tests", () => {
                   const urlObj = new URL(url);
                   const idParam = urlObj.searchParams.get("id");
                   const partParam = urlObj.searchParams.get("part");
-                  
+
                   if (partParam === "id") {
                     // Channel ID validation
                     return Promise.resolve({
@@ -373,7 +385,9 @@ describe("Aggregator Integration Tests", () => {
                             id: idParam || "UCtest123",
                             snippet: {
                               thumbnails: {
-                                high: { url: "https://example.com/channel-icon.jpg" },
+                                high: {
+                                  url: "https://example.com/channel-icon.jpg",
+                                },
                               },
                             },
                             contentDetails: {
@@ -429,13 +443,19 @@ describe("Aggregator Integration Tests", () => {
             try {
               // Mock fetchSourceData to return fixture data
               if (aggregatorId === "reddit") {
-                vi.spyOn(aggregator as any, "fetchSourceData").mockResolvedValue({
+                vi.spyOn(
+                  aggregator as any,
+                  "fetchSourceData",
+                ).mockResolvedValue({
                   posts: apiFixture.data.children,
                   subreddit: "programming",
                   subredditInfo: { iconUrl: null },
                 });
               } else if (aggregatorId === "youtube") {
-                vi.spyOn(aggregator as any, "fetchSourceData").mockResolvedValue({
+                vi.spyOn(
+                  aggregator as any,
+                  "fetchSourceData",
+                ).mockResolvedValue({
                   videos: apiFixture.items,
                   channelId: "UCtest123",
                 });
@@ -443,7 +463,9 @@ describe("Aggregator Integration Tests", () => {
 
               // Test parseToRawArticles
               const sourceData = await (aggregator as any).fetchSourceData();
-              articles = await (aggregator as any).parseToRawArticles(sourceData);
+              articles = await (aggregator as any).parseToRawArticles(
+                sourceData,
+              );
             } catch (error) {
               console.warn(
                 `parseToRawArticles failed for ${testName}:`,
@@ -499,11 +521,16 @@ describe("Aggregator Integration Tests", () => {
               aggregator as any,
               "fetchArticleContentInternal",
             ).mockResolvedValue(mockHtml);
-            
+
             // Also mock the base class method to handle super.fetchArticleContentInternal calls
-            const baseClass = Object.getPrototypeOf(Object.getPrototypeOf(aggregator));
+            const baseClass = Object.getPrototypeOf(
+              Object.getPrototypeOf(aggregator),
+            );
             if (baseClass && baseClass.fetchArticleContentInternal) {
-              vi.spyOn(baseClass, "fetchArticleContentInternal").mockResolvedValue(mockHtml);
+              vi.spyOn(
+                baseClass,
+                "fetchArticleContentInternal",
+              ).mockResolvedValue(mockHtml);
             }
 
             // Test content extraction
@@ -593,7 +620,6 @@ describe("Aggregator Integration Tests", () => {
       );
     });
   }
-
 
   describe("RawArticle Structure Validation", () => {
     it("should validate required RawArticle fields", () => {

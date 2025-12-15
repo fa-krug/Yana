@@ -97,10 +97,7 @@ const AGGREGATOR_FIXTURES: Array<{
   },
 ];
 
-const FIXTURES_DIR = path.join(
-  __dirname,
-  "fixtures",
-);
+const FIXTURES_DIR = path.join(__dirname, "fixtures");
 
 /**
  * Download HTML content from a URL using Playwright.
@@ -117,32 +114,36 @@ async function downloadHtml(
       waitUntil: "domcontentloaded",
       timeout,
     });
-    
+
     // Handle Oglaf age confirmation
     if (url.includes("oglaf.com")) {
       const confirmButton = await page
         .waitForSelector("#confirm", { timeout: 5000 })
         .catch(() => null);
-      
+
       if (confirmButton) {
         await Promise.all([
-          page.waitForNavigation({ waitUntil: "networkidle", timeout }).catch(() => {}),
+          page
+            .waitForNavigation({ waitUntil: "networkidle", timeout })
+            .catch(() => {}),
           confirmButton.click(),
         ]).catch(() => {});
       }
-      
+
       // Wait for comic content
-      await page.waitForSelector(
-        "#strip, .content img, #content img, .comic img",
-        { timeout, state: "attached" },
-      ).catch(() => {});
+      await page
+        .waitForSelector("#strip, .content img, #content img, .comic img", {
+          timeout,
+          state: "attached",
+        })
+        .catch(() => {});
     }
-    
+
     // Wait for specific selector if provided
     if (waitForSelector) {
       await page.waitForSelector(waitForSelector, { timeout }).catch(() => {});
     }
-    
+
     const html = await page.content();
     await page.close();
     return html;
@@ -191,7 +192,9 @@ async function main(): Promise<void> {
   try {
     for (const fixture of AGGREGATOR_FIXTURES) {
       if (fixture.skip) {
-        console.log(`⏭️  Skipping ${fixture.aggregatorName} (${fixture.aggregatorId})`);
+        console.log(
+          `⏭️  Skipping ${fixture.aggregatorName} (${fixture.aggregatorId})`,
+        );
         continue;
       }
 
@@ -208,10 +211,13 @@ async function main(): Promise<void> {
                   data: {
                     id: "test123",
                     title: "Test Reddit Post Title",
-                    selftext: "This is a test self post with some content.\n\nIt has multiple paragraphs and **markdown formatting**.",
-                    selftext_html: "<div class=\"md\"><p>This is a test self post with some content.</p>\n<p>It has multiple paragraphs and <strong>markdown formatting</strong>.</p>\n</div>",
+                    selftext:
+                      "This is a test self post with some content.\n\nIt has multiple paragraphs and **markdown formatting**.",
+                    selftext_html:
+                      '<div class="md"><p>This is a test self post with some content.</p>\n<p>It has multiple paragraphs and <strong>markdown formatting</strong>.</p>\n</div>',
                     url: "https://example.com/link",
-                    permalink: "/r/programming/comments/test123/test_reddit_post_title/",
+                    permalink:
+                      "/r/programming/comments/test123/test_reddit_post_title/",
                     created_utc: Math.floor(Date.now() / 1000),
                     author: "testuser",
                     score: 1234,
@@ -236,8 +242,15 @@ async function main(): Promise<void> {
               ],
             },
           };
-          const apiFilePath = path.join(FIXTURES_DIR, `${fixture.aggregatorId}-api.json`);
-          await fs.writeFile(apiFilePath, JSON.stringify(redditApiFixture, null, 2), "utf-8");
+          const apiFilePath = path.join(
+            FIXTURES_DIR,
+            `${fixture.aggregatorId}-api.json`,
+          );
+          await fs.writeFile(
+            apiFilePath,
+            JSON.stringify(redditApiFixture, null, 2),
+            "utf-8",
+          );
           console.log(
             `✅ Saved ${fixture.aggregatorName} API fixture to ${apiFilePath}`,
           );
@@ -252,7 +265,8 @@ async function main(): Promise<void> {
                 id: "dQw4w9WgXcQ",
                 snippet: {
                   title: "Test YouTube Video Title",
-                  description: "This is a test YouTube video description with some content.\n\nIt has multiple lines and formatting.",
+                  description:
+                    "This is a test YouTube video description with some content.\n\nIt has multiple lines and formatting.",
                   publishedAt: new Date().toISOString(),
                   channelId: "UCtest123",
                   channelTitle: "Test Channel",
@@ -285,8 +299,15 @@ async function main(): Promise<void> {
               },
             ],
           };
-          const apiFilePath = path.join(FIXTURES_DIR, `${fixture.aggregatorId}-api.json`);
-          await fs.writeFile(apiFilePath, JSON.stringify(youtubeApiFixture, null, 2), "utf-8");
+          const apiFilePath = path.join(
+            FIXTURES_DIR,
+            `${fixture.aggregatorId}-api.json`,
+          );
+          await fs.writeFile(
+            apiFilePath,
+            JSON.stringify(youtubeApiFixture, null, 2),
+            "utf-8",
+          );
           console.log(
             `✅ Saved ${fixture.aggregatorName} API fixture to ${apiFilePath}`,
           );
@@ -298,7 +319,7 @@ async function main(): Promise<void> {
           `📡 Fetching RSS feed for ${fixture.aggregatorName} (${fixture.aggregatorId}) from ${fixture.feedUrl}...`,
         );
         const articleUrl = await getFirstArticleUrl(fixture.feedUrl);
-        
+
         if (!articleUrl) {
           console.error(
             `❌ No articles found in RSS feed for ${fixture.aggregatorName}`,
@@ -306,21 +327,23 @@ async function main(): Promise<void> {
           continue;
         }
 
-        console.log(
-          `📄 Found article: ${articleUrl}`,
-        );
+        console.log(`📄 Found article: ${articleUrl}`);
 
         // Step 2: Download article HTML using Playwright
-        console.log(
-          `📥 Downloading ${fixture.aggregatorName} article HTML...`,
-        );
-        
+        console.log(`📥 Downloading ${fixture.aggregatorName} article HTML...`);
+
         // Get waitForSelector if this is Oglaf
-        const waitForSelector = fixture.aggregatorId === "oglaf" 
-          ? "#strip, .content img, #content img, .comic img"
-          : undefined;
-        
-        const html = await downloadHtml(browser, articleUrl, 30000, waitForSelector);
+        const waitForSelector =
+          fixture.aggregatorId === "oglaf"
+            ? "#strip, .content img, #content img, .comic img"
+            : undefined;
+
+        const html = await downloadHtml(
+          browser,
+          articleUrl,
+          30000,
+          waitForSelector,
+        );
         await fs.writeFile(filePath, html, "utf-8");
         console.log(
           `✅ Saved ${fixture.aggregatorName} HTML (${html.length} bytes) to ${filePath}`,

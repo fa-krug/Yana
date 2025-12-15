@@ -57,7 +57,10 @@ export class FeedFormValidationService {
     Object.entries(options).forEach(([key, option]) => {
       const fieldName = `option_${key}`;
       const validators = option.required ? [Validators.required] : [];
-      const existingValue = existingValues?.[key] ?? option.default;
+      // Handle null/undefined: if existingValues[key] is null or undefined, use default
+      const rawValue = existingValues?.[key];
+      const existingValue =
+        rawValue !== undefined && rawValue !== null ? rawValue : option.default;
 
       // Add JSON validation for json widget type
       if (option.widget === "json") {
@@ -88,6 +91,19 @@ export class FeedFormValidationService {
         formGroup.addControl(
           fieldName,
           this.fb.control(existingValue ?? null, validators),
+        );
+      } else if (option.type === "choice") {
+        // For choice types, use null if no value (Material Select handles null better than empty string)
+        // But prefer the default if available
+        const initialValue =
+          existingValue !== undefined && existingValue !== null
+            ? existingValue
+            : option.default !== undefined && option.default !== null
+              ? option.default
+              : null;
+        formGroup.addControl(
+          fieldName,
+          this.fb.control(initialValue, validators),
         );
       } else {
         formGroup.addControl(
