@@ -51,9 +51,9 @@ export async function fetchSingleImage(url: string): Promise<{
 
     // Determine MIME type
     let contentType = response.headers["content-type"] || "";
+    const urlLower = url.toLowerCase();
     if (!contentType || contentType === "application/octet-stream") {
       // Try to guess from URL
-      const urlLower = url.toLowerCase();
       if (urlLower.endsWith(".jpg") || urlLower.endsWith(".jpeg")) {
         contentType = "image/jpeg";
       } else if (urlLower.endsWith(".png")) {
@@ -62,6 +62,8 @@ export async function fetchSingleImage(url: string): Promise<{
         contentType = "image/gif";
       } else if (urlLower.endsWith(".webp")) {
         contentType = "image/webp";
+      } else if (urlLower.endsWith(".ico")) {
+        contentType = "image/vnd.microsoft.icon";
       } else {
         contentType = "image/jpeg";
       }
@@ -75,9 +77,26 @@ export async function fetchSingleImage(url: string): Promise<{
       return { url, imageData: null, contentType: null };
     }
 
+    const imageBuffer = Buffer.from(response.data);
+
+    // Check if this is an ICO file (Sharp doesn't support ICO files at all)
+    const isIco =
+      contentType === "image/vnd.microsoft.icon" ||
+      contentType === "image/x-icon" ||
+      urlLower.endsWith(".ico");
+
+    // Handle ICO files: Skip Sharp validation since ICO is a valid image format
+    // that browsers can handle, even though Sharp doesn't support it
+    if (isIco) {
+      logger.debug(
+        { url, size: imageBuffer.length },
+        "Skipping Sharp validation for ICO file (Sharp doesn't support ICO)",
+      );
+      return { url, imageData: imageBuffer, contentType };
+    }
+
     // Additional validation: Try to parse as image with sharp
     try {
-      const imageBuffer = Buffer.from(response.data);
       await sharp(imageBuffer).metadata(); // This will throw if not a valid image
       logger.debug(
         { url, contentType, size: imageBuffer.length },
