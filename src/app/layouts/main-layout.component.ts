@@ -208,17 +208,15 @@ export class MainLayoutComponent implements AfterViewInit {
     this.updateMobileState();
 
     // Watch for breakpoint changes
-    this.breakpointObserver
-      .observe([Breakpoints.Handset, Breakpoints.Tablet])
-      .subscribe(() => {
-        this.updateMobileState();
-      });
+    this.breakpointObserver.observe([Breakpoints.Handset]).subscribe(() => {
+      this.updateMobileState();
+    });
   }
 
   private updateMobileState() {
     const isHandset = this.breakpointObserver.isMatched(Breakpoints.Handset);
-    const isTablet = this.breakpointObserver.isMatched(Breakpoints.Tablet);
-    const mobile = isHandset || isTablet;
+    // Only handset devices are considered mobile; tablets should show sidebar
+    const mobile = isHandset;
 
     this.isMobile.set(mobile);
 

@@ -101,25 +101,6 @@ export async function standardizeContentFormat(
           "Using pre-determined header image URL",
         );
 
-        // #region agent log
-        fetch(
-          "http://127.0.0.1:7242/ingest/d5e0eb7d-9efd-48a6-90d9-4e3c6bfea5dd",
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              location: "process.ts:97",
-              message: "firstUrl set from headerImageUrl",
-              data: { firstUrl, headerImageUrl, isNull: firstUrl === null },
-              timestamp: Date.now(),
-              sessionId: "debug-session",
-              runId: "run1",
-              hypothesisId: "A",
-            }),
-          },
-        ).catch(() => {});
-        // #endregion
-
         // Find matching element in content to remove it later
         // This prevents duplicate images (one in header, one in content)
         // Helper function to normalize URLs for comparison (remove trailing slashes, fragments, etc.)
@@ -139,28 +120,6 @@ export async function standardizeContentFormat(
               try {
                 const resolvedImgSrc = new URL(imgSrc, baseUrl).toString();
                 // Compare normalized URLs
-                // #region agent log
-                fetch(
-                  "http://127.0.0.1:7242/ingest/d5e0eb7d-9efd-48a6-90d9-4e3c6bfea5dd",
-                  {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      location: "process.ts:123",
-                      message: "Before normalizeUrl check for image",
-                      data: {
-                        firstUrl,
-                        resolvedImgSrc,
-                        isFirstUrlNull: firstUrl === null,
-                      },
-                      timestamp: Date.now(),
-                      sessionId: "debug-session",
-                      runId: "run1",
-                      hypothesisId: "A",
-                    }),
-                  },
-                ).catch(() => {});
-                // #endregion
                 if (
                   firstUrl &&
                   normalizeUrl(resolvedImgSrc) === normalizeUrl(firstUrl)
@@ -199,28 +158,6 @@ export async function standardizeContentFormat(
                     baseUrl,
                   ).toString();
                   // Compare normalized URLs
-                  // #region agent log
-                  fetch(
-                    "http://127.0.0.1:7242/ingest/d5e0eb7d-9efd-48a6-90d9-4e3c6bfea5dd",
-                    {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({
-                        location: "process.ts:159",
-                        message: "Before normalizeUrl check for link",
-                        data: {
-                          firstUrl,
-                          resolvedLinkHref,
-                          isFirstUrlNull: firstUrl === null,
-                        },
-                        timestamp: Date.now(),
-                        sessionId: "debug-session",
-                        runId: "run1",
-                        hypothesisId: "A",
-                      }),
-                    },
-                  ).catch(() => {});
-                  // #endregion
                   if (
                     firstUrl &&
                     normalizeUrl(resolvedLinkHref) === normalizeUrl(firstUrl)

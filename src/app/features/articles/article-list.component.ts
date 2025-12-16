@@ -37,7 +37,11 @@ import {
 import { MatButtonModule } from "@angular/material/button";
 import { MatIconModule } from "@angular/material/icon";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
-import { MatPaginatorModule, PageEvent } from "@angular/material/paginator";
+import {
+  MatPaginatorModule,
+  MatPaginatorIntl,
+  PageEvent,
+} from "@angular/material/paginator";
 import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
 import { MatTooltipModule } from "@angular/material/tooltip";
 import { MatCardModule } from "@angular/material/card";
@@ -58,6 +62,7 @@ import {
   ConfirmDialogData,
 } from "@app/shared/components/confirm-dialog.component";
 import { getProxiedImageUrl } from "@app/core/utils/image-proxy.util";
+import { ArticlePaginatorIntl } from "@app/core/services/article-paginator-intl.service";
 
 @Component({
   selector: "app-article-list",
@@ -77,6 +82,7 @@ import { getProxiedImageUrl } from "@app/core/utils/image-proxy.util";
     MatMenuModule,
     ArticleFiltersComponent,
   ],
+  providers: [{ provide: MatPaginatorIntl, useClass: ArticlePaginatorIntl }],
   template: `
     <div class="article-list-container container-lg animate-fade-in">
       <div class="header">
@@ -95,18 +101,6 @@ import { getProxiedImageUrl } from "@app/core/utils/image-proxy.util";
           />
         </mat-card-content>
         <mat-card-actions>
-          <div class="article-counts">
-            <span class="count-label">Total:</span>
-            <span class="count-value">{{ articleService.totalCount() }}</span>
-            @if (
-              filteredCount() !== null &&
-              filteredCount() !== articleService.totalCount()
-            ) {
-              <span class="count-separator">|</span>
-              <span class="count-label">Filtered:</span>
-              <span class="count-value">{{ filteredCount() }}</span>
-            }
-          </div>
           <div class="action-buttons">
             <button
               mat-icon-button
@@ -298,9 +292,9 @@ import { getProxiedImageUrl } from "@app/core/utils/image-proxy.util";
           }
         </div>
 
-        @if (articleService.totalPages() > 1) {
+        @if (shouldShowPaginator()) {
           <mat-paginator
-            [length]="articleService.totalCount()"
+            [length]="filteredCount() ?? articleService.totalCount()"
             [pageSize]="articleService.pageSize()"
             [pageIndex]="articleService.currentPage() - 1"
             [pageSizeOptions]="[10, 20, 50, 100]"
@@ -340,7 +334,7 @@ import { getProxiedImageUrl } from "@app/core/utils/image-proxy.util";
         gap: 8px;
         flex-wrap: wrap;
         align-items: center;
-        justify-content: space-between;
+        justify-content: flex-end;
       }
 
       .article-counts {
@@ -656,6 +650,11 @@ import { getProxiedImageUrl } from "@app/core/utils/image-proxy.util";
         margin-top: 24px;
       }
 
+      ::ng-deep mat-paginator {
+        padding-top: 8px;
+        padding-bottom: 8px;
+      }
+
       @media (max-width: 600px) {
         .article-list-container {
           padding: 0;
@@ -689,7 +688,7 @@ import { getProxiedImageUrl } from "@app/core/utils/image-proxy.util";
 
         .action-buttons {
           width: 100%;
-          justify-content: center;
+          justify-content: flex-end;
         }
 
         .article-card {
@@ -768,6 +767,7 @@ export class ArticleListComponent implements OnInit, OnDestroy {
   route = inject(ActivatedRoute);
   snackBar = inject(MatSnackBar);
   dialog = inject(MatDialog);
+  paginatorIntl = inject(MatPaginatorIntl) as ArticlePaginatorIntl;
 
   searchControl = new FormControl<string | null>("");
   feedControl = new FormControl<number | null>(null);
@@ -792,11 +792,22 @@ export class ArticleListComponent implements OnInit, OnDestroy {
   protected readonly getProxiedImageUrl = getProxiedImageUrl;
 
   private destroy$ = new Subject<void>();
+  private totalCountUpdateSubject$ = new Subject<void>();
 
   protected onArticleImageError(articleId: number): void {
     const errors = { ...this.articleImageErrorsSignal() };
     errors[articleId] = true;
     this.articleImageErrorsSignal.set(errors);
+  }
+
+  /**
+   * Determine if paginator should be shown.
+   * Show paginator when there are items, even if only one page,
+   * so users can change the page size.
+   */
+  protected shouldShowPaginator(): boolean {
+    const totalCount = this.articleService.totalCount();
+    return totalCount > 0;
   }
 
   ngOnInit() {
@@ -849,9 +860,14 @@ export class ArticleListComponent implements OnInit, OnDestroy {
         }
       }
 
-      this.articleService.loadArticles(filters).subscribe();
-      // Update filtered count after loading articles
-      setTimeout(() => this.updateFilteredCount(), 100);
+      this.articleService.loadArticles(filters).subscribe({
+        next: (response) => {
+          // Use count from loadArticles response
+          this.filteredCountSignal.set(response.count);
+          // Debounce total count update to avoid redundant queries
+          this.debouncedUpdateTotalCountAll();
+        },
+      });
     });
 
     // Debounce search input
@@ -890,6 +906,13 @@ export class ArticleListComponent implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe(() => {
         this.applyFilters();
+      });
+
+    // Setup debounced total count updates
+    this.totalCountUpdateSubject$
+      .pipe(debounceTime(500), takeUntil(this.destroy$))
+      .subscribe(() => {
+        this.updateTotalCountAll();
       });
   }
 
@@ -934,12 +957,54 @@ export class ArticleListComponent implements OnInit, OnDestroy {
       filters.dateTo = dateTo;
     }
 
-    this.articleService.loadArticles(filters).subscribe();
-    this.updateFilteredCount();
+    this.articleService.loadArticles(filters).subscribe({
+      next: (response) => {
+        // Use count from loadArticles response instead of making separate query
+        this.filteredCountSignal.set(response.count);
+        // Debounce total count update to avoid redundant queries
+        this.debouncedUpdateTotalCountAll();
+      },
+    });
   }
 
+  /**
+   * Update filtered count using the count from loadArticles response.
+   * This method is kept for backward compatibility but is no longer needed
+   * since we use the count directly from loadArticles response.
+   */
   private updateFilteredCount() {
-    // Get filtered count by loading with pageSize=1 just to get the total count
+    // This method is deprecated - use count from loadArticles response directly
+    // Kept for backward compatibility only
+    const currentCount = this.articleService.totalCount();
+    this.filteredCountSignal.set(currentCount);
+  }
+
+  /**
+   * Debounced version of updateTotalCountAll to avoid redundant API calls.
+   * Waits 500ms after the last call before executing.
+   */
+  private debouncedUpdateTotalCountAll() {
+    this.totalCountUpdateSubject$.next();
+  }
+
+  private updateTotalCountAll() {
+    // #region agent log
+    fetch("http://127.0.0.1:7242/ingest/d5e0eb7d-9efd-48a6-90d9-4e3c6bfea5dd", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        location: "article-list.component.ts:994",
+        message: "updateTotalCountAll called",
+        data: { currentPageSize: this.articleService.pageSize() },
+        timestamp: Date.now(),
+        sessionId: "debug-session",
+        runId: "pre-fix",
+        hypothesisId: "A",
+      }),
+    }).catch(() => {});
+    // #endregion
+    // Get total count of all articles (without read state filter)
+    // This includes both read and unread articles
     const filters: ArticleFilters = {
       page: 1,
       pageSize: 1, // Minimal page size just to get count
@@ -955,10 +1020,8 @@ export class ArticleListComponent implements OnInit, OnDestroy {
       filters.feedId = feedId;
     }
 
-    const readState = this.readStateControl.value;
-    if (readState) {
-      filters.readState = readState;
-    }
+    // Don't include readState filter - we want all articles
+    // filters.readState = undefined;
 
     const groupId = this.groupControl.value;
     if (groupId) {
@@ -980,15 +1043,57 @@ export class ArticleListComponent implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (response) => {
-          this.filteredCountSignal.set(response.count);
+          // #region agent log
+          fetch(
+            "http://127.0.0.1:7242/ingest/d5e0eb7d-9efd-48a6-90d9-4e3c6bfea5dd",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                location: "article-list.component.ts:1034",
+                message: "updateTotalCountAll loadArticles completed",
+                data: {
+                  responsePageSize: response.pageSize,
+                  currentPageSize: this.articleService.pageSize(),
+                },
+                timestamp: Date.now(),
+                sessionId: "debug-session",
+                runId: "pre-fix",
+                hypothesisId: "A",
+              }),
+            },
+          ).catch(() => {});
+          // #endregion
+          this.paginatorIntl.setTotalCountAll(response.count);
         },
         error: () => {
-          this.filteredCountSignal.set(null);
+          this.paginatorIntl.setTotalCountAll(null);
         },
       });
   }
 
   onPageChange(event: PageEvent) {
+    // #region agent log
+    fetch("http://127.0.0.1:7242/ingest/d5e0eb7d-9efd-48a6-90d9-4e3c6bfea5dd", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        location: "article-list.component.ts:1043",
+        message: "onPageChange called",
+        data: {
+          eventPageSize: event.pageSize,
+          eventPageIndex: event.pageIndex,
+          currentPageSize: this.articleService.pageSize(),
+          currentTotalCount: this.articleService.totalCount(),
+          currentTotalPages: this.articleService.totalPages(),
+        },
+        timestamp: Date.now(),
+        sessionId: "debug-session",
+        runId: "pre-fix",
+        hypothesisId: "B",
+      }),
+    }).catch(() => {});
+    // #endregion
     const filters: ArticleFilters = {
       page: event.pageIndex + 1,
       pageSize: event.pageSize,
@@ -1024,7 +1129,38 @@ export class ArticleListComponent implements OnInit, OnDestroy {
       filters.dateTo = dateTo;
     }
 
-    this.articleService.loadArticles(filters).subscribe();
+    this.articleService.loadArticles(filters).subscribe({
+      next: (response) => {
+        // #region agent log
+        fetch(
+          "http://127.0.0.1:7242/ingest/d5e0eb7d-9efd-48a6-90d9-4e3c6bfea5dd",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              location: "article-list.component.ts:1080",
+              message: "onPageChange loadArticles completed",
+              data: {
+                responsePageSize: response.pageSize,
+                responseCount: response.count,
+                currentPageSize: this.articleService.pageSize(),
+                currentTotalCount: this.articleService.totalCount(),
+                currentTotalPages: this.articleService.totalPages(),
+              },
+              timestamp: Date.now(),
+              sessionId: "debug-session",
+              runId: "pre-fix",
+              hypothesisId: "B",
+            }),
+          },
+        ).catch(() => {});
+        // #endregion
+        // Use count from loadArticles response
+        this.filteredCountSignal.set(response.count);
+        // Debounce total count update
+        this.debouncedUpdateTotalCountAll();
+      },
+    });
   }
 
   toggleRead(event: Event, article: Article) {
@@ -1139,10 +1275,9 @@ export class ArticleListComponent implements OnInit, OnDestroy {
             duration: 3000,
             panelClass: ["success-snackbar"],
           });
-          // Refresh the current view
-          this.applyFilters();
-          // Update filtered count
-          this.updateFilteredCount();
+          // Optimistic updates are already handled in article.service.ts
+          // Only refresh if current page might be affected by the operation
+          // For mark read/unread, the optimistic update handles the UI, so no refresh needed
         },
         error: (error) => {
           this.snackBar.open(
@@ -1194,8 +1329,15 @@ export class ArticleListComponent implements OnInit, OnDestroy {
                 duration: 3000,
                 panelClass: ["success-snackbar"],
               });
-              // Refresh the current view
-              this.applyFilters();
+              // Optimistic updates are already handled in article.service.ts
+              // Only refresh if current page might be affected
+              // Check if any articles on current page were deleted
+              const currentArticles = this.articleService.articles();
+              if (currentArticles.length === 0) {
+                // If all articles on current page were deleted, refresh to show next page
+                this.applyFilters();
+              }
+              // Otherwise, optimistic update already removed deleted articles from view
             },
             error: (error) => {
               this.snackBar.open(
@@ -1226,11 +1368,10 @@ export class ArticleListComponent implements OnInit, OnDestroy {
             duration: 3000,
             panelClass: ["success-snackbar"],
           });
-          // Refresh the current view after a delay to allow tasks to complete
-          setTimeout(() => {
-            this.applyFilters();
-            this.updateFilteredCount();
-          }, 2000);
+          // Refresh operations queue tasks in the background
+          // Don't refresh immediately - let tasks complete asynchronously
+          // User can manually refresh if needed, or the list will update naturally
+          // when they navigate/filter
         },
         error: (error) => {
           this.snackBar.open(

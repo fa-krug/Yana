@@ -536,12 +536,41 @@ export async function reloadArticles(
     return { success: true, taskIds: [], count: 0 };
   }
 
-  // Queue all reload tasks
-  const { reloadArticle: reloadArticleTask } =
-    await import("./aggregation.service");
-  const taskPromises = accessibleIds.map((id) => reloadArticleTask(id));
-  const results = await Promise.all(taskPromises);
-  const taskIds = results.map((r) => r.taskId);
+  // Queue all reload tasks using bulk insert for better performance
+  // This is much faster than calling enqueueTask individually for each article
+  // Instead of N individual INSERT queries, we do one bulk INSERT
+  const { tasks } = await import("@server/db");
+  const { getEventEmitter } = await import("./eventEmitter.service");
+  const now = new Date();
+
+  // Bulk insert all tasks at once
+  const taskValues = accessibleIds.map((articleId) => ({
+    type: "aggregate_article" as const,
+    status: "pending" as const,
+    payload: JSON.stringify({ articleId }),
+    retries: 0,
+    maxRetries: 3,
+    createdAt: now,
+    updatedAt: now,
+  }));
+
+  const createdTasks = await db.insert(tasks).values(taskValues).returning();
+
+  const taskIds = createdTasks.map((t) => t.id);
+
+  // Emit events for real-time updates
+  const eventEmitter = getEventEmitter();
+  for (const task of createdTasks) {
+    eventEmitter.emit("task-created", {
+      taskId: task.id,
+      type: task.type,
+      status: task.status,
+    });
+  }
+
+  // Note: If DISABLE_WORKERS=true, tasks will be processed synchronously
+  // by the worker process, not here. This keeps the code simpler and
+  // maintains separation of concerns.
 
   logger.info(
     {
@@ -678,6 +707,14 @@ export async function getArticleReadState(
 
 /**
  * Get accessible article IDs based on filters (reusable helper).
+ * Optimized for performance with proper index usage.
+ *
+ * Indexes used:
+ * - articles_feed_date_idx: (feed_id, date) - for feed and date filtering
+ * - articles_feed_id_idx: (feed_id) - for feed filtering
+ * - articles_date_idx: (date) - for date range filtering
+ * - user_article_states_user_read_idx: (user_id, is_read) - for read state filtering
+ * - user_article_states_user_saved_idx: (user_id, is_saved) - for saved state filtering
  */
 async function getAccessibleArticleIds(
   user: UserInfo,
@@ -692,6 +729,7 @@ async function getAccessibleArticleIds(
   },
 ): Promise<number[]> {
   // Build feed conditions (same logic as listArticles)
+  // Uses feeds_user_id_idx index
   const feedConditions = [or(eq(feeds.userId, user.id), isNull(feeds.userId))];
 
   if (filters.feedId) {
@@ -704,6 +742,7 @@ async function getAccessibleArticleIds(
     .where(and(...feedConditions));
 
   // Filter by group if specified
+  // Uses feed_groups_group_id_idx index
   if (filters.groupId) {
     const [group] = await db
       .select()
@@ -735,12 +774,15 @@ async function getAccessibleArticleIds(
   }
 
   // Build article conditions
+  // Use inArray for feed filtering - leverages articles_feed_id_idx
   const articleConditions = [inArray(articles.feedId, feedIds)];
 
+  // Search uses LIKE which can't use index efficiently, but it's necessary
   if (filters.search) {
     articleConditions.push(like(articles.name, `%${filters.search}%`));
   }
 
+  // Date filtering uses articles_feed_date_idx or articles_date_idx
   if (filters.dateFrom) {
     const fromDate =
       filters.dateFrom instanceof Date

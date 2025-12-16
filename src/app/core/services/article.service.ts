@@ -149,11 +149,67 @@ export class ArticleService {
         pages: response.pages || 0,
       })),
       tap((response) => {
-        this.articlesSignal.set(response.items || []);
-        this.totalCountSignal.set(response.count || 0);
-        this.currentPageSignal.set(response.page || 1);
-        this.pageSizeSignal.set(response.pageSize || 20);
+        const responseItems = response.items || [];
+        const responseCount = response.count || 0;
+        const hasResponseItems = responseItems.length > 0;
+
+        // Check if we have articles loaded BEFORE updating the signal
+        // This helps us determine if a 0 count response is a temporary state during reload
+        const hadArticlesBefore = this.articlesSignal().length > 0;
+        const previousCount = this.totalCountSignal();
+
+        // CRITICAL: Silent queries (like updateTotalCountAll) use pageSize: 1 and should NOT
+        // overwrite the articles array, as they're only used to get the total count.
+        // Only update articles for non-silent queries to prevent race conditions where
+        // the silent query completes after the main query and overwrites articles with just 1 item.
         if (!silent) {
+          this.articlesSignal.set(responseItems);
+        }
+
+        // Update totalCount intelligently to prevent paginator from disappearing during reload
+        // Strategy:
+        // 1. If response has a valid count (> 0), always update
+        // 2. If response count is 0 but we have items in response, preserve previous count (inconsistent state)
+        // 3. For silent queries, always update count (they're used to get accurate counts)
+        // 4. If response count is 0 and no items in response (non-silent):
+        //    - If we had articles before, preserve count (temporary empty response during reload)
+        //    - If no articles before and previous count was 0, update to 0 (explicit clear)
+        //    - If no articles before but previous count > 0, preserve count (wait for accurate count)
+        let shouldUpdateCount: boolean;
+        if (responseCount > 0) {
+          // Always update if we have a valid count
+          shouldUpdateCount = true;
+        } else if (hasResponseItems && responseCount === 0) {
+          // Inconsistent: we have items but count is 0 - preserve previous count
+          shouldUpdateCount = false;
+        } else if (silent) {
+          // Silent queries are used to get accurate counts, so always update
+          // This ensures updateTotalCountAll can update the count even if main query returned 0
+          shouldUpdateCount = true;
+        } else if (hadArticlesBefore) {
+          // We had articles before, but response says 0 - likely a temporary state during reload
+          // Preserve previous count to keep paginator visible
+          shouldUpdateCount = false;
+        } else if (previousCount > 0) {
+          // No items in response, no articles before, but we had a count > 0
+          // This might be a reload scenario - preserve count to keep paginator visible
+          shouldUpdateCount = false;
+        } else {
+          // No items, no articles before, and previous count was 0
+          // This is an explicit clear - update to 0
+          shouldUpdateCount = true;
+        }
+
+        if (shouldUpdateCount) {
+          this.totalCountSignal.set(responseCount);
+        }
+
+        // Only update pagination state if not a silent/background query
+        // Silent queries (like updateTotalCountAll) use pageSize: 1 and shouldn't
+        // overwrite the user's selected page size
+        if (!silent) {
+          this.currentPageSignal.set(response.page || 1);
+          this.pageSizeSignal.set(response.pageSize || 20);
           this.loadingSignal.set(false);
         }
       }),
@@ -163,6 +219,7 @@ export class ArticleService {
         if (!silent) {
           this.loadingSignal.set(false);
         }
+        // Return empty response - don't update pagination state on error
         return of({ items: [], count: 0, page: 1, pageSize: 20, pages: 0 });
       }),
     );
