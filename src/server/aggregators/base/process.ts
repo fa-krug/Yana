@@ -100,6 +100,77 @@ export async function standardizeContentFormat(
           { url: firstUrl },
           "Using pre-determined header image URL",
         );
+
+        // Find matching element in content to remove it later
+        // This prevents duplicate images (one in header, one in content)
+        // Helper function to normalize URLs for comparison (remove trailing slashes, fragments, etc.)
+        const normalizeUrl = (url: string) =>
+          url.replace(/\/$/, "").split("#")[0].split("?")[0];
+
+        if (!firstElement) {
+          // Try to find matching image element
+          $body("img").each((_, element) => {
+            if (firstElement) return; // Already found one
+            const $img = $body(element);
+            const imgSrc =
+              $img.attr("src") ||
+              $img.attr("data-src") ||
+              $img.attr("data-lazy-src");
+            if (imgSrc) {
+              try {
+                const resolvedImgSrc = new URL(imgSrc, baseUrl).toString();
+                // Compare normalized URLs
+                if (normalizeUrl(resolvedImgSrc) === normalizeUrl(firstUrl)) {
+                  firstElement = $body(element);
+                  logger.debug(
+                    { url: resolvedImgSrc },
+                    "Found matching image element in content",
+                  );
+                }
+              } catch (error) {
+                // Invalid URL, skip
+              }
+            }
+          });
+
+          // If no matching image, try to find matching link
+          if (!firstElement) {
+            $body("a[href]").each((_, element) => {
+              if (firstElement) return; // Already found one
+              const $link = $body(element);
+              const linkHref = $link.attr("href");
+              if (linkHref) {
+                // Skip invalid URLs
+                if (
+                  linkHref.includes("${") ||
+                  linkHref.startsWith("javascript:") ||
+                  linkHref.startsWith("data:") ||
+                  linkHref.trim() === ""
+                ) {
+                  return;
+                }
+                try {
+                  const resolvedLinkHref = new URL(
+                    linkHref,
+                    baseUrl,
+                  ).toString();
+                  // Compare normalized URLs
+                  if (
+                    normalizeUrl(resolvedLinkHref) === normalizeUrl(firstUrl)
+                  ) {
+                    firstElement = $body(element);
+                    logger.debug(
+                      { url: resolvedLinkHref },
+                      "Found matching link element in content",
+                    );
+                  }
+                } catch (error) {
+                  // Invalid URL, skip
+                }
+              }
+            });
+          }
+        }
       } else if (!firstUrl) {
         // First, try to find an image
         const firstImg = $body("img").first();
