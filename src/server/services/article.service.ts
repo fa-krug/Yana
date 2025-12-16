@@ -16,6 +16,8 @@ import {
   inArray,
   lt,
   gt,
+  gte,
+  lte,
 } from "drizzle-orm";
 import {
   db,
@@ -51,6 +53,8 @@ export async function listArticles(
     isRead?: boolean;
     isSaved?: boolean;
     search?: string;
+    dateFrom?: Date | string;
+    dateTo?: Date | string;
     page?: number;
     pageSize?: number;
   } = {},
@@ -62,6 +66,8 @@ export async function listArticles(
     isRead,
     isSaved,
     search,
+    dateFrom,
+    dateTo,
     page = 1,
     pageSize = 20,
   } = filters;
@@ -125,6 +131,19 @@ export async function listArticles(
 
   if (search) {
     articleConditions.push(like(articles.name, `%${search}%`));
+  }
+
+  // Date range filtering
+  if (dateFrom) {
+    const fromDate = dateFrom instanceof Date ? dateFrom : new Date(dateFrom);
+    articleConditions.push(gte(articles.date, fromDate));
+  }
+
+  if (dateTo) {
+    const toDate = dateTo instanceof Date ? dateTo : new Date(dateTo);
+    // Set to end of day for inclusive filtering
+    toDate.setHours(23, 59, 59, 999);
+    articleConditions.push(lte(articles.date, toDate));
   }
 
   // Get total count

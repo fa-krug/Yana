@@ -40,6 +40,8 @@ const articleListInputSchema = z.object({
   isRead: z.boolean().nullish(),
   isSaved: z.boolean().nullish(),
   search: z.string().nullish(),
+  dateFrom: z.string().datetime().nullish(),
+  dateTo: z.string().datetime().nullish(),
 });
 
 /**
@@ -73,6 +75,8 @@ export const articleRouter = router({
         isRead: input.isRead ?? undefined,
         isSaved: input.isSaved ?? undefined,
         search: input.search ?? undefined,
+        dateFrom: input.dateFrom ? new Date(input.dateFrom) : undefined,
+        dateTo: input.dateTo ? new Date(input.dateTo) : undefined,
         page: input.page,
         pageSize: input.pageSize,
       });

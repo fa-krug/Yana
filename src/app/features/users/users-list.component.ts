@@ -81,32 +81,38 @@ import {
     <div class="users-list-container container-lg animate-fade-in">
       <div class="header">
         <h1>Users</h1>
-        <button
-          mat-raised-button
-          color="primary"
-          (click)="openCreateDialog()"
-          class="create-button"
-        >
-          Create User
-        </button>
       </div>
 
-      <div class="filters">
-        <mat-form-field appearance="outline" class="search-field">
-          <mat-label>Search users</mat-label>
-          <input matInput [formControl]="searchControl" />
-          <mat-icon matPrefix>search</mat-icon>
-        </mat-form-field>
+      <mat-card class="filters-card">
+        <mat-card-content>
+          <div class="filters">
+            <mat-form-field appearance="outline" class="search-field">
+              <mat-label>Search users</mat-label>
+              <input matInput [formControl]="searchControl" />
+              <mat-icon matPrefix>search</mat-icon>
+            </mat-form-field>
 
-        <mat-form-field appearance="outline" class="filter-field">
-          <mat-label>User Type</mat-label>
-          <mat-select [formControl]="superuserControl">
-            <mat-option [value]="null">All Users</mat-option>
-            <mat-option [value]="true">Superusers</mat-option>
-            <mat-option [value]="false">Regular Users</mat-option>
-          </mat-select>
-        </mat-form-field>
-      </div>
+            <mat-form-field appearance="outline" class="filter-field">
+              <mat-label>User Type</mat-label>
+              <mat-select [formControl]="superuserControl">
+                <mat-option [value]="null">All Users</mat-option>
+                <mat-option [value]="true">Superusers</mat-option>
+                <mat-option [value]="false">Regular Users</mat-option>
+              </mat-select>
+            </mat-form-field>
+          </div>
+        </mat-card-content>
+        <mat-card-actions>
+          <button
+            mat-raised-button
+            color="primary"
+            (click)="openCreateDialog()"
+          >
+            <mat-icon>add</mat-icon>
+            Create User
+          </button>
+        </mat-card-actions>
+      </mat-card>
 
       <mat-card class="users-card">
         @if (loading()) {
@@ -114,7 +120,12 @@ import {
             <mat-spinner diameter="50"></mat-spinner>
           </div>
         } @else if (usersData(); as data) {
-          <table mat-table [dataSource]="data.items" class="users-table">
+          <!-- Desktop table view -->
+          <table
+            mat-table
+            [dataSource]="data.items"
+            class="users-table desktop-view"
+          >
             <ng-container matColumnDef="username">
               <th mat-header-cell *matHeaderCellDef>Username</th>
               <td mat-cell *matCellDef="let user">{{ user.username }}</td>
@@ -192,6 +203,78 @@ import {
             <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
           </table>
 
+          <!-- Mobile card view -->
+          <div class="users-cards mobile-view">
+            @for (user of data.items; track user.id) {
+              <mat-card class="user-card">
+                <mat-card-header>
+                  <div class="user-header-content">
+                    <mat-card-title>{{ user.username }}</mat-card-title>
+                    <mat-card-subtitle>{{ user.email }}</mat-card-subtitle>
+                  </div>
+                  <button
+                    mat-icon-button
+                    [matMenuTriggerFor]="mobileMenu"
+                    class="card-menu"
+                  >
+                    <mat-icon>more_vert</mat-icon>
+                  </button>
+                  <mat-menu #mobileMenu="matMenu">
+                    <button mat-menu-item (click)="openEditDialog(user)">
+                      <mat-icon>edit</mat-icon>
+                      <span>Edit</span>
+                    </button>
+                    <button
+                      mat-menu-item
+                      (click)="openChangePasswordDialog(user)"
+                    >
+                      <mat-icon>lock</mat-icon>
+                      <span>Change Password</span>
+                    </button>
+                    <button
+                      mat-menu-item
+                      (click)="openDeleteDialog(user)"
+                      class="delete-action"
+                    >
+                      <mat-icon>delete</mat-icon>
+                      <span>Delete</span>
+                    </button>
+                  </mat-menu>
+                </mat-card-header>
+                <mat-card-content>
+                  <div class="user-details">
+                    <div class="user-detail-row">
+                      <span class="detail-label">Name:</span>
+                      <span class="detail-value">
+                        {{
+                          user.firstName || user.lastName
+                            ? (user.firstName + " " + user.lastName).trim()
+                            : "-"
+                        }}
+                      </span>
+                    </div>
+                    <div class="user-detail-row">
+                      <span class="detail-label">Superuser:</span>
+                      <span class="detail-value">
+                        @if (user.isSuperuser) {
+                          <mat-chip>Superuser</mat-chip>
+                        } @else {
+                          <span>-</span>
+                        }
+                      </span>
+                    </div>
+                    <div class="user-detail-row">
+                      <span class="detail-label">Created:</span>
+                      <span class="detail-value">
+                        {{ formatDate(user.createdAt) }}
+                      </span>
+                    </div>
+                  </div>
+                </mat-card-content>
+              </mat-card>
+            }
+          </div>
+
           <mat-paginator
             [length]="data.count"
             [pageSize]="data.pageSize"
@@ -216,26 +299,43 @@ import {
       }
 
       .header {
-        display: flex;
-        flex-direction: column;
-        gap: 16px;
-        margin-bottom: 24px;
+        margin-bottom: 16px;
       }
 
       .header h1 {
         margin: 0;
+        font-size: 2.5rem;
+        font-weight: 500;
+        letter-spacing: -0.02em;
+        color: var(--mat-sys-on-surface);
       }
 
-      .create-button {
-        width: 100%;
-        padding: 12px 16px;
-        box-sizing: border-box;
+      .filters-card {
+        margin-bottom: 24px;
+      }
+
+      mat-card-actions {
+        padding: 0 16px 12px 16px !important;
+        display: flex;
+        gap: 8px;
+        flex-wrap: nowrap;
+        align-items: center;
+        justify-content: flex-end;
+      }
+
+      mat-card-actions button {
+        font-weight: 500;
+        transition: all 0.2s ease;
+      }
+
+      mat-card-actions button mat-icon {
+        margin-right: 8px;
       }
 
       .filters {
         display: flex;
         gap: 16px;
-        margin-bottom: 24px;
+        margin-bottom: 0;
         flex-wrap: wrap;
       }
 
@@ -250,6 +350,17 @@ import {
 
       .users-card {
         padding: 0;
+        background-color: transparent;
+      }
+
+      .users-card ::ng-deep .mat-mdc-card-content {
+        padding: 0 !important;
+      }
+
+      .users-cards {
+        display: flex;
+        flex-direction: column;
+        background-color: rgba(0, 0, 0, 0.02);
       }
 
       .loading-container {
@@ -266,6 +377,109 @@ import {
       .users-table th,
       .users-table td {
         padding: 12px 16px;
+      }
+
+      .desktop-view {
+        display: table;
+      }
+
+      .mobile-view {
+        display: none;
+      }
+
+      .users-cards {
+        display: flex;
+        flex-direction: column;
+      }
+
+      .users-cards > * + * {
+        margin-top: 16px;
+      }
+
+      .user-card {
+        border-radius: 0;
+        margin: 0;
+        display: block;
+      }
+
+      .user-card mat-card-header {
+        position: relative;
+        padding: 12px 56px 8px 16px;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: 16px;
+      }
+
+      .user-header-content {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        max-width: calc(100% - 56px);
+      }
+
+      .card-menu {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        opacity: 0.7;
+        transition: opacity 0.2s ease;
+      }
+
+      .user-card:hover .card-menu {
+        opacity: 1;
+      }
+
+      .user-card mat-card-title {
+        font-size: 1.125rem !important;
+        font-weight: 500 !important;
+        margin: 0 0 2px 0 !important;
+        line-height: 1.3 !important;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 100%;
+        word-break: break-word;
+      }
+
+      .user-card mat-card-subtitle {
+        font-size: 0.8125rem !important;
+        opacity: 0.7;
+        margin: 0 !important;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .user-card mat-card-content {
+        padding: 8px 16px !important;
+      }
+
+      .user-details {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .user-detail-row {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .detail-label {
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: rgba(0, 0, 0, 0.6);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      .detail-value {
+        font-size: 0.875rem;
+        color: rgba(0, 0, 0, 0.87);
       }
 
       .empty-state {
@@ -286,22 +500,89 @@ import {
 
       mat-paginator {
         border-top: 1px solid rgba(0, 0, 0, 0.12);
+        padding: 16px 0;
       }
 
       @media (max-width: 600px) {
+        .users-list-container {
+          padding: 24px 0 !important;
+        }
+
         .header {
-          flex-direction: column;
-          align-items: flex-start;
-          gap: 16px;
+          padding: 16px;
+          margin-bottom: 12px;
+        }
+
+        .header h1 {
+          font-size: 1.5rem;
+          margin-bottom: 0;
+        }
+
+        .filters-card {
+          border-radius: 0;
+          margin: 0 0 16px 0;
+        }
+
+        mat-card-actions {
+          flex-wrap: wrap;
+          padding: 8px 10px;
+        }
+
+        mat-card-actions button {
+          width: 100%;
         }
 
         .filters {
           flex-direction: column;
+          padding: 16px;
         }
 
         .search-field,
         .filter-field {
           width: 100%;
+        }
+
+        .users-card {
+          border-radius: 0;
+          margin: 0 0 16px 0;
+        }
+
+        .desktop-view {
+          display: none !important;
+        }
+
+        .mobile-view {
+          display: flex !important;
+        }
+
+        .users-cards {
+          display: flex !important;
+          flex-direction: column !important;
+          background-color: rgba(0, 0, 0, 0.02) !important;
+          padding: 16px 0 !important;
+        }
+
+        .users-cards > * + * {
+          margin-top: 16px !important;
+        }
+
+        .user-card {
+          border-radius: 0;
+          margin: 0 !important;
+          padding: 0;
+          display: block !important;
+        }
+
+        .user-card mat-card-header {
+          padding: 12px 16px 8px 16px;
+        }
+
+        .user-card mat-card-content {
+          padding: 8px 16px !important;
+        }
+
+        mat-paginator {
+          padding: 16px 0 !important;
         }
       }
 
@@ -403,6 +684,7 @@ export class UsersListComponent implements OnInit, OnDestroy {
   openCreateDialog(): void {
     const dialogRef = this.dialog.open(UserCreateDialogComponent, {
       width: "600px",
+      maxWidth: "95vw",
     });
 
     dialogRef

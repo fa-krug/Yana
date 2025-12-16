@@ -9,6 +9,8 @@ import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatInputModule } from "@angular/material/input";
 import { MatSelectModule } from "@angular/material/select";
 import { MatIconModule } from "@angular/material/icon";
+import { MatDatepickerModule } from "@angular/material/datepicker";
+import { MatNativeDateModule } from "@angular/material/core";
 import { FeedService } from "@app/core/services/feed.service";
 import { GroupService } from "@app/core/services/group.service";
 
@@ -22,6 +24,8 @@ import { GroupService } from "@app/core/services/group.service";
     MatInputModule,
     MatSelectModule,
     MatIconModule,
+    MatDatepickerModule,
+    MatNativeDateModule,
   ],
   template: `
     <div class="filters">
@@ -59,6 +63,36 @@ import { GroupService } from "@app/core/services/group.service";
           <mat-option value="read">Read</mat-option>
         </mat-select>
       </mat-form-field>
+
+      <mat-form-field appearance="outline" class="filter-field date-field">
+        <mat-label>From Date</mat-label>
+        <input
+          matInput
+          [matDatepicker]="fromPicker"
+          [formControl]="dateFromControl()"
+          [max]="dateToControl().value || null"
+        />
+        <mat-datepicker-toggle
+          matSuffix
+          [for]="fromPicker"
+        ></mat-datepicker-toggle>
+        <mat-datepicker #fromPicker></mat-datepicker>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="filter-field date-field">
+        <mat-label>To Date</mat-label>
+        <input
+          matInput
+          [matDatepicker]="toPicker"
+          [formControl]="dateToControl()"
+          [min]="dateFromControl().value || null"
+        />
+        <mat-datepicker-toggle
+          matSuffix
+          [for]="toPicker"
+        ></mat-datepicker-toggle>
+        <mat-datepicker #toPicker></mat-datepicker>
+      </mat-form-field>
     </div>
   `,
   styles: [
@@ -66,7 +100,7 @@ import { GroupService } from "@app/core/services/group.service";
       .filters {
         display: flex;
         gap: 16px;
-        margin-bottom: 24px;
+        margin-bottom: 0;
         flex-wrap: wrap;
       }
 
@@ -77,6 +111,10 @@ import { GroupService } from "@app/core/services/group.service";
 
       .filter-field {
         min-width: 150px;
+      }
+
+      .date-field {
+        min-width: 160px;
       }
 
       @media (max-width: 600px) {
@@ -102,4 +140,6 @@ export class ArticleFiltersComponent {
   readonly groupControl = input.required<FormControl<number | null>>();
   readonly readStateControl =
     input.required<FormControl<"read" | "unread" | null>>();
+  readonly dateFromControl = input.required<FormControl<Date | null>>();
+  readonly dateToControl = input.required<FormControl<Date | null>>();
 }

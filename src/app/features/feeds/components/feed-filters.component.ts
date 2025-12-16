@@ -66,22 +66,13 @@ import { GroupService } from "@app/core/services/group.service";
       .filters {
         display: flex;
         gap: 16px;
-        margin-bottom: 16px;
-        align-items: center;
+        margin-bottom: 0;
         flex-wrap: wrap;
-        padding: 12px;
-        background: rgba(0, 0, 0, 0.02);
-        border-radius: 12px;
-        transition: background 0.2s ease;
-      }
-
-      .filters:hover {
-        background: rgba(0, 0, 0, 0.04);
       }
 
       .search-field {
         flex: 1;
-        min-width: 300px;
+        min-width: 200px;
       }
 
       .filter-field {
@@ -90,45 +81,13 @@ import { GroupService } from "@app/core/services/group.service";
 
       @media (max-width: 600px) {
         .filters {
-          flex-direction: row;
-          align-items: stretch;
-          padding: 16px 12px;
-          width: 100%;
-          box-sizing: border-box;
-        }
-
-        .search-field,
-        .filter-field {
-          flex: 1 1 0 !important;
-          min-width: 0 !important;
-          width: 0 !important;
-          box-sizing: border-box;
-        }
-
-        .search-field ::ng-deep .mat-mdc-text-field-wrapper,
-        .filter-field ::ng-deep .mat-mdc-text-field-wrapper {
-          width: 100%;
-        }
-      }
-
-      @media (max-width: 480px) {
-        .filters {
-          padding: 12px 8px;
           flex-direction: column;
-          width: 100%;
-          box-sizing: border-box;
+          padding: 16px;
         }
 
         .search-field,
         .filter-field {
-          width: 100% !important;
-          min-width: 0 !important;
-          box-sizing: border-box;
-        }
-
-        .search-field ::ng-deep .mat-mdc-text-field-wrapper,
-        .filter-field ::ng-deep .mat-mdc-text-field-wrapper {
-          box-sizing: border-box;
+          width: 100%;
         }
       }
     `,

@@ -490,11 +490,16 @@ import { Feed } from "@app/core/models";
         .feed-card {
           border-radius: 0;
           margin: 0;
+          padding: 0;
         }
 
         .feed-card mat-card-header {
-          padding: 12px 10px 8px 10px;
+          padding: 12px 16px 8px 16px;
           gap: 12px;
+        }
+
+        .feed-card mat-card-content {
+          padding: 8px 16px !important;
         }
 
         .feed-avatar {
@@ -515,14 +520,22 @@ import { Feed } from "@app/core/models";
 
         mat-card-actions {
           flex-wrap: wrap;
-          padding: 8px 10px;
+          padding: 8px 16px !important;
         }
       }
 
       @media (max-width: 480px) {
+        .feed-card {
+          padding: 0;
+        }
+
         .feed-card mat-card-header {
-          padding: 10px 8px 6px 8px;
+          padding: 10px 16px 6px 16px;
           gap: 10px;
+        }
+
+        .feed-card mat-card-content {
+          padding: 8px 16px !important;
         }
 
         .feed-avatar {
@@ -546,7 +559,7 @@ import { Feed } from "@app/core/models";
         }
 
         mat-card-actions {
-          padding: 6px 8px;
+          padding: 6px 16px !important;
         }
       }
 

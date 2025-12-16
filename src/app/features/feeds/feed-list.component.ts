@@ -42,6 +42,7 @@ import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatPaginatorModule, PageEvent } from "@angular/material/paginator";
 import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
 import { MatDialog, MatDialogModule } from "@angular/material/dialog";
+import { MatCardModule } from "@angular/material/card";
 
 // Application
 import { FeedService, FeedFilters } from "@app/core/services/feed.service";
@@ -66,6 +67,7 @@ import { FeedCardComponent } from "./components/feed-card.component";
     MatPaginatorModule,
     MatSnackBarModule,
     MatDialogModule,
+    MatCardModule,
     FeedFiltersComponent,
     FeedCardComponent,
   ],
@@ -73,17 +75,24 @@ import { FeedCardComponent } from "./components/feed-card.component";
     <div class="feed-list-container container-lg animate-fade-in">
       <div class="header">
         <h1>Feeds</h1>
-        <button mat-raised-button color="primary" routerLink="/feeds/create">
-          Create Feed
-        </button>
       </div>
 
-      <app-feed-filters
-        [searchControl]="searchControl"
-        [typeControl]="typeControl"
-        [enabledControl]="enabledControl"
-        [groupControl]="groupControl"
-      />
+      <mat-card class="filters-card">
+        <mat-card-content>
+          <app-feed-filters
+            [searchControl]="searchControl"
+            [typeControl]="typeControl"
+            [enabledControl]="enabledControl"
+            [groupControl]="groupControl"
+          />
+        </mat-card-content>
+        <mat-card-actions>
+          <button mat-raised-button color="primary" routerLink="/feeds/create">
+            <mat-icon>add</mat-icon>
+            Create Feed
+          </button>
+        </mat-card-actions>
+      </mat-card>
 
       @if (feedService.error()) {
         <div class="state-center error">
@@ -140,9 +149,6 @@ import { FeedCardComponent } from "./components/feed-card.component";
       }
 
       .header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
         margin-bottom: 24px;
       }
 
@@ -154,21 +160,25 @@ import { FeedCardComponent } from "./components/feed-card.component";
         color: var(--mat-sys-on-surface);
       }
 
-      .header button {
-        height: 48px;
-        font-size: 1rem;
+      .filters-card {
+        margin-bottom: 24px;
+      }
+
+      mat-card-actions {
+        padding: 0 16px 12px 16px !important;
+        display: flex;
+        gap: 8px;
+        flex-wrap: nowrap;
+        align-items: center;
+        justify-content: flex-end;
+      }
+
+      mat-card-actions button {
         font-weight: 500;
-        border-radius: 8px;
-        padding: 0 24px;
         transition: all 0.2s ease;
       }
 
-      .header button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-      }
-
-      .header button mat-icon {
+      mat-card-actions button mat-icon {
         margin-right: 8px;
       }
 
@@ -195,29 +205,35 @@ import { FeedCardComponent } from "./components/feed-card.component";
       /* Responsive adjustments */
       @media (max-width: 600px) {
         .feed-list-container {
-          padding: 16px 12px 32px;
+          padding: 24px 0 !important;
         }
 
         h1 {
-          font-size: 2rem;
+          font-size: 1.5rem;
           margin-bottom: 24px;
-          padding: 0 12px;
         }
 
         .header {
-          flex-direction: column;
-          align-items: flex-start;
-          gap: 16px;
-          padding: 0 12px;
+          padding: 16px;
         }
 
-        .header button {
+        .filters-card {
+          border-radius: 0;
+          margin: 0 0 16px 0;
+        }
+
+        mat-card-actions {
+          flex-wrap: wrap;
+          padding: 8px 10px;
+        }
+
+        mat-card-actions button {
           width: 100%;
         }
 
         .feed-grid {
           grid-template-columns: 1fr;
-          gap: 8px;
+          gap: 16px;
         }
 
         mat-paginator {

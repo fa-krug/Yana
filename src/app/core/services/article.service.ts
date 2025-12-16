@@ -12,6 +12,8 @@ import {
   EMPTY,
   reduce,
   switchMap,
+  mergeMap,
+  concatMap,
   timer,
   filter,
   take,
@@ -28,6 +30,8 @@ export interface ArticleFilters {
   unreadOnly?: boolean;
   readState?: "read" | "unread" | null;
   search?: string;
+  dateFrom?: Date | string;
+  dateTo?: Date | string;
   page?: number;
   pageSize?: number;
 }
@@ -77,15 +81,35 @@ export class ArticleService {
     }
     this.errorSignal.set(null);
 
+    // Convert readState to isRead boolean if readState is provided
+    let isRead: boolean | undefined = filters.read;
+    if (
+      isRead === undefined &&
+      filters.readState !== undefined &&
+      filters.readState !== null
+    ) {
+      isRead = filters.readState === "read";
+    }
+
     return from(
       this.trpc.client.article.list.query({
         page: filters.page || 1,
         pageSize: filters.pageSize || 20,
         feedId: filters.feedId,
         groupId: filters.groupId,
-        isRead: filters.read,
+        isRead: isRead,
         isSaved: filters.saved,
         search: filters.search,
+        dateFrom: filters.dateFrom
+          ? filters.dateFrom instanceof Date
+            ? filters.dateFrom.toISOString()
+            : filters.dateFrom
+          : undefined,
+        dateTo: filters.dateTo
+          ? filters.dateTo instanceof Date
+            ? filters.dateTo.toISOString()
+            : filters.dateTo
+          : undefined,
       }),
     ).pipe(
       map((response) => ({
@@ -422,6 +446,200 @@ export class ArticleService {
       }),
       catchError((error) => {
         console.error("Error marking all articles as read:", error);
+        throw error;
+      }),
+    );
+  }
+
+  /**
+   * Get all article IDs matching the current filters
+   */
+  private getAllFilteredArticleIds(
+    filters: ArticleFilters,
+  ): Observable<number[]> {
+    const pageSize = 100; // Use a large page size to minimize requests
+
+    const fetchAllArticleIds = (
+      page: number = 1,
+    ): Observable<PaginatedResponse<Article>> => {
+      // Convert readState to isRead boolean, matching loadArticles logic
+      let isRead: boolean | undefined = undefined;
+      if (filters.read !== undefined) {
+        isRead = filters.read;
+      } else if (filters.readState === "read") {
+        isRead = true;
+      } else if (filters.readState === "unread") {
+        isRead = false;
+      }
+
+      return from(
+        this.trpc.client.article.list.query({
+          page,
+          pageSize,
+          feedId: filters.feedId ?? undefined,
+          groupId: filters.groupId ?? undefined,
+          isRead: isRead,
+          isSaved: filters.saved,
+          search: filters.search ?? undefined,
+          dateFrom: filters.dateFrom
+            ? filters.dateFrom instanceof Date
+              ? filters.dateFrom.toISOString()
+              : filters.dateFrom
+            : undefined,
+          dateTo: filters.dateTo
+            ? filters.dateTo instanceof Date
+              ? filters.dateTo.toISOString()
+              : filters.dateTo
+            : undefined,
+        }),
+      ).pipe(
+        map((response) => ({
+          items: (response.items || []).map((article) => ({
+            ...article,
+            thumbnailUrl: article.thumbnailUrl ?? undefined,
+            mediaUrl: article.mediaUrl ?? undefined,
+            duration: article.duration ?? undefined,
+            viewCount: article.viewCount ?? undefined,
+            mediaType: article.mediaType ?? undefined,
+            author: article.author ?? undefined,
+            externalId: article.externalId ?? undefined,
+            score: article.score ?? undefined,
+            durationFormatted: article.durationFormatted ?? undefined,
+          })),
+          count: response.count || 0,
+          page: response.page || 1,
+          pageSize: response.pageSize || 20,
+          pages: response.pages || 0,
+        })),
+      );
+    };
+
+    return fetchAllArticleIds(1).pipe(
+      expand((response) => {
+        if (response.pages !== undefined && response.page < response.pages) {
+          return fetchAllArticleIds(response.page + 1);
+        }
+        return EMPTY;
+      }),
+      reduce((acc: number[], response: PaginatedResponse<Article>) => {
+        return [...acc, ...(response.items || []).map((a) => a.id)];
+      }, []),
+    );
+  }
+
+  /**
+   * Mark all filtered articles as read/unread
+   */
+  markAllFilteredRead(
+    filters: ArticleFilters,
+    isRead: boolean,
+  ): Observable<{ count: number; message: string }> {
+    return this.getAllFilteredArticleIds(filters).pipe(
+      switchMap((articleIds) => {
+        if (articleIds.length === 0) {
+          return of({
+            count: 0,
+            message: `No articles to mark as ${isRead ? "read" : "unread"}`,
+          });
+        }
+
+        return from(
+          this.trpc.client.article.markRead.mutate({
+            articleIds,
+            isRead,
+          }),
+        ).pipe(
+          map(() => ({
+            count: articleIds.length,
+            message: `Articles marked as ${isRead ? "read" : "unread"}`,
+          })),
+          tap(() => {
+            // Update local state for articles in current view
+            const articles = this.articlesSignal();
+            const updatedArticles = articles.map((article) => {
+              if (articleIds.includes(article.id)) {
+                return {
+                  ...article,
+                  isRead,
+                  read: isRead,
+                };
+              }
+              return article;
+            });
+            this.articlesSignal.set(updatedArticles);
+          }),
+        );
+      }),
+      catchError((error) => {
+        console.error("Error marking filtered articles:", error);
+        throw error;
+      }),
+    );
+  }
+
+  /**
+   * Delete all filtered articles
+   */
+  deleteAllFiltered(
+    filters: ArticleFilters,
+  ): Observable<{ count: number; message: string }> {
+    return this.getAllFilteredArticleIds(filters).pipe(
+      switchMap((articleIds) => {
+        if (articleIds.length === 0) {
+          return of({ count: 0, message: "No articles to delete" });
+        }
+
+        // Delete articles one by one (since API only supports single delete)
+        return from(articleIds).pipe(
+          mergeMap((id) =>
+            this.deleteArticle(id).pipe(
+              map(() => 1),
+              catchError(() => of(0)),
+            ),
+          ),
+          reduce((acc, count) => acc + count, 0),
+          map((count) => ({
+            count,
+            message: `${count} article${count !== 1 ? "s" : ""} deleted`,
+          })),
+        );
+      }),
+      catchError((error) => {
+        console.error("Error deleting filtered articles:", error);
+        throw error;
+      }),
+    );
+  }
+
+  /**
+   * Refresh all filtered articles
+   */
+  refreshAllFiltered(
+    filters: ArticleFilters,
+  ): Observable<{ count: number; message: string }> {
+    return this.getAllFilteredArticleIds(filters).pipe(
+      switchMap((articleIds) => {
+        if (articleIds.length === 0) {
+          return of({ count: 0, message: "No articles to refresh" });
+        }
+
+        // Refresh articles one by one
+        return from(articleIds).pipe(
+          concatMap((id) =>
+            this.refreshArticle(id).pipe(
+              map(() => 1),
+              catchError(() => of(0)),
+            ),
+          ),
+          reduce((acc, count) => acc + count, 0),
+          map((count) => ({
+            count,
+            message: `${count} article${count !== 1 ? "s" : ""} refreshed`,
+          })),
+        );
+      }),
+      catchError((error) => {
+        console.error("Error refreshing filtered articles:", error);
         throw error;
       }),
     );

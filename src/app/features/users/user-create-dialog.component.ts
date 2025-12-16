@@ -196,10 +196,10 @@ import { AdminUsersService } from "@app/core/services/admin-users.service";
       /* Mobile-friendly dialog sizing */
       @media (max-width: 768px) {
         :host ::ng-deep .mat-mdc-dialog-surface {
-          width: calc(100vw - 24px);
-          max-width: calc(100vw - 24px);
-          min-width: 0;
-          margin: 0 12px;
+          width: calc(100vw - 8px) !important;
+          max-width: calc(100vw - 8px) !important;
+          min-width: 0 !important;
+          margin: 0 4px !important;
         }
 
         :host ::ng-deep .cdk-global-overlay-wrapper {
