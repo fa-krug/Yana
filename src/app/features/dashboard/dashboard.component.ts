@@ -204,6 +204,10 @@ import { interval, Subject, takeUntil } from "rxjs";
         transition:
           transform 0.2s ease,
           box-shadow 0.2s ease;
+        -webkit-tap-highlight-color: transparent;
+        user-select: none;
+        -webkit-user-select: none;
+        touch-action: manipulation;
       }
 
       .clickable-card:hover {
@@ -212,8 +216,24 @@ import { interval, Subject, takeUntil } from "rxjs";
       }
 
       .clickable-card:focus {
+        outline: none !important;
+      }
+
+      .clickable-card:focus-visible {
         outline: 2px solid var(--mat-sys-primary);
         outline-offset: 2px;
+      }
+
+      .clickable-card:active {
+        transform: none;
+        outline: none !important;
+      }
+
+      /* Prevent focus outline on touch devices */
+      @media (hover: none) and (pointer: coarse) {
+        .clickable-card:focus {
+          outline: none !important;
+        }
       }
 
       mat-card-header {
@@ -292,6 +312,9 @@ import { interval, Subject, takeUntil } from "rxjs";
         background: rgba(0, 0, 0, 0.02);
         transition: all 0.2s ease;
         cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        user-select: none;
+        -webkit-user-select: none;
       }
 
       .feed-type:hover {
@@ -300,8 +323,25 @@ import { interval, Subject, takeUntil } from "rxjs";
       }
 
       .feed-type:focus {
+        outline: none !important;
+      }
+
+      .feed-type:focus-visible {
         outline: 2px solid var(--mat-sys-primary);
         outline-offset: 2px;
+      }
+
+      .feed-type:active {
+        transform: none;
+        background: rgba(0, 0, 0, 0.02);
+        outline: none !important;
+      }
+
+      /* Prevent focus outline on touch devices */
+      @media (hover: none) and (pointer: coarse) {
+        .feed-type:focus {
+          outline: none !important;
+        }
       }
 
       .feed-type mat-icon {
