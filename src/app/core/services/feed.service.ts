@@ -14,6 +14,7 @@ import {
   PaginatedResponse,
 } from "../models";
 import { TRPCService } from "../trpc/trpc.service";
+import { CacheService } from "./cache.service";
 
 export interface FeedFilters {
   search?: string;
@@ -27,6 +28,7 @@ export interface FeedFilters {
 @Injectable({ providedIn: "root" })
 export class FeedService {
   private trpc = inject(TRPCService);
+  private cacheService = inject(CacheService);
 
   private feedsSignal = signal<Feed[]>([]);
   private loadingSignal = signal<boolean>(false);
@@ -59,48 +61,88 @@ export class FeedService {
     }
     this.errorSignal.set(null);
 
-    return from(
-      this.trpc.client.feed.list.query({
-        page: filters.page || 1,
-        pageSize: filters.pageSize || 20,
-        search: filters.search,
-        feedType: filters.feedType,
-        enabled: filters.enabled,
-        groupId: filters.groupId,
-      }),
-    ).pipe(
-      map((response) => ({
-        items: response.items || [],
-        count: response.count || 0,
-        page: response.page || 1,
-        pageSize: response.pageSize || 20,
-        pages: response.pages || 0,
-      })),
-      tap((response) => {
-        this.feedsSignal.set(response.items || []);
-        this.totalCountSignal.set(response.count || 0);
-        this.currentPageSignal.set(response.page || 1);
-        this.pageSizeSignal.set(response.pageSize || 20);
-        if (!silent) {
-          this.loadingSignal.set(false);
-        }
-      }),
-      catchError((error) => {
-        console.error("Error loading feeds:", error);
-        this.errorSignal.set(error.message || "Failed to load feeds");
-        if (!silent) {
-          this.loadingSignal.set(false);
-        }
-        return of({ items: [], count: 0, page: 1, pageSize: 20, pages: 0 });
-      }),
-    );
+    // Generate cache key from filters
+    const cacheKey = this.getCacheKey(filters);
+
+    return this.cacheService
+      .getOrSet<PaginatedResponse<Feed>>(
+        cacheKey,
+        () =>
+          from(
+            this.trpc.client.feed.list.query({
+              page: filters.page || 1,
+              pageSize: filters.pageSize || 20,
+              search: filters.search,
+              feedType: filters.feedType,
+              enabled: filters.enabled,
+              groupId: filters.groupId,
+            }),
+          ),
+        // Cache feeds for 3 minutes (feeds change less frequently)
+        3 * 60 * 1000,
+      )
+      .pipe(
+        map((response: PaginatedResponse<Feed>) => ({
+          items: response.items || [],
+          count: response.count || 0,
+          page: response.page || 1,
+          pageSize: response.pageSize || 20,
+          pages: response.pages || 0,
+        })),
+        tap((response) => {
+          this.feedsSignal.set(response.items || []);
+          this.totalCountSignal.set(response.count || 0);
+          this.currentPageSignal.set(response.page || 1);
+          this.pageSizeSignal.set(response.pageSize || 20);
+          if (!silent) {
+            this.loadingSignal.set(false);
+          }
+        }),
+        catchError((error) => {
+          console.error("Error loading feeds:", error);
+          this.errorSignal.set(error.message || "Failed to load feeds");
+          if (!silent) {
+            this.loadingSignal.set(false);
+          }
+          return of({ items: [], count: 0, page: 1, pageSize: 20, pages: 0 });
+        }),
+      );
   }
 
   /**
    * Get a single feed by ID
    */
   getFeed(id: number): Observable<Feed> {
-    return from(this.trpc.client.feed.getById.query({ id }));
+    const cacheKey = `feed:${id}`;
+    return this.cacheService.getOrSet<Feed>(
+      cacheKey,
+      () => from(this.trpc.client.feed.getById.query({ id })),
+      // Cache feed details for 5 minutes
+      5 * 60 * 1000,
+    );
+  }
+
+  /**
+   * Generate cache key from filters
+   */
+  private getCacheKey(filters: FeedFilters): string {
+    const parts = [
+      "feeds",
+      `page:${filters.page || 1}`,
+      `pageSize:${filters.pageSize || 20}`,
+      filters.search ? `search:${filters.search}` : "",
+      filters.feedType ? `feedType:${filters.feedType}` : "",
+      filters.enabled !== undefined ? `enabled:${filters.enabled}` : "",
+      filters.groupId ? `groupId:${filters.groupId}` : "",
+    ];
+    return parts.filter((p) => p).join("|");
+  }
+
+  /**
+   * Invalidate feed cache
+   */
+  invalidateFeedCache(): void {
+    this.cacheService.invalidatePattern(/^feeds\|/);
   }
 
   /**

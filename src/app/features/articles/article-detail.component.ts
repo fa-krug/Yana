@@ -31,7 +31,7 @@ import {
 } from "@angular/platform-browser";
 
 // RxJS
-import { switchMap, tap } from "rxjs";
+import { switchMap, tap, delay } from "rxjs";
 
 // Angular Material
 import { MatButtonModule } from "@angular/material/button";
@@ -101,6 +101,7 @@ import { ArticleContentComponent } from "./components/article-content.component"
             <button
               mat-raised-button
               [routerLink]="getArticleRoute(currentArticle.prevId)"
+              (mouseenter)="prefetchOnHover(currentArticle.prevId!)"
             >
               <mat-icon>navigate_before</mat-icon>
               Previous Article
@@ -111,6 +112,7 @@ import { ArticleContentComponent } from "./components/article-content.component"
             <button
               mat-raised-button
               [routerLink]="getArticleRoute(currentArticle.nextId)"
+              (mouseenter)="prefetchOnHover(currentArticle.nextId!)"
             >
               Next Article
               <mat-icon>navigate_next</mat-icon>
@@ -138,6 +140,7 @@ import { ArticleContentComponent } from "./components/article-content.component"
         margin: 24px auto;
         padding: 0 16px 24px;
         overflow-x: hidden;
+        overflow-y: hidden;
         flex-wrap: wrap;
         gap: 8px;
       }
@@ -192,6 +195,7 @@ export class ArticleDetailComponent implements OnInit, OnDestroy {
 
   protected readonly article = signal<ArticleDetail | null>(null);
   protected readonly loading = signal<boolean>(true);
+  protected readonly loadingContent = signal<boolean>(false);
   protected readonly error = signal<string | null>(null);
   protected readonly showRawContent = signal<boolean>(false);
   protected readonly reloading = signal<boolean>(false);
@@ -206,7 +210,10 @@ export class ArticleDetailComponent implements OnInit, OnDestroy {
           const articleIdParam = params["articleId"] || params["id"]; // For breadcrumb key
 
           this.loading.set(true);
+          this.loadingContent.set(false);
           this.error.set(null);
+
+          // Progressive loading: Load article with immediate display, then prefetch adjacent
           return this.articleService.getArticle(articleId).pipe(
             tap((article) => {
               // Mark as read when viewing
@@ -242,22 +249,52 @@ export class ArticleDetailComponent implements OnInit, OnDestroy {
                   );
                 }
               }
+
+              // Prefetch adjacent articles in the background
+              this.prefetchAdjacentArticles(article);
             }),
           );
         }),
       )
       .subscribe({
         next: (article) => {
+          // Set article immediately (progressive loading - metadata first)
           this.article.set(article);
           this.loading.set(false);
+          this.loadingContent.set(false);
+
           // Register actions for keyboard shortcuts
           this.registerArticleActions();
         },
         error: (error) => {
           this.error.set(error.message || "Failed to load article");
           this.loading.set(false);
+          this.loadingContent.set(false);
         },
       });
+  }
+
+  /**
+   * Prefetch adjacent articles (prev/next) in the background
+   * Uses a small delay to avoid blocking the main article load
+   */
+  private prefetchAdjacentArticles(article: ArticleDetail): void {
+    // Use setTimeout to defer prefetching until after main article is displayed
+    setTimeout(() => {
+      if (article.prevId) {
+        this.articleService.prefetchArticle(article.prevId);
+      }
+      if (article.nextId) {
+        this.articleService.prefetchArticle(article.nextId);
+      }
+    }, 500); // 500ms delay to let main article render first
+  }
+
+  /**
+   * Prefetch article on hover for instant navigation
+   */
+  protected prefetchOnHover(articleId: number): void {
+    this.articleService.prefetchArticle(articleId);
   }
 
   ngOnDestroy() {
@@ -316,6 +353,11 @@ export class ArticleDetailComponent implements OnInit, OnDestroy {
       return ["/feeds", feedId.toString(), "articles", articleId.toString()];
     }
     return ["/articles", articleId.toString()];
+  }
+
+  protected getArticleUrl(articleId: number): string {
+    const route = this.getArticleRoute(articleId);
+    return "/" + route.join("/");
   }
 
   protected toggleRawContent(): void {
@@ -450,6 +492,8 @@ export class ArticleDetailComponent implements OnInit, OnDestroy {
                         article.nextId,
                     };
                     this.article.set(articleWithNavigation);
+                    // Re-prefetch adjacent articles after reload
+                    this.prefetchAdjacentArticles(articleWithNavigation);
                     // Re-register article actions after reload
                     this.registerArticleActions();
                     this.reloading.set(false);

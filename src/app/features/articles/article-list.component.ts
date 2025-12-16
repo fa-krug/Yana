@@ -31,6 +31,7 @@ import {
   Subject,
   takeUntil,
   finalize,
+  forkJoin,
 } from "rxjs";
 
 // Angular Material
@@ -48,6 +49,9 @@ import { MatCardModule } from "@angular/material/card";
 import { MatDialog, MatDialogModule } from "@angular/material/dialog";
 import { MatMenuModule } from "@angular/material/menu";
 
+// Angular CDK
+import { ScrollingModule } from "@angular/cdk/scrolling";
+
 // Application
 import {
   ArticleService,
@@ -57,12 +61,18 @@ import { FeedService } from "@app/core/services/feed.service";
 import { GroupService } from "@app/core/services/group.service";
 import { Article } from "@app/core/models";
 import { ArticleFiltersComponent } from "./components/article-filters.component";
+import { ArticleBulkActionsComponent } from "./components/article-bulk-actions.component";
 import {
   ConfirmDialogComponent,
   ConfirmDialogData,
 } from "@app/shared/components/confirm-dialog.component";
-import { getProxiedImageUrl } from "@app/core/utils/image-proxy.util";
+import {
+  getProxiedImageUrl,
+  getResponsiveImageSrcset,
+  getImageSizes,
+} from "@app/core/utils/image-proxy.util";
 import { ArticlePaginatorIntl } from "@app/core/services/article-paginator-intl.service";
+import { PrefetchOnIntersectDirective } from "@app/core/directives/prefetch-on-intersect.directive";
 
 @Component({
   selector: "app-article-list",
@@ -80,7 +90,10 @@ import { ArticlePaginatorIntl } from "@app/core/services/article-paginator-intl.
     MatCardModule,
     MatDialogModule,
     MatMenuModule,
+    ScrollingModule,
     ArticleFiltersComponent,
+    ArticleBulkActionsComponent,
+    PrefetchOnIntersectDirective,
   ],
   providers: [{ provide: MatPaginatorIntl, useClass: ArticlePaginatorIntl }],
   template: `
@@ -101,60 +114,11 @@ import { ArticlePaginatorIntl } from "@app/core/services/article-paginator-intl.
           />
         </mat-card-content>
         <mat-card-actions>
-          <div class="action-buttons">
-            <button
-              mat-icon-button
-              class="mark-read-button"
-              [disabled]="bulkOperationLoading()"
-              (click)="markAllFilteredRead(true)"
-              matTooltip="Mark all filtered articles as read"
-              aria-label="Mark all filtered articles as read"
-              [attr.aria-busy]="bulkOperationLoading() === 'read'"
-            >
-              <mat-icon [class.spinning]="bulkOperationLoading() === 'read'"
-                >check_circle</mat-icon
-              >
-            </button>
-            <button
-              mat-icon-button
-              class="mark-unread-button"
-              [disabled]="bulkOperationLoading()"
-              (click)="markAllFilteredRead(false)"
-              matTooltip="Mark all filtered articles as unread"
-              aria-label="Mark all filtered articles as unread"
-              [attr.aria-busy]="bulkOperationLoading() === 'unread'"
-            >
-              <mat-icon [class.spinning]="bulkOperationLoading() === 'unread'"
-                >radio_button_unchecked</mat-icon
-              >
-            </button>
-            <button
-              mat-icon-button
-              class="delete-button"
-              [disabled]="bulkOperationLoading()"
-              (click)="deleteAllFiltered()"
-              matTooltip="Delete all filtered articles"
-              aria-label="Delete all filtered articles"
-              [attr.aria-busy]="bulkOperationLoading() === 'delete'"
-            >
-              <mat-icon [class.spinning]="bulkOperationLoading() === 'delete'"
-                >delete</mat-icon
-              >
-            </button>
-            <button
-              mat-icon-button
-              class="refresh-button"
-              [disabled]="bulkOperationLoading()"
-              (click)="refreshAllFiltered()"
-              matTooltip="Refresh all filtered articles"
-              aria-label="Refresh all filtered articles"
-              [attr.aria-busy]="bulkOperationLoading() === 'refresh'"
-            >
-              <mat-icon [class.spinning]="bulkOperationLoading() === 'refresh'"
-                >refresh</mat-icon
-              >
-            </button>
-          </div>
+          <app-article-bulk-actions
+            [articleService]="articleService"
+            [getCurrentFilters]="getCurrentFilters"
+            (refreshRequested)="handleBulkActionRefresh()"
+          />
         </mat-card-actions>
       </mat-card>
 
@@ -186,13 +150,20 @@ import { ArticlePaginatorIntl } from "@app/core/services/article-paginator-intl.
         }
         <div class="article-list">
           @for (article of articleService.articles(); track article.id) {
-            <mat-card class="article-card" [class.unread]="!article.isRead">
+            <mat-card
+              class="article-card"
+              [class.unread]="!article.isRead"
+              appPrefetchOnIntersect
+              [articleId]="article.id"
+            >
               <div class="article-header">
                 @if (
                   article.thumbnailUrl && !articleImageErrors()[article.id]
                 ) {
                   <img
                     [src]="getProxiedImageUrl(article.thumbnailUrl)"
+                    [srcset]="getResponsiveImageSrcset(article.thumbnailUrl)"
+                    [sizes]="getImageSizes('120px')"
                     [alt]="article.title || article.name"
                     class="article-thumbnail"
                     loading="lazy"
@@ -358,128 +329,6 @@ import { ArticlePaginatorIntl } from "@app/core/services/article-paginator-intl.
       .count-separator {
         color: rgba(0, 0, 0, 0.3);
         margin: 0 4px;
-      }
-
-      .action-buttons {
-        display: flex;
-        gap: 8px;
-        flex-wrap: nowrap;
-        align-items: center;
-      }
-
-      mat-card-actions button {
-        font-weight: 500;
-        transition: all 0.2s ease;
-      }
-
-      mat-card-actions button[disabled] {
-        opacity: 0.5;
-        cursor: not-allowed;
-      }
-
-      mat-card-actions button mat-icon {
-        font-size: 20px;
-        width: 20px;
-        height: 20px;
-        margin: 0;
-        transition: transform 0.3s ease;
-      }
-
-      mat-card-actions .mark-read-button {
-        color: white;
-        background-color: #4caf50;
-        border-radius: 50%;
-        width: 40px;
-        height: 40px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 0;
-      }
-
-      mat-card-actions .mark-read-button:hover:not([disabled]) {
-        background-color: #45a049;
-      }
-
-      mat-card-actions .mark-read-button[disabled] {
-        background-color: rgba(76, 175, 80, 0.5);
-        color: rgba(255, 255, 255, 0.7);
-      }
-
-      mat-card-actions .mark-unread-button {
-        color: white;
-        background-color: #2196f3;
-        border-radius: 50%;
-        width: 40px;
-        height: 40px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 0;
-      }
-
-      mat-card-actions .mark-unread-button:hover:not([disabled]) {
-        background-color: #1976d2;
-      }
-
-      mat-card-actions .mark-unread-button[disabled] {
-        background-color: rgba(33, 150, 243, 0.5);
-        color: rgba(255, 255, 255, 0.7);
-      }
-
-      mat-card-actions .delete-button {
-        color: white;
-        background-color: #f44336;
-        border-radius: 50%;
-        width: 40px;
-        height: 40px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 0;
-      }
-
-      mat-card-actions .delete-button:hover:not([disabled]) {
-        background-color: #d32f2f;
-      }
-
-      mat-card-actions .delete-button[disabled] {
-        background-color: rgba(244, 67, 54, 0.5);
-        color: rgba(255, 255, 255, 0.7);
-      }
-
-      mat-card-actions .refresh-button {
-        color: white;
-        background-color: #1976d2;
-        border-radius: 50%;
-        width: 40px;
-        height: 40px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 0;
-      }
-
-      mat-card-actions .refresh-button:hover:not([disabled]) {
-        background-color: #1565c0;
-      }
-
-      mat-card-actions .refresh-button[disabled] {
-        background-color: rgba(25, 118, 210, 0.5);
-        color: rgba(255, 255, 255, 0.7);
-      }
-
-      mat-card-actions button mat-icon.spinning {
-        animation: spin 1s linear infinite;
-      }
-
-      @keyframes spin {
-        from {
-          transform: rotate(0deg);
-        }
-        to {
-          transform: rotate(360deg);
-        }
       }
 
       .article-list {
@@ -686,11 +535,6 @@ import { ArticlePaginatorIntl } from "@app/core/services/article-paginator-intl.
           margin-bottom: 8px;
         }
 
-        .action-buttons {
-          width: 100%;
-          justify-content: flex-end;
-        }
-
         .article-card {
           padding: 14px 10px;
           border-radius: 0;
@@ -776,9 +620,15 @@ export class ArticleListComponent implements OnInit, OnDestroy {
   dateFromControl = new FormControl<Date | null>(null);
   dateToControl = new FormControl<Date | null>(null);
 
-  bulkOperationLoading = signal<
-    "read" | "unread" | "delete" | "refresh" | null
-  >(null);
+  // Bulk operations are now handled by ArticleBulkActionsComponent
+  // Keeping this for backward compatibility if needed
+  protected handleBulkActionRefresh() {
+    // Check if current page is empty after bulk delete
+    const currentArticles = this.articleService.articles();
+    if (currentArticles.length === 0) {
+      this.applyFilters();
+    }
+  }
 
   private readonly filteredCountSignal = signal<number | null>(null);
   readonly filteredCount = this.filteredCountSignal.asReadonly();
@@ -790,6 +640,8 @@ export class ArticleListComponent implements OnInit, OnDestroy {
     this.articleImageErrorsSignal.asReadonly();
 
   protected readonly getProxiedImageUrl = getProxiedImageUrl;
+  protected readonly getResponsiveImageSrcset = getResponsiveImageSrcset;
+  protected readonly getImageSizes = getImageSizes;
 
   private destroy$ = new Subject<void>();
   private totalCountUpdateSubject$ = new Subject<void>();
@@ -811,11 +663,11 @@ export class ArticleListComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit() {
-    // Load feeds for filter dropdown
-    this.feedService.loadFeeds().subscribe();
-
-    // Load groups for filter dropdown
-    this.groupService.loadGroups().subscribe();
+    // Parallelize initial data loading for better performance
+    forkJoin({
+      feeds: this.feedService.loadFeeds(),
+      groups: this.groupService.loadGroups(),
+    }).subscribe();
 
     // Load articles from query params
     this.route.queryParams.subscribe((params) => {
@@ -1256,132 +1108,5 @@ export class ArticleListComponent implements OnInit, OnDestroy {
     }
 
     return filters;
-  }
-
-  markAllFilteredRead(isRead: boolean) {
-    const loadingType = isRead ? "read" : "unread";
-    this.bulkOperationLoading.set(loadingType);
-
-    const filters = this.getCurrentFilters();
-    this.articleService
-      .markAllFilteredRead(filters, isRead)
-      .pipe(
-        finalize(() => this.bulkOperationLoading.set(null)),
-        takeUntil(this.destroy$),
-      )
-      .subscribe({
-        next: (result) => {
-          this.snackBar.open(result.message, "Close", {
-            duration: 3000,
-            panelClass: ["success-snackbar"],
-          });
-          // Optimistic updates are already handled in article.service.ts
-          // Only refresh if current page might be affected by the operation
-          // For mark read/unread, the optimistic update handles the UI, so no refresh needed
-        },
-        error: (error) => {
-          this.snackBar.open(
-            `Failed to mark articles: ${error.message}`,
-            "Close",
-            {
-              duration: 3000,
-            },
-          );
-        },
-      });
-  }
-
-  deleteAllFiltered() {
-    const dialogData: ConfirmDialogData = {
-      title: "Delete Articles",
-      message:
-        "Are you sure you want to delete all filtered articles? This action cannot be undone.",
-      confirmText: "Delete",
-      cancelText: "Cancel",
-      confirmColor: "warn",
-    };
-
-    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
-      width: "500px",
-      data: dialogData,
-    });
-
-    dialogRef
-      .afterClosed()
-      .pipe(takeUntil(this.destroy$))
-      .subscribe((confirmed) => {
-        if (!confirmed) {
-          return;
-        }
-
-        this.bulkOperationLoading.set("delete");
-
-        const filters = this.getCurrentFilters();
-        this.articleService
-          .deleteAllFiltered(filters)
-          .pipe(
-            finalize(() => this.bulkOperationLoading.set(null)),
-            takeUntil(this.destroy$),
-          )
-          .subscribe({
-            next: (result) => {
-              this.snackBar.open(result.message, "Close", {
-                duration: 3000,
-                panelClass: ["success-snackbar"],
-              });
-              // Optimistic updates are already handled in article.service.ts
-              // Only refresh if current page might be affected
-              // Check if any articles on current page were deleted
-              const currentArticles = this.articleService.articles();
-              if (currentArticles.length === 0) {
-                // If all articles on current page were deleted, refresh to show next page
-                this.applyFilters();
-              }
-              // Otherwise, optimistic update already removed deleted articles from view
-            },
-            error: (error) => {
-              this.snackBar.open(
-                `Failed to delete articles: ${error.message}`,
-                "Close",
-                {
-                  duration: 3000,
-                },
-              );
-            },
-          });
-      });
-  }
-
-  refreshAllFiltered() {
-    this.bulkOperationLoading.set("refresh");
-
-    const filters = this.getCurrentFilters();
-    this.articleService
-      .refreshAllFiltered(filters)
-      .pipe(
-        finalize(() => this.bulkOperationLoading.set(null)),
-        takeUntil(this.destroy$),
-      )
-      .subscribe({
-        next: (result) => {
-          this.snackBar.open(result.message, "Close", {
-            duration: 3000,
-            panelClass: ["success-snackbar"],
-          });
-          // Refresh operations queue tasks in the background
-          // Don't refresh immediately - let tasks complete asynchronously
-          // User can manually refresh if needed, or the list will update naturally
-          // when they navigate/filter
-        },
-        error: (error) => {
-          this.snackBar.open(
-            `Failed to refresh articles: ${error.message}`,
-            "Close",
-            {
-              duration: 3000,
-            },
-          );
-        },
-      });
   }
 }

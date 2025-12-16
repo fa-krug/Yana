@@ -17,10 +17,12 @@ import {
   timer,
   filter,
   take,
+  EMPTY as rxjsEMPTY,
 } from "rxjs";
 import { tap, catchError, map, retry } from "rxjs";
 import { Article, ArticleDetail, PaginatedResponse } from "../models";
 import { TRPCService } from "../trpc/trpc.service";
+import { CacheService } from "./cache.service";
 
 export interface ArticleFilters {
   feedId?: number;
@@ -38,6 +40,7 @@ export interface ArticleFilters {
 @Injectable({ providedIn: "root" })
 export class ArticleService {
   private trpc = inject(TRPCService);
+  private cacheService = inject(CacheService);
 
   private articlesSignal = signal<Article[]>([]);
   private loadingSignal = signal<boolean>(false);
@@ -90,177 +93,252 @@ export class ArticleService {
       isRead = filters.readState === "read";
     }
 
-    return from(
-      this.trpc.client.article.list.query({
-        page: filters.page || 1,
-        pageSize: filters.pageSize || 20,
-        feedId: filters.feedId,
-        groupId: filters.groupId,
-        isRead: isRead,
-        isSaved: filters.saved,
-        search: filters.search,
-        dateFrom: filters.dateFrom
-          ? filters.dateFrom instanceof Date
-            ? filters.dateFrom.toISOString()
-            : filters.dateFrom
-          : undefined,
-        dateTo: filters.dateTo
-          ? filters.dateTo instanceof Date
-            ? filters.dateTo.toISOString()
-            : filters.dateTo
-          : undefined,
-      }),
-    ).pipe(
-      map((response) => ({
-        items: (response.items || []).map((article) => {
-          let summary = article.content
-            ? article.content.substring(0, 200)
-            : undefined;
-          // Remove base64 images from summary
-          if (summary) {
-            summary = summary.replace(
-              /<img[^>]*src\s*=\s*["']data:image\/[^"']*["'][^>]*>/gi,
-              "",
-            );
-            summary = summary.replace(/<img[^>]*>/gi, "");
+    // Generate cache key from filters
+    const cacheKey = this.getCacheKey(filters);
+
+    return this.cacheService
+      .getOrSet(
+        cacheKey,
+        () =>
+          from(
+            this.trpc.client.article.list.query({
+              page: filters.page || 1,
+              pageSize: filters.pageSize || 20,
+              feedId: filters.feedId,
+              groupId: filters.groupId,
+              isRead: isRead,
+              isSaved: filters.saved,
+              search: filters.search,
+              dateFrom: filters.dateFrom
+                ? filters.dateFrom instanceof Date
+                  ? filters.dateFrom.toISOString()
+                  : filters.dateFrom
+                : undefined,
+              dateTo: filters.dateTo
+                ? filters.dateTo instanceof Date
+                  ? filters.dateTo.toISOString()
+                  : filters.dateTo
+                : undefined,
+            }),
+          ),
+        // Cache for 2 minutes (shorter TTL for dynamic content)
+        2 * 60 * 1000,
+      )
+      .pipe(
+        map((response) => ({
+          items: (response.items || []).map((article) => {
+            let summary = article.content
+              ? article.content.substring(0, 200)
+              : undefined;
+            // Remove base64 images from summary
+            if (summary) {
+              summary = summary.replace(
+                /<img[^>]*src\s*=\s*["']data:image\/[^"']*["'][^>]*>/gi,
+                "",
+              );
+              summary = summary.replace(/<img[^>]*>/gi, "");
+            }
+            return {
+              ...article,
+              thumbnailUrl: article.thumbnailUrl ?? undefined,
+              mediaUrl: article.mediaUrl ?? undefined,
+              duration: article.duration ?? undefined,
+              viewCount: article.viewCount ?? undefined,
+              mediaType: article.mediaType ?? undefined,
+              author: article.author ?? undefined,
+              externalId: article.externalId ?? undefined,
+              score: article.score ?? undefined,
+              durationFormatted: article.durationFormatted ?? undefined,
+              read: article.isRead,
+              saved: article.isSaved,
+              title: article.name,
+              published: article.date,
+              link: article.url,
+              summary,
+            };
+          }),
+          count: response.count || 0,
+          page: response.page || 1,
+          pageSize: response.pageSize || 20,
+          pages: response.pages || 0,
+        })),
+        tap((response) => {
+          const responseItems = response.items || [];
+          const responseCount = response.count || 0;
+          const hasResponseItems = responseItems.length > 0;
+
+          // Check if we have articles loaded BEFORE updating the signal
+          // This helps us determine if a 0 count response is a temporary state during reload
+          const hadArticlesBefore = this.articlesSignal().length > 0;
+          const previousCount = this.totalCountSignal();
+
+          // CRITICAL: Silent queries (like updateTotalCountAll) use pageSize: 1 and should NOT
+          // overwrite the articles array, as they're only used to get the total count.
+          // Only update articles for non-silent queries to prevent race conditions where
+          // the silent query completes after the main query and overwrites articles with just 1 item.
+          if (!silent) {
+            this.articlesSignal.set(responseItems);
           }
-          return {
-            ...article,
-            thumbnailUrl: article.thumbnailUrl ?? undefined,
-            mediaUrl: article.mediaUrl ?? undefined,
-            duration: article.duration ?? undefined,
-            viewCount: article.viewCount ?? undefined,
-            mediaType: article.mediaType ?? undefined,
-            author: article.author ?? undefined,
-            externalId: article.externalId ?? undefined,
-            score: article.score ?? undefined,
-            durationFormatted: article.durationFormatted ?? undefined,
-            read: article.isRead,
-            saved: article.isSaved,
-            title: article.name,
-            published: article.date,
-            link: article.url,
-            summary,
-          };
+
+          // Update totalCount intelligently to prevent paginator from disappearing during reload
+          // Strategy:
+          // 1. If response has a valid count (> 0), always update
+          // 2. If response count is 0 but we have items in response, preserve previous count (inconsistent state)
+          // 3. For silent queries, always update count (they're used to get accurate counts)
+          // 4. If response count is 0 and no items in response (non-silent):
+          //    - If we had articles before, preserve count (temporary empty response during reload)
+          //    - If no articles before and previous count was 0, update to 0 (explicit clear)
+          //    - If no articles before but previous count > 0, preserve count (wait for accurate count)
+          let shouldUpdateCount: boolean;
+          if (responseCount > 0) {
+            // Always update if we have a valid count
+            shouldUpdateCount = true;
+          } else if (hasResponseItems && responseCount === 0) {
+            // Inconsistent: we have items but count is 0 - preserve previous count
+            shouldUpdateCount = false;
+          } else if (silent) {
+            // Silent queries are used to get accurate counts, so always update
+            // This ensures updateTotalCountAll can update the count even if main query returned 0
+            shouldUpdateCount = true;
+          } else if (hadArticlesBefore) {
+            // We had articles before, but response says 0 - likely a temporary state during reload
+            // Preserve previous count to keep paginator visible
+            shouldUpdateCount = false;
+          } else if (previousCount > 0) {
+            // No items in response, no articles before, but we had a count > 0
+            // This might be a reload scenario - preserve count to keep paginator visible
+            shouldUpdateCount = false;
+          } else {
+            // No items, no articles before, and previous count was 0
+            // This is an explicit clear - update to 0
+            shouldUpdateCount = true;
+          }
+
+          if (shouldUpdateCount) {
+            this.totalCountSignal.set(responseCount);
+          }
+
+          // Only update pagination state if not a silent/background query
+          // Silent queries (like updateTotalCountAll) use pageSize: 1 and shouldn't
+          // overwrite the user's selected page size
+          if (!silent) {
+            this.currentPageSignal.set(response.page || 1);
+            this.pageSizeSignal.set(response.pageSize || 20);
+            this.loadingSignal.set(false);
+          }
         }),
-        count: response.count || 0,
-        page: response.page || 1,
-        pageSize: response.pageSize || 20,
-        pages: response.pages || 0,
-      })),
-      tap((response) => {
-        const responseItems = response.items || [];
-        const responseCount = response.count || 0;
-        const hasResponseItems = responseItems.length > 0;
-
-        // Check if we have articles loaded BEFORE updating the signal
-        // This helps us determine if a 0 count response is a temporary state during reload
-        const hadArticlesBefore = this.articlesSignal().length > 0;
-        const previousCount = this.totalCountSignal();
-
-        // CRITICAL: Silent queries (like updateTotalCountAll) use pageSize: 1 and should NOT
-        // overwrite the articles array, as they're only used to get the total count.
-        // Only update articles for non-silent queries to prevent race conditions where
-        // the silent query completes after the main query and overwrites articles with just 1 item.
-        if (!silent) {
-          this.articlesSignal.set(responseItems);
-        }
-
-        // Update totalCount intelligently to prevent paginator from disappearing during reload
-        // Strategy:
-        // 1. If response has a valid count (> 0), always update
-        // 2. If response count is 0 but we have items in response, preserve previous count (inconsistent state)
-        // 3. For silent queries, always update count (they're used to get accurate counts)
-        // 4. If response count is 0 and no items in response (non-silent):
-        //    - If we had articles before, preserve count (temporary empty response during reload)
-        //    - If no articles before and previous count was 0, update to 0 (explicit clear)
-        //    - If no articles before but previous count > 0, preserve count (wait for accurate count)
-        let shouldUpdateCount: boolean;
-        if (responseCount > 0) {
-          // Always update if we have a valid count
-          shouldUpdateCount = true;
-        } else if (hasResponseItems && responseCount === 0) {
-          // Inconsistent: we have items but count is 0 - preserve previous count
-          shouldUpdateCount = false;
-        } else if (silent) {
-          // Silent queries are used to get accurate counts, so always update
-          // This ensures updateTotalCountAll can update the count even if main query returned 0
-          shouldUpdateCount = true;
-        } else if (hadArticlesBefore) {
-          // We had articles before, but response says 0 - likely a temporary state during reload
-          // Preserve previous count to keep paginator visible
-          shouldUpdateCount = false;
-        } else if (previousCount > 0) {
-          // No items in response, no articles before, but we had a count > 0
-          // This might be a reload scenario - preserve count to keep paginator visible
-          shouldUpdateCount = false;
-        } else {
-          // No items, no articles before, and previous count was 0
-          // This is an explicit clear - update to 0
-          shouldUpdateCount = true;
-        }
-
-        if (shouldUpdateCount) {
-          this.totalCountSignal.set(responseCount);
-        }
-
-        // Only update pagination state if not a silent/background query
-        // Silent queries (like updateTotalCountAll) use pageSize: 1 and shouldn't
-        // overwrite the user's selected page size
-        if (!silent) {
-          this.currentPageSignal.set(response.page || 1);
-          this.pageSizeSignal.set(response.pageSize || 20);
-          this.loadingSignal.set(false);
-        }
-      }),
-      catchError((error) => {
-        console.error("Error loading articles:", error);
-        this.errorSignal.set(error.message || "Failed to load articles");
-        if (!silent) {
-          this.loadingSignal.set(false);
-        }
-        // Return empty response - don't update pagination state on error
-        return of({ items: [], count: 0, page: 1, pageSize: 20, pages: 0 });
-      }),
-    );
+        catchError((error) => {
+          console.error("Error loading articles:", error);
+          this.errorSignal.set(error.message || "Failed to load articles");
+          if (!silent) {
+            this.loadingSignal.set(false);
+          }
+          // Return empty response - don't update pagination state on error
+          return of({ items: [], count: 0, page: 1, pageSize: 20, pages: 0 });
+        }),
+      );
   }
 
   /**
    * Get a single article by ID
+   * @param progressive - If true, load metadata first, then content (for progressive loading)
    */
-  getArticle(id: number): Observable<ArticleDetail> {
-    return from(this.trpc.client.article.getById.query({ id })).pipe(
-      map((article) => {
-        // Map backend properties to frontend aliases
-        let summary = article.content
-          ? article.content.substring(0, 200)
-          : undefined;
-        // Remove base64 images from summary
-        if (summary) {
-          summary = summary.replace(
-            /<img[^>]*src\s*=\s*["']data:image\/[^"']*["'][^>]*>/gi,
-            "",
-          );
-          summary = summary.replace(/<img[^>]*>/gi, "");
-        }
-        return {
-          ...article,
-          read: article.isRead,
-          saved: article.isSaved,
-          title: article.name,
-          published: article.date,
-          link: article.url,
-          summary,
-          prevId: article.prevArticleId,
-          nextId: article.nextArticleId,
-          feed: {
-            id: article.feedId,
-            name: article.feedName,
-            feedType: "", // This would need to come from the feed endpoint if needed
-          },
-        } as ArticleDetail;
-      }),
+  getArticle(
+    id: number,
+    progressive: boolean = false,
+  ): Observable<ArticleDetail> {
+    const cacheKey = `article:${id}`;
+    return this.cacheService.getOrSet(
+      cacheKey,
+      () =>
+        from(this.trpc.client.article.getById.query({ id })).pipe(
+          map((article) => {
+            // Map backend properties to frontend aliases
+            let summary = article.content
+              ? article.content.substring(0, 200)
+              : undefined;
+            // Remove base64 images from summary
+            if (summary) {
+              summary = summary.replace(
+                /<img[^>]*src\s*=\s*["']data:image\/[^"']*["'][^>]*>/gi,
+                "",
+              );
+              summary = summary.replace(/<img[^>]*>/gi, "");
+            }
+            return {
+              ...article,
+              read: article.isRead,
+              saved: article.isSaved,
+              title: article.name,
+              published: article.date,
+              link: article.url,
+              summary,
+              prevId: article.prevArticleId,
+              nextId: article.nextArticleId,
+              feed: {
+                id: article.feedId,
+                name: article.feedName,
+                feedType: "", // This would need to come from the feed endpoint if needed
+              },
+            } as ArticleDetail;
+          }),
+        ),
+      // Cache article details for 5 minutes
+      5 * 60 * 1000,
     );
+  }
+
+  /**
+   * Prefetch an article in the background (for adjacent article prefetching)
+   * Uses silent caching to avoid UI updates
+   */
+  prefetchArticle(id: number): void {
+    const cacheKey = `article:${id}`;
+    // Only prefetch if not already cached
+    if (!this.cacheService.get(cacheKey)) {
+      from(this.trpc.client.article.getById.query({ id }))
+        .pipe(
+          map((article) => {
+            // Map backend properties to frontend aliases
+            let summary = article.content
+              ? article.content.substring(0, 200)
+              : undefined;
+            if (summary) {
+              summary = summary.replace(
+                /<img[^>]*src\s*=\s*["']data:image\/[^"']*["'][^>]*>/gi,
+                "",
+              );
+              summary = summary.replace(/<img[^>]*>/gi, "");
+            }
+            return {
+              ...article,
+              read: article.isRead,
+              saved: article.isSaved,
+              title: article.name,
+              published: article.date,
+              link: article.url,
+              summary,
+              prevId: article.prevArticleId,
+              nextId: article.nextArticleId,
+              feed: {
+                id: article.feedId,
+                name: article.feedName,
+                feedType: "",
+              },
+            } as ArticleDetail;
+          }),
+          catchError(() => {
+            // Silently fail prefetch - don't show errors
+            return of(null);
+          }),
+        )
+        .subscribe((article) => {
+          if (article) {
+            // Cache the prefetched article
+            this.cacheService.set(cacheKey, article, 5 * 60 * 1000);
+          }
+        });
+    }
   }
 
   /**
@@ -274,6 +352,8 @@ export class ArticleService {
       }),
     ).pipe(
       tap(() => {
+        // Invalidate cache when article state changes
+        this.invalidateArticleCache();
         // Update article in local state
         const articles = this.articlesSignal();
         const index = articles.findIndex((a) => a.id === id);
@@ -325,6 +405,8 @@ export class ArticleService {
   deleteArticle(id: number): Observable<void> {
     return from(this.trpc.client.article.delete.mutate({ id })).pipe(
       tap(() => {
+        // Invalidate cache when article is deleted
+        this.invalidateArticleCache();
         // Remove article from local state
         const articles = this.articlesSignal();
         this.articlesSignal.set(articles.filter((a) => a.id !== id));
@@ -348,6 +430,12 @@ export class ArticleService {
    */
   refreshArticle(id: number): Observable<{ success: boolean; taskId: number }> {
     return from(this.trpc.client.article.reload.mutate({ id })).pipe(
+      tap(() => {
+        // Invalidate cache for this specific article
+        this.cacheService.invalidate(`article:${id}`);
+        // Also invalidate article list cache
+        this.invalidateArticleCache();
+      }),
       map((response) => ({
         success: response.success || false,
         taskId: response.taskId || 0,
@@ -484,6 +572,8 @@ export class ArticleService {
             message: "Articles marked as read",
           })),
           tap(() => {
+            // Invalidate cache when articles are marked as read
+            this.invalidateArticleCache();
             // Update local state for articles in current view
             const articles = this.articlesSignal();
             const updatedArticles = articles.map((article) => {
@@ -626,6 +716,8 @@ export class ArticleService {
         message: `${result.count || 0} article${result.count !== 1 ? "s" : ""} marked as ${isRead ? "read" : "unread"}`,
       })),
       tap(() => {
+        // Invalidate cache when articles are marked as read/unread
+        this.invalidateArticleCache();
         // Optimistically update local state for articles in current view
         // Since we don't know exact IDs, update all articles that match filters
         const articles = this.articlesSignal();
@@ -707,6 +799,8 @@ export class ArticleService {
         message: `${result.count || 0} article${result.count !== 1 ? "s" : ""} deleted`,
       })),
       tap(() => {
+        // Invalidate cache when articles are deleted
+        this.invalidateArticleCache();
         // Optimistically remove articles from local state that match filters
         const articles = this.articlesSignal();
         const filteredArticles = articles.filter((article) => {
@@ -786,10 +880,44 @@ export class ArticleService {
         count: result.count || 0,
         message: `${result.count || 0} article${result.count !== 1 ? "s" : ""} refresh${result.count !== 1 ? "es" : ""} queued`,
       })),
+      tap(() => {
+        // Invalidate cache when articles are refreshed
+        this.invalidateArticleCache();
+      }),
       catchError((error) => {
         console.error("Error refreshing filtered articles:", error);
         throw error;
       }),
     );
+  }
+
+  /**
+   * Generate cache key from filters
+   */
+  private getCacheKey(filters: ArticleFilters): string {
+    const parts = [
+      "articles",
+      `page:${filters.page || 1}`,
+      `pageSize:${filters.pageSize || 20}`,
+      filters.feedId ? `feedId:${filters.feedId}` : "",
+      filters.groupId ? `groupId:${filters.groupId}` : "",
+      filters.readState ? `readState:${filters.readState}` : "",
+      filters.saved !== undefined ? `saved:${filters.saved}` : "",
+      filters.search ? `search:${filters.search}` : "",
+      filters.dateFrom
+        ? `dateFrom:${filters.dateFrom instanceof Date ? filters.dateFrom.toISOString() : filters.dateFrom}`
+        : "",
+      filters.dateTo
+        ? `dateTo:${filters.dateTo instanceof Date ? filters.dateTo.toISOString() : filters.dateTo}`
+        : "",
+    ];
+    return parts.filter((p) => p).join("|");
+  }
+
+  /**
+   * Invalidate article cache
+   */
+  private invalidateArticleCache(): void {
+    this.cacheService.invalidatePattern(/^articles\|/);
   }
 }

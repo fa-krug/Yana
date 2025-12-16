@@ -4,7 +4,8 @@ import {
   isDevMode,
   provideZonelessChangeDetection,
 } from "@angular/core";
-import { provideRouter } from "@angular/router";
+import { provideRouter, withPreloading } from "@angular/router";
+import { CustomPreloadingStrategy } from "./core/strategies/custom-preloading.strategy";
 import { provideAnimationsAsync } from "@angular/platform-browser/animations/async";
 import { provideHttpClient, withFetch } from "@angular/common/http";
 import { provideClientHydration } from "@angular/platform-browser";
@@ -17,7 +18,7 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideZonelessChangeDetection(),
     provideBrowserGlobalErrorListeners(),
-    provideRouter(routes),
+    provideRouter(routes, withPreloading(CustomPreloadingStrategy)),
     provideAnimationsAsync(),
     // HttpClient still needed for non-tRPC endpoints (rss, greader, etc.)
     // Use withFetch() for better SSR performance and compatibility

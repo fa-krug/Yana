@@ -35,6 +35,31 @@
         "maxAge": "0u",
         "timeout": "0u"
       }
+    },
+    {
+      "name": "article-feed-data",
+      "urls": [
+        "/api/trpc/article.list*",
+        "/api/trpc/feed.list*",
+        "/api/trpc/article.getById*",
+        "/api/trpc/feed.getById*"
+      ],
+      "cacheConfig": {
+        "strategy": "performance",
+        "maxAge": "2m",
+        "timeout": "10s",
+        "maxEntries": 50
+      }
+    },
+    {
+      "name": "image-proxy",
+      "urls": ["/api/image-proxy*"],
+      "cacheConfig": {
+        "strategy": "performance",
+        "maxAge": "7d",
+        "timeout": "30s",
+        "maxEntries": 200
+      }
     }
   ]
 }

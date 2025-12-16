@@ -128,7 +128,7 @@ import { BreadcrumbComponent } from "@app/core/components/breadcrumb.component";
   styles: [
     `
       .sidenav-container {
-        height: 100vh !important;
+        min-height: 100vh !important;
         display: flex;
         flex-direction: column;
         position: relative !important;
@@ -141,7 +141,7 @@ import { BreadcrumbComponent } from "@app/core/components/breadcrumb.component";
       }
 
       ::ng-deep .sidenav-container.mat-drawer-container {
-        height: 100vh !important;
+        min-height: 100vh !important;
         overflow: hidden !important;
         position: relative !important;
       }
@@ -164,9 +164,34 @@ import { BreadcrumbComponent } from "@app/core/components/breadcrumb.component";
         display: flex !important;
         flex-direction: column;
         height: 100vh !important;
+        max-height: 100vh !important;
         overflow-y: auto !important;
         overflow-x: hidden !important;
         position: relative !important;
+        scrollbar-width: thin;
+      }
+
+      ::ng-deep .sidenav-container mat-sidenav-content::-webkit-scrollbar {
+        width: 8px;
+      }
+
+      ::ng-deep
+        .sidenav-container
+        mat-sidenav-content::-webkit-scrollbar-track {
+        background: transparent;
+      }
+
+      ::ng-deep
+        .sidenav-container
+        mat-sidenav-content::-webkit-scrollbar-thumb {
+        background-color: rgba(0, 0, 0, 0.2);
+        border-radius: 4px;
+      }
+
+      ::ng-deep
+        .sidenav-container
+        mat-sidenav-content::-webkit-scrollbar-thumb:hover {
+        background-color: rgba(0, 0, 0, 0.3);
       }
 
       .content-container {

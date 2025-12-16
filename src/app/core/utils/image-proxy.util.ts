@@ -56,3 +56,46 @@ export function getProxiedImageUrl(
   const encodedUrl = encodeURIComponent(imageUrl);
   return `/api/image-proxy?url=${encodedUrl}&maxAge=${maxAge}`;
 }
+
+/**
+ * Generate responsive image srcset for better performance.
+ * Returns srcset string with multiple image sizes.
+ *
+ * @param imageUrl - The base image URL
+ * @param sizes - Array of width sizes in pixels (e.g., [300, 600, 1200])
+ * @returns srcset string or null if imageUrl is invalid
+ */
+export function getResponsiveImageSrcset(
+  imageUrl: string | null | undefined,
+  sizes: number[] = [300, 600, 1200],
+): string | null {
+  if (!imageUrl) {
+    return null;
+  }
+
+  // For proxied images, we can't easily generate multiple sizes
+  // Return the proxied URL as a single srcset entry
+  const proxiedUrl = getProxiedImageUrl(imageUrl);
+  if (!proxiedUrl) {
+    return null;
+  }
+
+  // If it's a data URI or internal URL, return as-is
+  if (isDataUri(imageUrl) || !isExternalUrl(imageUrl)) {
+    return `${imageUrl} ${sizes[0]}w`;
+  }
+
+  // For external images, return proxied URL with largest size
+  // Note: The image proxy would need to support size parameters for full responsive support
+  return `${proxiedUrl} ${sizes[sizes.length - 1]}w`;
+}
+
+/**
+ * Get image sizes attribute for responsive images.
+ *
+ * @param defaultSize - Default size for the image (e.g., "300px" or "(max-width: 600px) 300px, 600px")
+ * @returns sizes attribute value
+ */
+export function getImageSizes(defaultSize: string = "300px"): string {
+  return `(max-width: 600px) 300px, (max-width: 1200px) 600px, ${defaultSize}`;
+}

@@ -138,6 +138,7 @@ html {
   margin: 0;
   padding: 0;
   overflow-x: hidden;
+  overflow-y: hidden;
   font-family: Roboto, "Helvetica Neue", sans-serif;
   width: 100%;
   max-width: 100vw;
@@ -146,10 +147,10 @@ html {
 }
 
 body {
-  min-height: 100%;
+  height: 100%;
   margin: 0;
   padding: 0;
-  overflow-y: auto;
+  overflow-y: hidden;
   overflow-x: hidden;
   font-family: Roboto, "Helvetica Neue", sans-serif;
   width: 100%;
@@ -166,9 +167,11 @@ body {
 // Ensure app-root doesn't cause overflow
 app-root {
   display: block;
+  height: 100%;
   width: 100%;
   max-width: 100vw;
   overflow-x: hidden;
+  overflow-y: hidden;
 }
 
 // Ensure Material sidenav-container allows sticky positioning

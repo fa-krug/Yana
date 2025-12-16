@@ -18,7 +18,12 @@ import { MatMenuModule } from "@angular/material/menu";
 import { MatTooltipModule } from "@angular/material/tooltip";
 import { ArticleService } from "@app/core/services/article.service";
 import { Article } from "@app/core/models";
-import { getProxiedImageUrl } from "@app/core/utils/image-proxy.util";
+import {
+  getProxiedImageUrl,
+  getResponsiveImageSrcset,
+  getImageSizes,
+} from "@app/core/utils/image-proxy.util";
+import { PrefetchOnIntersectDirective } from "@app/core/directives/prefetch-on-intersect.directive";
 
 @Component({
   selector: "app-feed-articles-list",
@@ -37,6 +42,7 @@ import { getProxiedImageUrl } from "@app/core/utils/image-proxy.util";
     MatPaginatorModule,
     MatMenuModule,
     MatTooltipModule,
+    PrefetchOnIntersectDirective,
   ],
   template: `
     <div class="articles-section">
@@ -89,13 +95,20 @@ import { getProxiedImageUrl } from "@app/core/utils/image-proxy.util";
         }
         <div class="article-list">
           @for (article of articleService().articles(); track article.id) {
-            <mat-card class="article-card" [class.unread]="!article.isRead">
+            <mat-card
+              class="article-card"
+              [class.unread]="!article.isRead"
+              appPrefetchOnIntersect
+              [articleId]="article.id"
+            >
               <div class="article-header">
                 @if (
                   article.thumbnailUrl && !articleImageErrors()[article.id]
                 ) {
                   <img
                     [src]="getProxiedImageUrl(article.thumbnailUrl)"
+                    [srcset]="getResponsiveImageSrcset(article.thumbnailUrl)"
+                    [sizes]="getImageSizes('120px')"
                     [alt]="article.title || article.name"
                     class="article-thumbnail"
                     loading="lazy"
@@ -592,6 +605,8 @@ export class FeedArticlesListComponent {
     this.articleImageErrorsSignal.asReadonly();
 
   protected readonly getProxiedImageUrl = getProxiedImageUrl;
+  protected readonly getResponsiveImageSrcset = getResponsiveImageSrcset;
+  protected readonly getImageSizes = getImageSizes;
 
   protected onArticleImageError(articleId: number): void {
     const errors = { ...this.articleImageErrorsSignal() };

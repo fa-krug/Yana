@@ -22,6 +22,7 @@ export const routes: Routes = [
         path: "feeds",
         loadChildren: () =>
           import("./features/feeds/feeds.routes").then((m) => m.FEEDS_ROUTES),
+        data: { preload: true },
       },
       {
         path: "articles",
@@ -29,6 +30,7 @@ export const routes: Routes = [
           import("./features/articles/articles.routes").then(
             (m) => m.ARTICLES_ROUTES,
           ),
+        data: { preload: true },
       },
       {
         path: "settings",
