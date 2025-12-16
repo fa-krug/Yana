@@ -528,46 +528,79 @@ export class ArticleService {
 
   /**
    * Mark all filtered articles as read/unread
+   * Uses filter-based endpoint for better performance.
    */
   markAllFilteredRead(
     filters: ArticleFilters,
     isRead: boolean,
   ): Observable<{ count: number; message: string }> {
-    return this.getAllFilteredArticleIds(filters).pipe(
-      switchMap((articleIds) => {
-        if (articleIds.length === 0) {
-          return of({
-            count: 0,
-            message: `No articles to mark as ${isRead ? "read" : "unread"}`,
-          });
-        }
+    // Convert readState to isRead boolean if readState is provided
+    let filterIsRead: boolean | undefined = filters.read;
+    if (
+      filterIsRead === undefined &&
+      filters.readState !== undefined &&
+      filters.readState !== null
+    ) {
+      filterIsRead = filters.readState === "read";
+    }
 
-        return from(
-          this.trpc.client.article.markRead.mutate({
-            articleIds,
-            isRead,
-          }),
-        ).pipe(
-          map(() => ({
-            count: articleIds.length,
-            message: `Articles marked as ${isRead ? "read" : "unread"}`,
-          })),
-          tap(() => {
-            // Update local state for articles in current view
-            const articles = this.articlesSignal();
-            const updatedArticles = articles.map((article) => {
-              if (articleIds.includes(article.id)) {
-                return {
-                  ...article,
-                  isRead,
-                  read: isRead,
-                };
-              }
-              return article;
-            });
-            this.articlesSignal.set(updatedArticles);
-          }),
-        );
+    return from(
+      this.trpc.client.article.markFilteredRead.mutate({
+        feedId: filters.feedId ?? null,
+        groupId: filters.groupId ?? null,
+        isRead: filterIsRead,
+        isSaved: filters.saved,
+        search: filters.search ?? null,
+        dateFrom: filters.dateFrom
+          ? filters.dateFrom instanceof Date
+            ? filters.dateFrom.toISOString()
+            : filters.dateFrom
+          : null,
+        dateTo: filters.dateTo
+          ? filters.dateTo instanceof Date
+            ? filters.dateTo.toISOString()
+            : filters.dateTo
+          : null,
+        isReadValue: isRead,
+      }),
+    ).pipe(
+      map((result) => ({
+        count: result.count || 0,
+        message: `${result.count || 0} article${result.count !== 1 ? "s" : ""} marked as ${isRead ? "read" : "unread"}`,
+      })),
+      tap(() => {
+        // Optimistically update local state for articles in current view
+        // Since we don't know exact IDs, update all articles that match filters
+        const articles = this.articlesSignal();
+        const updatedArticles = articles.map((article) => {
+          // Check if article matches current filters
+          let matches = true;
+          if (filters.feedId && article.feedId !== filters.feedId) {
+            matches = false;
+          }
+          if (filterIsRead !== undefined) {
+            const articleIsRead = article.isRead ?? article.read ?? false;
+            if (filterIsRead !== articleIsRead) {
+              matches = false;
+            }
+          }
+          if (filters.saved !== undefined) {
+            const articleIsSaved = article.isSaved ?? article.saved ?? false;
+            if (filters.saved !== articleIsSaved) {
+              matches = false;
+            }
+          }
+
+          if (matches) {
+            return {
+              ...article,
+              isRead,
+              read: isRead,
+            };
+          }
+          return article;
+        });
+        this.articlesSignal.set(updatedArticles);
       }),
       catchError((error) => {
         console.error("Error marking filtered articles:", error);
@@ -578,29 +611,75 @@ export class ArticleService {
 
   /**
    * Delete all filtered articles
+   * Uses filter-based endpoint for better performance.
    */
   deleteAllFiltered(
     filters: ArticleFilters,
   ): Observable<{ count: number; message: string }> {
-    return this.getAllFilteredArticleIds(filters).pipe(
-      switchMap((articleIds) => {
-        if (articleIds.length === 0) {
-          return of({ count: 0, message: "No articles to delete" });
-        }
+    // Convert readState to isRead boolean if readState is provided
+    let filterIsRead: boolean | undefined = filters.read;
+    if (
+      filterIsRead === undefined &&
+      filters.readState !== undefined &&
+      filters.readState !== null
+    ) {
+      filterIsRead = filters.readState === "read";
+    }
 
-        // Delete articles one by one (since API only supports single delete)
-        return from(articleIds).pipe(
-          mergeMap((id) =>
-            this.deleteArticle(id).pipe(
-              map(() => 1),
-              catchError(() => of(0)),
-            ),
+    return from(
+      this.trpc.client.article.deleteFiltered.mutate({
+        feedId: filters.feedId ?? null,
+        groupId: filters.groupId ?? null,
+        isRead: filterIsRead,
+        isSaved: filters.saved,
+        search: filters.search ?? null,
+        dateFrom: filters.dateFrom
+          ? filters.dateFrom instanceof Date
+            ? filters.dateFrom.toISOString()
+            : filters.dateFrom
+          : null,
+        dateTo: filters.dateTo
+          ? filters.dateTo instanceof Date
+            ? filters.dateTo.toISOString()
+            : filters.dateTo
+          : null,
+      }),
+    ).pipe(
+      map((result) => ({
+        count: result.count || 0,
+        message: `${result.count || 0} article${result.count !== 1 ? "s" : ""} deleted`,
+      })),
+      tap(() => {
+        // Optimistically remove articles from local state that match filters
+        const articles = this.articlesSignal();
+        const filteredArticles = articles.filter((article) => {
+          // Check if article matches current filters (if it matches, it was deleted)
+          let matches = true;
+          if (filters.feedId && article.feedId !== filters.feedId) {
+            matches = false;
+          }
+          if (filterIsRead !== undefined) {
+            const articleIsRead = article.isRead ?? article.read ?? false;
+            if (filterIsRead !== articleIsRead) {
+              matches = false;
+            }
+          }
+          if (filters.saved !== undefined) {
+            const articleIsSaved = article.isSaved ?? article.saved ?? false;
+            if (filters.saved !== articleIsSaved) {
+              matches = false;
+            }
+          }
+          // Keep articles that don't match (weren't deleted)
+          return !matches;
+        });
+        this.articlesSignal.set(filteredArticles);
+        this.totalCountSignal.set(
+          Math.max(
+            0,
+            this.totalCountSignal() -
+              (articles.length - filteredArticles.length),
           ),
-          reduce((acc, count) => acc + count, 0),
-          map((count) => ({
-            count,
-            message: `${count} article${count !== 1 ? "s" : ""} deleted`,
-          })),
         );
       }),
       catchError((error) => {
@@ -612,31 +691,44 @@ export class ArticleService {
 
   /**
    * Refresh all filtered articles
+   * Uses filter-based endpoint for better performance.
    */
   refreshAllFiltered(
     filters: ArticleFilters,
   ): Observable<{ count: number; message: string }> {
-    return this.getAllFilteredArticleIds(filters).pipe(
-      switchMap((articleIds) => {
-        if (articleIds.length === 0) {
-          return of({ count: 0, message: "No articles to refresh" });
-        }
+    // Convert readState to isRead boolean if readState is provided
+    let filterIsRead: boolean | undefined = filters.read;
+    if (
+      filterIsRead === undefined &&
+      filters.readState !== undefined &&
+      filters.readState !== null
+    ) {
+      filterIsRead = filters.readState === "read";
+    }
 
-        // Refresh articles one by one
-        return from(articleIds).pipe(
-          concatMap((id) =>
-            this.refreshArticle(id).pipe(
-              map(() => 1),
-              catchError(() => of(0)),
-            ),
-          ),
-          reduce((acc, count) => acc + count, 0),
-          map((count) => ({
-            count,
-            message: `${count} article${count !== 1 ? "s" : ""} refreshed`,
-          })),
-        );
+    return from(
+      this.trpc.client.article.refreshFiltered.mutate({
+        feedId: filters.feedId ?? null,
+        groupId: filters.groupId ?? null,
+        isRead: filterIsRead,
+        isSaved: filters.saved,
+        search: filters.search ?? null,
+        dateFrom: filters.dateFrom
+          ? filters.dateFrom instanceof Date
+            ? filters.dateFrom.toISOString()
+            : filters.dateFrom
+          : null,
+        dateTo: filters.dateTo
+          ? filters.dateTo instanceof Date
+            ? filters.dateTo.toISOString()
+            : filters.dateTo
+          : null,
       }),
+    ).pipe(
+      map((result) => ({
+        count: result.count || 0,
+        message: `${result.count || 0} article${result.count !== 1 ? "s" : ""} refresh${result.count !== 1 ? "es" : ""} queued`,
+      })),
       catchError((error) => {
         console.error("Error refreshing filtered articles:", error);
         throw error;

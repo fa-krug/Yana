@@ -269,54 +269,109 @@ export async function getArticle(id: number, user: UserInfo): Promise<Article> {
 
 /**
  * Mark articles as read/unread.
+ * Optimized with bulk database operations.
  */
 export async function markArticlesRead(
   user: UserInfo,
   articleIds: number[],
   isRead: boolean,
 ): Promise<void> {
-  // Verify user has access to all articles
-  for (const articleId of articleIds) {
-    await getArticle(articleId, user);
+  if (articleIds.length === 0) {
+    return;
   }
 
-  // Update or create states
-  for (const articleId of articleIds) {
-    const [existing] = await db
-      .select()
-      .from(userArticleStates)
-      .where(
-        and(
-          eq(userArticleStates.userId, user.id),
-          eq(userArticleStates.articleId, articleId),
-        ),
-      )
-      .limit(1);
+  // Batch verify user has access to all articles
+  const accessibleArticles = await db
+    .select({ id: articles.id })
+    .from(articles)
+    .innerJoin(feeds, eq(articles.feedId, feeds.id))
+    .where(
+      and(
+        inArray(articles.id, articleIds),
+        or(eq(feeds.userId, user.id), isNull(feeds.userId)),
+        eq(feeds.enabled, true),
+      ),
+    );
 
+  const accessibleIds = new Set(accessibleArticles.map((a) => a.id));
+  const invalidIds = articleIds.filter((id) => !accessibleIds.has(id));
+
+  if (invalidIds.length > 0) {
+    throw new PermissionDeniedError(
+      `Access denied to ${invalidIds.length} article(s)`,
+    );
+  }
+
+  if (accessibleIds.size === 0) {
+    return;
+  }
+
+  const now = new Date();
+  const accessibleIdsArray = Array.from(accessibleIds);
+
+  // Get all existing states in one query
+  const existingStates = await db
+    .select()
+    .from(userArticleStates)
+    .where(
+      and(
+        eq(userArticleStates.userId, user.id),
+        inArray(userArticleStates.articleId, accessibleIdsArray),
+      ),
+    );
+
+  const existingStateMap = new Map(existingStates.map((s) => [s.articleId, s]));
+
+  // Prepare bulk operations
+  const toCreate: Array<{
+    userId: number;
+    articleId: number;
+    isRead: boolean;
+    isSaved: boolean;
+    createdAt: Date;
+    updatedAt: Date;
+  }> = [];
+  const toUpdate: number[] = [];
+
+  for (const articleId of accessibleIdsArray) {
+    const existing = existingStateMap.get(articleId);
     if (existing) {
-      await db
-        .update(userArticleStates)
-        .set({ isRead, updatedAt: new Date() })
-        .where(
-          and(
-            eq(userArticleStates.userId, user.id),
-            eq(userArticleStates.articleId, articleId),
-          ),
-        );
+      // Only update if the read state is different
+      if (existing.isRead !== isRead) {
+        toUpdate.push(existing.id);
+      }
     } else {
-      await db.insert(userArticleStates).values({
+      // Create new state
+      toCreate.push({
         userId: user.id,
         articleId,
         isRead,
         isSaved: false,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        createdAt: now,
+        updatedAt: now,
       });
     }
   }
 
+  // Execute bulk operations
+  if (toCreate.length > 0) {
+    await db.insert(userArticleStates).values(toCreate).onConflictDoNothing();
+  }
+
+  if (toUpdate.length > 0) {
+    await db
+      .update(userArticleStates)
+      .set({ isRead, updatedAt: now })
+      .where(inArray(userArticleStates.id, toUpdate));
+  }
+
+  // Invalidate cache
+  const { cache } = await import("../utils/cache");
+  cache.delete(`unread_counts_${user.id}_false`);
+  cache.delete(`unread_counts_${user.id}_true`);
+
   logger.info(
-    { userId: user.id, articleIds, isRead },
+    { userId: user.id, articleIds: accessibleIdsArray, isRead },
     "Articles marked as read/unread",
   );
 }
@@ -388,6 +443,48 @@ export async function deleteArticle(id: number, user: UserInfo): Promise<void> {
 }
 
 /**
+ * Delete multiple articles in bulk.
+ * Optimized with batch access verification and single DELETE query.
+ */
+export async function deleteArticles(
+  user: UserInfo,
+  articleIds: number[],
+): Promise<number> {
+  if (articleIds.length === 0) {
+    return 0;
+  }
+
+  // Batch verify user has access to all articles
+  const accessibleArticles = await db
+    .select({ id: articles.id })
+    .from(articles)
+    .innerJoin(feeds, eq(articles.feedId, feeds.id))
+    .where(
+      and(
+        inArray(articles.id, articleIds),
+        or(eq(feeds.userId, user.id), isNull(feeds.userId)),
+        eq(feeds.enabled, true),
+      ),
+    );
+
+  const accessibleIds = accessibleArticles.map((a) => a.id);
+
+  if (accessibleIds.length === 0) {
+    return 0;
+  }
+
+  // Delete all accessible articles in one query
+  await db.delete(articles).where(inArray(articles.id, accessibleIds));
+
+  logger.info(
+    { userId: user.id, articleIds: accessibleIds, count: accessibleIds.length },
+    "Articles deleted in bulk",
+  );
+
+  return accessibleIds.length;
+}
+
+/**
  * Reload article (trigger re-aggregation).
  */
 export async function reloadArticle(
@@ -406,6 +503,57 @@ export async function reloadArticle(
     "Article reload enqueued",
   );
   return { success: true, taskId: result.taskId };
+}
+
+/**
+ * Reload multiple articles in bulk (trigger re-aggregation).
+ * Optimized with batch access verification and parallel task queuing.
+ */
+export async function reloadArticles(
+  user: UserInfo,
+  articleIds: number[],
+): Promise<{ success: boolean; taskIds: number[]; count: number }> {
+  if (articleIds.length === 0) {
+    return { success: true, taskIds: [], count: 0 };
+  }
+
+  // Batch verify user has access to all articles
+  const accessibleArticles = await db
+    .select({ id: articles.id })
+    .from(articles)
+    .innerJoin(feeds, eq(articles.feedId, feeds.id))
+    .where(
+      and(
+        inArray(articles.id, articleIds),
+        or(eq(feeds.userId, user.id), isNull(feeds.userId)),
+        eq(feeds.enabled, true),
+      ),
+    );
+
+  const accessibleIds = accessibleArticles.map((a) => a.id);
+
+  if (accessibleIds.length === 0) {
+    return { success: true, taskIds: [], count: 0 };
+  }
+
+  // Queue all reload tasks
+  const { reloadArticle: reloadArticleTask } =
+    await import("./aggregation.service");
+  const taskPromises = accessibleIds.map((id) => reloadArticleTask(id));
+  const results = await Promise.all(taskPromises);
+  const taskIds = results.map((r) => r.taskId);
+
+  logger.info(
+    {
+      userId: user.id,
+      articleIds: accessibleIds,
+      taskIds,
+      count: accessibleIds.length,
+    },
+    "Articles reload enqueued in bulk",
+  );
+
+  return { success: true, taskIds, count: accessibleIds.length };
 }
 
 /**
@@ -526,6 +674,223 @@ export async function getArticleReadState(
     isRead: state?.isRead ?? false,
     isSaved: state?.isSaved ?? false,
   };
+}
+
+/**
+ * Get accessible article IDs based on filters (reusable helper).
+ */
+async function getAccessibleArticleIds(
+  user: UserInfo,
+  filters: {
+    feedId?: number;
+    groupId?: number;
+    isRead?: boolean;
+    isSaved?: boolean;
+    search?: string;
+    dateFrom?: Date | string;
+    dateTo?: Date | string;
+  },
+): Promise<number[]> {
+  // Build feed conditions (same logic as listArticles)
+  const feedConditions = [or(eq(feeds.userId, user.id), isNull(feeds.userId))];
+
+  if (filters.feedId) {
+    feedConditions.push(eq(feeds.id, filters.feedId));
+  }
+
+  let accessibleFeeds = await db
+    .select({ id: feeds.id })
+    .from(feeds)
+    .where(and(...feedConditions));
+
+  // Filter by group if specified
+  if (filters.groupId) {
+    const [group] = await db
+      .select()
+      .from(groups)
+      .where(
+        and(
+          eq(groups.id, filters.groupId),
+          or(eq(groups.userId, user.id), isNull(groups.userId)),
+        ),
+      )
+      .limit(1);
+
+    if (!group) {
+      return [];
+    }
+
+    const feedIdsInGroup = await db
+      .select({ feedId: feedGroups.feedId })
+      .from(feedGroups)
+      .where(eq(feedGroups.groupId, filters.groupId));
+
+    const groupFeedIds = new Set(feedIdsInGroup.map((f) => f.feedId));
+    accessibleFeeds = accessibleFeeds.filter((f) => groupFeedIds.has(f.id));
+  }
+
+  const feedIds = accessibleFeeds.map((f) => f.id);
+  if (feedIds.length === 0) {
+    return [];
+  }
+
+  // Build article conditions
+  const articleConditions = [inArray(articles.feedId, feedIds)];
+
+  if (filters.search) {
+    articleConditions.push(like(articles.name, `%${filters.search}%`));
+  }
+
+  if (filters.dateFrom) {
+    const fromDate =
+      filters.dateFrom instanceof Date
+        ? filters.dateFrom
+        : new Date(filters.dateFrom);
+    articleConditions.push(gte(articles.date, fromDate));
+  }
+
+  if (filters.dateTo) {
+    const toDate =
+      filters.dateTo instanceof Date
+        ? filters.dateTo
+        : new Date(filters.dateTo);
+    toDate.setHours(23, 59, 59, 999);
+    articleConditions.push(lte(articles.date, toDate));
+  }
+
+  // Handle read/saved state filtering
+  if (filters.isRead !== undefined || filters.isSaved !== undefined) {
+    const stateConditions: ReturnType<typeof and>[] = [];
+
+    if (filters.isRead !== undefined) {
+      if (filters.isRead) {
+        stateConditions.push(eq(userArticleStates.isRead, true));
+      } else {
+        stateConditions.push(
+          or(isNull(userArticleStates.id), eq(userArticleStates.isRead, false)),
+        );
+      }
+    }
+
+    if (filters.isSaved !== undefined) {
+      if (filters.isSaved) {
+        stateConditions.push(eq(userArticleStates.isSaved, true));
+      } else {
+        stateConditions.push(
+          or(
+            isNull(userArticleStates.id),
+            eq(userArticleStates.isSaved, false),
+          ),
+        );
+      }
+    }
+
+    // Get article IDs with LEFT JOIN
+    const articleResults = await db
+      .select({ id: articles.id })
+      .from(articles)
+      .leftJoin(
+        userArticleStates,
+        and(
+          eq(userArticleStates.articleId, articles.id),
+          eq(userArticleStates.userId, user.id),
+        ),
+      )
+      .where(and(...articleConditions, ...stateConditions))
+      .groupBy(articles.id);
+
+    return articleResults.map((row) => row.id);
+  }
+
+  // No read/saved filtering - simple query
+  const articleResults = await db
+    .select({ id: articles.id })
+    .from(articles)
+    .where(and(...articleConditions));
+
+  return articleResults.map((row) => row.id);
+}
+
+/**
+ * Mark all filtered articles as read/unread.
+ * Uses filters directly instead of fetching IDs first.
+ */
+export async function markFilteredRead(
+  user: UserInfo,
+  filters: {
+    feedId?: number;
+    groupId?: number;
+    isRead?: boolean;
+    isSaved?: boolean;
+    search?: string;
+    dateFrom?: Date | string;
+    dateTo?: Date | string;
+  },
+  isRead: boolean,
+): Promise<number> {
+  const articleIds = await getAccessibleArticleIds(user, filters);
+
+  if (articleIds.length === 0) {
+    return 0;
+  }
+
+  // Use optimized bulk mark function
+  await markArticlesRead(user, articleIds, isRead);
+
+  return articleIds.length;
+}
+
+/**
+ * Delete all filtered articles.
+ * Uses filters directly instead of fetching IDs first.
+ */
+export async function deleteFiltered(
+  user: UserInfo,
+  filters: {
+    feedId?: number;
+    groupId?: number;
+    isRead?: boolean;
+    isSaved?: boolean;
+    search?: string;
+    dateFrom?: Date | string;
+    dateTo?: Date | string;
+  },
+): Promise<number> {
+  const articleIds = await getAccessibleArticleIds(user, filters);
+
+  if (articleIds.length === 0) {
+    return 0;
+  }
+
+  // Use optimized bulk delete function
+  return await deleteArticles(user, articleIds);
+}
+
+/**
+ * Refresh all filtered articles.
+ * Uses filters directly instead of fetching IDs first.
+ */
+export async function refreshFiltered(
+  user: UserInfo,
+  filters: {
+    feedId?: number;
+    groupId?: number;
+    isRead?: boolean;
+    isSaved?: boolean;
+    search?: string;
+    dateFrom?: Date | string;
+    dateTo?: Date | string;
+  },
+): Promise<{ taskIds: number[]; count: number }> {
+  const articleIds = await getAccessibleArticleIds(user, filters);
+
+  if (articleIds.length === 0) {
+    return { taskIds: [], count: 0 };
+  }
+
+  // Use optimized bulk reload function
+  const result = await reloadArticles(user, articleIds);
+  return { taskIds: result.taskIds, count: result.count };
 }
 
 /**

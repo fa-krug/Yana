@@ -14,7 +14,12 @@ import {
   markArticlesRead,
   markArticlesSaved,
   deleteArticle,
+  deleteArticles,
   reloadArticle,
+  reloadArticles,
+  markFilteredRead,
+  deleteFiltered,
+  refreshFiltered,
   getArticleNavigation,
   markArticleReadOnView,
   enrichArticleData,
@@ -368,5 +373,176 @@ export const articleRouter = router({
         error: task.error || null,
         result: parsedResult,
       };
+    }),
+
+  /**
+   * Delete multiple articles in bulk.
+   */
+  deleteMany: protectedProcedure
+    .input(
+      z.object({
+        articleIds: z.array(z.number().int().positive()).min(1),
+      }),
+    )
+    .mutation(async ({ input, ctx }) => {
+      const user = getAuthenticatedUser(ctx);
+      try {
+        const count = await deleteArticles(user, input.articleIds);
+        return { success: true, count };
+      } catch (error) {
+        if (error instanceof PermissionDeniedError) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: error.message,
+          });
+        }
+        throw error;
+      }
+    }),
+
+  /**
+   * Reload multiple articles in bulk.
+   */
+  reloadMany: protectedProcedure
+    .input(
+      z.object({
+        articleIds: z.array(z.number().int().positive()).min(1),
+      }),
+    )
+    .mutation(async ({ input, ctx }) => {
+      const user = getAuthenticatedUser(ctx);
+      try {
+        return await reloadArticles(user, input.articleIds);
+      } catch (error) {
+        if (error instanceof PermissionDeniedError) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: error.message,
+          });
+        }
+        throw error;
+      }
+    }),
+
+  /**
+   * Mark all filtered articles as read/unread (filter-based).
+   */
+  markFilteredRead: protectedProcedure
+    .input(
+      z.object({
+        feedId: z.number().int().positive().nullish(),
+        groupId: z.number().int().positive().nullish(),
+        isRead: z.boolean().nullish(),
+        isSaved: z.boolean().nullish(),
+        search: z.string().nullish(),
+        dateFrom: z.string().datetime().nullish(),
+        dateTo: z.string().datetime().nullish(),
+        isReadValue: z.boolean(), // The value to set (read or unread)
+      }),
+    )
+    .mutation(async ({ input, ctx }) => {
+      const user = getAuthenticatedUser(ctx);
+      try {
+        const count = await markFilteredRead(
+          user,
+          {
+            feedId: input.feedId ?? undefined,
+            groupId: input.groupId ?? undefined,
+            isRead: input.isRead ?? undefined,
+            isSaved: input.isSaved ?? undefined,
+            search: input.search ?? undefined,
+            dateFrom: input.dateFrom ? new Date(input.dateFrom) : undefined,
+            dateTo: input.dateTo ? new Date(input.dateTo) : undefined,
+          },
+          input.isReadValue,
+        );
+        return { success: true, count };
+      } catch (error) {
+        if (error instanceof PermissionDeniedError) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: error.message,
+          });
+        }
+        throw error;
+      }
+    }),
+
+  /**
+   * Delete all filtered articles (filter-based).
+   */
+  deleteFiltered: protectedProcedure
+    .input(
+      z.object({
+        feedId: z.number().int().positive().nullish(),
+        groupId: z.number().int().positive().nullish(),
+        isRead: z.boolean().nullish(),
+        isSaved: z.boolean().nullish(),
+        search: z.string().nullish(),
+        dateFrom: z.string().datetime().nullish(),
+        dateTo: z.string().datetime().nullish(),
+      }),
+    )
+    .mutation(async ({ input, ctx }) => {
+      const user = getAuthenticatedUser(ctx);
+      try {
+        const count = await deleteFiltered(user, {
+          feedId: input.feedId ?? undefined,
+          groupId: input.groupId ?? undefined,
+          isRead: input.isRead ?? undefined,
+          isSaved: input.isSaved ?? undefined,
+          search: input.search ?? undefined,
+          dateFrom: input.dateFrom ? new Date(input.dateFrom) : undefined,
+          dateTo: input.dateTo ? new Date(input.dateTo) : undefined,
+        });
+        return { success: true, count };
+      } catch (error) {
+        if (error instanceof PermissionDeniedError) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: error.message,
+          });
+        }
+        throw error;
+      }
+    }),
+
+  /**
+   * Refresh all filtered articles (filter-based).
+   */
+  refreshFiltered: protectedProcedure
+    .input(
+      z.object({
+        feedId: z.number().int().positive().nullish(),
+        groupId: z.number().int().positive().nullish(),
+        isRead: z.boolean().nullish(),
+        isSaved: z.boolean().nullish(),
+        search: z.string().nullish(),
+        dateFrom: z.string().datetime().nullish(),
+        dateTo: z.string().datetime().nullish(),
+      }),
+    )
+    .mutation(async ({ input, ctx }) => {
+      const user = getAuthenticatedUser(ctx);
+      try {
+        const result = await refreshFiltered(user, {
+          feedId: input.feedId ?? undefined,
+          groupId: input.groupId ?? undefined,
+          isRead: input.isRead ?? undefined,
+          isSaved: input.isSaved ?? undefined,
+          search: input.search ?? undefined,
+          dateFrom: input.dateFrom ? new Date(input.dateFrom) : undefined,
+          dateTo: input.dateTo ? new Date(input.dateTo) : undefined,
+        });
+        return { success: true, taskIds: result.taskIds, count: result.count };
+      } catch (error) {
+        if (error instanceof PermissionDeniedError) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: error.message,
+          });
+        }
+        throw error;
+      }
     }),
 });
