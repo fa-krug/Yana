@@ -27,7 +27,6 @@ export interface ArticleFilters {
   groupId?: number;
   read?: boolean;
   saved?: boolean;
-  unreadOnly?: boolean;
   readState?: "read" | "unread" | null;
   search?: string;
   dateFrom?: Date | string;

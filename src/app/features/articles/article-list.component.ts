@@ -42,6 +42,7 @@ import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
 import { MatTooltipModule } from "@angular/material/tooltip";
 import { MatCardModule } from "@angular/material/card";
 import { MatDialog, MatDialogModule } from "@angular/material/dialog";
+import { MatMenuModule } from "@angular/material/menu";
 
 // Application
 import {
@@ -52,11 +53,11 @@ import { FeedService } from "@app/core/services/feed.service";
 import { GroupService } from "@app/core/services/group.service";
 import { Article } from "@app/core/models";
 import { ArticleFiltersComponent } from "./components/article-filters.component";
-import { ArticleCardComponent } from "@app/shared/components/article-card.component";
 import {
   ConfirmDialogComponent,
   ConfirmDialogData,
 } from "@app/shared/components/confirm-dialog.component";
+import { getProxiedImageUrl } from "@app/core/utils/image-proxy.util";
 
 @Component({
   selector: "app-article-list",
@@ -73,8 +74,8 @@ import {
     MatTooltipModule,
     MatCardModule,
     MatDialogModule,
+    MatMenuModule,
     ArticleFiltersComponent,
-    ArticleCardComponent,
   ],
   template: `
     <div class="article-list-container container-lg animate-fade-in">
@@ -175,14 +176,111 @@ import {
             <p>Loading articles...</p>
           </div>
         }
-        <div class="article-grid">
+        <div class="article-list">
           @for (article of articleService.articles(); track article.id) {
-            <app-article-card
-              [article]="article"
-              [articleRoute]="['/articles', article.id.toString()]"
-              (toggleRead)="toggleRead($event.event, $event.article)"
-              (toggleSaved)="toggleSaved($event.event, $event.article)"
-            />
+            <mat-card class="article-card" [class.unread]="!article.isRead">
+              <div class="article-header">
+                @if (
+                  article.thumbnailUrl && !articleImageErrors()[article.id]
+                ) {
+                  <img
+                    [src]="getProxiedImageUrl(article.thumbnailUrl)"
+                    [alt]="article.title || article.name"
+                    class="article-thumbnail"
+                    loading="lazy"
+                    [routerLink]="['/articles', article.id]"
+                    (error)="onArticleImageError(article.id)"
+                  />
+                }
+                <div class="article-info">
+                  <h3 [routerLink]="['/articles', article.id]">
+                    {{ article.title || article.name }}
+                  </h3>
+                  <div class="article-meta">
+                    <span class="article-date">
+                      <mat-icon>schedule</mat-icon>
+                      {{ article.published || article.date | date: "short" }}
+                    </span>
+                    @if (article.author) {
+                      <span class="article-author">
+                        <mat-icon>person</mat-icon>
+                        {{ article.author }}
+                      </span>
+                    }
+                  </div>
+                </div>
+                <div class="article-actions">
+                  <button
+                    mat-icon-button
+                    [color]="article.read || article.isRead ? 'primary' : ''"
+                    (click)="toggleRead($event, article)"
+                    [matTooltip]="
+                      article.read || article.isRead
+                        ? 'Mark as unread'
+                        : 'Mark as read'
+                    "
+                    [attr.aria-label]="
+                      article.read || article.isRead
+                        ? 'Mark as unread'
+                        : 'Mark as read'
+                    "
+                    [attr.aria-pressed]="article.read || article.isRead"
+                  >
+                    <mat-icon>{{
+                      article.read || article.isRead
+                        ? "check_circle"
+                        : "radio_button_unchecked"
+                    }}</mat-icon>
+                  </button>
+                  <button
+                    mat-icon-button
+                    [color]="article.saved || article.isSaved ? 'accent' : ''"
+                    (click)="toggleSaved($event, article)"
+                    [matTooltip]="
+                      article.saved || article.isSaved ? 'Unsave' : 'Save'
+                    "
+                    [attr.aria-label]="
+                      article.saved || article.isSaved
+                        ? 'Unsave article'
+                        : 'Save article'
+                    "
+                    [attr.aria-pressed]="article.saved || article.isSaved"
+                  >
+                    <mat-icon>{{
+                      article.saved || article.isSaved
+                        ? "bookmark"
+                        : "bookmark_border"
+                    }}</mat-icon>
+                  </button>
+                  <button
+                    mat-icon-button
+                    [matMenuTriggerFor]="articleMenu"
+                    aria-label="Article options menu"
+                  >
+                    <mat-icon>more_vert</mat-icon>
+                  </button>
+                  <mat-menu #articleMenu="matMenu">
+                    <button
+                      mat-menu-item
+                      [routerLink]="['/articles', article.id]"
+                    >
+                      <mat-icon>open_in_new</mat-icon>
+                      <span>View Article</span>
+                    </button>
+                    @if (article.link || article.url) {
+                      <a
+                        mat-menu-item
+                        [href]="article.link || article.url"
+                        target="_blank"
+                      >
+                        <mat-icon>link</mat-icon>
+                        <span>Open Original</span>
+                      </a>
+                    }
+                  </mat-menu>
+                </div>
+              </div>
+            </mat-card>
           }
         </div>
 
@@ -346,11 +444,139 @@ import {
         }
       }
 
-      .article-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      .article-list {
+        display: flex;
+        flex-direction: column;
         gap: 16px;
         margin-bottom: 24px;
+        contain: layout;
+      }
+
+      .article-card {
+        padding: 24px;
+        cursor: default;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        border-radius: 12px;
+        position: relative;
+        background: rgba(255, 255, 255, 0.5);
+        border: 1px solid rgba(0, 0, 0, 0.06);
+        contain: layout style paint;
+      }
+
+      .article-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+        border-color: rgba(25, 118, 210, 0.2);
+        background: rgba(255, 255, 255, 0.8);
+      }
+
+      .article-card.unread {
+        border-left: 5px solid #1976d2;
+        background: rgba(25, 118, 210, 0.02);
+      }
+
+      .article-card.unread::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 5px;
+        background: linear-gradient(180deg, #1976d2, #2196f3, #2196f3);
+        border-radius: 12px 0 0 12px;
+        box-shadow: 0 0 8px rgba(25, 118, 210, 0.3);
+      }
+
+      .article-card.unread:hover {
+        background: rgba(25, 118, 210, 0.05);
+      }
+
+      .article-header {
+        display: flex;
+        justify-content: space-between;
+        gap: 20px;
+        align-items: flex-start;
+      }
+
+      .article-thumbnail {
+        width: 120px;
+        height: 120px;
+        object-fit: cover;
+        border-radius: 8px;
+        flex-shrink: 0;
+        cursor: pointer;
+        transition:
+          transform 0.2s ease,
+          box-shadow 0.2s ease;
+      }
+
+      .article-thumbnail:hover {
+        transform: scale(1.05);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      }
+
+      .article-info {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .article-info h3 {
+        margin: 0 0 14px 0;
+        font-size: 1.375rem;
+        font-weight: 600;
+        color: var(--mat-sys-primary);
+        cursor: pointer;
+        text-decoration: none;
+        line-height: 1.4;
+        transition: all 0.2s ease;
+        letter-spacing: -0.01em;
+      }
+
+      .article-info h3:hover {
+        color: var(--mat-sys-primary-container);
+        text-decoration: underline;
+        transform: translateX(2px);
+      }
+
+      .article-meta {
+        display: flex;
+        gap: 20px;
+        align-items: center;
+        color: rgba(0, 0, 0, 0.7);
+        font-size: 0.875rem;
+        flex-wrap: wrap;
+      }
+
+      .article-meta span {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .article-date {
+        color: rgba(128, 128, 128, 0.9) !important;
+      }
+
+      .article-meta mat-icon {
+        font-size: 16px;
+        width: 16px;
+        height: 16px;
+        opacity: 0.7;
+      }
+
+      .article-actions {
+        display: flex;
+        gap: 4px;
+        align-items: flex-start;
+        flex-shrink: 0;
+      }
+
+      .article-actions button {
+        transition: transform 0.2s ease;
+      }
+
+      .article-actions button:hover {
+        transform: scale(1.1);
       }
 
       .state-center {
@@ -409,9 +635,62 @@ import {
           padding: 8px 10px;
         }
 
-        .article-grid {
-          grid-template-columns: 1fr;
-          gap: 16px;
+        .article-card {
+          padding: 14px 10px;
+          border-radius: 0;
+        }
+
+        .article-header {
+          flex-direction: column;
+          gap: 12px;
+        }
+
+        .article-thumbnail {
+          width: 100%;
+          height: 200px;
+          align-self: center;
+        }
+
+        .article-actions {
+          align-self: flex-end;
+        }
+      }
+
+      :host-context(.dark-theme) {
+        .article-card {
+          background: rgba(30, 30, 30, 0.8) !important;
+          border-color: rgba(255, 255, 255, 0.1) !important;
+        }
+
+        .article-card:hover {
+          background: rgba(40, 40, 40, 0.9) !important;
+        }
+
+        .article-card.unread {
+          background: rgba(30, 30, 30, 0.8) !important;
+          border-left-color: var(--mat-sys-primary) !important;
+        }
+
+        .article-card.unread::before {
+          background: linear-gradient(
+            180deg,
+            var(--mat-primary-200),
+            var(--mat-sys-primary),
+            var(--mat-primary-50)
+          ) !important;
+          box-shadow: 0 0 8px rgba(var(--mat-sys-primary-rgb), 0.3) !important;
+        }
+
+        .article-card.unread:hover {
+          background: rgba(40, 40, 40, 0.9) !important;
+        }
+
+        .article-meta {
+          color: rgba(255, 255, 255, 0.87) !important;
+        }
+
+        .article-date {
+          color: rgba(255, 255, 255, 0.8) !important;
         }
       }
     `,
@@ -436,7 +715,21 @@ export class ArticleListComponent implements OnInit, OnDestroy {
     "read" | "unread" | "delete" | "refresh" | null
   >(null);
 
+  private readonly articleImageErrorsSignal = signal<Record<number, boolean>>(
+    {},
+  );
+  protected readonly articleImageErrors =
+    this.articleImageErrorsSignal.asReadonly();
+
+  protected readonly getProxiedImageUrl = getProxiedImageUrl;
+
   private destroy$ = new Subject<void>();
+
+  protected onArticleImageError(articleId: number): void {
+    const errors = { ...this.articleImageErrorsSignal() };
+    errors[articleId] = true;
+    this.articleImageErrorsSignal.set(errors);
+  }
 
   ngOnInit() {
     // Load feeds for filter dropdown

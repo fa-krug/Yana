@@ -379,6 +379,14 @@ export async function standardizeContentFormat(
     // Check if footer already exists before removing anything
     const hasExistingFooter = $body("footer").length > 0;
 
+    // Extract existing headers (they should be preserved as-is)
+    // This is important for aggregators like Tagesschau that add custom media headers
+    const existingHeaders: string[] = [];
+    $body("header").each((_, el) => {
+      const $header = $body(el);
+      existingHeaders.push($header.toString());
+    });
+
     // Extract comment sections (they should be preserved as-is)
     const commentSections: string[] = [];
     $body("section").each((_, el) => {
@@ -403,8 +411,12 @@ export async function standardizeContentFormat(
     const bodyHtml = $body.html() || "";
 
     // Build the final structure
-    const headerHtml =
+    // Prefer existing headers (from aggregators like Tagesschau) over newly generated ones
+    const existingHeaderHtml = existingHeaders.join("");
+    const newHeaderHtml =
       contentParts.find((part) => part.includes("<header>")) || "";
+    // Use existing header if present, otherwise use newly generated header
+    const headerHtml = existingHeaderHtml || newHeaderHtml;
 
     // Wrap main content in section tag (unless it's empty)
     const mainContentSection = bodyHtml.trim()

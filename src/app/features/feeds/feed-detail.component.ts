@@ -270,10 +270,8 @@ export class FeedDetailComponent implements OnInit, OnDestroy {
     // Apply read/saved filters
     const filterValue = this.filterControl.value;
     if (filterValue === "unread") {
-      filters.unreadOnly = true;
+      filters.readState = "unread";
     }
-    // Note: 'read' and 'saved' filters are not supported by the API yet
-    // They would require client-side filtering or API updates
 
     this.articleService.loadArticles(filters, silent).subscribe();
   }
@@ -295,10 +293,8 @@ export class FeedDetailComponent implements OnInit, OnDestroy {
 
     const filterValue = this.filterControl.value;
     if (filterValue === "unread") {
-      filters.unreadOnly = true;
+      filters.readState = "unread";
     }
-    // Note: 'read' and 'saved' filters are not supported by the API yet
-    // They would require client-side filtering or API updates
 
     this.articleService.loadArticles(filters).subscribe();
   }

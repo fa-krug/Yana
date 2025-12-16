@@ -146,6 +146,75 @@ export async function listArticles(
     articleConditions.push(lte(articles.date, toDate));
   }
 
+  // Build read/saved state conditions using LEFT JOIN
+  // We need to handle NULL states (articles that haven't been marked read/saved yet)
+  const stateConditions: ReturnType<typeof and>[] = [];
+
+  if (isRead !== undefined) {
+    if (isRead) {
+      // Read: must have a state entry with isRead = true
+      stateConditions.push(eq(userArticleStates.isRead, true));
+    } else {
+      // Unread: either no state entry (NULL) or isRead = false
+      stateConditions.push(
+        or(isNull(userArticleStates.id), eq(userArticleStates.isRead, false)),
+      );
+    }
+  }
+
+  if (isSaved !== undefined) {
+    if (isSaved) {
+      // Saved: must have a state entry with isSaved = true
+      stateConditions.push(eq(userArticleStates.isSaved, true));
+    } else {
+      // Unsaved: either no state entry (NULL) or isSaved = false
+      stateConditions.push(
+        or(isNull(userArticleStates.id), eq(userArticleStates.isSaved, false)),
+      );
+    }
+  }
+
+  // If filtering by read/saved state, use LEFT JOIN
+  if (isRead !== undefined || isSaved !== undefined) {
+    // Get total count with LEFT JOIN
+    const totalResult = await db
+      .select({ count: sql<number>`count(DISTINCT ${articles.id})` })
+      .from(articles)
+      .leftJoin(
+        userArticleStates,
+        and(
+          eq(userArticleStates.articleId, articles.id),
+          eq(userArticleStates.userId, user.id),
+        ),
+      )
+      .where(and(...articleConditions, ...stateConditions));
+
+    const total = totalResult[0]?.count || 0;
+
+    // Get articles with LEFT JOIN
+    const articleResults = await db
+      .select()
+      .from(articles)
+      .leftJoin(
+        userArticleStates,
+        and(
+          eq(userArticleStates.articleId, articles.id),
+          eq(userArticleStates.userId, user.id),
+        ),
+      )
+      .where(and(...articleConditions, ...stateConditions))
+      .groupBy(articles.id)
+      .orderBy(desc(articles.date), desc(articles.id))
+      .limit(pageSize)
+      .offset(offset);
+
+    // Extract articles from join results
+    const articleList = articleResults.map((row) => row.articles);
+
+    return { articles: articleList, total };
+  }
+
+  // No read/saved filtering - use simple query
   // Get total count
   const totalResult = await db
     .select({ count: sql<number>`count(*)` })
@@ -159,45 +228,11 @@ export async function listArticles(
     .select()
     .from(articles)
     .where(and(...articleConditions))
-    .orderBy(desc(articles.date))
+    .orderBy(desc(articles.date), desc(articles.id))
     .limit(pageSize)
     .offset(offset);
 
-  // Filter by read/saved state if needed
-  let filteredArticles = articleList;
-
-  if (isRead !== undefined || isSaved !== undefined) {
-    const articleIds = articleList.map((a) => a.id);
-    const states = await db
-      .select()
-      .from(userArticleStates)
-      .where(
-        and(
-          eq(userArticleStates.userId, user.id),
-          inArray(userArticleStates.articleId, articleIds),
-        ),
-      );
-
-    const stateMap = new Map(
-      states.map((s) => [
-        s.articleId,
-        { isRead: s.isRead, isSaved: s.isSaved },
-      ]),
-    );
-
-    filteredArticles = articleList.filter((article) => {
-      const state = stateMap.get(article.id);
-      if (isRead !== undefined) {
-        if (state?.isRead !== isRead) return false;
-      }
-      if (isSaved !== undefined) {
-        if (state?.isSaved !== isSaved) return false;
-      }
-      return true;
-    });
-  }
-
-  return { articles: filteredArticles, total };
+  return { articles: articleList, total };
 }
 
 /**
