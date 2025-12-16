@@ -212,7 +212,22 @@ router.post(
       return;
     }
 
-    const itemIds = req.body.i || req.body.item_ids || [];
+    // Normalize itemIds to always be an array
+    // For form-urlencoded POST, req.body.i might be a string (single or comma-separated)
+    const itemIdsRaw = req.body.i || req.body.item_ids || [];
+    let itemIds: string[];
+    if (Array.isArray(itemIdsRaw)) {
+      itemIds = itemIdsRaw;
+    } else if (typeof itemIdsRaw === "string") {
+      // Handle comma-separated strings
+      itemIds = itemIdsRaw
+        .split(",")
+        .map((id) => id.trim())
+        .filter(Boolean);
+    } else {
+      itemIds = [];
+    }
+
     const addTag = req.body.a || req.body.add_tag || "";
     const removeTag = req.body.r || req.body.remove_tag || "";
 

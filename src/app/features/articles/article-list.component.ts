@@ -95,58 +95,72 @@ import { getProxiedImageUrl } from "@app/core/utils/image-proxy.util";
           />
         </mat-card-content>
         <mat-card-actions>
-          <button
-            mat-icon-button
-            class="mark-read-button"
-            [disabled]="bulkOperationLoading()"
-            (click)="markAllFilteredRead(true)"
-            matTooltip="Mark all filtered articles as read"
-            aria-label="Mark all filtered articles as read"
-            [attr.aria-busy]="bulkOperationLoading() === 'read'"
-          >
-            <mat-icon [class.spinning]="bulkOperationLoading() === 'read'"
-              >check_circle</mat-icon
+          <div class="article-counts">
+            <span class="count-label">Total:</span>
+            <span class="count-value">{{ articleService.totalCount() }}</span>
+            @if (
+              filteredCount() !== null &&
+              filteredCount() !== articleService.totalCount()
+            ) {
+              <span class="count-separator">|</span>
+              <span class="count-label">Filtered:</span>
+              <span class="count-value">{{ filteredCount() }}</span>
+            }
+          </div>
+          <div class="action-buttons">
+            <button
+              mat-icon-button
+              class="mark-read-button"
+              [disabled]="bulkOperationLoading()"
+              (click)="markAllFilteredRead(true)"
+              matTooltip="Mark all filtered articles as read"
+              aria-label="Mark all filtered articles as read"
+              [attr.aria-busy]="bulkOperationLoading() === 'read'"
             >
-          </button>
-          <button
-            mat-icon-button
-            class="mark-unread-button"
-            [disabled]="bulkOperationLoading()"
-            (click)="markAllFilteredRead(false)"
-            matTooltip="Mark all filtered articles as unread"
-            aria-label="Mark all filtered articles as unread"
-            [attr.aria-busy]="bulkOperationLoading() === 'unread'"
-          >
-            <mat-icon [class.spinning]="bulkOperationLoading() === 'unread'"
-              >radio_button_unchecked</mat-icon
+              <mat-icon [class.spinning]="bulkOperationLoading() === 'read'"
+                >check_circle</mat-icon
+              >
+            </button>
+            <button
+              mat-icon-button
+              class="mark-unread-button"
+              [disabled]="bulkOperationLoading()"
+              (click)="markAllFilteredRead(false)"
+              matTooltip="Mark all filtered articles as unread"
+              aria-label="Mark all filtered articles as unread"
+              [attr.aria-busy]="bulkOperationLoading() === 'unread'"
             >
-          </button>
-          <button
-            mat-icon-button
-            class="delete-button"
-            [disabled]="bulkOperationLoading()"
-            (click)="deleteAllFiltered()"
-            matTooltip="Delete all filtered articles"
-            aria-label="Delete all filtered articles"
-            [attr.aria-busy]="bulkOperationLoading() === 'delete'"
-          >
-            <mat-icon [class.spinning]="bulkOperationLoading() === 'delete'"
-              >delete</mat-icon
+              <mat-icon [class.spinning]="bulkOperationLoading() === 'unread'"
+                >radio_button_unchecked</mat-icon
+              >
+            </button>
+            <button
+              mat-icon-button
+              class="delete-button"
+              [disabled]="bulkOperationLoading()"
+              (click)="deleteAllFiltered()"
+              matTooltip="Delete all filtered articles"
+              aria-label="Delete all filtered articles"
+              [attr.aria-busy]="bulkOperationLoading() === 'delete'"
             >
-          </button>
-          <button
-            mat-icon-button
-            class="refresh-button"
-            [disabled]="bulkOperationLoading()"
-            (click)="refreshAllFiltered()"
-            matTooltip="Refresh all filtered articles"
-            aria-label="Refresh all filtered articles"
-            [attr.aria-busy]="bulkOperationLoading() === 'refresh'"
-          >
-            <mat-icon [class.spinning]="bulkOperationLoading() === 'refresh'"
-              >refresh</mat-icon
+              <mat-icon [class.spinning]="bulkOperationLoading() === 'delete'"
+                >delete</mat-icon
+              >
+            </button>
+            <button
+              mat-icon-button
+              class="refresh-button"
+              [disabled]="bulkOperationLoading()"
+              (click)="refreshAllFiltered()"
+              matTooltip="Refresh all filtered articles"
+              aria-label="Refresh all filtered articles"
+              [attr.aria-busy]="bulkOperationLoading() === 'refresh'"
             >
-          </button>
+              <mat-icon [class.spinning]="bulkOperationLoading() === 'refresh'"
+                >refresh</mat-icon
+              >
+            </button>
+          </div>
         </mat-card-actions>
       </mat-card>
 
@@ -324,9 +338,39 @@ import { getProxiedImageUrl } from "@app/core/utils/image-proxy.util";
         padding: 0 16px 12px 16px !important;
         display: flex;
         gap: 8px;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .article-counts {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.875rem;
+        color: rgba(0, 0, 0, 0.7);
+        flex-wrap: wrap;
+      }
+
+      .count-label {
+        font-weight: 500;
+      }
+
+      .count-value {
+        font-weight: 600;
+        color: var(--mat-sys-primary);
+      }
+
+      .count-separator {
+        color: rgba(0, 0, 0, 0.3);
+        margin: 0 4px;
+      }
+
+      .action-buttons {
+        display: flex;
+        gap: 8px;
         flex-wrap: nowrap;
         align-items: center;
-        justify-content: flex-end;
       }
 
       mat-card-actions button {
@@ -633,6 +677,19 @@ import { getProxiedImageUrl } from "@app/core/utils/image-proxy.util";
         mat-card-actions {
           flex-wrap: wrap;
           padding: 8px 10px;
+          flex-direction: column;
+          align-items: stretch;
+        }
+
+        .article-counts {
+          width: 100%;
+          justify-content: center;
+          margin-bottom: 8px;
+        }
+
+        .action-buttons {
+          width: 100%;
+          justify-content: center;
         }
 
         .article-card {
@@ -692,6 +749,14 @@ import { getProxiedImageUrl } from "@app/core/utils/image-proxy.util";
         .article-date {
           color: rgba(255, 255, 255, 0.8) !important;
         }
+
+        .article-counts {
+          color: rgba(255, 255, 255, 0.87) !important;
+        }
+
+        .count-separator {
+          color: rgba(255, 255, 255, 0.3) !important;
+        }
       }
     `,
   ],
@@ -714,6 +779,9 @@ export class ArticleListComponent implements OnInit, OnDestroy {
   bulkOperationLoading = signal<
     "read" | "unread" | "delete" | "refresh" | null
   >(null);
+
+  private readonly filteredCountSignal = signal<number | null>(null);
+  readonly filteredCount = this.filteredCountSignal.asReadonly();
 
   private readonly articleImageErrorsSignal = signal<Record<number, boolean>>(
     {},
@@ -782,6 +850,8 @@ export class ArticleListComponent implements OnInit, OnDestroy {
       }
 
       this.articleService.loadArticles(filters).subscribe();
+      // Update filtered count after loading articles
+      setTimeout(() => this.updateFilteredCount(), 100);
     });
 
     // Debounce search input
@@ -865,6 +935,57 @@ export class ArticleListComponent implements OnInit, OnDestroy {
     }
 
     this.articleService.loadArticles(filters).subscribe();
+    this.updateFilteredCount();
+  }
+
+  private updateFilteredCount() {
+    // Get filtered count by loading with pageSize=1 just to get the total count
+    const filters: ArticleFilters = {
+      page: 1,
+      pageSize: 1, // Minimal page size just to get count
+    };
+
+    const search = this.searchControl.value?.trim();
+    if (search) {
+      filters.search = search;
+    }
+
+    const feedId = this.feedControl.value;
+    if (feedId) {
+      filters.feedId = feedId;
+    }
+
+    const readState = this.readStateControl.value;
+    if (readState) {
+      filters.readState = readState;
+    }
+
+    const groupId = this.groupControl.value;
+    if (groupId) {
+      filters.groupId = groupId;
+    }
+
+    const dateFrom = this.dateFromControl.value;
+    if (dateFrom) {
+      filters.dateFrom = dateFrom;
+    }
+
+    const dateTo = this.dateToControl.value;
+    if (dateTo) {
+      filters.dateTo = dateTo;
+    }
+
+    this.articleService
+      .loadArticles(filters, true) // Silent mode to avoid showing loading state
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response) => {
+          this.filteredCountSignal.set(response.count);
+        },
+        error: () => {
+          this.filteredCountSignal.set(null);
+        },
+      });
   }
 
   onPageChange(event: PageEvent) {
@@ -1020,6 +1141,8 @@ export class ArticleListComponent implements OnInit, OnDestroy {
           });
           // Refresh the current view
           this.applyFilters();
+          // Update filtered count
+          this.updateFilteredCount();
         },
         error: (error) => {
           this.snackBar.open(
@@ -1106,6 +1229,7 @@ export class ArticleListComponent implements OnInit, OnDestroy {
           // Refresh the current view after a delay to allow tasks to complete
           setTimeout(() => {
             this.applyFilters();
+            this.updateFilteredCount();
           }, 2000);
         },
         error: (error) => {
