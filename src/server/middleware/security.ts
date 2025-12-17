@@ -40,7 +40,7 @@ export function setupSecurity(app: Express): void {
       }
     : false;
 
-  // CSP policy for YouTube proxy route (allows embedding)
+  // CSP policy for YouTube proxy route (allows embedding from any origin)
   const youtubeProxyCSP = !isDevelopment
     ? {
         directives: {
@@ -55,7 +55,7 @@ export function setupSecurity(app: Express): void {
           objectSrc: ["'none'"],
           baseUri: ["'self'"],
           formAction: ["'self'"],
-          frameAncestors: ["'self'"], // Allow embedding from same origin
+          frameAncestors: ["*"], // Allow embedding from any origin
           frameSrc: ["'self'", "https://www.youtube-nocookie.com"],
           upgradeInsecureRequests: [],
         },
@@ -72,6 +72,7 @@ export function setupSecurity(app: Express): void {
       helmet({
         contentSecurityPolicy: youtubeProxyCSP,
         crossOriginEmbedderPolicy: false,
+        frameguard: false, // Disable X-Frame-Options header to allow embedding
       })(req, res, next);
     } else {
       helmet({
