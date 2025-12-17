@@ -51,12 +51,6 @@ import { KeyboardShortcutsService } from "@app/core/services/keyboard-shortcuts.
         class="logo logo-wordmark"
         (click)="navigateToDashboard()"
       />
-      <img
-        src="logo-icon-only.svg"
-        alt="Yana"
-        class="logo logo-icon-only"
-        (click)="navigateToDashboard()"
-      />
       <span class="spacer"></span>
 
       <button
@@ -130,32 +124,17 @@ import { KeyboardShortcutsService } from "@app/core/services/keyboard-shortcuts.
       .logo {
         flex-shrink: 0;
         cursor: pointer;
-        margin-left: 4px;
+        margin-left: 0px;
       }
 
       .logo-wordmark {
-        height: 40px;
+        height: 48px;
         width: auto;
         margin-right: 12px;
         display: block;
       }
 
-      .logo-icon-only {
-        height: 32px;
-        width: 32px;
-        margin-right: 8px;
-        display: none;
-      }
-
       @media (max-width: 600px) {
-        .logo-wordmark {
-          display: none;
-        }
-
-        .logo-icon-only {
-          display: block;
-        }
-
         .keyboard-shortcuts-btn {
           display: none;
         }

@@ -13,9 +13,9 @@ const router = Router();
  * GET /api/youtube-proxy
  * YouTube video proxy page for embedding videos
  */
-router.get("/youtube-proxy", (req: Request, res: Response) => {
+router.get("/youtube-proxy", (req: Request, res: Response): void => {
   // Parse URL parameters on server side
-  const videoId = req.query.v as string;
+  const videoId = (req.query["v"] as string) || "";
 
   if (!videoId) {
     const errorHtml = `<!DOCTYPE html>
@@ -53,18 +53,19 @@ router.get("/youtube-proxy", (req: Request, res: Response) => {
 </body>
 </html>`;
     res.setHeader("Content-Type", "text/html");
-    return res.send(errorHtml);
+    res.send(errorHtml);
+    return;
   }
 
   // Get optional parameters with defaults
-  const autoplay = (req.query.autoplay as string) || "0";
-  const loop = (req.query.loop as string) || "0";
-  const mute = (req.query.mute as string) || "0";
-  const playlist = (req.query.playlist as string) || videoId;
-  const controls = (req.query.controls as string) || "1";
-  const rel = (req.query.rel as string) || "0";
-  const modestbranding = (req.query.modestbranding as string) || "1";
-  const playsinline = (req.query.playsinline as string) || "1";
+  const autoplay = (req.query["autoplay"] as string) || "0";
+  const loop = (req.query["loop"] as string) || "0";
+  const mute = (req.query["mute"] as string) || "0";
+  const playlist = (req.query["playlist"] as string) || videoId;
+  const controls = (req.query["controls"] as string) || "1";
+  const rel = (req.query["rel"] as string) || "0";
+  const modestbranding = (req.query["modestbranding"] as string) || "1";
+  const playsinline = (req.query["playsinline"] as string) || "1";
 
   // Build YouTube embed URL parameters
   const embedParams = new URLSearchParams({

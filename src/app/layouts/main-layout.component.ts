@@ -232,16 +232,20 @@ export class MainLayoutComponent implements AfterViewInit {
     // Check initial screen size
     this.updateMobileState();
 
-    // Watch for breakpoint changes
-    this.breakpointObserver.observe([Breakpoints.Handset]).subscribe(() => {
+    // Watch for breakpoint changes - use custom breakpoint for larger threshold
+    // Sidebar will only show on screens wider than 1024px
+    this.breakpointObserver.observe(["(max-width: 1024px)"]).subscribe(() => {
       this.updateMobileState();
     });
   }
 
   private updateMobileState() {
-    const isHandset = this.breakpointObserver.isMatched(Breakpoints.Handset);
-    // Only handset devices are considered mobile; tablets should show sidebar
-    const mobile = isHandset;
+    // Sidebar shows on screens wider than 1024px
+    // On smaller screens, use mobile menu button
+    const isSmallScreen = this.breakpointObserver.isMatched(
+      "(max-width: 1024px)",
+    );
+    const mobile = isSmallScreen;
 
     this.isMobile.set(mobile);
 
