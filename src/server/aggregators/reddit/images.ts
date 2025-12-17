@@ -11,35 +11,7 @@ import {
   decodeHtmlEntitiesInUrl,
   convertRedditPreviewUrl,
 } from "./urls";
-
-/**
- * Reddit post data interface.
- */
-interface RedditPostData {
-  thumbnail: string;
-  preview?: {
-    images?: Array<{
-      source?: { url: string; width?: number; height?: number };
-      variants?: {
-        gif?: { source?: { url: string } };
-        mp4?: { source?: { url: string } };
-      };
-    }>;
-  };
-  media_metadata?: Record<
-    string,
-    {
-      e: string;
-      s?: { u?: string; gif?: string; mp4?: string };
-    }
-  >;
-  gallery_data?: {
-    items?: Array<{ media_id: string; caption?: string }>;
-  };
-  is_gallery?: boolean;
-  is_self: boolean;
-  url?: string;
-}
+import type { RedditPostData } from "./types";
 
 /**
  * Extract thumbnail URL from Reddit post.

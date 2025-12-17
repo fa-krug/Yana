@@ -8,28 +8,7 @@ import { fixRedditMediaUrl, decodeHtmlEntitiesInUrl } from "./urls";
 import { extractAnimatedGifUrl, extractRedditVideoPreview } from "./images";
 import { fetchPostComments, formatCommentHtml } from "./comments";
 import { ArticleSkipError } from "../base/exceptions";
-
-/**
- * Reddit post data interface.
- */
-export interface RedditPostData {
-  id: string;
-  is_self: boolean;
-  selftext?: string;
-  url?: string;
-  permalink: string;
-  is_gallery?: boolean;
-  media_metadata?: Record<
-    string,
-    {
-      e: string;
-      s?: { u?: string; gif?: string; mp4?: string };
-    }
-  >;
-  gallery_data?: {
-    items?: Array<{ media_id: string; caption?: string }>;
-  };
-}
+import type { RedditPostData } from "./types";
 
 /**
  * Build post content with comments.
@@ -102,7 +81,7 @@ export async function buildPostContent(
       url.toLowerCase().endsWith(".gifv")
     ) {
       // Try to get animated GIF URL first
-      const gifUrl = extractAnimatedGifUrl(post as any);
+      const gifUrl = extractAnimatedGifUrl(post);
       if (gifUrl) {
         const fixedUrl = fixRedditMediaUrl(gifUrl);
         if (fixedUrl) {
@@ -135,7 +114,7 @@ export async function buildPostContent(
       }
     } else if (url.includes("v.redd.it")) {
       // Reddit video - extract preview
-      const previewUrl = extractRedditVideoPreview(post as any);
+      const previewUrl = extractRedditVideoPreview(post);
       if (previewUrl) {
         contentParts.push(
           `<p><img src="${previewUrl}" alt="Video thumbnail"></p>`,

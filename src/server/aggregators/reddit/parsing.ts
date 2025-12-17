@@ -7,51 +7,53 @@ import { logger } from "@server/utils/logger";
 import { buildPostContent } from "./content";
 import { extractHeaderImageUrl, extractThumbnailUrl } from "./images";
 import { decodeHtmlEntitiesInUrl } from "./urls";
+import type { RedditPost, RedditPostData } from "./types";
 
 /**
- * Reddit post interface.
+ * Extract original post data from cross-post if present.
+ * Returns the original post data if this is a cross-post, otherwise returns the post data as-is.
  */
-export interface RedditPost {
-  data: {
-    id: string;
-    title: string;
-    selftext: string;
-    selftext_html: string | null;
-    url: string;
-    permalink: string;
-    created_utc: number;
-    author: string;
-    score: number;
-    num_comments: number;
-    thumbnail: string;
-    preview?: {
-      images?: Array<{
-        source?: { url: string; width?: number; height?: number };
-        variants?: {
-          gif?: { source?: { url: string } };
-          mp4?: { source?: { url: string } };
-        };
-      }>;
-    };
-    media_metadata?: Record<
-      string,
+function getOriginalPostData(postData: RedditPostData): RedditPostData {
+  // Check if this is a cross-post and has original post data
+  if (
+    postData.crosspost_parent_list &&
+    postData.crosspost_parent_list.length > 0
+  ) {
+    const originalPost = postData.crosspost_parent_list[0];
+    logger.debug(
       {
-        e: string;
-        s?: { u?: string; gif?: string; mp4?: string };
-      }
-    >;
-    gallery_data?: {
-      items?: Array<{ media_id: string; caption?: string }>;
+        crosspostId: postData.id,
+        originalPostId: originalPost.id,
+        originalSubreddit: originalPost.subreddit,
+      },
+      "Detected cross-post, using original post data",
+    );
+    // Return the original post data, preserving the structure
+    return {
+      ...originalPost,
+      // Ensure all required fields are present
+      id: originalPost.id,
+      title: originalPost.title,
+      selftext: originalPost.selftext || "",
+      selftext_html: originalPost.selftext_html || null,
+      url: originalPost.url,
+      permalink: originalPost.permalink,
+      created_utc: originalPost.created_utc,
+      author: originalPost.author,
+      score: originalPost.score,
+      num_comments: originalPost.num_comments,
+      thumbnail: originalPost.thumbnail,
+      preview: originalPost.preview,
+      media_metadata: originalPost.media_metadata,
+      gallery_data: originalPost.gallery_data,
+      is_gallery: originalPost.is_gallery,
+      is_self: originalPost.is_self,
+      is_video: originalPost.is_video,
+      media: originalPost.media,
     };
-    is_gallery?: boolean;
-    is_self: boolean;
-    is_video?: boolean;
-    media?: {
-      reddit_video?: {
-        fallback_url?: string;
-      };
-    };
-  };
+  }
+  // Not a cross-post, return data as-is
+  return postData;
 }
 
 /**
@@ -90,13 +92,16 @@ export async function parseRedditPosts(
     return [];
   }
 
-  const twoMonthsAgo = new Date();
-  twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
-
   const articles: RawArticle[] = [];
 
   for (const post of posts) {
-    const postData = post.data;
+    // Get original post data if this is a cross-post
+    const postData = getOriginalPostData(post.data);
+
+    // Get the original subreddit from the post data (for cross-posts, use original subreddit)
+    const originalSubreddit =
+      post.data.crosspost_parent_list?.[0]?.subreddit || subreddit;
+
     const postDate = new Date(postData.created_utc * 1000);
     const decodedPermalink = decodeHtmlEntitiesInUrl(postData.permalink);
     const permalink = `https://reddit.com${decodedPermalink}`;
@@ -104,7 +109,7 @@ export async function parseRedditPosts(
     const rawContent = await buildPostContent(
       postData,
       commentLimit,
-      subreddit,
+      originalSubreddit,
       userId,
     );
     const headerImageUrl = await extractHeaderImageUrl(postData);

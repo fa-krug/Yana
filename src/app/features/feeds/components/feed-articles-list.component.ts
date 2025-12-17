@@ -2,7 +2,14 @@
  * Feed articles list component - displays articles for a feed with filters and pagination.
  */
 
-import { Component, inject, input, output, signal } from "@angular/core";
+import {
+  Component,
+  inject,
+  input,
+  output,
+  signal,
+  ChangeDetectionStrategy,
+} from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { RouterModule } from "@angular/router";
 import { FormControl, ReactiveFormsModule } from "@angular/forms";
@@ -28,6 +35,7 @@ import { PrefetchOnIntersectDirective } from "@app/core/directives/prefetch-on-i
 @Component({
   selector: "app-feed-articles-list",
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CommonModule,
     RouterModule,

@@ -21,7 +21,8 @@ import {
 import { extractHeaderImageUrl, extractThumbnailUrl } from "./reddit/images";
 import { buildPostContent } from "./reddit/content";
 import { fetchRedditPost } from "./reddit/posts";
-import { parseRedditPosts, type RedditPost } from "./reddit/parsing";
+import { parseRedditPosts } from "./reddit/parsing";
+import type { RedditPost } from "./reddit/types";
 
 // Re-export RedditPost type from parsing module
 export type { RedditPost } from "./reddit/parsing";
@@ -214,8 +215,6 @@ export class RedditAggregator extends BaseAggregator {
 
     // Store subreddit icon URL for feed icon collection
     this.subredditIconUrl = subredditInfo.iconUrl;
-    // Legacy support: also store in private property for backwards compatibility
-    (this as any).__subredditIconUrl = subredditInfo.iconUrl;
 
     // Calculate desired article count
     const desiredArticleCount = limit || 25;
@@ -389,7 +388,7 @@ export class RedditAggregator extends BaseAggregator {
       );
     }
 
-    const postData = await fetchRedditPost(subreddit, postId, this.feed.userId);
+    let postData = await fetchRedditPost(subreddit, postId, this.feed.userId);
 
     if (!postData) {
       throw new Error(
@@ -397,7 +396,61 @@ export class RedditAggregator extends BaseAggregator {
       );
     }
 
-    // Build content with comments
+    // Handle cross-posts: use original post data if this is a cross-post
+    if (
+      postData.crosspost_parent_list &&
+      postData.crosspost_parent_list.length > 0
+    ) {
+      const originalPost = postData.crosspost_parent_list[0];
+      logger.debug(
+        {
+          crosspostId: postData.id,
+          originalPostId: originalPost.id,
+          originalSubreddit: originalPost.subreddit,
+        },
+        "Detected cross-post in fetchArticleContentInternal, using original post data",
+      );
+      postData = {
+        ...originalPost,
+        id: originalPost.id,
+        title: originalPost.title,
+        selftext: originalPost.selftext || "",
+        selftext_html: originalPost.selftext_html || null,
+        url: originalPost.url,
+        permalink: originalPost.permalink,
+        created_utc: originalPost.created_utc,
+        author: originalPost.author,
+        score: originalPost.score,
+        num_comments: originalPost.num_comments,
+        thumbnail: originalPost.thumbnail,
+        preview: originalPost.preview,
+        media_metadata: originalPost.media_metadata,
+        gallery_data: originalPost.gallery_data,
+        is_gallery: originalPost.is_gallery,
+        is_self: originalPost.is_self,
+        is_video: originalPost.is_video,
+        media: originalPost.media,
+      };
+      // Use original subreddit for fetching comments
+      const originalSubreddit = originalPost.subreddit || subreddit;
+      const content = await buildPostContent(
+        postData,
+        this.getOption("comment_limit", 10) as number,
+        originalSubreddit,
+        this.feed.userId,
+      );
+
+      // Extract header image URL and store it in the article for processContent
+      const headerImageUrl = await extractHeaderImageUrl(postData);
+      if (headerImageUrl) {
+        (article as RawArticle & { headerImageUrl?: string }).headerImageUrl =
+          headerImageUrl;
+      }
+
+      return content;
+    }
+
+    // Build content with comments (not a cross-post)
     const content = await buildPostContent(
       postData,
       this.getOption("comment_limit", 10) as number,
