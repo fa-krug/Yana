@@ -43,15 +43,15 @@ export async function buildPostContent(
   const contentParts: string[] = [];
 
   // Post content (selftext or link)
-  if (post.is_self && post.selftext) {
-    // Text post - convert Reddit markdown to HTML
+  // Check for selftext first - image posts can have text descriptions too
+  if (post.selftext) {
+    // Text content - convert Reddit markdown to HTML
     const selftextHtml = await convertRedditMarkdown(post.selftext);
     contentParts.push(`<div>${selftextHtml}</div>`);
-  } else if (
-    post.is_gallery &&
-    post.media_metadata &&
-    post.gallery_data?.items
-  ) {
+  }
+
+  // Handle media content (images, galleries, videos)
+  if (post.is_gallery && post.media_metadata && post.gallery_data?.items) {
     // Reddit gallery - extract all images at high resolution
     for (const item of post.gallery_data.items) {
       const mediaId = item.media_id;
