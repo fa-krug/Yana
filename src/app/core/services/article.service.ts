@@ -417,6 +417,66 @@ export class ArticleService {
   }
 
   /**
+   * Update article content.
+   */
+  updateArticle(
+    id: number,
+    data: { content?: string },
+  ): Observable<ArticleDetail> {
+    return from(
+      this.trpc.client.article.update.mutate({
+        id,
+        content: data.content,
+      }),
+    ).pipe(
+      tap(() => {
+        // Invalidate cache when article is updated
+        this.cacheService.invalidate(`article:${id}`);
+        this.invalidateArticleCache();
+        // Update article in local state if it exists
+        const articles = this.articlesSignal();
+        const updatedArticles = articles.map((article) => {
+          if (article.id === id && data.content !== undefined) {
+            return { ...article, content: data.content };
+          }
+          return article;
+        });
+        this.articlesSignal.set(updatedArticles);
+      }),
+      map((article) => {
+        // Map backend properties to frontend aliases (same as getArticle)
+        let summary = article.content
+          ? article.content.substring(0, 200)
+          : undefined;
+        // Remove base64 images from summary
+        if (summary) {
+          summary = summary.replace(
+            /<img[^>]*src\s*=\s*["']data:image\/[^"']*["'][^>]*>/gi,
+            "",
+          );
+          summary = summary.replace(/<img[^>]*>/gi, "");
+        }
+        return {
+          ...article,
+          read: article.isRead,
+          saved: article.isSaved,
+          title: article.name,
+          published: article.date,
+          link: article.url,
+          summary,
+          prevId: article.prevArticleId,
+          nextId: article.nextArticleId,
+          feed: {
+            id: article.feedId,
+            name: article.feedName,
+            feedType: "", // This would need to come from the feed endpoint if needed
+          },
+        } as ArticleDetail;
+      }),
+    );
+  }
+
+  /**
    * Refresh current articles list
    */
   refresh(): void {

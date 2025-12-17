@@ -94,6 +94,7 @@ import { ArticleContentComponent } from "./components/article-content.component"
         <app-article-content
           [article]="currentArticle"
           [showRawContent]="showRawContent()"
+          (articleUpdated)="onArticleUpdated($event)"
         />
 
         <div class="article-navigation">
@@ -461,6 +462,24 @@ export class ArticleDetailComponent implements OnInit, OnDestroy {
       this.router.navigate(["/feeds", article.feedId]);
     } else {
       this.router.navigate(["/"]);
+    }
+  }
+
+  protected onArticleUpdated(updatedArticle: ArticleDetail): void {
+    // Update the article signal with the updated article
+    const currentArticle = this.article();
+    if (currentArticle) {
+      // Preserve navigation and other metadata
+      const articleWithMetadata = {
+        ...updatedArticle,
+        prevId: currentArticle.prevId,
+        nextId: currentArticle.nextId,
+        feed: currentArticle.feed,
+        feedName: currentArticle.feedName,
+        read: currentArticle.read,
+        saved: currentArticle.saved,
+      };
+      this.article.set(articleWithMetadata);
     }
   }
 

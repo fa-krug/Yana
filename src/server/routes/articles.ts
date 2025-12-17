@@ -17,11 +17,13 @@ import {
   articleListSchema,
   markArticlesSchema,
   idParamSchema,
+  updateArticleSchema,
 } from "../validation/schemas";
 import { z } from "zod";
 import {
   listArticles,
   getArticle,
+  updateArticle,
   markArticlesRead,
   markArticlesSaved,
   deleteArticle,
@@ -203,6 +205,21 @@ router.delete(
     const { id } = req.params;
     await deleteArticle(parseInt(id), req.user!);
     res.status(204).send();
+  }),
+);
+
+/**
+ * PATCH /api/v1/articles/:id
+ * Update article content
+ */
+router.patch(
+  "/:id",
+  validateParams(idParamSchema),
+  validateBody(updateArticleSchema),
+  asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    const { id } = req.params;
+    const article = await updateArticle(parseInt(id), req.user!, req.body);
+    res.json(article);
   }),
 );
 

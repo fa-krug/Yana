@@ -134,6 +134,10 @@ export const articleListSchema = z.object({
   search: z.string().optional(),
 });
 
+export const updateArticleSchema = z.object({
+  content: z.string().optional(),
+});
+
 // User settings schemas
 export const updateUserSettingsSchema = z.object({
   redditEnabled: z.boolean().optional(),

@@ -131,8 +131,6 @@ export async function createHeaderElementFromUrl(
         `<iframe src="${embedUrl}" ` +
         `title="YouTube video player" ` +
         `frameborder="0" ` +
-        `width="560" ` +
-        `height="315" ` +
         `allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" ` +
         `allowfullscreen></iframe>` +
         `</div>`;

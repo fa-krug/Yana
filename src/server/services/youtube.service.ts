@@ -242,20 +242,60 @@ export async function searchYouTubeChannels(
     if (axios.isAxiosError(error)) {
       if (error.response?.status === 403) {
         const errorData = error.response.data;
-        if (errorData?.error?.errors?.[0]?.reason === "quotaExceeded") {
+        const errorReason = errorData?.error?.errors?.[0]?.reason;
+        const errorMessage = errorData?.error?.message;
+
+        // Handle specific 403 error reasons
+        if (errorReason === "quotaExceeded") {
           throw new Error(
             "YouTube API quota exceeded. Please try again later.",
           );
         }
+        if (errorReason === "accessNotConfigured") {
+          throw new Error(
+            "YouTube Data API v3 is not enabled. Enable it in Google Cloud Console.",
+          );
+        }
+        if (errorReason === "ipRefererBlocked") {
+          throw new Error(
+            "API key is restricted by IP address or referer. Check API key restrictions in Google Cloud Console.",
+          );
+        }
+        if (errorReason === "forbidden") {
+          throw new Error(
+            "API key is restricted or invalid. Check API key restrictions in Google Cloud Console.",
+          );
+        }
+
+        // Fallback: use API error message if available, otherwise generic message
         throw new Error(
-          "YouTube API access denied. Check API key restrictions in Google Cloud Console.",
+          errorMessage ||
+            "YouTube API access denied. Check API key restrictions in Google Cloud Console.",
         );
       }
       if (error.response?.status === 400) {
-        throw new Error("Invalid search query or API key.");
+        const errorData = error.response.data;
+        const errorMessage = errorData?.error?.message;
+        throw new Error(errorMessage || "Invalid search query or API key.");
       }
+      if (error.response?.status === 401) {
+        throw new Error("Invalid YouTube API key.");
+      }
+      if (error.code === "ECONNABORTED" || error.code === "ETIMEDOUT") {
+        throw new Error(
+          "Connection timeout. Please check your internet connection.",
+        );
+      }
+      if (error.code === "ENOTFOUND" || error.code === "ECONNREFUSED") {
+        throw new Error(
+          "Cannot connect to YouTube API. Please check your internet connection.",
+        );
+      }
+      const errorData = error.response?.data;
+      const errorMessage = errorData?.error?.message;
       throw new Error(
-        `YouTube API error: ${error.response?.statusText || error.message}`,
+        errorMessage ||
+          `YouTube API error: ${error.response?.statusText || error.message}`,
       );
     }
     throw error;

@@ -2,15 +2,29 @@
  * Article content component - displays article content with HTML sanitization.
  */
 
-import { Component, inject, input } from "@angular/core";
+import {
+  Component,
+  inject,
+  input,
+  output,
+  signal,
+  effect,
+} from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { RouterModule } from "@angular/router";
 import { DomSanitizer, SafeHtml } from "@angular/platform-browser";
 import { MatCardModule } from "@angular/material/card";
 import { MatChipsModule } from "@angular/material/chips";
 import { MatIconModule } from "@angular/material/icon";
+import { MatButtonModule } from "@angular/material/button";
+import { MatFormFieldModule } from "@angular/material/form-field";
+import { MatInputModule } from "@angular/material/input";
+import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
+import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
+import { FormsModule } from "@angular/forms";
 import { ArticleDetail } from "@app/core/models";
 import { ArticleMediaComponent } from "./article-media.component";
+import { ArticleService } from "@app/core/services/article.service";
 
 @Component({
   selector: "app-article-content",
@@ -18,9 +32,15 @@ import { ArticleMediaComponent } from "./article-media.component";
   imports: [
     CommonModule,
     RouterModule,
+    FormsModule,
     MatCardModule,
     MatChipsModule,
     MatIconModule,
+    MatButtonModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatProgressSpinnerModule,
+    MatSnackBarModule,
     ArticleMediaComponent,
   ],
   template: `
@@ -92,12 +112,33 @@ import { ArticleMediaComponent } from "./article-media.component";
 
         @if (showRawContent()) {
           <div class="article-content-raw">
-            <pre><code>{{ getRawContent() }}</code></pre>
+            <textarea
+              class="raw-content-input"
+              [(ngModel)]="editedContent"
+              [disabled]="saving()"
+            ></textarea>
           </div>
         } @else {
           <div class="article-content" [innerHTML]="getSafeContent()"></div>
         }
       </mat-card-content>
+
+      @if (showRawContent()) {
+        <mat-card-actions align="end">
+          <button
+            mat-raised-button
+            color="primary"
+            (click)="onSave()"
+            [disabled]="saving() || editedContent() === getRawContent()"
+            class="save-button"
+          >
+            @if (saving()) {
+              <mat-spinner diameter="20" class="inline-spinner"></mat-spinner>
+            }
+            Save
+          </button>
+        </mat-card-actions>
+      }
     </mat-card>
   `,
   styles: [
@@ -292,29 +333,63 @@ import { ArticleMediaComponent } from "./article-media.component";
         background-color: #f5f5f5;
         border: 1px solid rgba(0, 0, 0, 0.12);
         border-radius: 4px;
-        overflow-x: auto;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
       }
 
-      .article-content-raw pre {
+      mat-card-actions {
+        padding: 16px 24px;
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+      }
+
+      .save-button {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background-color: #2196f3 !important;
+        color: white !important;
+      }
+
+      .save-button:hover:not(:disabled) {
+        background-color: #1976d2 !important;
+      }
+
+      .save-button:disabled {
+        opacity: 0.6;
+      }
+
+      .inline-spinner {
+        display: inline-block;
+        margin: 0;
+      }
+
+      .raw-content-input {
+        flex: 1;
         margin: 0;
         padding: 16px;
         background-color: transparent;
+        border: none;
+        outline: none;
+        resize: vertical;
         overflow-x: auto;
+        overflow-y: auto;
         white-space: pre-wrap;
         word-wrap: break-word;
         font-family: "Courier New", "Monaco", "Menlo", monospace;
         font-size: 14px;
         line-height: 1.5;
         color: rgba(0, 0, 0, 0.87);
+        min-height: 300px;
+        width: 100%;
+        box-sizing: border-box;
       }
 
-      .article-content-raw code {
-        background-color: transparent;
-        padding: 0;
-        border-radius: 0;
-        font-family: inherit;
-        font-size: inherit;
-        color: inherit;
+      .raw-content-input:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
       }
 
       @media (max-width: 600px) {
@@ -466,7 +541,7 @@ import { ArticleMediaComponent } from "./article-media.component";
           border-color: rgba(255, 255, 255, 0.1) !important;
         }
 
-        .article-content-raw pre {
+        .raw-content-input {
           color: rgba(255, 255, 255, 0.9) !important;
         }
       }
@@ -475,9 +550,59 @@ import { ArticleMediaComponent } from "./article-media.component";
 })
 export class ArticleContentComponent {
   private readonly sanitizer = inject(DomSanitizer);
+  private readonly articleService = inject(ArticleService);
+  private readonly snackBar = inject(MatSnackBar);
 
   readonly article = input.required<ArticleDetail>();
   readonly showRawContent = input.required<boolean>();
+
+  readonly articleUpdated = output<ArticleDetail>();
+
+  readonly editedContent = signal<string>("");
+  readonly saving = signal<boolean>(false);
+
+  constructor() {
+    // Update editedContent when article changes
+    effect(() => {
+      const content = this.getRawContent();
+      this.editedContent.set(content);
+    });
+  }
+
+  protected onSave(): void {
+    const articleId = this.article()?.id;
+    if (!articleId) {
+      return;
+    }
+
+    const content = this.editedContent();
+    if (content === this.getRawContent()) {
+      return;
+    }
+
+    this.saving.set(true);
+    this.articleService.updateArticle(articleId, { content }).subscribe({
+      next: (updatedArticle) => {
+        this.saving.set(false);
+        this.snackBar.open("Article content saved", "Close", {
+          duration: 3000,
+          panelClass: ["success-snackbar"],
+        });
+        // Notify parent component to update the article
+        this.articleUpdated.emit(updatedArticle);
+      },
+      error: (error) => {
+        this.saving.set(false);
+        this.snackBar.open(
+          `Failed to save article: ${error.message || "Unknown error"}`,
+          "Close",
+          {
+            duration: 5000,
+          },
+        );
+      },
+    });
+  }
 
   protected getSafeContent(): SafeHtml {
     const content = this.article()?.content || "";

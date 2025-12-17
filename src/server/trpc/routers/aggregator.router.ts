@@ -179,9 +179,27 @@ export const aggregatorRouter = router({
         if (error instanceof TRPCError) {
           throw error;
         }
+        // Map error messages to appropriate TRPC error codes
+        const errorMessage =
+          error instanceof Error ? error.message : "Unknown error";
+        let errorCode:
+          | "INTERNAL_SERVER_ERROR"
+          | "TOO_MANY_REQUESTS"
+          | "BAD_REQUEST" = "INTERNAL_SERVER_ERROR";
+
+        if (errorMessage.includes("quota exceeded")) {
+          errorCode = "TOO_MANY_REQUESTS";
+        } else if (
+          errorMessage.includes("Invalid") ||
+          errorMessage.includes("not configured") ||
+          errorMessage.includes("not enabled")
+        ) {
+          errorCode = "BAD_REQUEST";
+        }
+
         throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: `Failed to search YouTube channels: ${error instanceof Error ? error.message : "Unknown error"}`,
+          code: errorCode,
+          message: `Failed to search YouTube channels: ${errorMessage}`,
         });
       }
     }),

@@ -11,6 +11,7 @@ import { getAuthenticatedUser } from "../procedures";
 import {
   listArticles,
   getArticle,
+  updateArticle,
   markArticlesRead,
   markArticlesSaved,
   deleteArticle,
@@ -268,6 +269,77 @@ export const articleRouter = router({
       try {
         await deleteArticle(input.id, user);
         return { success: true };
+      } catch (error) {
+        if (error instanceof NotFoundError) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: error.message,
+          });
+        }
+        if (error instanceof PermissionDeniedError) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: error.message,
+          });
+        }
+        throw error;
+      }
+    }),
+
+  /**
+   * Update article content.
+   */
+  update: protectedProcedure
+    .input(
+      z.object({
+        id: z.number().int().positive(),
+        content: z.string().optional(),
+      }),
+    )
+    .mutation(async ({ input, ctx }) => {
+      const user = getAuthenticatedUser(ctx);
+      try {
+        await updateArticle(input.id, user, {
+          content: input.content,
+        });
+        // Fetch the updated article with full details (same as getById)
+        const article = await getArticle(input.id, user);
+        const feed = await getFeed(article.feedId, user);
+        const navigation = await getArticleNavigation(article, user);
+        const enrichment = await enrichArticleData(article, user);
+
+        // Build response with camelCase (same structure as getById)
+        return {
+          id: article.id,
+          feedId: article.feedId,
+          name: article.name,
+          url: article.url,
+          date: toISOString(article.date),
+          content: article.content,
+          thumbnailUrl: article.thumbnailUrl || null,
+          mediaUrl: article.mediaUrl || null,
+          duration: article.duration || null,
+          viewCount: article.viewCount || null,
+          mediaType: article.mediaType || null,
+          author: article.author || null,
+          externalId: article.externalId || null,
+          score: article.score || null,
+          createdAt: toISOString(article.createdAt),
+          updatedAt: toISOString(article.updatedAt),
+          // Enrichment fields
+          isRead: enrichment.isRead,
+          isSaved: enrichment.isSaved,
+          isVideo: enrichment.isVideo,
+          isPodcast: enrichment.isPodcast,
+          isReddit: enrichment.isReddit,
+          hasMedia: enrichment.hasMedia,
+          durationFormatted: enrichment.durationFormatted || null,
+          // Navigation and feed info
+          feedName: feed.name,
+          feedIcon: feed.icon || null,
+          prevArticleId: navigation.prev?.id || null,
+          nextArticleId: navigation.next?.id || null,
+        };
       } catch (error) {
         if (error instanceof NotFoundError) {
           throw new TRPCError({

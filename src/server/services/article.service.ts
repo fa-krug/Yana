@@ -268,6 +268,35 @@ export async function getArticle(id: number, user: UserInfo): Promise<Article> {
 }
 
 /**
+ * Update article content.
+ */
+export async function updateArticle(
+  id: number,
+  user: UserInfo,
+  data: { content?: string },
+): Promise<Article> {
+  // First verify article exists and user has access
+  const article = await getArticle(id, user);
+
+  // Update article
+  const [updated] = await db
+    .update(articles)
+    .set({
+      content: data.content !== undefined ? data.content : article.content,
+      updatedAt: new Date(),
+    })
+    .where(eq(articles.id, id))
+    .returning();
+
+  if (!updated) {
+    throw new NotFoundError(`Article with id ${id} not found`);
+  }
+
+  logger.info({ articleId: id, userId: user.id }, "Article updated");
+  return updated;
+}
+
+/**
  * Mark articles as read/unread.
  * Optimized with bulk database operations.
  */
