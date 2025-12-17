@@ -7,32 +7,45 @@
     </linearGradient>
   </defs>
   
-  <!-- Rounded square background -->
-  <rect x="10" y="10" width="180" height="180" rx="40" ry="40" fill="url(#yanaIconGradient)" />
-  
-  <!-- Letter "Y" stylized as converging feeds -->
+  <!-- Large purple Y in background -->
   <path d="M 60 60 L 100 100 L 100 140" 
-        stroke="white" 
-        stroke-width="12" 
+        stroke="url(#yanaIconGradient)" 
+        stroke-width="50" 
         fill="none" 
         stroke-linecap="round" 
         stroke-linejoin="round"/>
   
   <path d="M 140 60 L 100 100" 
-        stroke="white" 
-        stroke-width="12" 
+        stroke="url(#yanaIconGradient)" 
+        stroke-width="50" 
         fill="none" 
         stroke-linecap="round" 
         stroke-linejoin="round"/>
   
   <path d="M 100 140 L 100 160" 
-        stroke="white" 
-        stroke-width="12" 
+        stroke="url(#yanaIconGradient)" 
+        stroke-width="50" 
         fill="none" 
         stroke-linecap="round"/>
   
-  <!-- Feed dots -->
-  <circle cx="60" cy="60" r="6" fill="white" opacity="0.9"/>
-  <circle cx="140" cy="60" r="6" fill="white" opacity="0.9"/>
-  <circle cx="100" cy="160" r="6" fill="white"/>
+  <!-- Much smaller white Y in foreground -->
+  <path d="M 70 65 L 100 95 L 100 125" 
+        stroke="white" 
+        stroke-width="20" 
+        fill="none" 
+        stroke-linecap="round" 
+        stroke-linejoin="round"/>
+  
+  <path d="M 130 65 L 100 95" 
+        stroke="white" 
+        stroke-width="20" 
+        fill="none" 
+        stroke-linecap="round" 
+        stroke-linejoin="round"/>
+  
+  <path d="M 100 125 L 100 145" 
+        stroke="white" 
+        stroke-width="20" 
+        fill="none" 
+        stroke-linecap="round"/>
 </svg>

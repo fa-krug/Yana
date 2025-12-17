@@ -1,66 +1,79 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 120" width="400" height="120">
   <defs>
-    <linearGradient id="yanaTextGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+    <linearGradient id="yanaWordmarkGradient" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" style="stop-color:#6366f1;stop-opacity:1" />
       <stop offset="50%" style="stop-color:#8b5cf6;stop-opacity:1" />
       <stop offset="100%" style="stop-color:#a855f7;stop-opacity:1" />
     </linearGradient>
-    <linearGradient id="yanaTextBright" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" style="stop-color:#60a5fa;stop-opacity:1" />
-      <stop offset="50%" style="stop-color:#a78bfa;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#c084fc;stop-opacity:1" />
-    </linearGradient>
   </defs>
   
-  <!-- Icon mark -->
-  <g transform="translate(20, 20)">
-    <!-- Background circle -->
-    <circle cx="40" cy="40" r="38" fill="url(#yanaTextGradient)" />
+  <!-- Y from icon - scaled and positioned -->
+  <g transform="translate(20, 10) scale(0.5)">
+    <!-- Large purple Y in background -->
+    <path d="M 60 60 L 100 100 L 100 140" 
+          stroke="url(#yanaWordmarkGradient)" 
+          stroke-width="50" 
+          fill="none" 
+          stroke-linecap="round" 
+          stroke-linejoin="round"/>
     
-    <!-- Letter "Y" stylized -->
-    <path d="M 20 20 L 40 40 L 40 60" 
-          stroke="white" 
-          stroke-width="6" 
+    <path d="M 140 60 L 100 100" 
+          stroke="url(#yanaWordmarkGradient)" 
+          stroke-width="50" 
           fill="none" 
           stroke-linecap="round" 
           stroke-linejoin="round"/>
-    <path d="M 60 20 L 40 40" 
-          stroke="white" 
-          stroke-width="6" 
-          fill="none" 
-          stroke-linecap="round" 
-          stroke-linejoin="round"/>
-    <path d="M 40 60 L 40 70" 
-          stroke="white" 
-          stroke-width="6" 
+    
+    <path d="M 100 140 L 100 160" 
+          stroke="url(#yanaWordmarkGradient)" 
+          stroke-width="50" 
           fill="none" 
           stroke-linecap="round"/>
-    <circle cx="20" cy="20" r="3" fill="white" opacity="0.9"/>
-    <circle cx="60" cy="20" r="3" fill="white" opacity="0.9"/>
-    <circle cx="40" cy="70" r="3" fill="white"/>
+    
+    <!-- Much smaller white Y in foreground -->
+    <path d="M 70 65 L 100 95 L 100 125" 
+          stroke="white" 
+          stroke-width="20" 
+          fill="none" 
+          stroke-linecap="round" 
+          stroke-linejoin="round"/>
+    
+    <path d="M 130 65 L 100 95" 
+          stroke="white" 
+          stroke-width="20" 
+          fill="none" 
+          stroke-linecap="round" 
+          stroke-linejoin="round"/>
+    
+    <path d="M 100 125 L 100 145" 
+          stroke="white" 
+          stroke-width="20" 
+          fill="none" 
+          stroke-linecap="round"/>
   </g>
   
-  <!-- Wordmark "Yana" - Border layer (drawn first) -->
-  <text x="100" y="75" 
+  <!-- Background purple "ana" text - slightly bigger -->
+  <text x="90" y="90" 
         font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" 
-        font-size="72" 
+        font-size="58" 
         font-weight="600" 
-        fill="none" 
-        stroke="url(#yanaTextBright)" 
-        stroke-width="12" 
-        stroke-linejoin="round"
-        stroke-linecap="round"
-        letter-spacing="-2">
-    Yana
+        fill="url(#yanaWordmarkGradient)" 
+        fill-opacity="0.6"
+        letter-spacing="3"
+        text-anchor="start"
+        dominant-baseline="alphabetic">
+    ana
   </text>
   
-  <!-- Wordmark "Yana" - Fill layer (drawn on top) -->
-  <text x="100" y="75" 
+  <!-- "ana" text in smaller letters, same style -->
+  <text x="90" y="90" 
         font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" 
-        font-size="72" 
+        font-size="48" 
         font-weight="600" 
         fill="white" 
-        letter-spacing="-2">
-    Yana
+        letter-spacing="3"
+        text-anchor="start"
+        dominant-baseline="alphabetic">
+    ana
   </text>
 </svg>
