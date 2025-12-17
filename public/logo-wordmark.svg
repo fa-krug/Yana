@@ -1,37 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="15 0 175 120" width="175" height="120">
-  <defs>
-    <linearGradient id="yanaWordmarkGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#6366f1;stop-opacity:1" />
-      <stop offset="50%" style="stop-color:#8b5cf6;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#a855f7;stop-opacity:1" />
-    </linearGradient>
-  </defs>
-  
   <!-- Y from icon - scaled and positioned -->
   <g transform="translate(1, 10) scale(0.575, 0.5)">
     <g transform="translate(2.5, 2) scale(1.15, 1.0)">
-      <!-- Large purple Y in background -->
-      <path d="M 60 60 L 100 100 L 100 155" 
-            stroke="url(#yanaWordmarkGradient)" 
-            stroke-width="50" 
-            fill="none" 
-            stroke-linecap="round" 
-            stroke-linejoin="round"/>
-      
-      <path d="M 140 60 L 100 100" 
-            stroke="url(#yanaWordmarkGradient)" 
-            stroke-width="50" 
-            fill="none" 
-            stroke-linecap="round" 
-            stroke-linejoin="round"/>
-      
-      <path d="M 100 155 L 100 190" 
-            stroke="url(#yanaWordmarkGradient)" 
-            stroke-width="50" 
-            fill="none" 
-            stroke-linecap="round"/>
-      
-      <!-- Much smaller white Y in foreground -->
+      <!-- White Y -->
       <path d="M 70 65 L 100 95 L 100 125" 
             stroke="white" 
             stroke-width="20" 
@@ -54,40 +25,8 @@
     </g>
   </g>
   
-  <!-- Background purple "ana" text - slightly bigger, individual letters -->
-  <text x="95" y="92" 
-        font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" 
-        font-size="58" 
-        font-weight="600" 
-        fill="url(#yanaWordmarkGradient)" 
-        fill-opacity="0.6"
-        text-anchor="start"
-        dominant-baseline="alphabetic">
-    a
-  </text>
-  <text x="124" y="92" 
-        font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" 
-        font-size="58" 
-        font-weight="600" 
-        fill="url(#yanaWordmarkGradient)" 
-        fill-opacity="0.6"
-        text-anchor="start"
-        dominant-baseline="alphabetic">
-    n
-  </text>
-  <text x="154" y="92" 
-        font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" 
-        font-size="58" 
-        font-weight="600" 
-        fill="url(#yanaWordmarkGradient)" 
-        fill-opacity="0.6"
-        text-anchor="start"
-        dominant-baseline="alphabetic">
-    a
-  </text>
-  
-  <!-- "ana" text in smaller letters, same style -->
-  <text x="98" y="90" 
+  <!-- "ana" text -->
+  <text x="85" y="90" 
         font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" 
         font-size="48" 
         font-weight="600" 

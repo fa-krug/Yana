@@ -8,45 +8,24 @@
   </defs>
   
   <g transform="translate(2.5, 2) scale(1.15, 1.0)">
-    <!-- Large purple Y in background -->
-    <path d="M 60 60 L 100 100 L 100 155" 
-          stroke="url(#yanaIconGradient)" 
-          stroke-width="50" 
-          fill="none" 
-          stroke-linecap="round" 
-          stroke-linejoin="round"/>
-    
-    <path d="M 140 60 L 100 100" 
-          stroke="url(#yanaIconGradient)" 
-          stroke-width="50" 
-          fill="none" 
-          stroke-linecap="round" 
-          stroke-linejoin="round"/>
-    
-    <path d="M 100 155 L 100 190" 
-          stroke="url(#yanaIconGradient)" 
-          stroke-width="50" 
-          fill="none" 
-          stroke-linecap="round"/>
-    
     <!-- Much smaller white Y in foreground -->
-    <path d="M 70 65 L 100 95 L 100 125" 
-          stroke="white" 
-          stroke-width="20" 
+    <path d="M 65 60 L 100 95 L 100 130" 
+          stroke="#2196f3" 
+          stroke-width="25" 
           fill="none" 
           stroke-linecap="round" 
           stroke-linejoin="round"/>
     
-    <path d="M 130 65 L 100 95" 
-          stroke="white" 
-          stroke-width="20" 
+    <path d="M 135 60 L 100 95" 
+          stroke="#2196f3" 
+          stroke-width="25" 
           fill="none" 
           stroke-linecap="round" 
           stroke-linejoin="round"/>
     
-    <path d="M 100 125 L 100 145" 
-          stroke="white" 
-          stroke-width="20" 
+    <path d="M 100 130 L 100 155" 
+          stroke="#2196f3" 
+          stroke-width="25" 
           fill="none" 
           stroke-linecap="round"/>
   </g>
