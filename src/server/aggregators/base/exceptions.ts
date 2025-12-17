@@ -39,13 +39,16 @@ export class ValidationError extends AggregationError {
  * should cause the article to be skipped rather than retried.
  */
 export class ArticleSkipError extends AggregationError {
+  override statusCode: number;
+
   constructor(
     message: string,
     feedId?: number,
-    public statusCode?: number,
+    statusCode: number = 400,
     public originalError?: Error,
   ) {
     super(message, feedId);
+    this.statusCode = statusCode;
     this.name = "ArticleSkipError";
   }
 }

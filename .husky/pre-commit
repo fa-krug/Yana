@@ -13,4 +13,15 @@ npm test || {
   exit 1
 }
 
+echo "✅ Tests passed!"
+echo ""
+echo "🔨 Running build..."
+npm run build || {
+  echo "❌ Build failed!"
+  echo "💡 Fix build errors before committing"
+  exit 1
+}
+
+echo "✅ Build passed!"
+echo ""
 echo "✅ All checks passed!"

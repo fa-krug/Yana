@@ -24,8 +24,8 @@ import { fetchRedditPost } from "./reddit/posts";
 import { parseRedditPosts } from "./reddit/parsing";
 import type { RedditPost } from "./reddit/types";
 
-// Re-export RedditPost type from parsing module
-export type { RedditPost } from "./reddit/parsing";
+// Re-export RedditPost type
+export type { RedditPost } from "./reddit/types";
 
 export class RedditAggregator extends BaseAggregator {
   override readonly id = "reddit";
