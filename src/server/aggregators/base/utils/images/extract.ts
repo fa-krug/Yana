@@ -12,6 +12,8 @@ import {
   handleInlineSvg,
   handlePageImages,
 } from "./strategies/index";
+import { is4xxError } from "../http-errors";
+import { ArticleSkipError } from "../../exceptions";
 
 /**
  * Extract an image from a URL using multiple strategies.
@@ -58,6 +60,44 @@ export async function extractImageFromUrl(
       html = await page.content();
     } catch (error) {
       await page.close();
+      // Check for 4xx errors from Playwright navigation
+      if (error instanceof Error) {
+        const errorMsg = error.message.toLowerCase();
+        if (
+          errorMsg.includes("404") ||
+          errorMsg.includes("403") ||
+          errorMsg.includes("401") ||
+          errorMsg.includes("410") ||
+          errorMsg.includes("net::err_aborted")
+        ) {
+          const statusMatch = errorMsg.match(/\b(40[0-9]|41[0-9])\b/);
+          const extractedStatus = statusMatch
+            ? parseInt(statusMatch[1], 10)
+            : null;
+          if (
+            extractedStatus &&
+            extractedStatus >= 400 &&
+            extractedStatus < 500
+          ) {
+            throw new ArticleSkipError(
+              `Failed to extract image from URL: ${extractedStatus} ${error.message}`,
+              undefined,
+              extractedStatus,
+              error,
+            );
+          }
+        }
+      }
+      // Also check if it's an axios error (from redirects)
+      const statusCode = is4xxError(error);
+      if (statusCode !== null) {
+        throw new ArticleSkipError(
+          `Failed to extract image from URL: ${statusCode} ${error instanceof Error ? error.message : String(error)}`,
+          undefined,
+          statusCode,
+          error instanceof Error ? error : undefined,
+        );
+      }
       throw error;
     }
 
@@ -103,6 +143,10 @@ export async function extractImageFromUrl(
     await page.close();
     return null;
   } catch (error) {
+    // Re-throw ArticleSkipError to propagate it up
+    if (error instanceof ArticleSkipError) {
+      throw error;
+    }
     logger.warn({ error, url }, "Failed to extract image from URL");
     // Make sure page is closed even on error
     try {

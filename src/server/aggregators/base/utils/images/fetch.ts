@@ -5,6 +5,8 @@
 import axios from "axios";
 import sharp from "sharp";
 import { logger } from "@server/utils/logger";
+import { is4xxError } from "../http-errors";
+import { ArticleSkipError } from "../../exceptions";
 
 /**
  * Get appropriate referer header for a URL.
@@ -111,6 +113,20 @@ export async function fetchSingleImage(url: string): Promise<{
       return { url, imageData: null, contentType: null };
     }
   } catch (error) {
+    // Check for 4xx errors - skip article on client errors
+    const statusCode = is4xxError(error);
+    if (statusCode !== null) {
+      logger.warn(
+        { error, url, statusCode },
+        "4xx error fetching image, skipping article",
+      );
+      throw new ArticleSkipError(
+        `Failed to fetch image: ${statusCode} ${error instanceof Error ? error.message : String(error)}`,
+        undefined,
+        statusCode,
+        error instanceof Error ? error : undefined,
+      );
+    }
     logger.warn({ error, url }, "Failed to fetch image");
     return { url, imageData: null, contentType: null };
   }

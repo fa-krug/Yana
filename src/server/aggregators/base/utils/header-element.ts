@@ -15,6 +15,8 @@ import { extractYouTubeVideoId, getYouTubeProxyUrl } from "./youtube";
 import { extractPostInfoFromUrl } from "../../reddit/urls";
 import { fetchRedditIcon } from "@server/services/icon.service";
 import { fetchSingleImage } from "./images";
+import { is4xxError } from "./http-errors";
+import { ArticleSkipError } from "../exceptions";
 
 /**
  * Create a header HTML element from a URL.
@@ -98,6 +100,20 @@ export async function createHeaderElementFromUrl(
           );
         }
       } catch (error) {
+        // Check for 4xx errors - skip article on client errors
+        const statusCode = is4xxError(error);
+        if (statusCode !== null) {
+          logger.warn(
+            { error, url, subreddit: postInfo.subreddit, statusCode },
+            "4xx error fetching subreddit thumbnail, skipping article",
+          );
+          throw new ArticleSkipError(
+            `Failed to fetch subreddit thumbnail: ${statusCode} ${error instanceof Error ? error.message : String(error)}`,
+            undefined,
+            statusCode,
+            error instanceof Error ? error : undefined,
+          );
+        }
         logger.warn(
           { error, url, subreddit: postInfo.subreddit },
           "Failed to fetch subreddit thumbnail, falling back to default extraction",
@@ -164,6 +180,20 @@ export async function createHeaderElementFromUrl(
 
     return imgHtml;
   } catch (error) {
+    // Check for 4xx errors - skip article on client errors
+    const statusCode = is4xxError(error);
+    if (statusCode !== null) {
+      logger.warn(
+        { error, url, statusCode },
+        "4xx error creating header element, skipping article",
+      );
+      throw new ArticleSkipError(
+        `Failed to create header element: ${statusCode} ${error instanceof Error ? error.message : String(error)}`,
+        undefined,
+        statusCode,
+        error instanceof Error ? error : undefined,
+      );
+    }
     logger.warn({ error, url }, "Failed to create header element from URL");
     return null;
   }

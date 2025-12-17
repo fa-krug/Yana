@@ -6,6 +6,8 @@ import axios from "axios";
 import { logger } from "@server/utils/logger";
 import { getRedditAccessToken } from "./auth";
 import { convertRedditMarkdown, escapeHtml } from "./markdown";
+import { is4xxError } from "../base/utils/http-errors";
+import { ArticleSkipError } from "../base/exceptions";
 
 /**
  * Reddit comment interface.
@@ -106,6 +108,20 @@ export async function fetchPostComments(
 
     return filtered.slice(0, commentLimit);
   } catch (error) {
+    // Check for 4xx errors - skip article on client errors
+    const statusCode = is4xxError(error);
+    if (statusCode !== null) {
+      logger.warn(
+        { error, subreddit, postId, statusCode },
+        "4xx error fetching Reddit comments, skipping article",
+      );
+      throw new ArticleSkipError(
+        `Failed to fetch Reddit comments: ${statusCode} ${error instanceof Error ? error.message : String(error)}`,
+        undefined,
+        statusCode,
+        error instanceof Error ? error : undefined,
+      );
+    }
     logger.warn({ error, subreddit, postId }, "Error fetching Reddit comments");
     return [];
   }

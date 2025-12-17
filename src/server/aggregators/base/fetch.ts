@@ -6,7 +6,8 @@ import Parser from "rss-parser";
 import { chromium, type Browser } from "playwright";
 import axios from "axios";
 import { logger } from "@server/utils/logger";
-import { ContentFetchError } from "./exceptions";
+import { ContentFetchError, ArticleSkipError } from "./exceptions";
+import { is4xxError } from "./utils/http-errors";
 
 let browser: Browser | null = null;
 
@@ -186,6 +187,72 @@ export async function fetchArticleContent(
     const elapsed = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : String(error || "Unknown error");
+
+    // Check for 4xx errors - Playwright may throw errors with status information
+    // Check if it's an axios error first (from redirects or other HTTP calls)
+    const statusCode = is4xxError(error);
+    if (statusCode !== null) {
+      logger.warn(
+        {
+          error: error instanceof Error ? error : new Error(String(error)),
+          url,
+          elapsed,
+          statusCode,
+          step: "fetchArticleContent",
+          subStep: "error",
+        },
+        "4xx error fetching article content, skipping article",
+      );
+      throw new ArticleSkipError(
+        `Failed to fetch content from ${url}: ${statusCode} ${errorMessage}`,
+        undefined,
+        statusCode,
+        error instanceof Error ? error : undefined,
+      );
+    }
+
+    // Check for Playwright navigation errors that might indicate 4xx
+    // Playwright throws errors with messages like "net::ERR_ABORTED" or status codes
+    if (error instanceof Error) {
+      const errorMsg = error.message.toLowerCase();
+      // Check for common 4xx indicators in Playwright errors
+      if (
+        errorMsg.includes("404") ||
+        errorMsg.includes("403") ||
+        errorMsg.includes("401") ||
+        errorMsg.includes("410") ||
+        errorMsg.includes("net::err_aborted")
+      ) {
+        // Try to extract status code from error message
+        const statusMatch = errorMsg.match(/\b(40[0-9]|41[0-9])\b/);
+        const extractedStatus = statusMatch
+          ? parseInt(statusMatch[1], 10)
+          : null;
+        if (
+          extractedStatus &&
+          extractedStatus >= 400 &&
+          extractedStatus < 500
+        ) {
+          logger.warn(
+            {
+              error,
+              url,
+              elapsed,
+              statusCode: extractedStatus,
+              step: "fetchArticleContent",
+              subStep: "error",
+            },
+            "4xx error fetching article content (detected from Playwright error), skipping article",
+          );
+          throw new ArticleSkipError(
+            `Failed to fetch content from ${url}: ${extractedStatus} ${errorMessage}`,
+            undefined,
+            extractedStatus,
+            error,
+          );
+        }
+      }
+    }
 
     logger.error(
       {

@@ -4,6 +4,8 @@
 
 import axios from "axios";
 import { logger } from "@server/utils/logger";
+import { is4xxError } from "../base/utils/http-errors";
+import { ArticleSkipError } from "../base/exceptions";
 
 /**
  * YouTube comment interface.
@@ -94,6 +96,20 @@ export async function fetchVideoComments(
 
     return comments.slice(0, commentLimit);
   } catch (error) {
+    // Check for 4xx errors - skip article on client errors
+    const statusCode = is4xxError(error);
+    if (statusCode !== null) {
+      logger.warn(
+        { error, videoId, statusCode },
+        "4xx error fetching YouTube comments, skipping article",
+      );
+      throw new ArticleSkipError(
+        `Failed to fetch YouTube comments: ${statusCode} ${error instanceof Error ? error.message : String(error)}`,
+        undefined,
+        statusCode,
+        error instanceof Error ? error : undefined,
+      );
+    }
     logger.warn({ error, videoId }, "Error fetching YouTube comments");
     // Don't throw - return empty array so video aggregation can continue
     return [];

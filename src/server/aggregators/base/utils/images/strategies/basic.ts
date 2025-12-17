@@ -15,6 +15,8 @@ import {
   MAX_HEADER_IMAGE_HEIGHT,
 } from "@server/aggregators/base/utils/compression";
 import { fetchSingleImage } from "../fetch";
+import { is4xxError } from "../../http-errors";
+import { ArticleSkipError } from "../../../exceptions";
 
 const MAX_IMAGE_WIDTH = 600;
 const MAX_IMAGE_HEIGHT = 600;
@@ -199,6 +201,20 @@ export async function handleTwitterImage(
         logger.warn({ tweetId }, "No images found in fxtwitter API response");
       }
     } catch (error) {
+      // Check for 4xx errors - skip article on client errors
+      const statusCode = is4xxError(error);
+      if (statusCode !== null) {
+        logger.warn(
+          { error, url, statusCode },
+          "4xx error fetching Twitter image, skipping article",
+        );
+        throw new ArticleSkipError(
+          `Failed to extract X.com image: ${statusCode} ${error instanceof Error ? error.message : String(error)}`,
+          undefined,
+          statusCode,
+          error instanceof Error ? error : undefined,
+        );
+      }
       logger.warn(
         { error, url },
         "Failed to extract X.com image via fxtwitter API",

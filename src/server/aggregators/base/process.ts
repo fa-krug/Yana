@@ -16,6 +16,7 @@ import {
   createHeaderElementFromUrl,
 } from "./utils";
 import { logger } from "@server/utils/logger";
+import { ArticleSkipError } from "./exceptions";
 
 /**
  * Standardize content format across all feeds.
@@ -109,6 +110,7 @@ export async function standardizeContentFormat(
 
         if (!firstElement) {
           // Try to find matching image element
+          // Only remove image elements when headerImageUrl is provided, not normal links
           $body("img").each((_, element) => {
             if (firstElement) return; // Already found one
             const $img = $body(element);
@@ -135,45 +137,9 @@ export async function standardizeContentFormat(
               }
             }
           });
-
-          // If no matching image, try to find matching link
-          if (!firstElement) {
-            $body("a[href]").each((_, element) => {
-              if (firstElement) return; // Already found one
-              const $link = $body(element);
-              const linkHref = $link.attr("href");
-              if (linkHref) {
-                // Skip invalid URLs
-                if (
-                  linkHref.includes("${") ||
-                  linkHref.startsWith("javascript:") ||
-                  linkHref.startsWith("data:") ||
-                  linkHref.trim() === ""
-                ) {
-                  return;
-                }
-                try {
-                  const resolvedLinkHref = new URL(
-                    linkHref,
-                    baseUrl,
-                  ).toString();
-                  // Compare normalized URLs
-                  if (
-                    firstUrl &&
-                    normalizeUrl(resolvedLinkHref) === normalizeUrl(firstUrl)
-                  ) {
-                    firstElement = $body(element);
-                    logger.debug(
-                      { url: resolvedLinkHref },
-                      "Found matching link element in content",
-                    );
-                  }
-                } catch (error) {
-                  // Invalid URL, skip
-                }
-              }
-            });
-          }
+          // Note: We intentionally do NOT search for matching links when headerImageUrl
+          // is provided, as normal <a> elements should be preserved in the content.
+          // Only image elements are removed to prevent duplicates.
         }
       } else if (!firstUrl) {
         // First, try to find an image
@@ -312,10 +278,24 @@ export async function standardizeContentFormat(
             }
           } else {
             // Use unified function for regular URLs (handles YouTube, Twitter, Reddit, images, etc.)
-            const headerElement = await createHeaderElementFromUrl(
-              firstUrl,
-              "Article image",
-            );
+            let headerElement: string | null;
+            try {
+              headerElement = await createHeaderElementFromUrl(
+                firstUrl,
+                "Article image",
+              );
+            } catch (error) {
+              // Re-throw ArticleSkipError to propagate it up
+              if (error instanceof ArticleSkipError) {
+                throw error;
+              }
+              // For other errors, log and continue without header element
+              logger.warn(
+                { error, url: firstUrl },
+                "Failed to create header element, continuing without it",
+              );
+              headerElement = null;
+            }
 
             if (headerElement) {
               // Wrap header element in <header> tag if not already wrapped

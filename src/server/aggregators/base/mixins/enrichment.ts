@@ -4,6 +4,7 @@
 
 import type pino from "pino";
 import type { RawArticle } from "../types";
+import { ArticleSkipError } from "../exceptions";
 
 /**
  * Interface for aggregator with enrichment functionality.
@@ -116,6 +117,22 @@ export async function enrichArticles(
             "Fetched article content",
           );
         } catch (error) {
+          // Check for ArticleSkipError (4xx errors) - skip article entirely
+          if (error instanceof ArticleSkipError) {
+            this.logger.warn(
+              {
+                step: "enrichArticles",
+                subStep: "fetchArticleContent",
+                aggregator: this.id,
+                feedId: this.feed?.id,
+                url: article.url,
+                statusCode: error.statusCode,
+                skipped: true,
+              },
+              "4xx error fetching content, skipping article",
+            );
+            continue;
+          }
           this.logger.warn(
             {
               step: "enrichArticles",
@@ -140,6 +157,22 @@ export async function enrichArticles(
       try {
         extracted = await this.extractContent(html, article);
       } catch (error) {
+        // Check for ArticleSkipError (4xx errors) - skip article entirely
+        if (error instanceof ArticleSkipError) {
+          this.logger.warn(
+            {
+              step: "enrichArticles",
+              subStep: "extractContent",
+              aggregator: this.id,
+              feedId: this.feed?.id,
+              url: article.url,
+              statusCode: error.statusCode,
+              skipped: true,
+            },
+            "4xx error extracting content, skipping article",
+          );
+          continue;
+        }
         this.logger.warn(
           {
             step: "enrichArticles",
@@ -178,6 +211,22 @@ export async function enrichArticles(
       try {
         processed = await this.processContent(extracted, article);
       } catch (error) {
+        // Check for ArticleSkipError (4xx errors) - skip article entirely
+        if (error instanceof ArticleSkipError) {
+          this.logger.warn(
+            {
+              step: "enrichArticles",
+              subStep: "processContent",
+              aggregator: this.id,
+              feedId: this.feed?.id,
+              url: article.url,
+              statusCode: error.statusCode,
+              skipped: true,
+            },
+            "4xx error processing content, skipping article",
+          );
+          continue;
+        }
         this.logger.warn(
           {
             step: "enrichArticles",
@@ -197,6 +246,22 @@ export async function enrichArticles(
       try {
         await this.extractImages(processed, article);
       } catch (error) {
+        // Check for ArticleSkipError (4xx errors) - skip article entirely
+        if (error instanceof ArticleSkipError) {
+          this.logger.warn(
+            {
+              step: "enrichArticles",
+              subStep: "extractImages",
+              aggregator: this.id,
+              feedId: this.feed?.id,
+              url: article.url,
+              statusCode: error.statusCode,
+              skipped: true,
+            },
+            "4xx error extracting images, skipping article",
+          );
+          continue;
+        }
         this.logger.debug(
           {
             step: "enrichArticles",
@@ -233,6 +298,23 @@ export async function enrichArticles(
 
       enriched.push(article);
     } catch (error) {
+      // Check for ArticleSkipError (4xx errors) - skip article entirely
+      if (error instanceof ArticleSkipError) {
+        this.logger.warn(
+          {
+            step: "enrichArticles",
+            subStep: "processArticle",
+            aggregator: this.id,
+            feedId: this.feed?.id,
+            progress: `${i + 1}/${totalArticles}`,
+            url: article.url,
+            statusCode: error.statusCode,
+            skipped: true,
+          },
+          "4xx error processing article, skipping",
+        );
+        continue;
+      }
       this.logger.error(
         {
           step: "enrichArticles",

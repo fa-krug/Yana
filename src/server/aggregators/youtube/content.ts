@@ -3,6 +3,7 @@
  */
 
 import { fetchVideoComments } from "./comments";
+import { ArticleSkipError } from "../base/exceptions";
 
 /**
  * Escape HTML special characters.
@@ -51,29 +52,40 @@ export async function buildVideoContent(
 
   // Fetch and format comments
   if (commentLimit > 0) {
-    const comments = await fetchVideoComments(videoId, commentLimit, apiKey);
-    if (comments.length > 0) {
-      // Format comments with videoId for proper comment links
-      const commentHtmls = comments.map((comment) => {
-        const author =
-          comment.snippet.topLevelComment.snippet.authorDisplayName ||
-          "[deleted]";
-        const body = comment.snippet.topLevelComment.snippet.textDisplay || "";
-        const likeCount =
-          comment.snippet.topLevelComment.snippet.likeCount || 0;
-        const commentId = comment.id;
-        const commentUrl = `https://www.youtube.com/watch?v=${videoId}&lc=${commentId}`;
+    try {
+      const comments = await fetchVideoComments(videoId, commentLimit, apiKey);
+      if (comments.length > 0) {
+        // Format comments with videoId for proper comment links
+        const commentHtmls = comments.map((comment) => {
+          const author =
+            comment.snippet.topLevelComment.snippet.authorDisplayName ||
+            "[deleted]";
+          const body =
+            comment.snippet.topLevelComment.snippet.textDisplay || "";
+          const likeCount =
+            comment.snippet.topLevelComment.snippet.likeCount || 0;
+          const commentId = comment.id;
+          const commentUrl = `https://www.youtube.com/watch?v=${videoId}&lc=${commentId}`;
 
-        return `
+          return `
 <blockquote>
 <p><strong>${escapeHtml(author)}</strong> | ${likeCount} likes | <a href="${commentUrl}">source</a></p>
 <div>${body}</div>
 </blockquote>
 `;
-      });
-      commentSectionParts.push(commentHtmls.join(""));
-    } else {
-      commentSectionParts.push("<p><em>No comments yet.</em></p>");
+        });
+        commentSectionParts.push(commentHtmls.join(""));
+      } else {
+        commentSectionParts.push("<p><em>No comments yet.</em></p>");
+      }
+    } catch (error) {
+      // Re-throw ArticleSkipError to propagate it up
+      if (error instanceof ArticleSkipError) {
+        throw error;
+      }
+      // For other errors, continue without comments (comments are optional)
+      // Note: fetchVideoComments already handles non-4xx errors by returning empty array
+      commentSectionParts.push("<p><em>Comments unavailable.</em></p>");
     }
   } else {
     commentSectionParts.push("<p><em>Comments disabled.</em></p>");

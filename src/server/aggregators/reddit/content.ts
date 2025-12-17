@@ -7,6 +7,7 @@ import { convertRedditMarkdown, escapeHtml } from "./markdown";
 import { fixRedditMediaUrl, decodeHtmlEntitiesInUrl } from "./urls";
 import { extractAnimatedGifUrl, extractRedditVideoPreview } from "./images";
 import { fetchPostComments, formatCommentHtml } from "./comments";
+import { ArticleSkipError } from "../base/exceptions";
 
 /**
  * Reddit post data interface.
@@ -159,17 +160,30 @@ export async function buildPostContent(
 
   // Fetch and format comments
   if (commentLimit > 0) {
-    const comments = await fetchPostComments(
-      subreddit,
-      post.id,
-      commentLimit,
-      userId,
-    );
-    if (comments.length > 0) {
-      const commentHtmls = await Promise.all(comments.map(formatCommentHtml));
-      commentSectionParts.push(commentHtmls.join(""));
-    } else {
-      commentSectionParts.push("<p><em>No comments yet.</em></p>");
+    try {
+      const comments = await fetchPostComments(
+        subreddit,
+        post.id,
+        commentLimit,
+        userId,
+      );
+      if (comments.length > 0) {
+        const commentHtmls = await Promise.all(comments.map(formatCommentHtml));
+        commentSectionParts.push(commentHtmls.join(""));
+      } else {
+        commentSectionParts.push("<p><em>No comments yet.</em></p>");
+      }
+    } catch (error) {
+      // Re-throw ArticleSkipError to propagate it up
+      if (error instanceof ArticleSkipError) {
+        throw error;
+      }
+      // For other errors, log and continue without comments
+      logger.warn(
+        { error, subreddit, postId: post.id },
+        "Failed to fetch comments, continuing without them",
+      );
+      commentSectionParts.push("<p><em>Comments unavailable.</em></p>");
     }
   } else {
     commentSectionParts.push("<p><em>Comments disabled.</em></p>");
