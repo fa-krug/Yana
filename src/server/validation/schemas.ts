@@ -138,6 +138,22 @@ export const updateArticleSchema = z.object({
   content: z.string().optional(),
 });
 
+export const createArticleSchema = z.object({
+  feedId: z.number().int().positive(),
+  name: z.string().min(1),
+  url: z.string().url(),
+  date: z.coerce.date(),
+  content: z.string(),
+  thumbnailUrl: z.string().url().optional().nullable(),
+  mediaUrl: z.string().url().optional().nullable(),
+  duration: z.number().int().positive().optional().nullable(),
+  viewCount: z.number().int().nonnegative().optional().nullable(),
+  mediaType: z.string().optional().nullable(),
+  author: z.string().optional().nullable(),
+  externalId: z.string().optional().nullable(),
+  score: z.number().int().optional().nullable(),
+});
+
 // User settings schemas
 export const updateUserSettingsSchema = z.object({
   redditEnabled: z.boolean().optional(),

@@ -17,4 +17,11 @@ export const ARTICLES_ROUTES: Routes = [
         (m) => m.ArticleDetailComponent,
       ),
   },
+  {
+    path: ":id/clone",
+    loadComponent: () =>
+      import("./components/article-clone-form.component").then(
+        (m) => m.ArticleCloneFormComponent,
+      ),
+  },
 ];

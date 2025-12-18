@@ -12,6 +12,7 @@ import {
   listArticles,
   getArticle,
   updateArticle,
+  createArticle,
   markArticlesRead,
   markArticlesSaved,
   deleteArticle,
@@ -269,6 +270,98 @@ export const articleRouter = router({
       try {
         await deleteArticle(input.id, user);
         return { success: true };
+      } catch (error) {
+        if (error instanceof NotFoundError) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: error.message,
+          });
+        }
+        if (error instanceof PermissionDeniedError) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: error.message,
+          });
+        }
+        throw error;
+      }
+    }),
+
+  /**
+   * Create a new article.
+   */
+  create: protectedProcedure
+    .input(
+      z.object({
+        feedId: z.number().int().positive(),
+        name: z.string().min(1),
+        url: z.string().url(),
+        date: z.coerce.date(),
+        content: z.string(),
+        thumbnailUrl: z.string().url().nullable().optional(),
+        mediaUrl: z.string().url().nullable().optional(),
+        duration: z.number().int().positive().nullable().optional(),
+        viewCount: z.number().int().nonnegative().nullable().optional(),
+        mediaType: z.string().nullable().optional(),
+        author: z.string().nullable().optional(),
+        externalId: z.string().nullable().optional(),
+        score: z.number().int().nullable().optional(),
+      }),
+    )
+    .mutation(async ({ input, ctx }) => {
+      const user = getAuthenticatedUser(ctx);
+      try {
+        const article = await createArticle(user, {
+          feedId: input.feedId,
+          name: input.name,
+          url: input.url,
+          date: input.date,
+          content: input.content,
+          thumbnailUrl: input.thumbnailUrl ?? null,
+          mediaUrl: input.mediaUrl ?? null,
+          duration: input.duration ?? null,
+          viewCount: input.viewCount ?? null,
+          mediaType: input.mediaType ?? null,
+          author: input.author ?? null,
+          externalId: input.externalId ?? null,
+          score: input.score ?? null,
+        });
+        // Fetch the created article with full details
+        const fullArticle = await getArticle(article.id, user);
+        const feed = await getFeed(fullArticle.feedId, user);
+        const navigation = await getArticleNavigation(fullArticle, user);
+        const enrichment = await enrichArticleData(fullArticle, user);
+
+        // Build response with camelCase (same structure as getById)
+        return {
+          id: fullArticle.id,
+          feedId: fullArticle.feedId,
+          name: fullArticle.name,
+          url: fullArticle.url,
+          date: toISOString(fullArticle.date),
+          content: fullArticle.content,
+          thumbnailUrl: fullArticle.thumbnailUrl || null,
+          mediaUrl: fullArticle.mediaUrl || null,
+          duration: fullArticle.duration || null,
+          viewCount: fullArticle.viewCount || null,
+          mediaType: fullArticle.mediaType || null,
+          author: fullArticle.author || null,
+          externalId: fullArticle.externalId || null,
+          score: fullArticle.score || null,
+          createdAt: toISOString(fullArticle.createdAt),
+          updatedAt: toISOString(fullArticle.updatedAt),
+          isRead: enrichment.isRead,
+          isSaved: enrichment.isSaved,
+          isVideo: enrichment.isVideo,
+          isPodcast: enrichment.isPodcast,
+          isReddit: enrichment.isReddit,
+          hasMedia: enrichment.hasMedia,
+          durationFormatted: enrichment.durationFormatted || null,
+          feedName: feed.name,
+          feedIcon: feed.icon || null,
+          prevArticleId: navigation.prev?.id || null,
+          nextArticleId: navigation.next?.id || null,
+        };
       } catch (error) {
         if (error instanceof NotFoundError) {
           throw new TRPCError({

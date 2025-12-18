@@ -417,6 +417,78 @@ export class ArticleService {
   }
 
   /**
+   * Create a new article.
+   */
+  createArticle(data: {
+    feedId: number;
+    name: string;
+    url: string;
+    date: Date;
+    content: string;
+    thumbnailUrl?: string | null;
+    mediaUrl?: string | null;
+    duration?: number | null;
+    viewCount?: number | null;
+    mediaType?: string | null;
+    author?: string | null;
+    externalId?: string | null;
+    score?: number | null;
+  }): Observable<ArticleDetail> {
+    return from(
+      this.trpc.client.article.create.mutate({
+        feedId: data.feedId,
+        name: data.name,
+        url: data.url,
+        date: data.date,
+        content: data.content,
+        thumbnailUrl: data.thumbnailUrl ?? null,
+        mediaUrl: data.mediaUrl ?? null,
+        duration: data.duration ?? null,
+        viewCount: data.viewCount ?? null,
+        mediaType: data.mediaType ?? null,
+        author: data.author ?? null,
+        externalId: data.externalId ?? null,
+        score: data.score ?? null,
+      }),
+    ).pipe(
+      tap(() => {
+        // Invalidate cache when article is created
+        this.invalidateArticleCache();
+      }),
+      map((article) => {
+        // Map backend properties to frontend aliases (same as getArticle)
+        let summary = article.content
+          ? article.content.substring(0, 200)
+          : undefined;
+        // Remove base64 images from summary
+        if (summary) {
+          summary = summary.replace(
+            /<img[^>]*src\s*=\s*["']data:image\/[^"']*["'][^>]*>/gi,
+            "",
+          );
+          summary = summary.replace(/<img[^>]*>/gi, "");
+        }
+        return {
+          ...article,
+          read: article.isRead,
+          saved: article.isSaved,
+          title: article.name,
+          published: article.date,
+          link: article.url,
+          summary,
+          prevId: article.prevArticleId,
+          nextId: article.nextArticleId,
+          feed: {
+            id: article.feedId,
+            name: article.feedName,
+            feedType: "",
+          },
+        } as ArticleDetail;
+      }),
+    );
+  }
+
+  /**
    * Update article content.
    */
   updateArticle(

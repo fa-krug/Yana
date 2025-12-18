@@ -123,6 +123,13 @@ import { ArticleDetail } from "@app/core/models";
           }
           <button
             mat-menu-item
+            [routerLink]="['/articles', article().id, 'clone']"
+          >
+            <mat-icon>content_copy</mat-icon>
+            <span>Clone</span>
+          </button>
+          <button
+            mat-menu-item
             (click)="onDeleteArticle()"
             class="delete-action"
           >

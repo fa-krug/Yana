@@ -18,12 +18,14 @@ import {
   markArticlesSchema,
   idParamSchema,
   updateArticleSchema,
+  createArticleSchema,
 } from "../validation/schemas";
 import { z } from "zod";
 import {
   listArticles,
   getArticle,
   updateArticle,
+  createArticle,
   markArticlesRead,
   markArticlesSaved,
   deleteArticle,
@@ -205,6 +207,19 @@ router.delete(
     const { id } = req.params;
     await deleteArticle(parseInt(id), req.user!);
     res.status(204).send();
+  }),
+);
+
+/**
+ * POST /api/v1/articles
+ * Create a new article
+ */
+router.post(
+  "/",
+  validateBody(createArticleSchema),
+  asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    const article = await createArticle(req.user!, req.body);
+    res.status(201).json(article);
   }),
 );
 

@@ -297,6 +297,73 @@ export async function updateArticle(
 }
 
 /**
+ * Create a new article.
+ */
+export async function createArticle(
+  user: UserInfo,
+  data: {
+    feedId: number;
+    name: string;
+    url: string;
+    date: Date;
+    content: string;
+    thumbnailUrl?: string | null;
+    mediaUrl?: string | null;
+    duration?: number | null;
+    viewCount?: number | null;
+    mediaType?: string | null;
+    author?: string | null;
+    externalId?: string | null;
+    score?: number | null;
+  },
+): Promise<Article> {
+  // Verify feed access
+  const [feed] = await db
+    .select()
+    .from(feeds)
+    .where(
+      and(
+        eq(feeds.id, data.feedId),
+        or(eq(feeds.userId, user.id), isNull(feeds.userId)),
+      ),
+    );
+
+  if (!feed) {
+    throw new NotFoundError("Feed not found");
+  }
+
+  // Create article
+  const [created] = await db
+    .insert(articles)
+    .values({
+      feedId: data.feedId,
+      name: data.name,
+      url: data.url,
+      date: data.date,
+      content: data.content,
+      thumbnailUrl: data.thumbnailUrl ?? null,
+      mediaUrl: data.mediaUrl ?? null,
+      duration: data.duration ?? null,
+      viewCount: data.viewCount ?? null,
+      mediaType: data.mediaType ?? null,
+      author: data.author ?? null,
+      externalId: data.externalId ?? null,
+      score: data.score ?? null,
+      aiProcessed: false,
+      aiError: "",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .returning();
+
+  logger.info(
+    { articleId: created.id, feedId: data.feedId, userId: user.id },
+    "Article created",
+  );
+  return created;
+}
+
+/**
  * Mark articles as read/unread.
  * Optimized with bulk database operations.
  */
