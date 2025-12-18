@@ -53,6 +53,8 @@ router.get("/youtube-proxy", (req: Request, res: Response): void => {
 </body>
 </html>`;
     res.setHeader("Content-Type", "text/html");
+    // Set X-Frame-Options header to allow embedding (legacy approach)
+    res.setHeader("X-Frame-Options", "ALLOWALL");
     res.send(errorHtml);
     return;
   }
@@ -129,6 +131,10 @@ router.get("/youtube-proxy", (req: Request, res: Response): void => {
 </html>`;
 
   res.setHeader("Content-Type", "text/html");
+  // Set X-Frame-Options header to allow embedding (legacy approach that worked)
+  // This overrides any helmet defaults - browsers ignore invalid "ALLOWALL" value
+  // which effectively allows embedding from any origin
+  res.setHeader("X-Frame-Options", "ALLOWALL");
   res.send(html);
 });
 
