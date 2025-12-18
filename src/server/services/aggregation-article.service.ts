@@ -116,23 +116,6 @@ export async function saveAggregatedArticles(
         continue;
       }
 
-      // Final check: Verify URL doesn't exist globally (race condition protection)
-      if (!forceRefresh) {
-        const [existingByUrl] = await db
-          .select()
-          .from(articles)
-          .where(eq(articles.url, rawArticle.url))
-          .limit(1);
-
-        if (existingByUrl) {
-          logger.debug(
-            { url: rawArticle.url, feedId: feed.id },
-            "Article URL already exists (skipping duplicate detected before insert)",
-          );
-          continue;
-        }
-      }
-
       // Process thumbnail
       const thumbnailBase64 = await processThumbnail(rawArticle, aggregator);
 
@@ -159,28 +142,7 @@ export async function saveAggregatedArticles(
 
       articlesCreated++;
     } catch (error: unknown) {
-      // Handle UNIQUE constraint errors gracefully (article already exists)
-      if (
-        (typeof error === "object" &&
-          error !== null &&
-          "code" in error &&
-          (error as { code?: unknown }).code === "SQLITE_CONSTRAINT_UNIQUE") ||
-        (typeof error === "object" &&
-          error !== null &&
-          "message" in error &&
-          typeof (error as { message?: unknown }).message === "string" &&
-          (error as { message: string }).message.includes(
-            "UNIQUE constraint failed",
-          ))
-      ) {
-        logger.debug(
-          { url: rawArticle.url, feedId: feed.id },
-          "Article already exists (UNIQUE constraint - skipping duplicate)",
-        );
-        continue;
-      }
-
-      // Log other errors as actual failures
+      // Log errors as actual failures
       logger.error({ error, url: rawArticle.url }, "Failed to save article");
       continue;
     }

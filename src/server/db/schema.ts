@@ -140,10 +140,7 @@ export const articles = sqliteTable(
       .$defaultFn(() => new Date()),
   },
   (table) => ({
-    feedUrlIdx: uniqueIndex("articles_feed_url_idx").on(
-      table.feedId,
-      table.url,
-    ),
+    feedUrlIdx: index("articles_feed_url_idx").on(table.feedId, table.url),
     feedIdIdx: index("articles_feed_id_idx").on(table.feedId),
     dateIdx: index("articles_date_idx").on(table.date),
     feedDateIdx: index("articles_feed_date_idx").on(table.feedId, table.date),
