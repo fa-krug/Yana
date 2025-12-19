@@ -194,6 +194,25 @@ export class FeedFormValidationService {
         return;
       }
 
+      // For integer and float types, convert string values to numbers
+      // HTML number inputs return strings, so we need to convert them
+      if (optionType === "integer" || optionType === "float") {
+        // Include 0 and negative numbers (like -1 for min_comments)
+        if (rawValue !== null && rawValue !== undefined && rawValue !== "") {
+          const numValue =
+            typeof rawValue === "number"
+              ? rawValue
+              : optionType === "integer"
+                ? parseInt(String(rawValue), 10)
+                : parseFloat(String(rawValue));
+          // Only include if conversion was successful (not NaN)
+          if (!isNaN(numValue)) {
+            aggregatorOptions[key] = numValue;
+          }
+        }
+        return;
+      }
+
       // For other types, exclude null, undefined, and empty strings
       if (rawValue !== null && rawValue !== undefined && rawValue !== "") {
         aggregatorOptions[key] = rawValue;
