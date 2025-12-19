@@ -140,7 +140,9 @@ export async function parseRedditPosts(
       externalId: postData.id,
       // Store headerImageUrl for use in processContent
       ...(headerImageUrl ? { headerImageUrl } : {}),
-    } as RawArticle & { headerImageUrl?: string });
+      // Store num_comments for filtering
+      num_comments: postData.num_comments,
+    } as RawArticle & { headerImageUrl?: string; num_comments?: number });
   }
 
   const elapsed = Date.now() - startTime;

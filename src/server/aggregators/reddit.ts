@@ -70,6 +70,15 @@ export class RedditAggregator extends BaseAggregator {
       min: 0,
       max: 50,
     },
+    min_comments: {
+      type: "integer" as const,
+      label: "Minimum Comments",
+      helpText:
+        "Skip posts with fewer than this many comments. Set to -1 to disable.",
+      default: -1,
+      required: false,
+      min: -1,
+    },
   };
 
   /**
@@ -319,7 +328,7 @@ export class RedditAggregator extends BaseAggregator {
   }
 
   /**
-   * Check if article should be skipped (AutoModerator, old posts).
+   * Check if article should be skipped (AutoModerator, old posts, min comments).
    */
   protected override shouldSkipArticle(article: RawArticle): boolean {
     // Check base skip logic first
@@ -360,6 +369,31 @@ export class RedditAggregator extends BaseAggregator {
         "Skipping old post",
       );
       return true;
+    }
+
+    // Check minimum comment count
+    const minComments = this.getOption("min_comments", -1) as number;
+    if (minComments >= 0) {
+      const articleWithComments = article as RawArticle & {
+        num_comments?: number;
+      };
+      const numComments = articleWithComments.num_comments ?? 0;
+      if (numComments < minComments) {
+        this.logger.debug(
+          {
+            step: "filterArticles",
+            subStep: "shouldSkipArticle",
+            aggregator: this.id,
+            feedId: this.feed?.id,
+            url: article.url,
+            reason: "min_comments",
+            numComments,
+            minComments,
+          },
+          "Skipping post with insufficient comments",
+        );
+        return true;
+      }
     }
 
     return false;
