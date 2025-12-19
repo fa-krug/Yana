@@ -11,7 +11,7 @@ import {
   MAX_HEADER_IMAGE_WIDTH,
   MAX_HEADER_IMAGE_HEIGHT,
 } from "./compression";
-import { extractYouTubeVideoId, getYouTubeProxyUrl } from "./youtube";
+import { extractYouTubeVideoId, createYouTubeEmbedHtml } from "./youtube";
 import { extractPostInfoFromUrl } from "../../reddit/urls";
 import { fetchRedditIcon } from "@server/services/icon.service";
 import { fetchSingleImage } from "./images";
@@ -125,16 +125,7 @@ export async function createHeaderElementFromUrl(
     // Check if it's a YouTube URL - return embed instead of image
     const videoId = extractYouTubeVideoId(url);
     if (videoId) {
-      const embedUrl = getYouTubeProxyUrl(videoId);
-      const embedHtml =
-        `<div class="youtube-embed-container">` +
-        `<iframe src="${embedUrl}" ` +
-        `title="YouTube video player" ` +
-        `frameborder="0" ` +
-        `style="width: 100%" ` +
-        `allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" ` +
-        `allowfullscreen></iframe>` +
-        `</div>`;
+      const embedHtml = createYouTubeEmbedHtml(videoId);
 
       logger.debug({ url, videoId }, "Created YouTube embed element");
       return embedHtml;

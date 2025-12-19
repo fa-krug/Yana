@@ -67,3 +67,29 @@ export function getYouTubeProxyUrl(videoId: string): string {
       : "http://localhost:3000");
   return `${baseUrl.replace(/\/$/, "")}/api/youtube-proxy?v=${encodeURIComponent(videoId)}`;
 }
+
+/**
+ * Create YouTube embed HTML using proxy URL and embed container class.
+ * Returns HTML string that can be used directly or loaded into cheerio.
+ *
+ * @param videoId - YouTube video ID
+ * @param caption - Optional caption HTML to append after the iframe
+ * @returns HTML string with youtube-embed-container div and iframe
+ */
+export function createYouTubeEmbedHtml(
+  videoId: string,
+  caption?: string,
+): string {
+  const embedUrl = getYouTubeProxyUrl(videoId);
+  const iframeHtml =
+    `<div class="youtube-embed-container">` +
+    `<iframe src="${embedUrl}" ` +
+    `title="YouTube video player" ` +
+    `frameborder="0" ` +
+    `style="width: 100%" ` +
+    `allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" ` +
+    `allowfullscreen></iframe>` +
+    (caption ? caption : "") +
+    `</div>`;
+  return iframeHtml;
+}

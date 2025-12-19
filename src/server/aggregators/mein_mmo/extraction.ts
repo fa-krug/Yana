@@ -8,6 +8,10 @@ import type pino from "pino";
 import type { RawArticle } from "../base/types";
 import { extractContent } from "../base/extract";
 import { isTwitterUrl } from "../base/utils";
+import {
+  extractYouTubeVideoId,
+  createYouTubeEmbedHtml,
+} from "../base/utils/youtube";
 
 /**
  * Extract Mein-MMO specific content.
@@ -85,60 +89,126 @@ export async function extractMeinMmoContent(
     content = contentDivs.first();
   }
 
-  // Convert embed consent placeholders to direct links
+  // Convert YouTube embed placeholders to standard iframe embeds
   content.find("figure").each((_, figureEl) => {
     const $figure = $(figureEl);
 
-    // Check if this is a YouTube embed placeholder
-    let youtubeLink: string | undefined;
-    const youtubeLinks = $figure.find("a[href]").filter((_, linkEl) => {
-      const href = $(linkEl).attr("href") || "";
-      return href.includes("youtube.com") || href.includes("youtu.be");
-    });
-    if (youtubeLinks.length > 0) {
-      youtubeLink = $(youtubeLinks[0]).attr("href") || undefined;
+    // Check if this is a YouTube embed by looking for YouTube-related classes
+    const sanitizedClass = $figure.attr("data-sanitized-class") || "";
+    const isYouTubeEmbed =
+      sanitizedClass.includes("wp-block-embed-youtube") ||
+      sanitizedClass.includes("is-provider-youtube") ||
+      sanitizedClass.includes("embed-youtube");
+
+    let videoId: string | null = null;
+
+    if (isYouTubeEmbed) {
+      // Try to extract video ID from embed content attribute
+      const embedContentDiv = $figure.find(
+        "[data-sanitized-data-embed-content]",
+      );
+      if (embedContentDiv.length > 0) {
+        const embedContent = embedContentDiv.attr(
+          "data-sanitized-data-embed-content",
+        );
+        if (embedContent) {
+          // The content is HTML-encoded, try parsing the HTML first (cheerio will decode entities)
+          try {
+            // Create a temporary element to decode HTML entities
+            const $temp = cheerio.load(`<div>${embedContent}</div>`);
+            const iframe = $temp("iframe[src]");
+            if (iframe.length > 0) {
+              const iframeSrc = iframe.attr("src") || "";
+              videoId = extractYouTubeVideoId(iframeSrc);
+            }
+          } catch (e) {
+            // If parsing fails, try regex extraction from the raw string
+            // Look for patterns like: youtube-nocookie.com/embed/VIDEO_ID or youtube.com/embed/VIDEO_ID
+            const embedMatch = embedContent.match(
+              /(?:youtube-nocookie\.com\/embed\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
+            );
+            if (embedMatch && embedMatch[1]) {
+              videoId = embedMatch[1];
+            }
+          }
+        }
+      }
+
+      // If not found in embed content, try to extract from link
+      if (!videoId) {
+        const youtubeLinks = $figure.find("a[href]").filter((_, linkEl) => {
+          const href = $(linkEl).attr("href") || "";
+          return href.includes("youtube.com") || href.includes("youtu.be");
+        });
+        if (youtubeLinks.length > 0) {
+          const youtubeLink = $(youtubeLinks[0]).attr("href") || "";
+          videoId = extractYouTubeVideoId(youtubeLink);
+        }
+      }
+
+      if (videoId) {
+        // Create standard YouTube iframe embed
+        const figcaption = $figure.find("figcaption");
+        const captionHtml =
+          figcaption.length > 0 ? $.html(figcaption) || "" : "";
+        const embedHtml = createYouTubeEmbedHtml(videoId, captionHtml);
+        $figure.replaceWith($(embedHtml));
+        logger.debug(
+          {
+            step: "extractContent",
+            subStep: "extractMeinMmo",
+            aggregator: aggregatorId,
+            feedId,
+            videoId,
+          },
+          "Converted YouTube embed to iframe",
+        );
+        return; // Skip Twitter/Reddit processing for this figure
+      }
+    }
+
+    // Fallback: Check for YouTube links even without specific class
+    if (!videoId) {
+      const youtubeLinks = $figure.find("a[href]").filter((_, linkEl) => {
+        const href = $(linkEl).attr("href") || "";
+        return href.includes("youtube.com") || href.includes("youtu.be");
+      });
+      if (youtubeLinks.length > 0) {
+        const youtubeLink = $(youtubeLinks[0]).attr("href") || "";
+        videoId = extractYouTubeVideoId(youtubeLink);
+        if (videoId) {
+          // Create standard YouTube iframe embed
+          const figcaption = $figure.find("figcaption");
+          const captionHtml =
+            figcaption.length > 0 ? $.html(figcaption) || "" : "";
+          const embedHtml = createYouTubeEmbedHtml(videoId, captionHtml);
+          $figure.replaceWith($(embedHtml));
+          logger.debug(
+            {
+              step: "extractContent",
+              subStep: "extractMeinMmo",
+              aggregator: aggregatorId,
+              feedId,
+              videoId,
+            },
+            "Converted YouTube embed to iframe (fallback)",
+          );
+          return; // Skip Twitter/Reddit processing for this figure
+        }
+      }
     }
 
     // Check if this is a Twitter/X embed placeholder
     let twitterLink: string | undefined;
-    if (!youtubeLink) {
-      const twitterLinks = $figure.find("a[href]").filter((_, linkEl) => {
-        const href = $(linkEl).attr("href") || "";
-        return isTwitterUrl(href);
-      });
-      if (twitterLinks.length > 0) {
-        twitterLink = $(twitterLinks[0]).attr("href") || undefined;
-      }
+    const twitterLinks = $figure.find("a[href]").filter((_, linkEl) => {
+      const href = $(linkEl).attr("href") || "";
+      return isTwitterUrl(href);
+    });
+    if (twitterLinks.length > 0) {
+      twitterLink = $(twitterLinks[0]).attr("href") || undefined;
     }
 
-    if (youtubeLink) {
-      // Extract YouTube URL (clean up tracking parameters)
-      let cleanUrl = youtubeLink;
-      if (cleanUrl.includes("?") && !cleanUrl.includes("youtube.com/watch")) {
-        cleanUrl = cleanUrl.split("?")[0];
-      }
-
-      // Replace figure with simple link
-      const newP = $("<p></p>");
-      const newLink = $("<a></a>")
-        .attr("href", cleanUrl)
-        .attr("target", "_blank")
-        .attr("rel", "noopener")
-        .text("Watch on YouTube");
-      newP.append(newLink);
-
-      $figure.replaceWith(newP);
-      logger.debug(
-        {
-          step: "extractContent",
-          subStep: "extractMeinMmo",
-          aggregator: aggregatorId,
-          feedId,
-          url: cleanUrl,
-        },
-        "Converted YouTube embed to link",
-      );
-    } else if (twitterLink) {
+    if (twitterLink) {
       // Extract tweet URL (clean up tracking parameters)
       let cleanUrl = twitterLink;
       if (cleanUrl.includes("?")) {
