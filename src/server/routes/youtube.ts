@@ -123,6 +123,7 @@ router.get("/youtube-proxy", (req: Request, res: Response): void => {
   <iframe
     id="player"
     src="${embedUrl}"
+    style="width: 100%"
     allowfullscreen
     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
     referrerpolicy="strict-origin-when-cross-origin"

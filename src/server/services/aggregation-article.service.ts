@@ -48,12 +48,14 @@ export async function saveAggregatedArticles(
         continue;
       }
 
-      // Check if article should be skipped due to duplicates
-      const { shouldSkip, reason } = await shouldSkipArticleByDuplicate(
-        { url: rawArticle.url, title: rawArticle.title },
-        feed.id,
-        forceRefresh,
-      );
+      // Check if article should be skipped due to duplicates or updated
+      const { shouldSkip, shouldUpdate, reason, existingArticle } =
+        await shouldSkipArticleByDuplicate(
+          { url: rawArticle.url, title: rawArticle.title },
+          feed.id,
+          feed.userId,
+          forceRefresh,
+        );
 
       if (shouldSkip) {
         if (reason) {
@@ -71,22 +73,47 @@ export async function saveAggregatedArticles(
         continue;
       }
 
-      // Check if article exists in this feed (for force refresh updates)
-      const [existing] = await db
-        .select()
-        .from(articles)
-        .where(
-          and(eq(articles.url, rawArticle.url), eq(articles.feedId, feed.id)),
-        )
-        .limit(1);
-
       const articleDate = feed.useCurrentTimestamp
         ? new Date()
         : (rawArticle.published ?? new Date());
 
-      if (existing) {
-        if (forceRefresh) {
-          // Force refresh: Update existing article
+      // Update existing unread article
+      if (shouldUpdate && existingArticle) {
+        const thumbnailBase64 = await processThumbnail(rawArticle, aggregator);
+
+        await db
+          .update(articles)
+          .set({
+            name: rawArticle.title,
+            content: rawArticle.content || "",
+            date: articleDate,
+            author: rawArticle.author || null,
+            externalId: rawArticle.externalId || null,
+            score: rawArticle.score || null,
+            thumbnailUrl: thumbnailBase64 || null,
+            mediaUrl: rawArticle.mediaUrl || null,
+            duration: rawArticle.duration || null,
+            viewCount: rawArticle.viewCount || null,
+            mediaType: rawArticle.mediaType || null,
+            updatedAt: new Date(),
+          })
+          .where(eq(articles.id, existingArticle.id));
+
+        articlesUpdated++;
+        continue;
+      }
+
+      // Force refresh: Update existing article if it exists
+      if (forceRefresh) {
+        const [existing] = await db
+          .select()
+          .from(articles)
+          .where(
+            and(eq(articles.url, rawArticle.url), eq(articles.feedId, feed.id)),
+          )
+          .limit(1);
+
+        if (existing) {
           const thumbnailBase64 = await processThumbnail(
             rawArticle,
             aggregator,
@@ -111,9 +138,8 @@ export async function saveAggregatedArticles(
             .where(eq(articles.id, existing.id));
 
           articlesUpdated++;
+          continue;
         }
-        // Normal fetch: Skip existing articles, only add new ones
-        continue;
       }
 
       // Process thumbnail

@@ -18,6 +18,7 @@ import { ArticleDetail } from "@app/core/models";
         <iframe
           [src]="getYouTubeEmbedUrl()"
           frameborder="0"
+          style="width: 100%"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
           allowfullscreen
         >

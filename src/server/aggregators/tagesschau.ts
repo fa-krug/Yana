@@ -45,6 +45,12 @@ export class TagesschauAggregator extends FullWebsiteAggregator {
   ];
 
   protected override shouldSkipArticle(article: RawArticle): boolean {
+    // Skip livestream articles
+    if (article.title.includes("Livestream:")) {
+      logger.info({ title: article.title }, "Skipping livestream article");
+      return true;
+    }
+
     // Check title filters
     const skipTerms = [
       "tagesschau",

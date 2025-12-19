@@ -306,6 +306,12 @@ import { ArticleService } from "@app/core/services/article.service";
         height: auto;
       }
 
+      .article-content :deep(iframe[src*="youtube"]),
+      .article-content :deep(iframe[src*="youtu.be"]) {
+        width: 100% !important;
+        max-width: 100%;
+      }
+
       .article-content :deep(.youtube-embed-container) {
         position: relative;
         width: 100%;
