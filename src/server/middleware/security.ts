@@ -40,40 +40,15 @@ export function setupSecurity(app: Express): void {
       }
     : false;
 
-  // CSP policy for YouTube proxy route (allows embedding from any origin)
-  const youtubeProxyCSP = !isDevelopment
-    ? {
-        directives: {
-          defaultSrc: ["'self'"],
-          scriptSrc: ["'self'", "'unsafe-inline'"],
-          scriptSrcAttr: ["'unsafe-inline'"],
-          styleSrc: ["'self'", "'unsafe-inline'"],
-          fontSrc: ["'self'", "data:"],
-          imgSrc: ["'self'", "data:", "https:"],
-          connectSrc: ["'self'", "https://www.youtube-nocookie.com"],
-          manifestSrc: ["'self'"],
-          objectSrc: ["'none'"],
-          baseUri: ["'self'"],
-          formAction: ["'self'"],
-          frameAncestors: ["*"], // Allow embedding from any origin
-          frameSrc: ["'self'", "https://www.youtube-nocookie.com"],
-          upgradeInsecureRequests: [],
-        },
-      }
-    : false;
-
   // Apply helmet with route-specific CSP
   app.use((req, res, next) => {
-    // Check if this is the YouTube proxy route
+    // Skip helmet entirely for YouTube proxy route (no CSP, no X-Frame-Options)
     if (
       req.path === "/api/youtube-proxy" ||
       req.path.startsWith("/api/youtube-proxy")
     ) {
-      helmet({
-        contentSecurityPolicy: youtubeProxyCSP,
-        crossOriginEmbedderPolicy: false,
-        frameguard: false, // Disable X-Frame-Options header to allow embedding
-      })(req, res, next);
+      // Skip helmet for this route - no security headers applied
+      next();
     } else {
       helmet({
         contentSecurityPolicy: defaultCSP,
