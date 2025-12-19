@@ -195,7 +195,16 @@ export function extractPageNumbers(
   let pagination = $("nav.navigation.pagination").first();
   if (pagination.length === 0) {
     // Try div.gp-pagination (Mein-MMO specific)
-    pagination = $("div.gp-pagination").first();
+    // There may be multiple pagination divs, so find the one with page numbers
+    const paginationWithNumbers = $("div.gp-pagination").filter((_, el) => {
+      return $(el).find("ul.page-numbers").length > 0;
+    });
+    if (paginationWithNumbers.length > 0) {
+      pagination = paginationWithNumbers.first();
+    } else {
+      // Fallback to first div.gp-pagination if none have page numbers
+      pagination = $("div.gp-pagination").first();
+    }
   }
   if (pagination.length === 0) {
     // Fallback: look for ul.page-numbers
