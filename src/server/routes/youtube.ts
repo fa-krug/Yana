@@ -116,6 +116,13 @@ router.get("/youtube-proxy", (req: Request, res: Response): void => {
     }
     #player {
       border: 0;
+      width: 100%;
+      height: calc((512px / 16) * 9);
+    }
+    @media (max-width: 512px) {
+      #player {
+        height: calc((100vw / 16) * 9);
+      }
     }
   </style>
 </head>
@@ -123,7 +130,6 @@ router.get("/youtube-proxy", (req: Request, res: Response): void => {
   <iframe
     id="player"
     src="${embedUrl}"
-    style="width: 100%"
     allowfullscreen
     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
     referrerpolicy="strict-origin-when-cross-origin"

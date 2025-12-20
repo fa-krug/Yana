@@ -83,10 +83,13 @@ export function createYouTubeEmbedHtml(
   const embedUrl = getYouTubeProxyUrl(videoId);
   const iframeHtml =
     `<div class="youtube-embed-container">` +
+    `<style>` +
+    `.youtube-embed-container iframe { width: 100%; height: calc((512px / 16) * 9); }` +
+    `@media (max-width: 512px) { .youtube-embed-container iframe { height: calc((100vw / 16) * 9); } }` +
+    `</style>` +
     `<iframe src="${embedUrl}" ` +
     `title="YouTube video player" ` +
     `frameborder="0" ` +
-    `style="width: 100%" ` +
     `allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" ` +
     `allowfullscreen></iframe>` +
     (caption ? caption : "") +

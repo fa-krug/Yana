@@ -82,25 +82,62 @@ export function sanitizeHtml(html: string): string {
   try {
     const $ = cheerio.load(html);
 
-    // Remove script and style elements
-    $("script, style, iframe, object, embed").remove();
+    // Preserve style tags and iframes inside youtube-embed-container divs
+    // Remove other script and style elements, but keep YouTube embeds
+    $("script").remove();
+
+    // Remove style tags, but preserve those inside youtube-embed-container
+    $("style").each((_, el) => {
+      const $el = $(el);
+      const isInYouTubeContainer =
+        $el.closest(".youtube-embed-container").length > 0;
+      if (!isInYouTubeContainer) {
+        $el.remove();
+      }
+    });
+
+    // Remove iframes, but preserve YouTube embeds (our proxy or inside youtube-embed-container)
+    $("iframe").each((_, el) => {
+      const $el = $(el);
+      const src = $el.attr("src") || "";
+      const isYouTubeProxy = src.includes("/api/youtube-proxy");
+      const isInYouTubeContainer =
+        $el.closest(".youtube-embed-container").length > 0;
+      if (!isYouTubeProxy && !isInYouTubeContainer) {
+        $el.remove();
+      }
+    });
+
+    $("object, embed").remove();
 
     // Rename class, style, id, and data attributes to disable original styling/behavior
     $("*").each((_, el) => {
       const $el = $(el);
 
-      // Rename class attribute
+      // Rename class attribute, but preserve youtube-embed-container class
       const classAttr = $el.attr("class");
       if (classAttr) {
-        $el.attr("data-sanitized-class", classAttr);
-        $el.removeAttr("class");
+        const isYouTubeContainer = classAttr.includes(
+          "youtube-embed-container",
+        );
+        if (!isYouTubeContainer) {
+          $el.attr("data-sanitized-class", classAttr);
+          $el.removeAttr("class");
+        }
       }
 
-      // Rename inline styles
+      // Rename inline styles, but preserve styles on YouTube embeds
       const styleAttr = $el.attr("style");
       if (styleAttr) {
-        $el.attr("data-sanitized-style", styleAttr);
-        $el.removeAttr("style");
+        const isYouTubeIframe =
+          ($el.is("iframe") &&
+            ($el.attr("src")?.includes("/api/youtube-proxy") ||
+              $el.closest(".youtube-embed-container").length > 0)) ||
+          $el.closest(".youtube-embed-container").length > 0;
+        if (!isYouTubeIframe) {
+          $el.attr("data-sanitized-style", styleAttr);
+          $el.removeAttr("style");
+        }
       }
 
       // Rename id attribute
