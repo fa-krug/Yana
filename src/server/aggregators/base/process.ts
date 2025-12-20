@@ -392,6 +392,147 @@ export async function standardizeContentFormat(
                 }
               }
 
+              // Check if it's a Reddit video embed to handle duplicate removal
+              const isRedditEmbed =
+                firstUrl.includes("/embed") &&
+                (firstUrl.includes("reddit.com") ||
+                  firstUrl.includes("v.redd.it"));
+              if (isRedditEmbed && isUsingHeaderImage) {
+                // Extract the base post URL from embed URL (remove /embed)
+                const basePostUrl = firstUrl
+                  .replace(/\/embed$/, "")
+                  .replace(/\/embed\//, "/");
+
+                // Extract v.redd.it URL from embed URL if present
+                // Embed URL format: https://reddit.com/r/subreddit/comments/postId/title/embed
+                // We need to find the original v.redd.it URL that was used to create this embed
+                let vRedditUrl: string | null = null;
+                try {
+                  // Try to extract from article URL or check if we can derive it
+                  // For now, we'll match any v.redd.it URL in links
+                  vRedditUrl = article.url; // Will be used for matching
+                } catch (error) {
+                  // Ignore
+                }
+
+                // Remove duplicate v.redd.it links from content
+                $body("a[href]").each((_, element) => {
+                  const $link = $body(element);
+                  const href = $link.attr("href");
+                  const linkText = $link.text().toLowerCase().trim();
+
+                  if (href) {
+                    try {
+                      const resolvedHref = new URL(href, baseUrl).toString();
+                      // Check if it's a v.redd.it URL
+                      const isVRedditUrl = resolvedHref.includes("v.redd.it");
+                      // Check if it matches the base post URL (permalink)
+                      const matchesPostUrl =
+                        resolvedHref === basePostUrl ||
+                        resolvedHref.replace(/\/$/, "") ===
+                          basePostUrl.replace(/\/$/, "");
+                      // Check if link text suggests it's a video link
+                      const isVideoLink =
+                        linkText.includes("view video") ||
+                        linkText.includes("▶") ||
+                        linkText === "▶ view video";
+
+                      if (isVRedditUrl || (matchesPostUrl && isVideoLink)) {
+                        const parent = $link.parent();
+                        $link.remove();
+                        // Remove empty parent containers recursively
+                        let currentParent = parent;
+                        while (currentParent.length > 0) {
+                          const tagName = currentParent
+                            .get(0)
+                            ?.tagName?.toLowerCase();
+                          if (tagName === "body" || tagName === "html") {
+                            break;
+                          }
+                          const text = currentParent.text().trim();
+                          const hasChildren =
+                            currentParent.children().length > 0;
+                          if (!text && !hasChildren) {
+                            const nextParent = currentParent.parent();
+                            currentParent.remove();
+                            currentParent = nextParent;
+                          } else {
+                            break;
+                          }
+                        }
+                        logger.debug(
+                          { href: resolvedHref },
+                          "Removed duplicate v.redd.it link from content",
+                        );
+                      }
+                    } catch (error) {
+                      // Invalid URL, skip
+                    }
+                  }
+                });
+
+                // Remove video thumbnail images from content (they're usually preview.redd.it or i.redd.it)
+                $body("img").each((_, element) => {
+                  const $img = $body(element);
+                  const imgSrc =
+                    $img.attr("src") ||
+                    $img.attr("data-src") ||
+                    $img.attr("data-lazy-src");
+                  if (imgSrc) {
+                    try {
+                      const resolvedImgSrc = new URL(
+                        imgSrc,
+                        baseUrl,
+                      ).toString();
+                      // Check if it's a Reddit preview/thumbnail image (common for v.redd.it videos)
+                      if (
+                        resolvedImgSrc.includes("preview.redd.it") ||
+                        resolvedImgSrc.includes("i.redd.it") ||
+                        resolvedImgSrc.includes("external-preview.redd.it")
+                      ) {
+                        // Check if this image is likely a video thumbnail by checking alt text or nearby text
+                        const altText = ($img.attr("alt") || "").toLowerCase();
+                        const parentText = $img.parent().text().toLowerCase();
+                        if (
+                          altText.includes("video") ||
+                          altText.includes("thumbnail") ||
+                          parentText.includes("view video") ||
+                          parentText.includes("▶")
+                        ) {
+                          const parent = $img.parent();
+                          $img.remove();
+                          // Remove empty parent containers recursively
+                          let currentParent = parent;
+                          while (currentParent.length > 0) {
+                            const tagName = currentParent
+                              .get(0)
+                              ?.tagName?.toLowerCase();
+                            if (tagName === "body" || tagName === "html") {
+                              break;
+                            }
+                            const text = currentParent.text().trim();
+                            const hasChildren =
+                              currentParent.children().length > 0;
+                            if (!text && !hasChildren) {
+                              const nextParent = currentParent.parent();
+                              currentParent.remove();
+                              currentParent = nextParent;
+                            } else {
+                              break;
+                            }
+                          }
+                          logger.debug(
+                            "Removed video thumbnail from content (using Reddit video embed instead)",
+                          );
+                        }
+                      }
+                    } catch (error) {
+                      // Invalid URL, skip
+                    }
+                  }
+                });
+              }
+
               // Remove the original link/image element if it was in the content
               if (firstElement && firstElement.length > 0) {
                 const parent = firstElement.parent();

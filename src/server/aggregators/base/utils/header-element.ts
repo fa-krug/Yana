@@ -13,6 +13,41 @@ import {
 } from "./compression";
 import { extractYouTubeVideoId, createYouTubeEmbedHtml } from "./youtube";
 import { extractPostInfoFromUrl } from "../../reddit/urls";
+
+/**
+ * Check if URL is a Reddit video embed URL (ends with /embed).
+ */
+function isRedditEmbedUrl(url: string): boolean {
+  return (
+    url.includes("/embed") &&
+    (url.includes("reddit.com") || url.includes("v.redd.it"))
+  );
+}
+
+/**
+ * Create Reddit video embed HTML.
+ * Returns HTML string that can be used directly or loaded into cheerio.
+ *
+ * @param embedUrl - Reddit embed URL (e.g., https://reddit.com/r/subreddit/comments/postId/title/embed)
+ * @param caption - Optional caption HTML to append after the iframe
+ * @returns HTML string with reddit-embed-container div and iframe
+ */
+function createRedditEmbedHtml(embedUrl: string, caption?: string): string {
+  const iframeHtml =
+    `<div class="reddit-embed-container">` +
+    `<style>` +
+    `.reddit-embed-container iframe { width: 100%; height: calc((512px / 16) * 9); }` +
+    `@media (max-width: 512px) { .reddit-embed-container iframe { height: calc((100vw / 16) * 9); } }` +
+    `</style>` +
+    `<iframe src="${embedUrl}" ` +
+    `title="Reddit video player" ` +
+    `frameborder="0" ` +
+    `scrolling="no" ` +
+    `allowfullscreen></iframe>` +
+    (caption ? caption : "") +
+    `</div>`;
+  return iframeHtml;
+}
 import { fetchRedditIcon } from "@server/services/icon.service";
 import { fetchSingleImage } from "./images";
 import { is4xxError } from "./http-errors";
@@ -120,6 +155,28 @@ export async function createHeaderElementFromUrl(
         );
         // Fall through to default extraction
       }
+    }
+
+    // Check if it's a Reddit embed URL - return iframe embed
+    if (isRedditEmbedUrl(url)) {
+      const embedHtml = createRedditEmbedHtml(url);
+      logger.debug({ url }, "Created Reddit embed element");
+      return embedHtml;
+    }
+
+    // Check if it's a v.redd.it URL - construct embed URL
+    if (url.includes("v.redd.it")) {
+      // Try to extract post info from article URL if available
+      // For now, we'll need the article URL passed in, but since we don't have it here,
+      // we'll check if the URL itself contains enough info or if we need to handle it differently
+      // Actually, v.redd.it URLs in extractHeaderImageUrl are already converted to embed URLs,
+      // so this check might not be needed here, but let's keep it as a fallback
+      logger.debug(
+        { url },
+        "Found v.redd.it URL but not an embed URL, skipping",
+      );
+      // Return null so it falls through to image extraction (which will fail gracefully)
+      return null;
     }
 
     // Check if it's a YouTube URL - return embed instead of image

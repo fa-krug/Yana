@@ -14,6 +14,112 @@ import {
 import type { RedditPostData } from "./types";
 
 /**
+ * Check if a v.redd.it URL would be used as a header element.
+ * Returns true if the v.redd.it video would be prioritized as a header.
+ *
+ * Based on extractHeaderImageUrl priority:
+ * - Priority 0: YouTube videos (post.url, then selftext) - checked first
+ * - Priority 0: v.redd.it videos (post.url, then selftext) - checked after YouTube
+ * - Priority 1: Gallery posts
+ * - Priority 2: Direct image posts
+ *
+ * So v.redd.it will be used as header if:
+ * - It's in post.url AND no YouTube video AND no gallery AND no direct image
+ * - OR it's in selftext AND no YouTube video AND no v.redd.it in post.url AND no gallery AND no direct image
+ */
+export function wouldUseVRedditAsHeader(
+  post: RedditPostData & { selftext?: string },
+): boolean {
+  // Check if post URL is v.redd.it
+  if (post.url) {
+    const decodedUrl = decodeHtmlEntitiesInUrl(post.url);
+    if (decodedUrl.includes("v.redd.it")) {
+      // Check if there's a YouTube video that would take priority (Priority 0, checked first)
+      const videoId = extractYouTubeVideoId(decodedUrl);
+      if (videoId) {
+        return false; // YouTube video takes priority
+      }
+
+      // Check selftext for YouTube videos (Priority 0, checked before v.redd.it)
+      if (post.is_self && post.selftext) {
+        const urls = extractUrlsFromText(post.selftext);
+        for (const url of urls) {
+          const videoId = extractYouTubeVideoId(url);
+          if (videoId) {
+            return false; // YouTube video in selftext takes priority
+          }
+        }
+      }
+
+      // Check for gallery (Priority 1 - takes priority over v.redd.it)
+      if (
+        post.is_gallery &&
+        post.media_metadata &&
+        post.gallery_data?.items?.[0]
+      ) {
+        return false; // Gallery takes priority
+      }
+
+      // Check for direct image (Priority 2 - takes priority over v.redd.it)
+      const url = decodedUrl.toLowerCase();
+      if ([".jpg", ".jpeg", ".png", ".webp"].some((ext) => url.endsWith(ext))) {
+        return false; // Direct image takes priority
+      }
+
+      // No higher priority content found, v.redd.it will be used as header
+      return true;
+    }
+  }
+
+  // Check selftext for v.redd.it URLs (only if post.url is not v.redd.it)
+  if (post.is_self && post.selftext) {
+    const urls = extractUrlsFromText(post.selftext);
+    let hasVReddit = false;
+    for (const url of urls) {
+      if (url.includes("v.redd.it")) {
+        hasVReddit = true;
+        break;
+      }
+    }
+
+    if (hasVReddit) {
+      // Check if there's a YouTube video that would take priority
+      for (const url of urls) {
+        const videoId = extractYouTubeVideoId(url);
+        if (videoId) {
+          return false; // YouTube video takes priority
+        }
+      }
+
+      // Check for gallery (Priority 1)
+      if (
+        post.is_gallery &&
+        post.media_metadata &&
+        post.gallery_data?.items?.[0]
+      ) {
+        return false; // Gallery takes priority
+      }
+
+      // Check post.url for direct image (Priority 2)
+      if (post.url) {
+        const decodedUrl = decodeHtmlEntitiesInUrl(post.url);
+        const url = decodedUrl.toLowerCase();
+        if (
+          [".jpg", ".jpeg", ".png", ".webp"].some((ext) => url.endsWith(ext))
+        ) {
+          return false; // Direct image takes priority
+        }
+      }
+
+      // No higher priority content found, v.redd.it in selftext will be used as header
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
  * Extract thumbnail URL from Reddit post.
  */
 export function extractThumbnailUrl(post: RedditPostData): string | null {
@@ -131,10 +237,24 @@ export async function extractHeaderImageUrl(
   post: RedditPostData & { selftext?: string },
 ): Promise<string | null> {
   try {
-    // Priority 0: Check for YouTube videos (highest priority - embed instead of image)
+    // Priority 0: Check for YouTube videos and v.redd.it videos (highest priority - embed instead of image)
     // Check post URL first
     if (post.url) {
       const decodedUrl = decodeHtmlEntitiesInUrl(post.url);
+
+      // Check for v.redd.it videos
+      if (decodedUrl.includes("v.redd.it")) {
+        // Construct embed URL from permalink
+        const decodedPermalink = decodeHtmlEntitiesInUrl(post.permalink);
+        const embedUrl = `https://reddit.com${decodedPermalink}/embed`;
+        logger.debug(
+          { url: decodedUrl, embedUrl },
+          "Found v.redd.it video in post URL",
+        );
+        return embedUrl; // Return embed URL for iframe embedding
+      }
+
+      // Check for YouTube videos
       const videoId = extractYouTubeVideoId(decodedUrl);
       if (videoId) {
         logger.debug(
@@ -145,7 +265,7 @@ export async function extractHeaderImageUrl(
       }
     }
 
-    // Check URLs in selftext for YouTube videos
+    // Check URLs in selftext for v.redd.it and YouTube videos
     if (post.is_self && post.selftext) {
       logger.debug(
         { selftext: post.selftext },
@@ -154,14 +274,25 @@ export async function extractHeaderImageUrl(
       const urls = extractUrlsFromText(post.selftext);
       logger.debug({ urls }, "Extracted URLs from selftext");
       for (const url of urls) {
-        logger.debug({ url }, "Checking if URL is a YouTube video");
+        logger.debug({ url }, "Checking if URL is a video");
+
+        // Check for v.redd.it videos
+        if (url.includes("v.redd.it")) {
+          // Construct embed URL from permalink
+          const decodedPermalink = decodeHtmlEntitiesInUrl(post.permalink);
+          const embedUrl = `https://reddit.com${decodedPermalink}/embed`;
+          logger.debug({ url, embedUrl }, "Found v.redd.it video in selftext");
+          return embedUrl; // Return embed URL for iframe embedding
+        }
+
+        // Check for YouTube videos
         const videoId = extractYouTubeVideoId(url);
         logger.debug({ videoId }, "Extracted YouTube video ID from URL");
         if (videoId) {
           logger.debug({ url, videoId }, "Found YouTube video in selftext");
           return url; // Return YouTube URL for embedding
         } else {
-          logger.debug({ url }, "Not a YouTube video");
+          logger.debug({ url }, "Not a video");
         }
       }
     }

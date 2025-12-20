@@ -5,7 +5,11 @@
 import { logger } from "@server/utils/logger";
 import { convertRedditMarkdown, escapeHtml } from "./markdown";
 import { fixRedditMediaUrl, decodeHtmlEntitiesInUrl } from "./urls";
-import { extractAnimatedGifUrl, extractRedditVideoPreview } from "./images";
+import {
+  extractAnimatedGifUrl,
+  extractRedditVideoPreview,
+  wouldUseVRedditAsHeader,
+} from "./images";
 import { fetchPostComments, formatCommentHtml } from "./comments";
 import { ArticleSkipError } from "../base/exceptions";
 import type { RedditPostData } from "./types";
@@ -113,14 +117,20 @@ export async function buildPostContent(
         );
       }
     } else if (url.includes("v.redd.it")) {
-      // Reddit video - extract preview
-      const previewUrl = extractRedditVideoPreview(post);
-      if (previewUrl) {
-        contentParts.push(
-          `<p><img src="${previewUrl}" alt="Video thumbnail"></p>`,
-        );
+      // Reddit video - only add thumbnail and link if it won't be used as header
+      // (if it will be used as header, it will be embedded in the header element)
+      const willBeUsedAsHeader = wouldUseVRedditAsHeader(post);
+      if (!willBeUsedAsHeader) {
+        // Extract preview and add to content
+        const previewUrl = extractRedditVideoPreview(post);
+        if (previewUrl) {
+          contentParts.push(
+            `<p><img src="${previewUrl}" alt="Video thumbnail"></p>`,
+          );
+        }
+        contentParts.push(`<p><a href="${url}">▶ View Video</a></p>`);
       }
-      contentParts.push(`<p><a href="${url}">▶ View Video</a></p>`);
+      // If willBeUsedAsHeader is true, skip adding to content (will be in header)
     } else if (url.includes("youtube.com") || url.includes("youtu.be")) {
       // Create a link - standardize_format will convert it to an embed
       contentParts.push(`<p><a href="${url}">▶ View Video on YouTube</a></p>`);
