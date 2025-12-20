@@ -2,12 +2,20 @@
  * Tests for aggregator base functionality and template method flow.
  */
 
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { BaseAggregator } from "../base/aggregator";
 import type { RawArticle } from "../base/types";
 import { FullWebsiteAggregator } from "../full_website";
 import { FeedContentAggregator } from "../feed_content";
 import Parser from "rss-parser";
+import {
+  setupTestDb,
+  teardownTestDb,
+  getTestDb,
+} from "../../../../tests/utils/testDb";
+import { db, articles, feeds, users } from "../../db";
+import { testUser } from "../../../../tests/utils/fixtures";
+import { createUser } from "../../services/user.service";
 
 // Mock logger
 vi.mock("../../utils/logger", () => ({
@@ -409,6 +417,367 @@ describe("BaseAggregator - Template Method Flow", () => {
     it("should use default cache max size", () => {
       const aggregator = new FullWebsiteAggregator();
       expect(aggregator.cacheMaxSize).toBe(1000);
+    });
+  });
+
+  describe("applyArticleLimit - Daily Limit Enforcement", () => {
+    let testUserId: number;
+    let testFeedId: number;
+
+    beforeEach(async () => {
+      setupTestDb();
+      // Create a test user
+      const user = await createUser(
+        testUser.username,
+        testUser.email,
+        "password",
+      );
+      testUserId = user.id;
+
+      // Create a test feed
+      const [feed] = await db
+        .insert(feeds)
+        .values({
+          userId: testUserId,
+          name: "Test Feed",
+          identifier: "https://example.com/feed.xml",
+          aggregator: "full_website",
+          feedType: "article",
+          enabled: true,
+          dailyPostLimit: 10,
+          generateTitleImage: false,
+          addSourceFooter: true,
+          useCurrentTimestamp: false,
+          aggregatorOptions: {},
+        })
+        .returning();
+      testFeedId = feed.id;
+    });
+
+    afterEach(() => {
+      teardownTestDb();
+    });
+
+    it("should return all articles when quota is not exceeded", async () => {
+      const aggregator = new FullWebsiteAggregator();
+      const feed = {
+        ...mockFeed,
+        id: testFeedId,
+        userId: testUserId,
+        dailyPostLimit: 10,
+      };
+      aggregator.initialize(feed, false, {});
+
+      // Create 3 articles in database (today)
+      const today = new Date();
+      today.setUTCHours(12, 0, 0, 0);
+      await db.insert(articles).values([
+        {
+          feedId: testFeedId,
+          name: "Article 1",
+          url: "https://example.com/1",
+          date: today,
+          content: "",
+          createdAt: today,
+          updatedAt: today,
+        },
+        {
+          feedId: testFeedId,
+          name: "Article 2",
+          url: "https://example.com/2",
+          date: today,
+          content: "",
+          createdAt: today,
+          updatedAt: today,
+        },
+        {
+          feedId: testFeedId,
+          name: "Article 3",
+          url: "https://example.com/3",
+          date: today,
+          content: "",
+          createdAt: today,
+          updatedAt: today,
+        },
+      ]);
+
+      const inputArticles: RawArticle[] = [
+        {
+          title: "New Article 1",
+          url: "https://example.com/new1",
+          published: new Date(),
+        },
+        {
+          title: "New Article 2",
+          url: "https://example.com/new2",
+          published: new Date(),
+        },
+      ];
+
+      // 3 posts today, limit 10, 2 new articles = 5 total (within limit)
+      const result = await (aggregator as any).applyArticleLimit(inputArticles);
+
+      expect(result).toHaveLength(2);
+      expect(result).toEqual(inputArticles);
+    });
+
+    it("should limit articles to remaining quota", async () => {
+      const aggregator = new FullWebsiteAggregator();
+      const feed = {
+        ...mockFeed,
+        id: testFeedId,
+        userId: testUserId,
+        dailyPostLimit: 10,
+      };
+      aggregator.initialize(feed, false, {});
+
+      // Create 8 articles in database (today)
+      const today = new Date();
+      today.setUTCHours(12, 0, 0, 0);
+      const articleValues = Array.from({ length: 8 }, (_, i) => ({
+        feedId: 1,
+        name: `Article ${i + 1}`,
+        url: `https://example.com/${i + 1}`,
+        date: today,
+        content: "",
+        createdAt: today,
+        updatedAt: today,
+      }));
+      await db.insert(articles).values(articleValues);
+
+      const inputArticles: RawArticle[] = Array.from({ length: 5 }, (_, i) => ({
+        title: `New Article ${i + 1}`,
+        url: `https://example.com/new${i + 1}`,
+        published: new Date(),
+      }));
+
+      // 8 posts today, limit 10, 5 new articles
+      // Remaining quota = 10 - 8 = 2
+      // Should only return 2 articles
+      const result = await (aggregator as any).applyArticleLimit(inputArticles);
+
+      expect(result).toHaveLength(2);
+      expect(result).toEqual(inputArticles.slice(0, 2));
+    });
+
+    it("should return empty array when quota is exhausted", async () => {
+      const aggregator = new FullWebsiteAggregator();
+      const feed = {
+        ...mockFeed,
+        id: testFeedId,
+        userId: testUserId,
+        dailyPostLimit: 10,
+      };
+      aggregator.initialize(feed, false, {});
+
+      // Create 10 articles in database (today) - quota exhausted
+      const today = new Date();
+      today.setUTCHours(12, 0, 0, 0);
+      const articleValues = Array.from({ length: 10 }, (_, i) => ({
+        feedId: 1,
+        name: `Article ${i + 1}`,
+        url: `https://example.com/${i + 1}`,
+        date: today,
+        content: "",
+        createdAt: today,
+        updatedAt: today,
+      }));
+      await db.insert(articles).values(articleValues);
+
+      const inputArticles: RawArticle[] = [
+        {
+          title: "New Article 1",
+          url: "https://example.com/new1",
+          published: new Date(),
+        },
+        {
+          title: "New Article 2",
+          url: "https://example.com/new2",
+          published: new Date(),
+        },
+      ];
+
+      // 10 posts today, limit 10, quota exhausted
+      const result = await (aggregator as any).applyArticleLimit(inputArticles);
+
+      expect(result).toHaveLength(0);
+      expect(result).toEqual([]);
+    });
+
+    it("should not limit when dailyPostLimit is -1 (unlimited)", async () => {
+      const aggregator = new FullWebsiteAggregator();
+      const feed = {
+        ...mockFeed,
+        id: testFeedId,
+        userId: testUserId,
+        dailyPostLimit: -1, // Unlimited
+      };
+      aggregator.initialize(feed, false, {});
+
+      const inputArticles: RawArticle[] = Array.from(
+        { length: 20 },
+        (_, i) => ({
+          title: `Article ${i + 1}`,
+          url: `https://example.com/${i + 1}`,
+          published: new Date(),
+        }),
+      );
+
+      const result = await (aggregator as any).applyArticleLimit(inputArticles);
+
+      expect(result).toHaveLength(20);
+      expect(result).toEqual(inputArticles);
+    });
+
+    it("should not limit when dailyPostLimit is 0 (disabled)", async () => {
+      const aggregator = new FullWebsiteAggregator();
+      const feed = {
+        ...mockFeed,
+        id: testFeedId,
+        userId: testUserId,
+        dailyPostLimit: 0, // Disabled
+      };
+      aggregator.initialize(feed, false, {});
+
+      const inputArticles: RawArticle[] = [
+        {
+          title: "Article 1",
+          url: "https://example.com/1",
+          published: new Date(),
+        },
+      ];
+
+      const result = await (aggregator as any).applyArticleLimit(inputArticles);
+
+      expect(result).toHaveLength(1);
+      expect(result).toEqual(inputArticles);
+    });
+
+    it("should only count articles from today (UTC midnight)", async () => {
+      const aggregator = new FullWebsiteAggregator();
+      const feed = {
+        ...mockFeed,
+        id: testFeedId,
+        userId: testUserId,
+        dailyPostLimit: 10,
+      };
+      aggregator.initialize(feed, false, {});
+
+      const today = new Date();
+      today.setUTCHours(12, 0, 0, 0);
+      const yesterday = new Date(today);
+      yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+
+      // Create 5 articles from yesterday and 3 from today
+      await db.insert(articles).values([
+        {
+          feedId: testFeedId,
+          name: "Yesterday Article 1",
+          url: "https://example.com/y1",
+          date: yesterday,
+          content: "",
+          createdAt: yesterday,
+          updatedAt: yesterday,
+        },
+        {
+          feedId: testFeedId,
+          name: "Yesterday Article 2",
+          url: "https://example.com/y2",
+          date: yesterday,
+          content: "",
+          createdAt: yesterday,
+          updatedAt: yesterday,
+        },
+        {
+          feedId: testFeedId,
+          name: "Yesterday Article 3",
+          url: "https://example.com/y3",
+          date: yesterday,
+          content: "",
+          createdAt: yesterday,
+          updatedAt: yesterday,
+        },
+        {
+          feedId: testFeedId,
+          name: "Yesterday Article 4",
+          url: "https://example.com/y4",
+          date: yesterday,
+          content: "",
+          createdAt: yesterday,
+          updatedAt: yesterday,
+        },
+        {
+          feedId: testFeedId,
+          name: "Yesterday Article 5",
+          url: "https://example.com/y5",
+          date: yesterday,
+          content: "",
+          createdAt: yesterday,
+          updatedAt: yesterday,
+        },
+        {
+          feedId: testFeedId,
+          name: "Today Article 1",
+          url: "https://example.com/t1",
+          date: today,
+          content: "",
+          createdAt: today,
+          updatedAt: today,
+        },
+        {
+          feedId: testFeedId,
+          name: "Today Article 2",
+          url: "https://example.com/t2",
+          date: today,
+          content: "",
+          createdAt: today,
+          updatedAt: today,
+        },
+        {
+          feedId: testFeedId,
+          name: "Today Article 3",
+          url: "https://example.com/t3",
+          date: today,
+          content: "",
+          createdAt: today,
+          updatedAt: today,
+        },
+      ]);
+
+      const inputArticles: RawArticle[] = Array.from(
+        { length: 10 },
+        (_, i) => ({
+          title: `New Article ${i + 1}`,
+          url: `https://example.com/new${i + 1}`,
+          published: new Date(),
+        }),
+      );
+
+      // Only 3 posts from today, limit 10, 10 new articles
+      // Remaining quota = 10 - 3 = 7
+      // Should only return 7 articles (not 5, which would be 10 - 5)
+      const result = await (aggregator as any).applyArticleLimit(inputArticles);
+
+      expect(result).toHaveLength(7);
+      expect(result).toEqual(inputArticles.slice(0, 7));
+    });
+
+    it("should return all articles when no feed is initialized", async () => {
+      const aggregator = new FullWebsiteAggregator();
+      // Don't initialize with feed
+
+      const inputArticles: RawArticle[] = [
+        {
+          title: "Article 1",
+          url: "https://example.com/1",
+          published: new Date(),
+        },
+      ];
+
+      const result = await (aggregator as any).applyArticleLimit(inputArticles);
+
+      expect(result).toHaveLength(1);
+      expect(result).toEqual(inputArticles);
     });
   });
 });

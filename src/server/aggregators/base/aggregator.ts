@@ -241,7 +241,7 @@ export abstract class BaseAggregator {
       return articles;
     }
 
-    const limit = this._getDailyPostLimit();
+    const limit = await this._getDailyPostLimit();
 
     // Unlimited or disabled - no limit
     if (limit === -1 || limit === 0) {
@@ -254,7 +254,7 @@ export abstract class BaseAggregator {
 
     // No quota remaining
     if (remainingQuota <= 0) {
-      const sourceName = this._getSourceName();
+      const sourceName = await this._getSourceName();
       this.logger.info(
         {
           sourceName,
@@ -269,7 +269,7 @@ export abstract class BaseAggregator {
 
     // Limit articles to remaining quota
     if (articles.length > remainingQuota) {
-      const sourceName = this._getSourceName();
+      const sourceName = await this._getSourceName();
       this.logger.info(
         {
           sourceName,
@@ -535,8 +535,8 @@ export abstract class BaseAggregator {
    *
    * @returns Daily post limit (-1=unlimited, 0=disabled, n>0=target)
    */
-  protected _getDailyPostLimit(): number {
-    const dailyLimit = require("./mixins/dailyLimit");
+  protected async _getDailyPostLimit(): Promise<number> {
+    const dailyLimit = await import("./mixins/dailyLimit");
     return dailyLimit.getDailyPostLimit.call(this as any);
   }
 
@@ -545,8 +545,8 @@ export abstract class BaseAggregator {
    *
    * @returns Source name for logging
    */
-  protected _getSourceName(): string {
-    const dailyLimit = require("./mixins/dailyLimit");
+  protected async _getSourceName(): Promise<string> {
+    const dailyLimit = await import("./mixins/dailyLimit");
     return dailyLimit.getSourceName.call(this as any);
   }
 
