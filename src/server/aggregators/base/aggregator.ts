@@ -230,10 +230,60 @@ export abstract class BaseAggregator {
 
   /**
    * Apply article limit.
+   * Enforces daily post limit by checking how many posts have been added today
+   * and limiting articles to fit within the remaining quota.
    * Override for custom limit logic.
    */
-  protected applyArticleLimit(articles: RawArticle[]): RawArticle[] {
-    // Default: no limit
+  protected async applyArticleLimit(
+    articles: RawArticle[],
+  ): Promise<RawArticle[]> {
+    if (!this.feed) {
+      return articles;
+    }
+
+    const limit = this._getDailyPostLimit();
+
+    // Unlimited or disabled - no limit
+    if (limit === -1 || limit === 0) {
+      return articles;
+    }
+
+    // Get posts added today
+    const postsToday = await this.getPostsAddedToday();
+    const remainingQuota = limit - postsToday;
+
+    // No quota remaining
+    if (remainingQuota <= 0) {
+      const sourceName = this._getSourceName();
+      this.logger.info(
+        {
+          sourceName,
+          postsToday,
+          limit,
+          articlesCount: articles.length,
+        },
+        `Daily quota exhausted for ${sourceName}: ${postsToday}/${limit}, skipping ${articles.length} articles`,
+      );
+      return []; // Return empty array - quota exhausted
+    }
+
+    // Limit articles to remaining quota
+    if (articles.length > remainingQuota) {
+      const sourceName = this._getSourceName();
+      this.logger.info(
+        {
+          sourceName,
+          postsToday,
+          limit,
+          remainingQuota,
+          articlesCount: articles.length,
+          limitedTo: remainingQuota,
+        },
+        `Limiting articles for ${sourceName}: ${articles.length} -> ${remainingQuota} (${postsToday}/${limit} today)`,
+      );
+      return articles.slice(0, remainingQuota);
+    }
+
     return articles;
   }
 

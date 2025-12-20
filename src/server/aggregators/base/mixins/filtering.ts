@@ -15,7 +15,7 @@ export interface FilteringMixin {
   isExistingUrl(url: string): boolean;
   shouldSkipArticle(article: RawArticle): boolean;
   applyArticleFilters(articles: RawArticle[]): Promise<RawArticle[]>;
-  applyArticleLimit(articles: RawArticle[]): RawArticle[];
+  applyArticleLimit(articles: RawArticle[]): Promise<RawArticle[]>;
 }
 
 /**
@@ -46,10 +46,10 @@ export async function applyArticleFilters(
  * Apply article limit.
  * Override for custom limit logic.
  */
-export function applyArticleLimit(
+export async function applyArticleLimit(
   this: FilteringMixin,
   articles: RawArticle[],
-): RawArticle[] {
+): Promise<RawArticle[]> {
   // Default: no limit
   return articles;
 }
@@ -99,7 +99,7 @@ export async function filterArticles(
   filtered = await this.applyArticleFilters(filtered);
 
   // Apply article limit
-  filtered = this.applyArticleLimit(filtered);
+  filtered = await this.applyArticleLimit(filtered);
 
   const elapsed = Date.now() - startTime;
   this.logger.info(

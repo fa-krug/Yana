@@ -251,10 +251,11 @@ export class FullWebsiteAggregator extends BaseAggregator {
   /**
    * Apply article limit.
    */
-  protected override applyArticleLimit(articles: RawArticle[]): RawArticle[] {
-    // Limit is applied by the template method's articleLimit parameter
-    // This method can be overridden for custom limit logic
-    return articles;
+  protected override async applyArticleLimit(
+    articles: RawArticle[],
+  ): Promise<RawArticle[]> {
+    // Call parent implementation to enforce daily limit
+    return super.applyArticleLimit(articles);
   }
 
   /**
