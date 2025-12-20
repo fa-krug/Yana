@@ -109,6 +109,15 @@ export async function fetchYouTubeChannelData(
           maxResults,
           apiKey,
         );
+        // INSTRUMENTATION
+        if (
+          process.env["NODE_ENV"] === "test" &&
+          (global as any).__TEST_TRACE
+        ) {
+          console.log(
+            `[FETCH_TRACE:youtube] fetchVideosFromPlaylist returned ${videos.length} videos`,
+          );
+        }
       } catch (error) {
         // Handle playlist not found or inaccessible - fallback to search
         if (axios.isAxiosError(error)) {

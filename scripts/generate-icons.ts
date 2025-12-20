@@ -1,86 +1,45 @@
 /**
- * Generate PNG icons from SVG logo for PWA manifest.
- * Uses Playwright to render SVG and capture screenshots.
+ * Generate PNG icons from PNG logo for PWA manifest.
+ * Uses Sharp to resize the PNG logo to various sizes.
  */
 
-import { chromium } from "playwright";
-import { readFileSync, existsSync } from "fs";
-import { writeFile, mkdir } from "fs/promises";
+import sharp from "sharp";
+import { existsSync } from "fs";
+import { mkdir } from "fs/promises";
 import { join } from "path";
 
 const sizes = [72, 96, 128, 144, 152, 192, 384, 512];
 const publicDir = join(process.cwd(), "public");
 const iconsDir = join(publicDir, "icons");
-const svgPath = join(publicDir, "logo-icon-only.svg");
+const pngPath = join(publicDir, "logo-icon-only.png");
 
 async function generateIcons() {
-  if (!existsSync(svgPath)) {
-    console.error(`SVG file not found: ${svgPath}`);
+  if (!existsSync(pngPath)) {
+    console.error(`PNG file not found: ${pngPath}`);
     process.exit(1);
   }
-
-  // Read SVG content
-  const svgContent = readFileSync(svgPath, "utf-8");
 
   // Ensure icons directory exists
   if (!existsSync(iconsDir)) {
     await mkdir(iconsDir, { recursive: true });
   }
 
-  // Launch browser
-  const browser = await chromium.launch();
-  const page = await browser.newPage();
-
   console.log("Generating icons...");
 
   for (const size of sizes) {
-    // Set viewport to match icon size
-    await page.setViewportSize({ width: size, height: size });
-
-    // Create HTML with SVG
-    const html = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <style>
-            body {
-              margin: 0;
-              padding: 0;
-              width: ${size}px;
-              height: ${size}px;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              background: transparent;
-            }
-            svg {
-              width: ${size}px;
-              height: ${size}px;
-            }
-          </style>
-        </head>
-        <body>
-          ${svgContent}
-        </body>
-      </html>
-    `;
-
-    await page.setContent(html);
-    await page.waitForTimeout(100); // Wait for render
-
-    // Take screenshot
-    const screenshot = await page.screenshot({
-      type: "png",
-      omitBackground: true,
-    });
-
-    // Save icon
+    // Resize PNG to the target size
     const iconPath = join(iconsDir, `icon-${size}x${size}.png`);
-    await writeFile(iconPath, screenshot);
+    await sharp(pngPath)
+      .resize(size, size, {
+        fit: "contain",
+        background: { r: 0, g: 0, b: 0, alpha: 0 },
+      })
+      .png()
+      .toFile(iconPath);
+
     console.log(`✓ Generated ${iconPath}`);
   }
 
-  await browser.close();
   console.log("\nAll icons generated successfully!");
 }
 

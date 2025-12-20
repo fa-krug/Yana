@@ -31,7 +31,20 @@ export async function parseYouTubeVideos(
   );
 
   if (videos.length === 0) {
+    // INSTRUMENTATION: Log when videos array is empty
+    if (process.env["NODE_ENV"] === "test" && (global as any).__TEST_TRACE) {
+      console.log(
+        `[PARSE_TRACE:youtube] videos.length is 0, returning empty array`,
+      );
+    }
     return [];
+  }
+
+  // INSTRUMENTATION: Log videos received
+  if (process.env["NODE_ENV"] === "test" && (global as any).__TEST_TRACE) {
+    console.log(
+      `[PARSE_TRACE:youtube] parseToRawArticles called with ${videos.length} videos`,
+    );
   }
 
   const articles: RawArticle[] = [];
@@ -99,25 +112,37 @@ export async function parseYouTubeVideos(
 
     // Generate HTML content with video description and comments
     const description = snippet.description || "";
-    const content = await buildVideoContent(
-      description,
-      videoId,
-      videoUrl,
-      commentLimit,
-      apiKey,
-    );
+    try {
+      const content = await buildVideoContent(
+        description,
+        videoId,
+        videoUrl,
+        commentLimit,
+        apiKey,
+      );
 
-    articles.push({
-      title: snippet.title || "Untitled",
-      url: videoUrl,
-      published: articleDate,
-      content,
-      summary: description,
-      thumbnailUrl,
-      mediaUrl: (await import("../base/utils")).getYouTubeProxyUrl(videoId),
-      mediaType: "video/youtube",
-      externalId: videoId,
-    });
+      articles.push({
+        title: snippet.title || "Untitled",
+        url: videoUrl,
+        published: articleDate,
+        content,
+        summary: description,
+        thumbnailUrl,
+        mediaUrl: (await import("../base/utils")).getYouTubeProxyUrl(videoId),
+        mediaType: "video/youtube",
+        externalId: videoId,
+      });
+    } catch (error) {
+      // INSTRUMENTATION
+      if (process.env["NODE_ENV"] === "test" && (global as any).__TEST_TRACE) {
+        console.log(
+          `[PARSE_TRACE:youtube] buildVideoContent error for video ${videoId}:`,
+          error,
+        );
+      }
+      // Re-throw to see the error
+      throw error;
+    }
   }
 
   const elapsed = Date.now() - startTime;

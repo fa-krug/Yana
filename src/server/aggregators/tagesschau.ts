@@ -57,6 +57,7 @@ export class TagesschauAggregator extends FullWebsiteAggregator {
       "tagesthemen",
       "11KM-Podcast",
       "Podcast 15 Minuten",
+      "15 Minuten:",
     ];
 
     if (skipTerms.some((term) => article.title.includes(term))) {

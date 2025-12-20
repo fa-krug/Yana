@@ -46,7 +46,7 @@ import { KeyboardShortcutsService } from "@app/core/services/keyboard-shortcuts.
         </button>
       }
       <img
-        src="logo-wordmark.svg"
+        src="logo-wordmark.png"
         alt="Yana"
         class="logo logo-wordmark"
         (click)="navigateToDashboard()"

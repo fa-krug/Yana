@@ -45,6 +45,15 @@ export async function saveAggregatedArticles(
           },
           "Skipping article older than two months",
         );
+        // INSTRUMENTATION: Log when articles are filtered by date
+        if (
+          process.env["NODE_ENV"] === "test" &&
+          (global as any).__TEST_TRACE
+        ) {
+          console.log(
+            `[SAVE_TRACE] Article ${rawArticle.url} filtered: too old (${publishedDate.toISOString()} < ${publishedCutoffDate.toISOString()})`,
+          );
+        }
         continue;
       }
 
@@ -56,6 +65,13 @@ export async function saveAggregatedArticles(
           feed.userId,
           forceRefresh,
         );
+
+      // INSTRUMENTATION: Log duplicate detection
+      if (process.env["NODE_ENV"] === "test" && (global as any).__TEST_TRACE) {
+        console.log(
+          `[SAVE_TRACE] Article ${rawArticle.url}: shouldSkip=${shouldSkip}, shouldUpdate=${shouldUpdate}, reason=${reason || "none"}`,
+        );
+      }
 
       if (shouldSkip) {
         if (reason) {

@@ -9,7 +9,7 @@ import { db, feeds, articles } from "@server/db";
 import { processFeedAggregation } from "@server/services/aggregation.service";
 import { eq, desc } from "drizzle-orm";
 import * as cheerio from "cheerio";
-import { expect } from "vitest";
+import { expect, vi } from "vitest";
 
 /**
  * Create a feed with specific aggregator and feed options.
@@ -79,6 +79,163 @@ export async function getFeedArticles(feedId: number) {
     .from(articles)
     .where(eq(articles.feedId, feedId))
     .orderBy(desc(articles.date));
+}
+
+/**
+ * Instrumentation helper to trace aggregation flow.
+ */
+export async function traceAggregation(
+  feedId: number,
+  testName: string,
+): Promise<{
+  rawArticles: any[];
+  savedArticles: any[];
+  feed: any;
+}> {
+  const aggregationService =
+    await import("@server/services/aggregation.service");
+  const articleService =
+    await import("@server/services/aggregation-article.service");
+  const BaseAggregatorClass = await import("../../aggregators/base/aggregator");
+
+  let capturedRawArticles: any[] = [];
+  let capturedFeed: any = null;
+
+  // Capture what aggregate() returns
+  const originalAggregate =
+    BaseAggregatorClass.BaseAggregator.prototype.aggregate;
+  const aggregateSpy = vi
+    .spyOn(BaseAggregatorClass.BaseAggregator.prototype, "aggregate")
+    .mockImplementation(async function (this: any, limit?: number) {
+      const result = await originalAggregate.call(this, limit);
+      capturedRawArticles = result;
+      console.log(
+        `[TRACE:${testName}] aggregate() returned ${result.length} articles`,
+      );
+      if (result.length > 0) {
+        console.log(`[TRACE:${testName}] First article:`, {
+          title: result[0].title,
+          url: result[0].url,
+          contentLength: result[0].content?.length || 0,
+          contentPreview: result[0].content?.substring(0, 150),
+          thumbnailUrl: result[0].thumbnailUrl,
+          published: result[0].published,
+        });
+      } else {
+        console.log(
+          `[TRACE:${testName}] WARNING: aggregate() returned 0 articles`,
+        );
+      }
+      return result;
+    });
+
+  // Capture what saveAggregatedArticles receives and trace filtering
+  const originalSave = articleService.saveAggregatedArticles;
+  const saveSpy = vi
+    .spyOn(articleService, "saveAggregatedArticles")
+    .mockImplementation(
+      async (
+        rawArticles: RawArticle[],
+        feed: Feed,
+        aggregator: BaseAggregator,
+        forceRefresh: boolean,
+      ) => {
+        capturedFeed = feed;
+        console.log(
+          `[TRACE:${testName}] saveAggregatedArticles called with ${rawArticles.length} articles`,
+        );
+        if (rawArticles.length > 0) {
+          console.log(`[TRACE:${testName}] First article in save:`, {
+            title: rawArticles[0].title,
+            url: rawArticles[0].url,
+            contentLength: rawArticles[0].content?.length || 0,
+            thumbnailUrl: rawArticles[0].thumbnailUrl,
+            published: rawArticles[0].published,
+            feedUseCurrentTimestamp: feed.useCurrentTimestamp,
+            feedSkipDuplicates: feed.skipDuplicates,
+            forceRefresh,
+          });
+        }
+
+        // Add detailed tracing inside saveAggregatedArticles
+        const shouldSkipModule = await import("../../aggregators/base/utils");
+        const originalShouldSkip =
+          shouldSkipModule.shouldSkipArticleByDuplicate;
+        const skipSpy = vi
+          .spyOn(shouldSkipModule, "shouldSkipArticleByDuplicate")
+          .mockImplementation(
+            async (
+              article: { url: string; title: string },
+              feedId: number,
+              feedUserId: number | null,
+              forceRefresh: boolean,
+            ) => {
+              const result = await originalShouldSkip(
+                article,
+                feedId,
+                feedUserId,
+                forceRefresh,
+              );
+              if (result.shouldSkip || result.shouldUpdate) {
+                console.log(
+                  `[TRACE:${testName}] Article ${article.url} - shouldSkip: ${result.shouldSkip}, shouldUpdate: ${result.shouldUpdate}, reason: ${result.reason}`,
+                );
+              }
+              return result;
+            },
+          );
+
+        const result = await originalSave(
+          rawArticles,
+          feed,
+          aggregator,
+          forceRefresh,
+        );
+        console.log(
+          `[TRACE:${testName}] saveAggregatedArticles result:`,
+          result,
+        );
+
+        skipSpy.mockRestore();
+        return result;
+      },
+    );
+
+  // Enable test tracing
+  (global as any).__TEST_TRACE = true;
+
+  // Run aggregation
+  await runFullAggregation(feedId);
+
+  // Disable test tracing
+  (global as any).__TEST_TRACE = false;
+
+  // Get saved articles
+  const savedArticles = await getFeedArticles(feedId);
+  console.log(
+    `[TRACE:${testName}] Final saved articles: ${savedArticles.length}`,
+  );
+  if (savedArticles.length > 0) {
+    console.log(`[TRACE:${testName}] First saved article:`, {
+      name: savedArticles[0].name,
+      contentLength: savedArticles[0].content?.length || 0,
+      thumbnailUrl: savedArticles[0].thumbnailUrl,
+      date: savedArticles[0].date,
+      contentPreview: savedArticles[0].content?.substring(0, 200),
+    });
+  } else {
+    console.log(`[TRACE:${testName}] WARNING: No articles saved to database`);
+  }
+
+  // Restore original implementations
+  aggregateSpy.mockRestore();
+  saveSpy.mockRestore();
+
+  return {
+    rawArticles: capturedRawArticles,
+    savedArticles,
+    feed: capturedFeed,
+  };
 }
 
 /**

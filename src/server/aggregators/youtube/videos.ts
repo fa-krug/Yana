@@ -90,15 +90,36 @@ export async function fetchVideosFromPlaylist(
         },
       );
 
-      videos.push(...(videosResponse.data.items || []));
+      const videoItems = videosResponse.data.items || [];
+      // INSTRUMENTATION
+      if (process.env["NODE_ENV"] === "test" && (global as any).__TEST_TRACE) {
+        console.log(
+          `[VIDEOS_TRACE:youtube] videosResponse.data.items.length: ${videoItems.length}`,
+        );
+      }
+      videos.push(...videoItems);
       nextPageToken = playlistResponse.data.nextPageToken;
       if (!nextPageToken) {
         break;
       }
     }
   } catch (error) {
+    // INSTRUMENTATION
+    if (process.env["NODE_ENV"] === "test" && (global as any).__TEST_TRACE) {
+      console.log(
+        `[VIDEOS_TRACE:youtube] fetchVideosFromPlaylist error:`,
+        error,
+      );
+    }
     // Re-raise errors - fallback handling is done in aggregate method
     throw error;
+  }
+
+  // INSTRUMENTATION
+  if (process.env["NODE_ENV"] === "test" && (global as any).__TEST_TRACE) {
+    console.log(
+      `[VIDEOS_TRACE:youtube] fetchVideosFromPlaylist returning ${videos.length} videos`,
+    );
   }
 
   return videos;
