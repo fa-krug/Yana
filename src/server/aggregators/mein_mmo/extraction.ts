@@ -275,8 +275,54 @@ export async function extractMeinMmoContent(
           cleanUrl = cleanUrl.split("?")[0];
         }
 
-        // Replace figure with simple link
+        // Look for an image in the embed (check multiple possible locations)
+        let imageSrc: string | null = null;
+        let imageAlt = "Reddit post";
+
+        // First, try to find an img tag
+        const embedImage = $figure.find("img").first();
+        if (embedImage.length > 0) {
+          imageSrc =
+            embedImage.attr("src") || embedImage.attr("data-src") || null;
+          imageAlt =
+            embedImage.attr("alt") || embedImage.attr("title") || "Reddit post";
+        }
+
+        // If no image found, try to extract from background-image style
+        if (!imageSrc) {
+          const elementsWithBg = $figure.find("[style*='background-image']");
+          if (elementsWithBg.length > 0) {
+            const style = elementsWithBg.first().attr("style") || "";
+            const bgMatch = style.match(
+              /background-image:\s*url\(['"]?([^'")]+)['"]?\)/,
+            );
+            if (bgMatch && bgMatch[1]) {
+              imageSrc = bgMatch[1];
+            }
+          }
+        }
+
+        // Create container for image + link
         const newP = $("<p></p>");
+
+        if (imageSrc) {
+          // Create image wrapped in link
+          const imageLink = $("<a></a>")
+            .attr("href", cleanUrl)
+            .attr("target", "_blank")
+            .attr("rel", "noopener");
+          const img = $("<img></img>")
+            .attr("src", imageSrc)
+            .attr("alt", imageAlt)
+            .attr(
+              "style",
+              "max-width: 100%; height: auto; display: block; margin-bottom: 0.5em;",
+            );
+          imageLink.append(img);
+          newP.append(imageLink);
+        }
+
+        // Add text link
         const newLink = $("<a></a>")
           .attr("href", cleanUrl)
           .attr("target", "_blank")
@@ -292,8 +338,9 @@ export async function extractMeinMmoContent(
             aggregator: aggregatorId,
             feedId,
             url: cleanUrl,
+            hasImage: !!imageSrc,
           },
-          "Converted Reddit embed to link",
+          "Converted Reddit embed to image plus link",
         );
       }
     }
