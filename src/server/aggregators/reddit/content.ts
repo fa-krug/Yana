@@ -9,6 +9,8 @@ import {
   extractAnimatedGifUrl,
   extractRedditVideoPreview,
   wouldUseVRedditAsHeader,
+  wouldUseDirectImageAsHeader,
+  wouldUseYouTubeAsHeader,
 } from "./images";
 import { fetchPostComments, formatCommentHtml } from "./comments";
 import { ArticleSkipError } from "../base/exceptions";
@@ -22,6 +24,7 @@ export async function buildPostContent(
   commentLimit: number,
   subreddit: string,
   userId: number,
+  isCrossPost: boolean = false,
 ): Promise<string> {
   const contentParts: string[] = [];
 
@@ -107,15 +110,20 @@ export async function buildPostContent(
     } else if (
       [".jpg", ".jpeg", ".png", ".webp"].some((ext) =>
         url.toLowerCase().endsWith(ext),
-      )
+      ) ||
+      url.includes("i.redd.it")
     ) {
-      // Direct image URL - just add as link, standardizeContentFormat will handle header element
-      const fixedUrl = fixRedditMediaUrl(url);
-      if (fixedUrl) {
-        contentParts.push(
-          `<p><a href="${fixedUrl}">${escapeHtml(fixedUrl)}</a></p>`,
-        );
+      // Direct image URL - skip if it will be used as header element
+      const willBeUsedAsHeader = wouldUseDirectImageAsHeader(post, url);
+      if (!willBeUsedAsHeader) {
+        const fixedUrl = fixRedditMediaUrl(url);
+        if (fixedUrl) {
+          contentParts.push(
+            `<p><a href="${fixedUrl}">${escapeHtml(fixedUrl)}</a></p>`,
+          );
+        }
       }
+      // If willBeUsedAsHeader is true, skip adding to content (will be in header)
     } else if (url.includes("v.redd.it")) {
       // Reddit video - only add thumbnail and link if it won't be used as header
       // (if it will be used as header, it will be embedded in the header element)
@@ -132,10 +140,18 @@ export async function buildPostContent(
       }
       // If willBeUsedAsHeader is true, skip adding to content (will be in header)
     } else if (url.includes("youtube.com") || url.includes("youtu.be")) {
-      // Create a link - standardize_format will convert it to an embed
-      contentParts.push(`<p><a href="${url}">▶ View Video on YouTube</a></p>`);
-    } else {
+      // YouTube video - skip if it will be used as header element
+      const willBeUsedAsHeader = wouldUseYouTubeAsHeader(url);
+      if (!willBeUsedAsHeader) {
+        // Create a link - standardize_format will convert it to an embed
+        contentParts.push(
+          `<p><a href="${url}">▶ View Video on YouTube</a></p>`,
+        );
+      }
+      // If willBeUsedAsHeader is true, skip adding to content (will be in header)
+    } else if (!isCrossPost) {
       // For other URLs, just add as link - standardizeContentFormat will handle image extraction
+      // Skip adding original link for cross posts
       contentParts.push(`<p><a href="${url}">${escapeHtml(url)}</a></p>`);
     }
   }

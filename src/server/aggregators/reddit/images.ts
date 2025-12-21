@@ -14,6 +14,93 @@ import {
 import type { RedditPostData } from "./types";
 
 /**
+ * Check if a direct image URL would be used as a header element.
+ * Returns true if the URL would be used as a header image (Priority 2).
+ *
+ * Based on extractHeaderImageUrl priority:
+ * - Priority 0: YouTube videos and v.redd.it videos
+ * - Priority 1: Gallery posts
+ * - Priority 2: Direct image posts
+ *
+ * A direct image URL will be used as header if:
+ * - It's a direct image URL (.jpg, .jpeg, .png, .webp, or i.redd.it)
+ * - No gallery exists (Priority 1)
+ * - No YouTube/v.redd.it videos exist (Priority 0)
+ */
+export function wouldUseDirectImageAsHeader(
+  post: RedditPostData & { selftext?: string },
+  url: string,
+): boolean {
+  const decodedUrl = decodeHtmlEntitiesInUrl(url);
+  const urlLower = decodedUrl.toLowerCase();
+
+  // Check if it's a direct image URL
+  const isDirectImage =
+    [".jpg", ".jpeg", ".png", ".webp"].some((ext) => urlLower.endsWith(ext)) ||
+    urlLower.includes("i.redd.it");
+
+  if (!isDirectImage) {
+    return false;
+  }
+
+  // Check for gallery (Priority 1 - takes priority over direct images)
+  if (post.is_gallery && post.media_metadata && post.gallery_data?.items?.[0]) {
+    return false; // Gallery takes priority
+  }
+
+  // Check for YouTube videos (Priority 0 - takes priority over direct images)
+  if (post.url) {
+    const postUrl = decodeHtmlEntitiesInUrl(post.url);
+    const videoId = extractYouTubeVideoId(postUrl);
+    if (videoId) {
+      return false; // YouTube video takes priority
+    }
+  }
+
+  // Check selftext for YouTube videos
+  if (post.is_self && post.selftext) {
+    const urls = extractUrlsFromText(post.selftext);
+    for (const textUrl of urls) {
+      const videoId = extractYouTubeVideoId(textUrl);
+      if (videoId) {
+        return false; // YouTube video in selftext takes priority
+      }
+    }
+  }
+
+  // Check for v.redd.it videos (Priority 0 - takes priority over direct images)
+  if (post.url) {
+    const postUrl = decodeHtmlEntitiesInUrl(post.url);
+    if (postUrl.includes("v.redd.it")) {
+      return false; // v.redd.it video takes priority
+    }
+  }
+
+  // Check selftext for v.redd.it videos
+  if (post.is_self && post.selftext) {
+    const urls = extractUrlsFromText(post.selftext);
+    for (const textUrl of urls) {
+      if (textUrl.includes("v.redd.it")) {
+        return false; // v.redd.it video in selftext takes priority
+      }
+    }
+  }
+
+  // No higher priority content found, direct image will be used as header
+  return true;
+}
+
+/**
+ * Check if a YouTube URL would be used as a header element.
+ * YouTube videos are always used as header (Priority 0).
+ */
+export function wouldUseYouTubeAsHeader(url: string): boolean {
+  const decodedUrl = decodeHtmlEntitiesInUrl(url);
+  const videoId = extractYouTubeVideoId(decodedUrl);
+  return !!videoId;
+}
+
+/**
  * Check if a v.redd.it URL would be used as a header element.
  * Returns true if the v.redd.it video would be prioritized as a header.
  *

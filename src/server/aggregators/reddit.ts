@@ -472,6 +472,7 @@ export class RedditAggregator extends BaseAggregator {
         this.getOption("comment_limit", 10) as number,
         originalSubreddit,
         this.feed.userId,
+        true, // isCrossPost
       );
 
       // Extract header image URL and store it in the article for processContent

@@ -97,6 +97,9 @@ export async function parseRedditPosts(
   for (const post of posts) {
     // Get original post data if this is a cross-post
     const postData = getOriginalPostData(post.data);
+    const isCrossPost =
+      post.data.crosspost_parent_list &&
+      post.data.crosspost_parent_list.length > 0;
 
     // Get the original subreddit from the post data (for cross-posts, use original subreddit)
     const originalSubreddit =
@@ -111,6 +114,7 @@ export async function parseRedditPosts(
       commentLimit,
       originalSubreddit,
       userId,
+      isCrossPost,
     );
     const headerImageUrl = await extractHeaderImageUrl(postData);
     const thumbnailUrl = extractThumbnailUrl(postData);
