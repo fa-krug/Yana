@@ -26,17 +26,6 @@ All detailed documentation is in `.cursor/rules/`:
 - **`frontend.mdc`** - Angular Material best practices and conventions
 - **`testing.mdc`** - Testing patterns and examples
 
-## Pre-Commit Validation
-
-Pre-commit validation is handled by `.cursor/hooks/pre-commit.sh` (Cursor hooks) and optionally `hooks/pre-commit` (traditional git hooks). See `.cursor/hooks/README.md` and `hooks/README.md` for details.
-
-The pre-commit hook automatically runs:
-1. Prettier formatting check and auto-fix
-2. Frontend dependency installation check (if needed)
-3. Frontend tests
-4. Frontend formatting verification
-
-**Commits are BLOCKED if any step fails.**
 
 ### Traditional Git Hooks
 

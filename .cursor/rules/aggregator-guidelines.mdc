@@ -1,3 +1,9 @@
+---
+description: Aggregator class development guidelines and best practices
+globs: ["src/server/aggregators/**/*.ts"]
+alwaysApply: false
+---
+
 # Aggregator Class Guidelines
 
 ## Core Rules
