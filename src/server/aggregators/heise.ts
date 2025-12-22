@@ -141,6 +141,38 @@ export class HeiseAggregator extends FullWebsiteAggregator {
   }
 
   /**
+   * Override validateContent to skip articles with "Event Sourcing" in content.
+   */
+  protected override validateContent(
+    content: string,
+    article: RawArticle,
+  ): boolean {
+    // First, do base validation
+    if (!super.validateContent(content, article)) {
+      return false;
+    }
+
+    // Skip articles with "Event Sourcing" in content
+    if (content.toLowerCase().includes("event sourcing")) {
+      this.logger.info(
+        {
+          step: "enrichArticles",
+          subStep: "validateContent",
+          aggregator: this.id,
+          feedId: this.feed?.id,
+          url: article.url,
+          title: article.title,
+          reason: "event_sourcing",
+        },
+        "Skipping article with Event Sourcing in content",
+      );
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
    * Override fetchArticleContentInternal to handle all-pages URL conversion.
    */
   protected override async fetchArticleContentInternal(
