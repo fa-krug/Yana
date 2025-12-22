@@ -11,6 +11,7 @@ import { standardizeContentFormat } from "./base/process";
 import { sanitizeHtml } from "./base/utils";
 import * as cheerio from "cheerio";
 import { ContentFetchError } from "./base/exceptions";
+import { fetchArticleContent } from "./base/fetch";
 
 export class HeiseAggregator extends FullWebsiteAggregator {
   override readonly id = "heise";
@@ -398,16 +399,12 @@ export class HeiseAggregator extends FullWebsiteAggregator {
     );
 
     try {
-      // Fetch the forum page using template method flow
-      const forumArticle: RawArticle = {
-        title: "",
-        url: forumUrl,
-        published: new Date(),
-      };
-      const html = await this.fetchArticleContentInternal(
-        forumUrl,
-        forumArticle,
-      );
+      // Fetch the forum page directly without waitForSelector
+      // Forum pages don't have #meldung/.StoryContent selectors
+      const html = await fetchArticleContent(forumUrl, {
+        timeout: this.fetchTimeout,
+        waitForSelector: undefined, // Forum pages use different structure
+      });
 
       const $ = cheerio.load(html);
 
