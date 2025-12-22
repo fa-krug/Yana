@@ -11,6 +11,7 @@ import {
   wouldUseVRedditAsHeader,
   wouldUseDirectImageAsHeader,
   wouldUseYouTubeAsHeader,
+  wouldUseGifAsHeader,
 } from "./images";
 import { fetchPostComments, formatCommentHtml } from "./comments";
 import { ArticleSkipError } from "../base/exceptions";
@@ -87,26 +88,31 @@ export async function buildPostContent(
       url.toLowerCase().endsWith(".gif") ||
       url.toLowerCase().endsWith(".gifv")
     ) {
-      // Try to get animated GIF URL first
-      const gifUrl = extractAnimatedGifUrl(post);
-      if (gifUrl) {
-        const fixedUrl = fixRedditMediaUrl(gifUrl);
-        if (fixedUrl) {
-          contentParts.push(
-            `<p><img src="${fixedUrl}" alt="Animated GIF"></p>`,
-          );
-        }
-      } else {
-        const finalUrl = url.toLowerCase().endsWith(".gifv")
-          ? url.slice(0, -1)
-          : url;
-        const fixedUrl = fixRedditMediaUrl(finalUrl);
-        if (fixedUrl) {
-          contentParts.push(
-            `<p><img src="${fixedUrl}" alt="Animated GIF"></p>`,
-          );
+      // Check if GIF will be used as header - if so, skip adding to body
+      const willBeUsedAsHeader = wouldUseGifAsHeader(post, url);
+      if (!willBeUsedAsHeader) {
+        // Try to get animated GIF URL first
+        const gifUrl = extractAnimatedGifUrl(post);
+        if (gifUrl) {
+          const fixedUrl = fixRedditMediaUrl(gifUrl);
+          if (fixedUrl) {
+            contentParts.push(
+              `<p><img src="${fixedUrl}" alt="Animated GIF"></p>`,
+            );
+          }
+        } else {
+          const finalUrl = url.toLowerCase().endsWith(".gifv")
+            ? url.slice(0, -1)
+            : url;
+          const fixedUrl = fixRedditMediaUrl(finalUrl);
+          if (fixedUrl) {
+            contentParts.push(
+              `<p><img src="${fixedUrl}" alt="Animated GIF"></p>`,
+            );
+          }
         }
       }
+      // If willBeUsedAsHeader is true, skip adding to content (will be in header)
     } else if (
       [".jpg", ".jpeg", ".png", ".webp"].some((ext) =>
         url.toLowerCase().endsWith(ext),

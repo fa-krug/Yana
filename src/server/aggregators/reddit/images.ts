@@ -91,6 +91,92 @@ export function wouldUseDirectImageAsHeader(
 }
 
 /**
+ * Check if a GIF URL would be used as a header element.
+ * Returns true if the URL would be used as a header image (Priority 2).
+ *
+ * Based on extractHeaderImageUrl priority:
+ * - Priority 0: YouTube videos and v.redd.it videos
+ * - Priority 1: Gallery posts
+ * - Priority 2: Direct image posts (including GIFs)
+ *
+ * A GIF URL will be used as header if:
+ * - It's a GIF URL (.gif, .gifv, or preview.redd.it with .gif)
+ * - No gallery exists (Priority 1)
+ * - No YouTube/v.redd.it videos exist (Priority 0)
+ * - It's not a Reddit post URL
+ */
+export function wouldUseGifAsHeader(
+  post: RedditPostData & { selftext?: string },
+  url: string,
+): boolean {
+  const decodedUrl = decodeHtmlEntitiesInUrl(url);
+  const urlLower = decodedUrl.toLowerCase();
+
+  // Check if it's a GIF URL
+  const isGif =
+    urlLower.endsWith(".gif") ||
+    urlLower.endsWith(".gifv") ||
+    (urlLower.includes("preview.redd.it") && urlLower.includes(".gif"));
+
+  if (!isGif) {
+    return false;
+  }
+
+  // Check for gallery (Priority 1 - takes priority over GIFs)
+  if (post.is_gallery && post.media_metadata && post.gallery_data?.items?.[0]) {
+    return false; // Gallery takes priority
+  }
+
+  // Check for YouTube videos (Priority 0 - takes priority over GIFs)
+  if (post.url) {
+    const postUrl = decodeHtmlEntitiesInUrl(post.url);
+    const videoId = extractYouTubeVideoId(postUrl);
+    if (videoId) {
+      return false; // YouTube video takes priority
+    }
+  }
+
+  // Check selftext for YouTube videos
+  if (post.is_self && post.selftext) {
+    const urls = extractUrlsFromText(post.selftext);
+    for (const textUrl of urls) {
+      const videoId = extractYouTubeVideoId(textUrl);
+      if (videoId) {
+        return false; // YouTube video in selftext takes priority
+      }
+    }
+  }
+
+  // Check for v.redd.it videos (Priority 0 - takes priority over GIFs)
+  if (post.url) {
+    const postUrl = decodeHtmlEntitiesInUrl(post.url);
+    if (postUrl.includes("v.redd.it")) {
+      return false; // v.redd.it video takes priority
+    }
+  }
+
+  // Check selftext for v.redd.it videos
+  if (post.is_self && post.selftext) {
+    const urls = extractUrlsFromText(post.selftext);
+    for (const textUrl of urls) {
+      if (textUrl.includes("v.redd.it")) {
+        return false; // v.redd.it video in selftext takes priority
+      }
+    }
+  }
+
+  // Check if it's a Reddit post URL (should not be used as header)
+  const redditPostUrlPattern =
+    /https?:\/\/[^\s]*reddit\.com\/r\/[^\/\s]+\/comments\/[a-zA-Z0-9]+\/[^\/\s]+\/?$/;
+  if (redditPostUrlPattern.test(decodedUrl)) {
+    return false; // Reddit post URLs are not used as headers
+  }
+
+  // No higher priority content found, GIF will be used as header
+  return true;
+}
+
+/**
  * Check if a YouTube URL would be used as a header element.
  * YouTube videos are always used as header (Priority 0).
  */
@@ -429,9 +515,10 @@ export async function extractHeaderImageUrl(
       }
     }
 
-    // Priority 2: Direct image posts - extract imageUrl from URL
+    // Priority 2: Direct image posts (including GIFs) - extract imageUrl from URL
     if (post.url) {
       const decodedUrl = decodeHtmlEntitiesInUrl(post.url);
+      const urlLower = decodedUrl.toLowerCase();
 
       // Ignore Reddit post URLs - they have pattern: /comments/{postId}/{title}/
       // (not comment URLs which have /comments/{postId}/{title}/{commentId})
@@ -441,7 +528,21 @@ export async function extractHeaderImageUrl(
         logger.debug({ url: decodedUrl }, "Skipping Reddit post URL");
         // Continue to next priority instead of returning
       } else {
-        return decodedUrl;
+        // Check if it's a direct image URL (including GIFs)
+        const isDirectImage =
+          [".jpg", ".jpeg", ".png", ".webp", ".gif", ".gifv"].some((ext) =>
+            urlLower.endsWith(ext),
+          ) ||
+          urlLower.includes("i.redd.it") ||
+          (urlLower.includes("preview.redd.it") && urlLower.includes(".gif"));
+        if (isDirectImage) {
+          logger.debug(
+            { url: decodedUrl },
+            "Found direct image/GIF URL for header",
+          );
+          return decodedUrl;
+        }
+        // For other URLs, continue to next priority
       }
     }
 
