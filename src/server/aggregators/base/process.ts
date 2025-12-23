@@ -624,7 +624,7 @@ export async function standardizeContentFormat(
 
     const footerHtml =
       addSourceFooter && !hasExistingFooter
-        ? `<footer><a href="${article.url}" style="float: right;">Source</a></footer>`
+        ? `<footer style="margin-bottom: 16px;"><a href="${article.url}" style="float: right;">Source</a></footer>`
         : "";
 
     // Wrap everything in <article> tag
@@ -639,7 +639,7 @@ export async function standardizeContentFormat(
 
     let fallbackContent = content;
     if (addSourceFooter && !hasExistingFooter) {
-      fallbackContent = `<article>${content}<footer><a href="${article.url}" style="float: right;">Source</a></footer></article>`;
+      fallbackContent = `<article>${content}<footer style="margin-bottom: 16px;"><a href="${article.url}" style="float: right;">Source</a></footer></article>`;
     } else if (!$("article").length) {
       fallbackContent = `<article>${content}</article>`;
     }
