@@ -2,16 +2,21 @@
  * Article media component - handles YouTube, Podcast, and Reddit media rendering.
  */
 
-import { Component, inject, input } from "@angular/core";
-import { CommonModule } from "@angular/common";
+import {
+  ChangeDetectionStrategy,
+  Component,
+  inject,
+  input,
+} from "@angular/core";
+import { CommonModule, NgOptimizedImage } from "@angular/common";
 import { DomSanitizer, SafeResourceUrl } from "@angular/platform-browser";
 import { MatIconModule } from "@angular/material/icon";
 import { ArticleDetail } from "@app/core/models";
 
 @Component({
   selector: "app-article-media",
-  standalone: true,
-  imports: [CommonModule, MatIconModule],
+  imports: [CommonModule, MatIconModule, NgOptimizedImage],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (isYouTubeVideo()) {
       <div class="media-container">
@@ -59,28 +64,29 @@ import { ArticleDetail } from "@app/core/models";
     }
 
     @if (isRedditVideo()) {
-      <div class="media-container">
-        @if (
-          article().mediaUrl &&
-          !article().mediaUrl?.includes("/embed") &&
-          !article().mediaUrl?.includes("vxreddit.com")
-        ) {
-          <video
-            controls
-            [src]="article().mediaUrl || ''"
-            playsinline
-            preload="metadata"
-          >
-            Your browser does not support the video element.
-          </video>
+      <div class="media-container reddit-fallback">
+        @if (article().thumbnailUrl) {
+          <img
+            [ngSrc]="article().thumbnailUrl!"
+            width="640"
+            height="360"
+            alt="Reddit video preview for {{ article().name }}"
+            loading="lazy"
+          />
         } @else {
-          <iframe
-            [src]="getSafeRedditEmbedUrl()"
-            frameborder="0"
-            scrolling="no"
-            allowfullscreen
+          <div class="media-placeholder">Reddit video preview unavailable</div>
+        }
+        @if (getRedditLink()) {
+          <a
+            class="reddit-link"
+            [href]="getRedditLink()"
+            target="_blank"
+            rel="noopener noreferrer"
           >
-          </iframe>
+            Open on Reddit
+          </a>
+        } @else {
+          <p class="reddit-link muted">Reddit link unavailable</p>
         }
         @if (article().duration) {
           <p class="media-meta">
@@ -136,6 +142,48 @@ import { ArticleDetail } from "@app/core/models";
         font-size: 18px;
         width: 18px;
         height: 18px;
+      }
+
+      .reddit-fallback {
+        background-color: #0a0a0a;
+      }
+
+      .reddit-fallback img {
+        display: block;
+        width: 100%;
+        height: auto;
+        aspect-ratio: 16 / 9;
+        object-fit: cover;
+      }
+
+      .media-placeholder {
+        padding: 32px 16px;
+        text-align: center;
+        color: rgba(255, 255, 255, 0.72);
+      }
+
+      .reddit-link {
+        display: block;
+        padding: 12px 16px;
+        color: #ff4500;
+        text-decoration: none;
+        font-weight: 600;
+        background-color: rgba(255, 255, 255, 0.08);
+      }
+
+      .reddit-link:hover,
+      .reddit-link:focus {
+        text-decoration: underline;
+      }
+
+      .reddit-link.muted {
+        color: rgba(255, 255, 255, 0.72);
+        cursor: default;
+      }
+
+      .reddit-link:focus {
+        outline: 2px solid #ff4500;
+        outline-offset: 2px;
       }
 
       :host-context(.dark-theme) {
@@ -201,10 +249,10 @@ export class ArticleMediaComponent {
     );
   }
 
-  protected getSafeRedditEmbedUrl(): SafeResourceUrl {
+  protected getRedditLink(): string {
     const article = this.article();
-    if (!article?.mediaUrl) return "";
-    return this.sanitizer.bypassSecurityTrustResourceUrl(article.mediaUrl);
+    if (!article) return "";
+    return article.url || article.link || article.mediaUrl || "";
   }
 
   protected formatDuration(seconds: number): string {
