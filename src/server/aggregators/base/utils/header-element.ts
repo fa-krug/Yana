@@ -77,7 +77,14 @@ export async function createHeaderElementFromUrl(
   }
 
   try {
-    // Check if it's a Reddit post URL - use subreddit thumbnail
+    // Check if it's a Reddit embed URL - return iframe embed (must check BEFORE Reddit post URL check)
+    if (isRedditEmbedUrl(url)) {
+      const embedHtml = createRedditEmbedHtml(url);
+      logger.debug({ url }, "Created Reddit embed element");
+      return embedHtml;
+    }
+
+    // Check if it's a Reddit post URL - use subreddit thumbnail (but NOT embed URLs)
     const postInfo = extractPostInfoFromUrl(url);
     if (postInfo.subreddit) {
       logger.debug(
@@ -155,13 +162,6 @@ export async function createHeaderElementFromUrl(
         );
         // Fall through to default extraction
       }
-    }
-
-    // Check if it's a Reddit embed URL - return iframe embed
-    if (isRedditEmbedUrl(url)) {
-      const embedHtml = createRedditEmbedHtml(url);
-      logger.debug({ url }, "Created Reddit embed element");
-      return embedHtml;
     }
 
     // Check if it's a v.redd.it URL - construct embed URL

@@ -127,7 +127,9 @@ export async function parseRedditPosts(
     if (postData.is_video && postData.url) {
       const decodedUrl = decodeHtmlEntitiesInUrl(postData.url);
       if (decodedUrl.includes("v.redd.it")) {
-        mediaUrl = `${permalink}/embed`;
+        // Remove trailing slash to avoid double slash in embed URL
+        const normalizedPermalink = permalink.replace(/\/$/, "");
+        mediaUrl = `${normalizedPermalink}/embed`;
       }
     }
 

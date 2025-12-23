@@ -128,25 +128,7 @@ BREAKING CHANGE: Authentication now requires API key instead of username/passwor
 
 ## Before Committing
 
-**MANDATORY: Run formatting and tests before every commit.**
-
-```bash
-# 1. Check formatting
-npm run format:check
-
-# 2. Run ALL tests
-npm test
-```
-
-**Do NOT commit if any of these fail.** Fix issues first.
-
-Pre-commit hooks enforce this automatically, but always run manually to catch issues early.
-
-### Quick Validation Command
-
-```bash
-npm run format:check && npm test
-```
+**Skip manual format checks and tests before committing.** Pre-commit hooks automatically run validation and will block the commit if anything fails. This avoids redundant checks and lets the hooks handle validation.
 
 ## Question Requests
 

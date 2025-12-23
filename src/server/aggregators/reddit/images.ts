@@ -419,7 +419,9 @@ export async function extractHeaderImageUrl(
       if (decodedUrl.includes("v.redd.it")) {
         // Construct embed URL from permalink
         const decodedPermalink = decodeHtmlEntitiesInUrl(post.permalink);
-        const embedUrl = `https://reddit.com${decodedPermalink}/embed`;
+        // Remove trailing slash to avoid double slash in embed URL
+        const normalizedPermalink = decodedPermalink.replace(/\/$/, "");
+        const embedUrl = `https://reddit.com${normalizedPermalink}/embed`;
         logger.debug(
           { url: decodedUrl, embedUrl },
           "Found v.redd.it video in post URL",
@@ -453,7 +455,9 @@ export async function extractHeaderImageUrl(
         if (url.includes("v.redd.it")) {
           // Construct embed URL from permalink
           const decodedPermalink = decodeHtmlEntitiesInUrl(post.permalink);
-          const embedUrl = `https://reddit.com${decodedPermalink}/embed`;
+          // Remove trailing slash to avoid double slash in embed URL
+          const normalizedPermalink = decodedPermalink.replace(/\/$/, "");
+          const embedUrl = `https://reddit.com${normalizedPermalink}/embed`;
           logger.debug({ url, embedUrl }, "Found v.redd.it video in selftext");
           return embedUrl; // Return embed URL for iframe embedding
         }
