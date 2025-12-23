@@ -155,9 +155,9 @@ export async function buildPostContent(
         );
       }
       // If willBeUsedAsHeader is true, skip adding to content (will be in header)
-    } else if (!isCrossPost) {
+    } else if (!isCrossPost && !post.is_self) {
       // For other URLs, just add as link - standardizeContentFormat will handle image extraction
-      // Skip adding original link for cross posts
+      // Skip adding original link for cross posts and self-posts (text-only posts)
       contentParts.push(`<p><a href="${url}">${escapeHtml(url)}</a></p>`);
     }
   }
