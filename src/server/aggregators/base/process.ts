@@ -394,17 +394,28 @@ export async function standardizeContentFormat(
 
               // Check if it's a Reddit video embed to handle duplicate removal
               const isRedditEmbed =
-                firstUrl.includes("/embed") &&
-                (firstUrl.includes("reddit.com") ||
-                  firstUrl.includes("v.redd.it"));
+                firstUrl.includes("vxreddit.com") ||
+                (firstUrl.includes("/embed") &&
+                  (firstUrl.includes("reddit.com") ||
+                    firstUrl.includes("v.redd.it")));
               if (isRedditEmbed && isUsingHeaderImage) {
-                // Extract the base post URL from embed URL (remove /embed)
-                const basePostUrl = firstUrl
-                  .replace(/\/embed$/, "")
-                  .replace(/\/embed\//, "/");
+                // Extract the base post URL from embed URL
+                // For vxreddit: https://vxreddit.com/r/subreddit/comments/postId/title
+                // For reddit.com: https://reddit.com/r/subreddit/comments/postId/title/embed
+                let basePostUrl = firstUrl;
+                if (firstUrl.includes("vxreddit.com")) {
+                  // vxreddit URLs are already in the correct format (no /embed)
+                  basePostUrl = firstUrl.replace("vxreddit.com", "reddit.com");
+                } else {
+                  // Remove /embed from reddit.com URLs
+                  basePostUrl = firstUrl
+                    .replace(/\/embed$/, "")
+                    .replace(/\/embed\//, "/");
+                }
 
                 // Extract v.redd.it URL from embed URL if present
-                // Embed URL format: https://reddit.com/r/subreddit/comments/postId/title/embed
+                // Embed URL format: https://vxreddit.com/r/subreddit/comments/postId/title
+                // or https://reddit.com/r/subreddit/comments/postId/title/embed
                 // We need to find the original v.redd.it URL that was used to create this embed
                 let vRedditUrl: string | null = null;
                 try {

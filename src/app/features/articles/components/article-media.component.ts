@@ -60,7 +60,11 @@ import { ArticleDetail } from "@app/core/models";
 
     @if (isRedditVideo()) {
       <div class="media-container">
-        @if (article().mediaUrl && !article().mediaUrl?.includes("/embed")) {
+        @if (
+          article().mediaUrl &&
+          !article().mediaUrl?.includes("/embed") &&
+          !article().mediaUrl?.includes("vxreddit.com")
+        ) {
           <video
             controls
             [src]="article().mediaUrl || ''"
@@ -173,6 +177,7 @@ export class ArticleMediaComponent {
       !!currentArticle.mediaUrl &&
       (currentArticle.mediaUrl.includes("v.redd.it") ||
         currentArticle.mediaUrl.includes("HLSPlaylist.m3u8") ||
+        currentArticle.mediaUrl.includes("vxreddit.com") ||
         currentArticle.mediaUrl.includes("/embed"))
     );
   }

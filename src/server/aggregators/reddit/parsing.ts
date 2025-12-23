@@ -127,9 +127,11 @@ export async function parseRedditPosts(
     if (postData.is_video && postData.url) {
       const decodedUrl = decodeHtmlEntitiesInUrl(postData.url);
       if (decodedUrl.includes("v.redd.it")) {
+        // Construct vxreddit embed URL from permalink
+        const decodedPermalink = decodeHtmlEntitiesInUrl(postData.permalink);
         // Remove trailing slash to avoid double slash in embed URL
-        const normalizedPermalink = permalink.replace(/\/$/, "");
-        mediaUrl = `${normalizedPermalink}/embed`;
+        const normalizedPermalink = decodedPermalink.replace(/\/$/, "");
+        mediaUrl = `https://vxreddit.com${normalizedPermalink}`;
       }
     }
 

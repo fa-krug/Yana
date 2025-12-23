@@ -15,12 +15,13 @@ import { extractYouTubeVideoId, createYouTubeEmbedHtml } from "./youtube";
 import { extractPostInfoFromUrl } from "../../reddit/urls";
 
 /**
- * Check if URL is a Reddit video embed URL (ends with /embed).
+ * Check if URL is a Reddit video embed URL (vxreddit.com or reddit.com with /embed).
  */
 function isRedditEmbedUrl(url: string): boolean {
   return (
-    url.includes("/embed") &&
-    (url.includes("reddit.com") || url.includes("v.redd.it"))
+    url.includes("vxreddit.com") ||
+    (url.includes("/embed") &&
+      (url.includes("reddit.com") || url.includes("v.redd.it")))
   );
 }
 
@@ -28,7 +29,7 @@ function isRedditEmbedUrl(url: string): boolean {
  * Create Reddit video embed HTML.
  * Returns HTML string that can be used directly or loaded into cheerio.
  *
- * @param embedUrl - Reddit embed URL (e.g., https://reddit.com/r/subreddit/comments/postId/title/embed)
+ * @param embedUrl - Reddit embed URL (e.g., https://vxreddit.com/r/subreddit/comments/postId/title)
  * @param caption - Optional caption HTML to append after the iframe
  * @returns HTML string with reddit-embed-container div and iframe
  */
