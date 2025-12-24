@@ -2,10 +2,11 @@
  * Daily limit distribution mixin for BaseAggregator.
  */
 
-import type pino from "pino";
-import type { Feed } from "@server/db/types";
-import { db, articles } from "@server/db";
 import { eq, and, gte, desc } from "drizzle-orm";
+import type pino from "pino";
+
+import { db, articles } from "@server/db";
+import type { Feed } from "@server/db/types";
 
 /**
  * Interface for aggregator with daily limit functionality.

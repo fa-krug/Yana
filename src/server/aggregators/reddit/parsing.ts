@@ -2,12 +2,14 @@
  * Reddit post parsing utilities.
  */
 
-import type { RawArticle } from "../base/types";
 import { logger } from "@server/utils/logger";
+
+import type { RawArticle } from "../base/types";
+
 import { buildPostContent } from "./content";
 import { extractHeaderImageUrl, extractThumbnailUrl } from "./images";
-import { decodeHtmlEntitiesInUrl } from "./urls";
 import type { RedditPost, RedditPostData } from "./types";
+import { decodeHtmlEntitiesInUrl } from "./urls";
 
 /**
  * Extract original post data from cross-post if present.

@@ -6,7 +6,7 @@
 
 import * as fs from "fs";
 import * as path from "path";
-import axios from "axios";
+
 import { logger } from "../utils/logger";
 
 const CACHE_DIR = process.env["ICON_CACHE_DIR"] || "./cache/icons";

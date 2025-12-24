@@ -5,10 +5,10 @@
  * All procedures require superuser access.
  */
 
-import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { router, superuserProcedure } from "../procedures";
-import { getSuperuser } from "../procedures";
+import { z } from "zod";
+
+import { NotFoundError, PermissionDeniedError } from "@server/errors";
 import {
   createUser,
   getUserById,
@@ -21,10 +21,11 @@ import {
 import {
   adminUpdateUserSchema,
   adminCreateUserSchema,
-  adminChangePasswordSchema,
   adminListUsersSchema,
 } from "@server/validation/schemas";
-import { NotFoundError, PermissionDeniedError } from "@server/errors";
+
+import { router, superuserProcedure } from "../procedures";
+
 import { adminTasksRouter } from "./admin-tasks.router";
 
 /**

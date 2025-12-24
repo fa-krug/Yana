@@ -2,15 +2,16 @@
  * Article filters component - search and filter controls for articles.
  */
 
-import { Component, inject, input } from "@angular/core";
 import { CommonModule } from "@angular/common";
+import { Component, inject, input } from "@angular/core";
 import { FormControl, ReactiveFormsModule } from "@angular/forms";
+import { MatNativeDateModule } from "@angular/material/core";
+import { MatDatepickerModule } from "@angular/material/datepicker";
 import { MatFormFieldModule } from "@angular/material/form-field";
+import { MatIconModule } from "@angular/material/icon";
 import { MatInputModule } from "@angular/material/input";
 import { MatSelectModule } from "@angular/material/select";
-import { MatIconModule } from "@angular/material/icon";
-import { MatDatepickerModule } from "@angular/material/datepicker";
-import { MatNativeDateModule } from "@angular/material/core";
+
 import { FeedService } from "@app/core/services/feed.service";
 import { GroupService } from "@app/core/services/group.service";
 

@@ -2,8 +2,10 @@
  * YouTube video parsing utilities.
  */
 
-import type { RawArticle } from "../base/types";
 import { logger } from "@server/utils/logger";
+
+import type { RawArticle } from "../base/types";
+
 import { buildVideoContent } from "./content";
 import type { YouTubeVideo } from "./videos";
 
@@ -32,7 +34,10 @@ export async function parseYouTubeVideos(
 
   if (videos.length === 0) {
     // INSTRUMENTATION: Log when videos array is empty
-    if (process.env["NODE_ENV"] === "test" && (global as any).__TEST_TRACE) {
+    if (
+      process.env["NODE_ENV"] === "test" &&
+      (global as { __TEST_TRACE?: boolean }).__TEST_TRACE
+    ) {
       console.log(
         `[PARSE_TRACE:youtube] videos.length is 0, returning empty array`,
       );
@@ -41,7 +46,10 @@ export async function parseYouTubeVideos(
   }
 
   // INSTRUMENTATION: Log videos received
-  if (process.env["NODE_ENV"] === "test" && (global as any).__TEST_TRACE) {
+  if (
+    process.env["NODE_ENV"] === "test" &&
+    (global as { __TEST_TRACE?: boolean }).__TEST_TRACE
+  ) {
     console.log(
       `[PARSE_TRACE:youtube] parseToRawArticles called with ${videos.length} videos`,
     );
@@ -52,8 +60,6 @@ export async function parseYouTubeVideos(
   for (const video of videos) {
     const videoId = video.id;
     const snippet = video.snippet;
-    const statistics = video.statistics || {};
-    const contentDetails = video.contentDetails || {};
 
     // Parse published date
     let published: Date;
@@ -134,7 +140,10 @@ export async function parseYouTubeVideos(
       });
     } catch (error) {
       // INSTRUMENTATION
-      if (process.env["NODE_ENV"] === "test" && (global as any).__TEST_TRACE) {
+      if (
+        process.env["NODE_ENV"] === "test" &&
+        (global as { __TEST_TRACE?: boolean }).__TEST_TRACE
+      ) {
         console.log(
           `[PARSE_TRACE:youtube] buildVideoContent error for video ${videoId}:`,
           error,

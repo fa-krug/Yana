@@ -12,6 +12,7 @@ import {
 import { RouterOutlet } from "@angular/router";
 import { SwUpdate, VersionReadyEvent } from "@angular/service-worker";
 import { filter } from "rxjs/operators";
+
 import { KeyboardShortcutsService } from "./core/services/keyboard-shortcuts.service";
 
 @Component({
@@ -43,7 +44,7 @@ export class AppComponent implements OnInit {
         .subscribe(() => {
           // Update is available but don't reload automatically
           // The service worker will use the new version on next page load
-          console.log("New version available, will be used on next page load");
+          // Version update handled silently
         });
     }
   }

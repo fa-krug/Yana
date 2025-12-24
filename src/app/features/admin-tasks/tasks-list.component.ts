@@ -2,6 +2,7 @@
  * Scheduled tasks list component.
  */
 
+import { CommonModule } from "@angular/common";
 import {
   Component,
   OnInit,
@@ -10,22 +11,23 @@ import {
   signal,
   ChangeDetectionStrategy,
 } from "@angular/core";
-import { CommonModule } from "@angular/common";
-import { Subject, takeUntil } from "rxjs";
-import { MatCardModule } from "@angular/material/card";
 import { MatButtonModule } from "@angular/material/button";
+import { MatCardModule } from "@angular/material/card";
+import { MatChipsModule } from "@angular/material/chips";
+import { MatDialog, MatDialogModule } from "@angular/material/dialog";
 import { MatIconModule } from "@angular/material/icon";
-import { MatTableModule } from "@angular/material/table";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatSlideToggleModule } from "@angular/material/slide-toggle";
-import { MatTooltipModule } from "@angular/material/tooltip";
 import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
-import { MatDialog, MatDialogModule } from "@angular/material/dialog";
-import { MatChipsModule } from "@angular/material/chips";
+import { MatTableModule } from "@angular/material/table";
+import { MatTooltipModule } from "@angular/material/tooltip";
+import { Subject } from "rxjs";
+
 import {
   AdminTasksService,
   type ScheduledTask,
 } from "@app/core/services/admin-tasks.service";
+
 import { TaskHistoryDialogComponent } from "./task-history-dialog.component";
 
 @Component({

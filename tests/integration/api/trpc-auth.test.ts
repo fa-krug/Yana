@@ -2,21 +2,22 @@
  * Integration tests for tRPC authentication procedures.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import request from "supertest";
-import express from "express";
-import { setupTestDb, teardownTestDb } from "../../utils/testDb";
-import { createUser } from "../../../src/server/services/user.service";
-import { createTRPCMiddleware } from "../../../src/server/trpc/express";
+import { createTRPCProxyClient, httpLink } from "@trpc/client";
 import cookieParser from "cookie-parser";
+import express from "express";
 import session from "express-session";
+import superjson from "superjson";
+import request from "supertest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+
 import {
   errorHandler,
   notFoundHandler,
 } from "../../../src/server/middleware/errorHandler";
-import { createTRPCProxyClient, httpLink } from "@trpc/client";
-import superjson from "superjson";
+import { createUser } from "../../../src/server/services/user.service";
+import { createTRPCMiddleware } from "../../../src/server/trpc/express";
 import type { AppRouter } from "../../../src/server/trpc/router";
+import { setupTestDb, teardownTestDb } from "../../utils/testDb";
 
 describe("tRPC Auth Integration", () => {
   let app: express.Application;
@@ -31,7 +32,7 @@ describe("tRPC Auth Integration", () => {
 
     // Force supertest to bind on loopback only to avoid sandbox EPERM on 0.0.0.0
     const originalListen = app.listen.bind(app) as any;
-    app.listen = ((...args: any[]) => originalListen(0, "127.0.0.1")) as any;
+    app.listen = ((..._args: any[]) => originalListen(0, "127.0.0.1")) as any;
 
     // Setup middleware
     app.use(express.json());

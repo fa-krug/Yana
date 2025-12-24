@@ -5,8 +5,9 @@
 import * as cheerio from "cheerio";
 import type { AnyNode } from "domhandler";
 import type pino from "pino";
-import type { RawArticle } from "../base/types";
+
 import { extractContent } from "../base/extract";
+import type { RawArticle } from "../base/types";
 import { isTwitterUrl } from "../base/utils";
 import {
   extractYouTubeVideoId,
@@ -121,7 +122,7 @@ export async function extractMeinMmoContent(
               const iframeSrc = iframe.attr("src") || "";
               videoId = extractYouTubeVideoId(iframeSrc);
             }
-          } catch (e) {
+          } catch {
             // If parsing fails, try regex extraction from the raw string
             // Look for patterns like: youtube-nocookie.com/embed/VIDEO_ID or youtube.com/embed/VIDEO_ID
             const embedMatch = embedContent.match(

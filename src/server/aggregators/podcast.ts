@@ -10,11 +10,11 @@
  * - Creates embedded audio player content
  */
 
-import { BaseAggregator } from "./base/aggregator";
-import type { RawArticle } from "./base/types";
-import { fetchFeed } from "./base/fetch";
-import { logger } from "../utils/logger";
 import * as cheerio from "cheerio";
+
+import { BaseAggregator } from "./base/aggregator";
+import { fetchFeed } from "./base/fetch";
+import type { RawArticle } from "./base/types";
 
 /**
  * Parse duration string to seconds.
@@ -291,7 +291,7 @@ export class PodcastAggregator extends BaseAggregator {
    */
   protected override async fetchSourceData(
     limit?: number,
-  ): Promise<import("rss-parser").Output<any>> {
+  ): Promise<import("rss-parser").Output<unknown>> {
     const startTime = Date.now();
     this.logger.info(
       {
@@ -357,7 +357,7 @@ export class PodcastAggregator extends BaseAggregator {
       "Parsing podcast episodes",
     );
 
-    const feed = sourceData as import("rss-parser").Output<any>;
+    const feed = sourceData as import("rss-parser").Output<unknown>;
     const items = feed.items || [];
 
     const articles: RawArticle[] = [];
@@ -365,10 +365,10 @@ export class PodcastAggregator extends BaseAggregator {
     for (const item of items) {
       try {
         // Extract podcast-specific data
-        const { url: audioUrl, type: audioType } = extractEnclosure(item);
-        const duration = extractDuration(item);
-        const imageUrl = extractImage(item);
-        const description = extractDescription(item);
+        const { url: audioUrl, type: audioType } = extractEnclosure(item as Record<string, unknown>);
+        const duration = extractDuration(item as Record<string, unknown>);
+        const imageUrl = extractImage(item as Record<string, unknown>);
+        const description = extractDescription(item as Record<string, unknown>);
 
         if (!audioUrl) {
           this.logger.warn(
@@ -484,7 +484,7 @@ export class PodcastAggregator extends BaseAggregator {
   /**
    * Check if content should be fetched - podcast aggregator never fetches.
    */
-  protected override shouldFetchContent(article: RawArticle): boolean {
+  protected override shouldFetchContent(_article: RawArticle): boolean {
     // Podcast aggregator uses content from feed, never fetches from web
     return false;
   }

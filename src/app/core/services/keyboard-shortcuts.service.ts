@@ -3,10 +3,12 @@
  */
 
 import { Injectable, inject } from "@angular/core";
-import { Router } from "@angular/router";
 import { MatDialog } from "@angular/material/dialog";
+import { Router } from "@angular/router";
 import { HotkeysService } from "@ngneat/hotkeys";
+
 import { KeyboardShortcutsDialogComponent } from "@app/shared/components/keyboard-shortcuts-dialog.component";
+
 import { ArticleActionsService } from "./article-actions.service";
 
 @Injectable({ providedIn: "root" })

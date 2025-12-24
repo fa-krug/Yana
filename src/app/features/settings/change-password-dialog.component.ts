@@ -1,5 +1,5 @@
-import { Component, inject } from "@angular/core";
 import { CommonModule } from "@angular/common";
+import { Component, inject } from "@angular/core";
 import {
   FormBuilder,
   FormGroup,
@@ -8,11 +8,12 @@ import {
   AbstractControl,
   ValidationErrors,
 } from "@angular/forms";
+import { MatButtonModule } from "@angular/material/button";
 import { MatDialogRef, MatDialogModule } from "@angular/material/dialog";
-import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
 import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatInputModule } from "@angular/material/input";
-import { MatButtonModule } from "@angular/material/button";
+import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
+
 import { UserSettingsService } from "@app/core/services/user-settings.service";
 
 @Component({

@@ -3,7 +3,9 @@
  */
 
 import axios from "axios";
+
 import { logger } from "@server/utils/logger";
+
 import { getYouTubeErrorMessage } from "./errors";
 
 /**
@@ -239,7 +241,7 @@ export async function resolveChannelId(
           );
           return { channelId, error: null };
         }
-      } catch (httpError) {
+      } catch {
         // forUsername failed, which is expected for modern handles
         // Continue to return error below
       }
@@ -265,7 +267,7 @@ export async function validateYouTubeIdentifier(
   identifier: string,
   apiKey: string,
 ): Promise<{ valid: boolean; error?: string }> {
-  const { channelId, error } = await resolveChannelId(identifier, apiKey);
+  const { error } = await resolveChannelId(identifier, apiKey);
   if (error) {
     return { valid: false, error };
   }

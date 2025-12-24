@@ -2,6 +2,7 @@
  * Metrics component - displays task metrics and worker pool status.
  */
 
+import { CommonModule } from "@angular/common";
 import {
   Component,
   OnInit,
@@ -10,12 +11,12 @@ import {
   signal,
   ChangeDetectionStrategy,
 } from "@angular/core";
-import { CommonModule } from "@angular/common";
-import { Subject, interval, takeUntil } from "rxjs";
 import { MatCardModule } from "@angular/material/card";
+import { MatChipsModule } from "@angular/material/chips";
 import { MatIconModule } from "@angular/material/icon";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
-import { MatChipsModule } from "@angular/material/chips";
+import { Subject, interval, takeUntil } from "rxjs";
+
 import {
   AdminTasksService,
   type TaskMetrics,

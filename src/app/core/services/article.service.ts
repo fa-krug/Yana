@@ -12,16 +12,18 @@ import {
   EMPTY,
   reduce,
   switchMap,
-  mergeMap,
-  concatMap,
   timer,
   filter,
   take,
-  EMPTY as rxjsEMPTY,
+  tap,
+  catchError,
+  map,
+  retry,
 } from "rxjs";
-import { tap, catchError, map, retry } from "rxjs";
+
 import { Article, ArticleDetail, PaginatedResponse } from "../models";
 import { TRPCService } from "../trpc/trpc.service";
+
 import { CacheService } from "./cache.service";
 
 export interface ArticleFilters {
@@ -241,11 +243,11 @@ export class ArticleService {
 
   /**
    * Get a single article by ID
-   * @param progressive - If true, load metadata first, then content (for progressive loading)
+   * @param _progressive - If true, load metadata first, then content (for progressive loading)
    */
   getArticle(
     id: number,
-    progressive: boolean = false,
+    _progressive: boolean = false,
   ): Observable<ArticleDetail> {
     const cacheKey = `article:${id}`;
     return this.cacheService.getOrSet(
@@ -699,7 +701,7 @@ export class ArticleService {
             isRead: true,
           }),
         ).pipe(
-          map((result) => ({
+          map(() => ({
             count: articleIds.length,
             message: "Articles marked as read",
           })),

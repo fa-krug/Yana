@@ -2,10 +2,11 @@
  * Tests for tRPC setup and infrastructure.
  */
 
-import { describe, it, expect } from "vitest";
-import { createContext } from "../context";
 import type { Request, Response } from "express";
 import type { Session } from "express-session";
+import { describe, it, expect } from "vitest";
+
+import { createContext } from "../context";
 
 describe("tRPC Setup", () => {
   it("should create context without user when session has no userId", async () => {

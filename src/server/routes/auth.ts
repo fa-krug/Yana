@@ -6,14 +6,15 @@
 
 import { Router } from "express";
 import type { Request, Response } from "express";
-import { asyncHandler } from "../middleware/errorHandler";
-import { validateBody } from "../utils/validation";
-import { loginSchema } from "../validation/schemas";
-import { authenticateUser } from "../services/user.service";
+import type { Session } from "express-session";
+
 import { loadUser } from "../middleware/auth";
 import type { AuthenticatedRequest } from "../middleware/auth";
-import type { Session } from "express-session";
+import { asyncHandler } from "../middleware/errorHandler";
+import { authenticateUser } from "../services/user.service";
 import { logger } from "../utils/logger";
+import { validateBody } from "../utils/validation";
+import { loginSchema } from "../validation/schemas";
 
 const router = Router();
 

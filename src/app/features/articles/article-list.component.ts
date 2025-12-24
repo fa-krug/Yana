@@ -12,6 +12,8 @@
  */
 
 // Angular core
+import { ScrollingModule } from "@angular/cdk/scrolling";
+import { CommonModule } from "@angular/common";
 import {
   Component,
   OnInit,
@@ -20,59 +22,50 @@ import {
   ChangeDetectionStrategy,
   signal,
 } from "@angular/core";
-import { CommonModule } from "@angular/common";
-import { RouterModule, ActivatedRoute } from "@angular/router";
 import { FormControl } from "@angular/forms";
-
-// RxJS
-import {
-  debounceTime,
-  distinctUntilChanged,
-  Subject,
-  takeUntil,
-  finalize,
-  forkJoin,
-} from "rxjs";
-
 // Angular Material
 import { MatButtonModule } from "@angular/material/button";
+import { MatCardModule } from "@angular/material/card";
+import { MatDialog, MatDialogModule } from "@angular/material/dialog";
 import { MatIconModule } from "@angular/material/icon";
-import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
+import { MatMenuModule } from "@angular/material/menu";
 import {
   MatPaginatorModule,
   MatPaginatorIntl,
   PageEvent,
 } from "@angular/material/paginator";
+import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
 import { MatTooltipModule } from "@angular/material/tooltip";
-import { MatCardModule } from "@angular/material/card";
-import { MatDialog, MatDialogModule } from "@angular/material/dialog";
-import { MatMenuModule } from "@angular/material/menu";
+import { RouterModule, ActivatedRoute } from "@angular/router";
+import {
+  debounceTime,
+  distinctUntilChanged,
+  Subject,
+  takeUntil,
+  forkJoin,
+} from "rxjs";
 
 // Angular CDK
-import { ScrollingModule } from "@angular/cdk/scrolling";
 
 // Application
+import { PrefetchOnIntersectDirective } from "@app/core/directives/prefetch-on-intersect.directive";
+import { Article } from "@app/core/models";
+import { ArticlePaginatorIntl } from "@app/core/services/article-paginator-intl.service";
 import {
   ArticleService,
   ArticleFilters,
 } from "@app/core/services/article.service";
 import { FeedService } from "@app/core/services/feed.service";
 import { GroupService } from "@app/core/services/group.service";
-import { Article } from "@app/core/models";
-import { ArticleFiltersComponent } from "./components/article-filters.component";
-import { ArticleBulkActionsComponent } from "./components/article-bulk-actions.component";
-import {
-  ConfirmDialogComponent,
-  ConfirmDialogData,
-} from "@app/shared/components/confirm-dialog.component";
 import {
   getProxiedImageUrl,
   getResponsiveImageSrcset,
   getImageSizes,
 } from "@app/core/utils/image-proxy.util";
-import { ArticlePaginatorIntl } from "@app/core/services/article-paginator-intl.service";
-import { PrefetchOnIntersectDirective } from "@app/core/directives/prefetch-on-intersect.directive";
+
+import { ArticleBulkActionsComponent } from "./components/article-bulk-actions.component";
+import { ArticleFiltersComponent } from "./components/article-filters.component";
 
 @Component({
   selector: "app-article-list",

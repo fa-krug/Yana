@@ -4,11 +4,12 @@
  * Manages execution history for scheduled tasks.
  */
 
-import { eq, and, gte, desc, lte } from "drizzle-orm";
-import { db, taskExecutions } from "../db";
-import { logger } from "../utils/logger";
-import type { TaskExecution, TaskExecutionInsert } from "../db/types";
 import { subDays } from "date-fns";
+import { eq, and, gte, desc, lte } from "drizzle-orm";
+
+import { db, taskExecutions } from "../db";
+import type { TaskExecution } from "../db/types";
+import { logger } from "../utils/logger";
 
 /**
  * Record a task execution.

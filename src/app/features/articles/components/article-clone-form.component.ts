@@ -2,6 +2,7 @@
  * Article clone form component - allows cloning an article with a stepper interface.
  */
 
+import { CommonModule } from "@angular/common";
 import {
   Component,
   OnInit,
@@ -10,27 +11,27 @@ import {
   ChangeDetectionStrategy,
   ViewChild,
 } from "@angular/core";
-import { CommonModule } from "@angular/common";
-import { ActivatedRoute, Router, RouterModule } from "@angular/router";
 import {
   FormBuilder,
   FormGroup,
   ReactiveFormsModule,
   Validators,
 } from "@angular/forms";
-import { MatCardModule } from "@angular/material/card";
 import { MatButtonModule } from "@angular/material/button";
+import { MatCardModule } from "@angular/material/card";
+import { MatNativeDateModule } from "@angular/material/core";
+import { MatDatepickerModule } from "@angular/material/datepicker";
+import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatIconModule } from "@angular/material/icon";
+import { MatInputModule } from "@angular/material/input";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
 import { MatStepperModule, MatStepper } from "@angular/material/stepper";
-import { MatFormFieldModule } from "@angular/material/form-field";
-import { MatInputModule } from "@angular/material/input";
-import { MatDatepickerModule } from "@angular/material/datepicker";
-import { MatNativeDateModule } from "@angular/material/core";
 import { DomSanitizer, SafeHtml } from "@angular/platform-browser";
-import { ArticleService } from "@app/core/services/article.service";
+import { ActivatedRoute, Router, RouterModule } from "@angular/router";
+
 import { ArticleDetail } from "@app/core/models";
+import { ArticleService } from "@app/core/services/article.service";
 
 @Component({
   selector: "app-article-clone-form",

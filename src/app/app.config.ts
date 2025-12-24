@@ -1,18 +1,18 @@
+import { provideHttpClient, withFetch } from "@angular/common/http";
 import {
   ApplicationConfig,
   provideBrowserGlobalErrorListeners,
   isDevMode,
   provideZonelessChangeDetection,
 } from "@angular/core";
-import { provideRouter, withPreloading } from "@angular/router";
-import { CustomPreloadingStrategy } from "./core/strategies/custom-preloading.strategy";
-import { provideAnimationsAsync } from "@angular/platform-browser/animations/async";
-import { provideHttpClient, withFetch } from "@angular/common/http";
 import { provideClientHydration } from "@angular/platform-browser";
+import { provideAnimationsAsync } from "@angular/platform-browser/animations/async";
+import { provideRouter, withPreloading } from "@angular/router";
+import { provideServiceWorker } from "@angular/service-worker";
 import { HotkeysService } from "@ngneat/hotkeys";
 
 import { routes } from "./app.routes";
-import { provideServiceWorker } from "@angular/service-worker";
+import { CustomPreloadingStrategy } from "./core/strategies/custom-preloading.strategy";
 
 export const appConfig: ApplicationConfig = {
   providers: [

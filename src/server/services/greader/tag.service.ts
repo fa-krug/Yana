@@ -2,7 +2,8 @@
  * Google Reader API tag service.
  */
 
-import { eq, and, or, isNull, inArray, gte, lte, lt, sql } from "drizzle-orm";
+import { eq, and, or, isNull, inArray, lt } from "drizzle-orm";
+
 import {
   db,
   articles,
@@ -11,7 +12,6 @@ import {
   groups,
   feedGroups,
 } from "@server/db";
-import { logger } from "@server/utils/logger";
 import { cache } from "@server/utils/cache";
 
 const STATE_READ = "user/-/state/com.google/read";

@@ -7,6 +7,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
     "format": "prettier --write \"**/*.{ts,html,scss,json}\"",
     "format:check": "prettier --check \"**/*.{ts,html,scss,json}\"",
     "db:generate": "drizzle-kit generate:sqlite",
@@ -63,6 +65,8 @@
     "zod": "^4.1.13"
   },
   "devDependencies": {
+    "@angular-eslint/eslint-plugin": "^21.1.0",
+    "@angular-eslint/template-parser": "^21.1.0",
     "@angular/build": "^21.0.2",
     "@angular/cli": "^21.0.2",
     "@angular/compiler-cli": "^21.0.3",
@@ -75,10 +79,16 @@
     "@types/express-session": "^1.18.2",
     "@types/node": "^24.10.1",
     "@types/node-cron": "^3.0.11",
+    "@typescript-eslint/eslint-plugin": "^8.50.1",
+    "@typescript-eslint/parser": "^8.50.1",
     "@vitest/browser": "^4.0.15",
     "@vitest/browser-playwright": "^4.0.15",
     "@vitest/coverage-v8": "^4.0.15",
     "concurrently": "^9.2.1",
+    "eslint": "^9.39.2",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-import-resolver-typescript": "^4.4.4",
+    "eslint-plugin-import": "^2.32.0",
     "husky": "^9.1.7",
     "jsdom": "^27.2.0",
     "nodemon": "^3.1.11",
@@ -86,6 +96,7 @@
     "supertest": "^7.1.4",
     "tsx": "^4.21.0",
     "typescript": "~5.9.3",
+    "typescript-eslint": "^8.50.1",
     "vitest": "^4.0.15"
   }
 }

@@ -2,11 +2,11 @@
  * Keyboard shortcuts help dialog component - displays all available keyboard shortcuts.
  */
 
-import { Component, inject, ChangeDetectionStrategy } from "@angular/core";
-import { MatDialogModule, MatDialogRef } from "@angular/material/dialog";
-import { MatButtonModule } from "@angular/material/button";
-import { MatIconModule } from "@angular/material/icon";
 import { CommonModule } from "@angular/common";
+import { Component, inject, ChangeDetectionStrategy } from "@angular/core";
+import { MatButtonModule } from "@angular/material/button";
+import { MatDialogModule, MatDialogRef } from "@angular/material/dialog";
+import { MatIconModule } from "@angular/material/icon";
 
 interface Shortcut {
   keys: string;

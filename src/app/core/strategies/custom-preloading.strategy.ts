@@ -12,7 +12,7 @@ import { mergeMap } from "rxjs/operators";
   providedIn: "root",
 })
 export class CustomPreloadingStrategy implements PreloadingStrategy {
-  preload(route: Route, load: () => Observable<any>): Observable<any> {
+  preload(route: Route, load: () => Observable<unknown>): Observable<unknown> {
     // Preload routes that have data.preload = true
     if (route.data && route.data["preload"]) {
       // Wait for browser to be idle (500ms delay)

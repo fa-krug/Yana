@@ -4,11 +4,10 @@
  * Specialized aggregator for Mein-MMO.de (German gaming news).
  */
 
-import { FullWebsiteAggregator } from "./full_website";
 import type { RawArticle } from "./base/types";
-import { sanitizeHtml } from "./base/utils";
-import { fetchAllPages } from "./mein_mmo/fetching";
+import { FullWebsiteAggregator } from "./full_website";
 import { extractMeinMmoContent } from "./mein_mmo/extraction";
+import { fetchAllPages } from "./mein_mmo/fetching";
 import { getHeaderImageUrl } from "./mein_mmo/utils";
 
 export class MeinMmoAggregator extends FullWebsiteAggregator {

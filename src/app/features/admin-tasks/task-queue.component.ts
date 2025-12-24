@@ -2,6 +2,7 @@
  * Task queue component.
  */
 
+import { CommonModule } from "@angular/common";
 import {
   Component,
   OnInit,
@@ -11,31 +12,31 @@ import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
 } from "@angular/core";
-import { CommonModule } from "@angular/common";
 import { FormControl, ReactiveFormsModule } from "@angular/forms";
-import { Subject, debounceTime, distinctUntilChanged, takeUntil } from "rxjs";
-import { MatCardModule } from "@angular/material/card";
 import { MatButtonModule } from "@angular/material/button";
-import { MatIconModule } from "@angular/material/icon";
-import { MatTableModule } from "@angular/material/table";
-import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
-import { MatPaginatorModule, PageEvent } from "@angular/material/paginator";
-import { MatFormFieldModule } from "@angular/material/form-field";
-import { MatInputModule } from "@angular/material/input";
-import { MatSelectModule } from "@angular/material/select";
-import { MatDatepickerModule } from "@angular/material/datepicker";
-import { MatNativeDateModule } from "@angular/material/core";
+import { MatCardModule } from "@angular/material/card";
 import { MatChipsModule } from "@angular/material/chips";
-import { MatMenuModule } from "@angular/material/menu";
-import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
+import { MatNativeDateModule } from "@angular/material/core";
+import { MatDatepickerModule } from "@angular/material/datepicker";
 import { MatDialog, MatDialogModule } from "@angular/material/dialog";
+import { MatFormFieldModule } from "@angular/material/form-field";
+import { MatIconModule } from "@angular/material/icon";
+import { MatInputModule } from "@angular/material/input";
+import { MatMenuModule } from "@angular/material/menu";
+import { MatPaginatorModule, PageEvent } from "@angular/material/paginator";
+import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
+import { MatSelectModule } from "@angular/material/select";
+import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
+import { MatTableModule } from "@angular/material/table";
 import { MatTooltipModule } from "@angular/material/tooltip";
+import { Subject, debounceTime, distinctUntilChanged, takeUntil } from "rxjs";
+
 import {
   AdminTasksService,
   type Task,
   type TaskFilters,
-  type PaginatedTasks,
 } from "@app/core/services/admin-tasks.service";
+
 import { TaskDetailsDialogComponent } from "./task-details-dialog.component";
 
 @Component({
@@ -310,18 +311,6 @@ export class TaskQueueComponent implements OnInit, OnDestroy {
             event.event === "task-updated" ||
             event.event === "task-created"
           ) {
-            const eventData = event.data as {
-              taskId?: number;
-              status?: string;
-            };
-            console.log(
-              "[TaskQueue] Received SSE event:",
-              event.event,
-              "taskId:",
-              eventData.taskId,
-              "status:",
-              eventData.status,
-            );
             // Trigger change detection and reload tasks
             this.cdr.markForCheck();
             this.loadTasks();
@@ -355,7 +344,12 @@ export class TaskQueueComponent implements OnInit, OnDestroy {
     const filters: TaskFilters = {
       status:
         this.statusControl.value && this.statusControl.value.length > 0
-          ? (this.statusControl.value as any)
+          ? (this.statusControl.value as (
+              | "pending"
+              | "running"
+              | "completed"
+              | "failed"
+            )[])
           : undefined,
       type: typeFilter && typeFilter.length > 0 ? typeFilter : undefined,
       dateFrom: this.fromDateControl.value

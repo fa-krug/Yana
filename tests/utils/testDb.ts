@@ -3,7 +3,9 @@
  */
 
 import * as path from "path";
+
 import { migrate } from "drizzle-orm/better-sqlite3/migrator";
+
 import { reconnectDatabase, db, closeDatabase } from "../../src/server/db";
 
 // Use in-memory database for tests to avoid file conflicts in parallel execution

@@ -5,14 +5,16 @@
  * Handles the age confirmation page automatically.
  */
 
-import { BaseAggregator } from "./base/aggregator";
-import type { RawArticle } from "./base/types";
-import { fetchFeed } from "./base/fetch";
-import { ContentFetchError } from "./base/exceptions";
-import Parser from "rss-parser";
-import { chromium, type Browser, type Page } from "playwright";
 import * as cheerio from "cheerio";
+import { chromium, type Browser, type Page } from "playwright";
+import Parser from "rss-parser";
+
 import { logger } from "../utils/logger";
+
+import { BaseAggregator } from "./base/aggregator";
+import { ContentFetchError } from "./base/exceptions";
+import { fetchFeed } from "./base/fetch";
+import type { RawArticle } from "./base/types";
 
 let browser: Browser | null = null;
 
@@ -320,7 +322,7 @@ export class OglafAggregator extends BaseAggregator {
    */
   protected override async fetchSourceData(
     limit?: number,
-  ): Promise<Parser.Output<any>> {
+  ): Promise<Parser.Output<unknown>> {
     const startTime = Date.now();
     this.logger.info(
       {
@@ -373,7 +375,7 @@ export class OglafAggregator extends BaseAggregator {
       "Parsing RSS feed items",
     );
 
-    const feed = sourceData as Parser.Output<any>;
+    const feed = sourceData as Parser.Output<unknown>;
     const items = feed.items || [];
 
     const articles: RawArticle[] = items.map((item) => ({
@@ -381,7 +383,7 @@ export class OglafAggregator extends BaseAggregator {
       url: item.link || "",
       published: item.pubDate ? new Date(item.pubDate) : new Date(),
       summary: item.contentSnippet || item.content || "",
-      author: item.creator || item.author || undefined,
+      author: item.creator || (item as any).author || undefined,
     }));
 
     const elapsed = Date.now() - startTime;
@@ -405,7 +407,7 @@ export class OglafAggregator extends BaseAggregator {
    */
   protected override async fetchArticleContentInternal(
     url: string,
-    article: RawArticle,
+    _article: RawArticle,
   ): Promise<string> {
     const startTime = Date.now();
     this.logger.debug(

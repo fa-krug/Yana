@@ -8,7 +8,6 @@
 export * from "./utils/index";
 
 // Core utilities (article filtering)
-import { logger } from "@server/utils/logger";
 import type { Article } from "@server/db/types";
 
 /**

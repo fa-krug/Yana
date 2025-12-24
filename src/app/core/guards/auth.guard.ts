@@ -3,11 +3,12 @@
  * Waits for auth status check to complete, then redirects to login if not authenticated.
  */
 
-import { inject, PLATFORM_ID } from "@angular/core";
 import { isPlatformServer } from "@angular/common";
+import { inject, PLATFORM_ID } from "@angular/core";
 import { Router, CanActivateFn } from "@angular/router";
 import { of } from "rxjs";
-import { map, take, catchError, switchMap } from "rxjs/operators";
+import { map, take, catchError } from "rxjs/operators";
+
 import { AuthService } from "../services/auth.service";
 
 export const authGuard: CanActivateFn = (route, state) => {

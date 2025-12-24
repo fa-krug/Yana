@@ -2,11 +2,12 @@
  * Preview article card component - displays article in feed preview step.
  */
 
-import { Component, inject, input } from "@angular/core";
 import { CommonModule } from "@angular/common";
-import { DomSanitizer, SafeResourceUrl } from "@angular/platform-browser";
+import { Component, inject, input } from "@angular/core";
 import { MatCardModule } from "@angular/material/card";
 import { MatIconModule } from "@angular/material/icon";
+import { DomSanitizer, SafeResourceUrl } from "@angular/platform-browser";
+
 import { PreviewArticle } from "@app/core/models";
 
 @Component({

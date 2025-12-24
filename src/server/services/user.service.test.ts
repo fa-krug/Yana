@@ -2,17 +2,19 @@
  * Unit tests for user service.
  */
 
+import { eq } from "drizzle-orm";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
+
+import { testUser } from "../../../tests/utils/fixtures";
 import { setupTestDb, teardownTestDb } from "../../../tests/utils/testDb";
+import { db, users } from "../db";
+
 import {
   createUser,
   authenticateUser,
   getUserById,
   getUserByUsername,
 } from "./user.service";
-import { testUser } from "../../../tests/utils/fixtures";
-import { db, users } from "../db";
-import { eq } from "drizzle-orm";
 
 describe("UserService", () => {
   beforeEach(async () => {

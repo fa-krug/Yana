@@ -2,25 +2,29 @@
  * Feed detail component - displays feed details and articles.
  */
 
+import { CommonModule } from "@angular/common";
 import {
   Component,
   OnInit,
   OnDestroy,
   inject,
   signal,
-  computed,
   ChangeDetectionStrategy,
   isDevMode,
 } from "@angular/core";
-import { CommonModule } from "@angular/common";
+import { FormControl, ReactiveFormsModule } from "@angular/forms";
+// Material imports
+import { MatButtonModule } from "@angular/material/button";
+import { MatIconModule } from "@angular/material/icon";
+import { PageEvent } from "@angular/material/paginator";
+import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
+import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
 import {
   ActivatedRoute,
   Router,
   RouterModule,
   NavigationEnd,
 } from "@angular/router";
-import { filter } from "rxjs/operators";
-import { FormControl, ReactiveFormsModule } from "@angular/forms";
 import {
   debounceTime,
   distinctUntilChanged,
@@ -31,24 +35,19 @@ import {
   catchError,
   of,
 } from "rxjs";
+import { filter } from "rxjs/operators";
 
-// Material imports
-import { MatButtonModule } from "@angular/material/button";
-import { MatIconModule } from "@angular/material/icon";
-import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
-import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
-import { PageEvent } from "@angular/material/paginator";
-
-import { FeedService } from "@app/core/services/feed.service";
+import { Feed, Article } from "@app/core/models";
 import {
   ArticleService,
   ArticleFilters,
 } from "@app/core/services/article.service";
 import { BreadcrumbService } from "@app/core/services/breadcrumb.service";
 import { ConfirmationService } from "@app/core/services/confirmation.service";
-import { Feed, Article } from "@app/core/models";
-import { FeedHeaderComponent } from "./components/feed-header.component";
+import { FeedService } from "@app/core/services/feed.service";
+
 import { FeedArticlesListComponent } from "./components/feed-articles-list.component";
+import { FeedHeaderComponent } from "./components/feed-header.component";
 
 @Component({
   selector: "app-feed-detail",

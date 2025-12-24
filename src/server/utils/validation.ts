@@ -4,8 +4,9 @@
  * Provides type-safe input validation using Zod schemas.
  */
 
-import { z } from "zod";
 import type { Request, Response, NextFunction } from "express";
+import { z } from "zod";
+
 import { ValidationError } from "../errors";
 
 /**

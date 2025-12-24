@@ -6,6 +6,7 @@
 
 import type { Request, Response, NextFunction } from "express";
 import type { Session, SessionData } from "express-session";
+
 import { AuthenticationError, PermissionDeniedError } from "../errors";
 
 /**
@@ -93,7 +94,7 @@ export async function loadUser(
         isSuperuser: user.isSuperuser,
         isStaff: user.isStaff,
       };
-    } catch (error) {
+    } catch {
       // User not found or error loading - clear session
       session.userId = undefined;
       session.isSuperuser = undefined;

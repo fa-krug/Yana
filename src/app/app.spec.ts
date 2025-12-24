@@ -1,6 +1,7 @@
 import { TestBed } from "@angular/core/testing";
-import { AppComponent } from "./app";
 import { SwUpdate } from "@angular/service-worker";
+
+import { AppComponent } from "./app";
 import { KeyboardShortcutsService } from "./core/services/keyboard-shortcuts.service";
 
 describe("AppComponent", () => {

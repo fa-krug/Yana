@@ -6,14 +6,10 @@
  */
 
 import axios, { AxiosError } from "axios";
-import type {
-  AIServiceConfig,
-  AIServiceError,
-  TranslationResult,
-  SummaryResult,
-  CustomPromptResult,
-} from "./ai.service.interface";
+
 import { logger } from "../utils/logger";
+
+import type { AIServiceConfig } from "./ai.service.interface";
 
 export class AIService {
   private config: AIServiceConfig;
@@ -324,7 +320,7 @@ export class AIService {
   async translate(
     content: string,
     targetLanguage: string,
-    sourceLanguage: string = "auto",
+    _sourceLanguage: string = "auto",
   ): Promise<string> {
     const systemPrompt = `You are a professional translator. Translate the provided HTML content to the target language.
 

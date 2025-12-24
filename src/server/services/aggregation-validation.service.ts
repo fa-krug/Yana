@@ -3,12 +3,13 @@
  */
 
 import { eq } from "drizzle-orm";
-import { db, feeds, articles } from "@server/db";
-import { logger } from "@server/utils/logger";
-import { NotFoundError } from "@server/errors";
-import { getAggregatorById } from "@server/aggregators/registry";
-import type { Feed } from "@server/db/types";
+
 import type { BaseAggregator } from "@server/aggregators/base/aggregator";
+import { getAggregatorById } from "@server/aggregators/registry";
+import { db, feeds, articles } from "@server/db";
+import type { Feed } from "@server/db/types";
+import { NotFoundError } from "@server/errors";
+import { logger } from "@server/utils/logger";
 
 /**
  * Validate feed and prepare aggregator for processing.

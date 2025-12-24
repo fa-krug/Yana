@@ -2,14 +2,16 @@
  * Test helpers for aggregator and feed options testing.
  */
 
+import * as cheerio from "cheerio";
+import { eq, desc } from "drizzle-orm";
+import { expect, vi } from "vitest";
+
+import { db, feeds, articles } from "@server/db";
 import type { Feed } from "@server/db/types";
+import { processFeedAggregation } from "@server/services/aggregation.service";
+
 import type { BaseAggregator } from "../base/aggregator";
 import type { RawArticle } from "../base/types";
-import { db, feeds, articles } from "@server/db";
-import { processFeedAggregation } from "@server/services/aggregation.service";
-import { eq, desc } from "drizzle-orm";
-import * as cheerio from "cheerio";
-import { expect, vi } from "vitest";
 
 /**
  * Create a feed with specific aggregator and feed options.
@@ -41,7 +43,7 @@ export async function createFeedWithOptions(
       useCurrentTimestamp: feedOptions.useCurrentTimestamp ?? false,
       skipDuplicates: feedOptions.skipDuplicates ?? true,
       dailyPostLimit: feedOptions.dailyPostLimit ?? 50,
-      aggregatorOptions: aggregatorOptions as any, // Drizzle will handle JSON serialization
+      aggregatorOptions: aggregatorOptions as Record<string, unknown>, // Drizzle will handle JSON serialization
     })
     .returning();
 
@@ -88,25 +90,23 @@ export async function traceAggregation(
   feedId: number,
   testName: string,
 ): Promise<{
-  rawArticles: any[];
-  savedArticles: any[];
-  feed: any;
+  rawArticles: RawArticle[];
+  savedArticles: unknown[];
+  feed: Feed | null;
 }> {
-  const aggregationService =
-    await import("@server/services/aggregation.service");
   const articleService =
     await import("@server/services/aggregation-article.service");
   const BaseAggregatorClass = await import("../../aggregators/base/aggregator");
 
-  let capturedRawArticles: any[] = [];
-  let capturedFeed: any = null;
+  let capturedRawArticles: RawArticle[] = [];
+  let capturedFeed: Feed | null = null;
 
   // Capture what aggregate() returns
   const originalAggregate =
     BaseAggregatorClass.BaseAggregator.prototype.aggregate;
   const aggregateSpy = vi
     .spyOn(BaseAggregatorClass.BaseAggregator.prototype, "aggregate")
-    .mockImplementation(async function (this: any, limit?: number) {
+    .mockImplementation(async function (this: BaseAggregator, limit?: number) {
       const result = await originalAggregate.call(this, limit);
       capturedRawArticles = result;
       console.log(
@@ -202,13 +202,13 @@ export async function traceAggregation(
     );
 
   // Enable test tracing
-  (global as any).__TEST_TRACE = true;
+  (global as { __TEST_TRACE?: boolean }).__TEST_TRACE = true;
 
   // Run aggregation
   await runFullAggregation(feedId);
 
   // Disable test tracing
-  (global as any).__TEST_TRACE = false;
+  (global as { __TEST_TRACE?: boolean }).__TEST_TRACE = false;
 
   // Get saved articles
   const savedArticles = await getFeedArticles(feedId);
@@ -357,7 +357,7 @@ export function verifyRegexReplacements(
   content: string,
   replacements: Array<{ pattern: string; replacement: string }>,
 ): void {
-  for (const { pattern, replacement } of replacements) {
+  for (const { pattern: _pattern, replacement } of replacements) {
     // Check that replacement text exists
     expect(content).toContain(replacement);
     // Check that original pattern doesn't exist (unless it's a partial match)

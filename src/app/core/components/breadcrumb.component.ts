@@ -10,10 +10,11 @@
  * - Responsive design with proper ARIA labels
  */
 
-import { Component, inject, ChangeDetectionStrategy } from "@angular/core";
 import { CommonModule } from "@angular/common";
-import { RouterModule } from "@angular/router";
+import { Component, inject, ChangeDetectionStrategy } from "@angular/core";
 import { MatIconModule } from "@angular/material/icon";
+import { RouterModule } from "@angular/router";
+
 import { BreadcrumbService } from "../services/breadcrumb.service";
 
 @Component({

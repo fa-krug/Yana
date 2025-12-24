@@ -3,8 +3,10 @@
  */
 
 import type pino from "pino";
-import type { RawArticle } from "../types";
+
 import type { Feed } from "@server/db/types";
+
+import type { RawArticle } from "../types";
 
 /**
  * Interface for aggregator with content processing functionality.
@@ -44,7 +46,7 @@ export async function extractContent(
 export async function removeElementsBySelectors(
   this: ContentProcessingMixin,
   html: string,
-  article: RawArticle,
+  _article: RawArticle,
 ): Promise<string> {
   const { removeElementsBySelectors } = await import("../utils");
   return removeElementsBySelectors(html, this.selectorsToRemove);
@@ -112,8 +114,8 @@ export async function processContent(
  */
 export async function extractImages(
   this: ContentProcessingMixin,
-  content: string,
-  article: RawArticle,
+  _content: string,
+  _article: RawArticle,
 ): Promise<void> {
   // Default: no image extraction
   // Images are handled in processContent via standardizeContentFormat

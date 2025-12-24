@@ -2,9 +2,11 @@
  * Thumbnail extraction utilities.
  */
 
-import * as cheerio from "cheerio";
 import axios from "axios";
+import * as cheerio from "cheerio";
+
 import { logger } from "@server/utils/logger";
+
 import { fetchSingleImage } from "./images";
 
 /**

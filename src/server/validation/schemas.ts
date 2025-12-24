@@ -5,8 +5,9 @@
  */
 
 import { z } from "zod";
-import { commonSchemas } from "../utils/validation";
+
 import { getAggregatorById } from "../aggregators/registry";
+import { commonSchemas } from "../utils/validation";
 
 // User schemas
 export const createUserSchema = z.object({

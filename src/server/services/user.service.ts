@@ -6,14 +6,12 @@
 
 import bcrypt from "bcrypt";
 import { eq, and, or, like, desc } from "drizzle-orm";
+
 import { db, users } from "../db";
+import type { User } from "../db/types";
 import { NotFoundError, AuthenticationError, ConflictError } from "../errors";
+import { formatPaginatedResponse } from "../middleware/pagination";
 import { logger } from "../utils/logger";
-import type { User, UserInsert } from "../db/types";
-import {
-  formatPaginatedResponse,
-  type PaginationParams,
-} from "../middleware/pagination";
 
 const SALT_ROUNDS = 10;
 
@@ -211,14 +209,15 @@ export async function listUsers(options: {
   const conditions = [];
 
   if (search) {
-    conditions.push(
-      or(
-        like(users.username, `%${search}%`),
-        like(users.email, `%${search}%`),
-        like(users.firstName, `%${search}%`),
-        like(users.lastName, `%${search}%`),
-      )!,
+    const searchCondition = or(
+      like(users.username, `%${search}%`),
+      like(users.email, `%${search}%`),
+      like(users.firstName, `%${search}%`),
+      like(users.lastName, `%${search}%`),
     );
+    if (searchCondition) {
+      conditions.push(searchCondition);
+    }
   }
 
   if (isSuperuser !== undefined) {

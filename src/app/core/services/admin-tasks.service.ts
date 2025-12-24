@@ -5,17 +5,13 @@
  * Manages SSE connection for real-time updates.
  */
 
-import {
-  Injectable,
-  inject,
-  signal,
-  computed,
-  PLATFORM_ID,
-} from "@angular/core";
 import { isPlatformBrowser } from "@angular/common";
+import { Injectable, inject, signal, PLATFORM_ID } from "@angular/core";
 import { Observable, from, of, shareReplay, Subject } from "rxjs";
 import { map, catchError, takeUntil } from "rxjs/operators";
+
 import { TRPCService } from "../trpc/trpc.service";
+
 import { SSEService, type SSEEvent } from "./sse.service";
 
 export interface ScheduledTask {

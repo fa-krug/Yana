@@ -2,6 +2,7 @@
  * Feed form component - multi-step form for creating and editing feeds.
  */
 
+import { CommonModule } from "@angular/common";
 import {
   Component,
   OnInit,
@@ -11,51 +12,40 @@ import {
   ViewChild,
   ChangeDetectionStrategy,
 } from "@angular/core";
-import { CommonModule } from "@angular/common";
-import { Router, RouterModule, ActivatedRoute } from "@angular/router";
-import { DomSanitizer, SafeResourceUrl } from "@angular/platform-browser";
 import {
   FormBuilder,
   FormControl,
   FormGroup,
   ReactiveFormsModule,
   Validators,
-  AbstractControl,
 } from "@angular/forms";
-import {
-  Subject,
-  debounceTime,
-  distinctUntilChanged,
-  takeUntil,
-  from,
-} from "rxjs";
-import { PageEvent } from "@angular/material/paginator";
-import { MatStepper } from "@angular/material/stepper";
-
 // Material imports
-import { MatCardModule } from "@angular/material/card";
 import { MatButtonModule } from "@angular/material/button";
+import { MatCardModule } from "@angular/material/card";
 import { MatIconModule } from "@angular/material/icon";
+import { PageEvent } from "@angular/material/paginator";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
-import { MatStepperModule } from "@angular/material/stepper";
+import { MatStepper, MatStepperModule } from "@angular/material/stepper";
+import { DomSanitizer, SafeResourceUrl } from "@angular/platform-browser";
+import { Router, RouterModule, ActivatedRoute } from "@angular/router";
+import { Subject, debounceTime, distinctUntilChanged, takeUntil } from "rxjs";
 
-import { FeedService } from "@app/core/services/feed.service";
-import { AggregatorService } from "@app/core/services/aggregator.service";
-import { UserSettingsService } from "@app/core/services/user-settings.service";
-import { BreadcrumbService } from "@app/core/services/breadcrumb.service";
-import { TRPCService } from "@app/core/trpc/trpc.service";
-import { FeedFormSearchService } from "@app/core/services/feed-form-search.service";
-import { FeedFormValidationService } from "@app/core/services/feed-form-validation.service";
 import {
   Aggregator,
   AggregatorDetail,
-  Feed,
   FeedPreviewResponse,
   PreviewArticle,
   Group,
 } from "@app/core/models";
+import { AggregatorService } from "@app/core/services/aggregator.service";
+import { BreadcrumbService } from "@app/core/services/breadcrumb.service";
+import { FeedFormSearchService } from "@app/core/services/feed-form-search.service";
+import { FeedFormValidationService } from "@app/core/services/feed-form-validation.service";
+import { FeedService } from "@app/core/services/feed.service";
 import { GroupService } from "@app/core/services/group.service";
+import { UserSettingsService } from "@app/core/services/user-settings.service";
+
 import { AggregatorSelectionStepComponent } from "./components/aggregator-selection-step.component";
 import { FeedConfigStepComponent } from "./components/feed-config-step.component";
 import { FeedPreviewStepComponent } from "./components/feed-preview-step.component";
@@ -153,11 +143,9 @@ import { FeedPreviewStepComponent } from "./components/feed-preview-step.compone
                   [showAIOptions]="
                     hasOpenAICredentials() && !isManagedAggregator()
                   "
-                  [aiSummarizeControl]="feedFormGroup.get('ai_summarize')"
-                  [aiTranslateToControl]="feedFormGroup.get('ai_translate_to')"
-                  [aiCustomPromptControl]="
-                    feedFormGroup.get('ai_custom_prompt')
-                  "
+                  [aiSummarizeControl]="aiSummarizeControl"
+                  [aiTranslateToControl]="aiTranslateToControl"
+                  [aiCustomPromptControl]="aiCustomPromptControl"
                   (subredditSearch)="onSubredditSearch($event)"
                   (subredditSelected)="onSubredditSelected($event)"
                   (channelSearch)="onChannelSearch($event)"
@@ -1457,6 +1445,18 @@ export class FeedFormComponent implements OnInit, OnDestroy {
 
   feedFormGroup: FormGroup = this.validationService.createFeedFormGroup();
 
+  get aiSummarizeControl(): FormControl {
+    return this.feedFormGroup.get("ai_summarize") as FormControl;
+  }
+
+  get aiTranslateToControl(): FormControl {
+    return this.feedFormGroup.get("ai_translate_to") as FormControl;
+  }
+
+  get aiCustomPromptControl(): FormControl {
+    return this.feedFormGroup.get("ai_custom_prompt") as FormControl;
+  }
+
   ngOnInit() {
     // Check if user has OpenAI credentials
     this.userSettingsService
@@ -1675,7 +1675,11 @@ export class FeedFormComponent implements OnInit, OnDestroy {
       // Reset form fields when aggregator changes
       const currentDailyLimit =
         this.feedFormGroup.get("daily_post_limit")?.value;
-      const patchValue: any = {
+      const patchValue: Partial<{
+        name: string;
+        identifier: string;
+        daily_post_limit: number;
+      }> = {
         name: "",
         identifier: "",
       };
@@ -1862,9 +1866,9 @@ export class FeedFormComponent implements OnInit, OnDestroy {
     const feedType = agg?.feedType || "article";
 
     const previewData = {
-      name: this.feedFormGroup.get("name")?.value!,
-      identifier: this.feedFormGroup.get("identifier")?.value!,
-      aggregator: this.aggregatorFormGroup.get("aggregatorType")?.value!,
+      name: this.feedFormGroup.get("name")?.value ?? "",
+      identifier: this.feedFormGroup.get("identifier")?.value ?? "",
+      aggregator: this.aggregatorFormGroup.get("aggregatorType")?.value ?? "",
       feedType: feedType,
       enabled: this.feedFormGroup.get("enabled")?.value || true,
       generateTitleImage:
@@ -2247,9 +2251,9 @@ export class FeedFormComponent implements OnInit, OnDestroy {
     );
 
     const feedData = {
-      name: this.feedFormGroup.get("name")?.value!,
-      identifier: this.feedFormGroup.get("identifier")?.value!,
-      aggregator: this.aggregatorFormGroup.get("aggregatorType")?.value!,
+      name: this.feedFormGroup.get("name")?.value ?? "",
+      identifier: this.feedFormGroup.get("identifier")?.value ?? "",
+      aggregator: this.aggregatorFormGroup.get("aggregatorType")?.value ?? "",
       feedType: feedType,
       enabled: this.feedFormGroup.get("enabled")?.value || true,
       generateTitleImage:
@@ -2279,10 +2283,11 @@ export class FeedFormComponent implements OnInit, OnDestroy {
         : this.feedFormGroup.get("ai_custom_prompt")?.value || "",
     };
 
-    if (this.isEditMode() && this.feedId()) {
+    const feedId = this.feedId();
+    if (this.isEditMode() && feedId) {
       // Update existing feed
       this.feedService
-        .updateFeed(this.feedId()!, feedData)
+        .updateFeed(feedId, feedData)
         .pipe(takeUntil(this.destroy$))
         .subscribe({
           next: (feed) => {

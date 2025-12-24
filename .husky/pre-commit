@@ -1,3 +1,13 @@
+echo "🔍 Running ESLint..."
+npm run lint:fix || {
+  echo "❌ ESLint failed!"
+  echo "💡 Fix linting errors before committing"
+  exit 1
+}
+
+echo "✅ ESLint passed!"
+echo ""
+
 echo "🔍 Running Prettier format check..."
 npm run format:check || {
   echo "❌ Prettier check failed!"

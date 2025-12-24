@@ -3,6 +3,7 @@
  */
 
 import { eq, and, or, isNull, inArray } from "drizzle-orm";
+
 import { db, feeds, groups, feedGroups } from "@server/db";
 import {
   NotFoundError,
@@ -61,10 +62,13 @@ export async function listSubscriptions(userId: number): Promise<
     if (!feedGroupsMap.has(rel.feedId)) {
       feedGroupsMap.set(rel.feedId, []);
     }
-    feedGroupsMap.get(rel.feedId)!.push({
-      id: `user/-/label/${rel.groupName}`,
-      label: rel.groupName,
-    });
+    const groups = feedGroupsMap.get(rel.feedId);
+    if (groups) {
+      groups.push({
+        id: `user/-/label/${rel.groupName}`,
+        label: rel.groupName,
+      });
+    }
   }
 
   // Build subscriptions

@@ -5,22 +5,17 @@
  */
 
 import { Router } from "express";
-import type { Request, Response } from "express";
-import { asyncHandler } from "../middleware/errorHandler";
-import { requireAuth, loadUser } from "../middleware/auth";
-import {
-  validateBody,
-  validateParams,
-  validateQuery,
-} from "../utils/validation";
-import {
-  articleListSchema,
-  markArticlesSchema,
-  idParamSchema,
-  updateArticleSchema,
-  createArticleSchema,
-} from "../validation/schemas";
+import type { Response } from "express";
 import { z } from "zod";
+
+import { AuthenticationError } from "../errors";
+import { requireAuth, loadUser } from "../middleware/auth";
+import type { AuthenticatedRequest } from "../middleware/auth";
+import { asyncHandler } from "../middleware/errorHandler";
+import {
+  parsePagination,
+  formatPaginatedResponse,
+} from "../middleware/pagination";
 import {
   listArticles,
   getArticle,
@@ -34,12 +29,32 @@ import {
   markArticleReadOnView,
   enrichArticleData,
 } from "../services/article.service";
-import {
-  parsePagination,
-  formatPaginatedResponse,
-} from "../middleware/pagination";
-import type { AuthenticatedRequest } from "../middleware/auth";
 import { logger } from "../utils/logger";
+import {
+  validateBody,
+  validateParams,
+  validateQuery,
+} from "../utils/validation";
+import {
+  articleListSchema,
+  markArticlesSchema,
+  idParamSchema,
+  updateArticleSchema,
+  createArticleSchema,
+} from "../validation/schemas";
+
+/**
+ * Get authenticated user from request.
+ * Throws if user is not present (should not happen after requireAuth).
+ */
+function getAuthenticatedUser(
+  req: AuthenticatedRequest,
+): NonNullable<AuthenticatedRequest["user"]> {
+  if (!req.user) {
+    throw new AuthenticationError("User not found in request");
+  }
+  return req.user;
+}
 
 const router = Router();
 
@@ -57,8 +72,9 @@ router.get(
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     const pagination = parsePagination(req);
     const { feedId, feedType, groupId, isRead, isSaved, search } = req.query;
+    const user = getAuthenticatedUser(req);
 
-    const result = await listArticles(req.user!, {
+    const result = await listArticles(user, {
       feedId: feedId ? parseInt(feedId as string) : undefined,
       feedType: feedType as string | undefined,
       groupId: groupId ? parseInt(groupId as string, 10) : undefined,
@@ -87,25 +103,26 @@ router.get(
     const articleId = parseInt(id);
 
     try {
-      logger.debug({ articleId, userId: req.user?.id }, "Fetching article");
-      const article = await getArticle(articleId, req.user!);
+      const user = getAuthenticatedUser(req);
+      logger.debug({ articleId, userId: user.id }, "Fetching article");
+      const article = await getArticle(articleId, user);
 
       // Get feed information
       logger.debug({ articleId, feedId: article.feedId }, "Fetching feed");
       const { getFeed } = await import("../services/feed.service");
-      const feed = await getFeed(article.feedId, req.user!);
+      const feed = await getFeed(article.feedId, user);
 
       // Get navigation
       logger.debug({ articleId }, "Fetching navigation");
-      const navigation = await getArticleNavigation(article, req.user!);
+      const navigation = await getArticleNavigation(article, user);
 
       // Enrich article data (read state, computed fields)
       logger.debug({ articleId }, "Enriching article data");
-      const enrichment = await enrichArticleData(article, req.user!);
+      const enrichment = await enrichArticleData(article, user);
 
       // Mark as read automatically when viewing
       logger.debug({ articleId }, "Marking article as read");
-      await markArticleReadOnView(articleId, req.user!);
+      await markArticleReadOnView(articleId, user);
 
       // Build response with camelCase
       // Helper to convert date (Date object or timestamp number) to ISO string
@@ -177,7 +194,8 @@ router.post(
   validateBody(markArticlesSchema.extend({ isRead: z.boolean() })),
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     const { articleIds, isRead } = req.body;
-    await markArticlesRead(req.user!, articleIds, isRead);
+    const user = getAuthenticatedUser(req);
+    await markArticlesRead(user, articleIds, isRead);
     res.json({ success: true });
   }),
 );
@@ -191,7 +209,8 @@ router.post(
   validateBody(markArticlesSchema.extend({ isSaved: z.boolean() })),
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     const { articleIds, isSaved } = req.body;
-    await markArticlesSaved(req.user!, articleIds, isSaved);
+    const user = getAuthenticatedUser(req);
+    await markArticlesSaved(user, articleIds, isSaved);
     res.json({ success: true });
   }),
 );
@@ -205,7 +224,8 @@ router.delete(
   validateParams(idParamSchema),
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     const { id } = req.params;
-    await deleteArticle(parseInt(id), req.user!);
+    const user = getAuthenticatedUser(req);
+    await deleteArticle(parseInt(id), user);
     res.status(204).send();
   }),
 );
@@ -218,7 +238,8 @@ router.post(
   "/",
   validateBody(createArticleSchema),
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-    const article = await createArticle(req.user!, req.body);
+    const user = getAuthenticatedUser(req);
+    const article = await createArticle(user, req.body);
     res.status(201).json(article);
   }),
 );
@@ -233,7 +254,8 @@ router.patch(
   validateBody(updateArticleSchema),
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     const { id } = req.params;
-    const article = await updateArticle(parseInt(id), req.user!, req.body);
+    const user = getAuthenticatedUser(req);
+    const article = await updateArticle(parseInt(id), user, req.body);
     res.json(article);
   }),
 );
@@ -247,7 +269,8 @@ router.post(
   validateParams(idParamSchema),
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     const { id } = req.params;
-    const result = await reloadArticle(parseInt(id), req.user!);
+    const user = getAuthenticatedUser(req);
+    const result = await reloadArticle(parseInt(id), user);
     res.json(result);
   }),
 );
@@ -261,8 +284,9 @@ router.get(
   validateParams(idParamSchema),
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     const { id } = req.params;
-    const article = await getArticle(parseInt(id), req.user!);
-    const navigation = await getArticleNavigation(article, req.user!);
+    const user = getAuthenticatedUser(req);
+    const article = await getArticle(parseInt(id), user);
+    const navigation = await getArticleNavigation(article, user);
     res.json(navigation);
   }),
 );

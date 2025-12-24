@@ -11,6 +11,8 @@
  * - Protected routes (requires authentication)
  */
 
+import { BreakpointObserver } from "@angular/cdk/layout";
+import { CommonModule } from "@angular/common";
 import {
   Component,
   inject,
@@ -19,17 +21,17 @@ import {
   AfterViewInit,
   signal,
 } from "@angular/core";
-import { CommonModule } from "@angular/common";
-import { RouterModule, Router } from "@angular/router";
-import { MatSidenavModule, MatSidenav } from "@angular/material/sidenav";
-import { MatListModule } from "@angular/material/list";
 import { MatDividerModule } from "@angular/material/divider";
-import { MatToolbarModule } from "@angular/material/toolbar";
 import { MatIconModule } from "@angular/material/icon";
-import { BreakpointObserver, Breakpoints } from "@angular/cdk/layout";
-import { HeaderComponent } from "./header.component";
-import { AuthService } from "@app/core/services/auth.service";
+import { MatListModule } from "@angular/material/list";
+import { MatSidenavModule, MatSidenav } from "@angular/material/sidenav";
+import { MatToolbarModule } from "@angular/material/toolbar";
+import { RouterModule } from "@angular/router";
+
 import { BreadcrumbComponent } from "@app/core/components/breadcrumb.component";
+import { AuthService } from "@app/core/services/auth.service";
+
+import { HeaderComponent } from "./header.component";
 
 @Component({
   selector: "app-main-layout",

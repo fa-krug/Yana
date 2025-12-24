@@ -4,9 +4,11 @@
 
 import axios from "axios";
 import sharp from "sharp";
+
 import { logger } from "@server/utils/logger";
-import { is4xxError } from "../http-errors";
+
 import { ArticleSkipError } from "../../exceptions";
+import { is4xxError } from "../http-errors";
 
 /**
  * Get appropriate referer header for a URL.

@@ -4,10 +4,11 @@
  * Generic aggregator for any RSS feed with full content extraction.
  */
 
-import { BaseAggregator } from "./base/aggregator";
-import type { RawArticle } from "./base/types";
-import { fetchFeed } from "./base/fetch";
 import Parser from "rss-parser";
+
+import { BaseAggregator } from "./base/aggregator";
+import { fetchFeed } from "./base/fetch";
+import type { RawArticle } from "./base/types";
 
 export class FullWebsiteAggregator extends BaseAggregator {
   override readonly id: string = "full_website";
@@ -61,7 +62,9 @@ export class FullWebsiteAggregator extends BaseAggregator {
   /**
    * Fetch RSS feed data.
    */
-  protected async fetchSourceData(limit?: number): Promise<Parser.Output<any>> {
+  protected async fetchSourceData(
+    limit?: number,
+  ): Promise<Parser.Output<unknown>> {
     const startTime = Date.now();
     this.logger.info(
       {
@@ -114,7 +117,7 @@ export class FullWebsiteAggregator extends BaseAggregator {
       "Parsing RSS feed items",
     );
 
-    const feed = sourceData as Parser.Output<any>;
+    const feed = sourceData as Parser.Output<unknown>;
     const items = feed.items || [];
 
     const articles: RawArticle[] = items.map((item) => {
@@ -123,7 +126,7 @@ export class FullWebsiteAggregator extends BaseAggregator {
         url: item.link || "",
         published: item.pubDate ? new Date(item.pubDate) : new Date(),
         summary: item.contentSnippet || item.content || "",
-        author: item.creator || item.author || undefined,
+        author: item.creator || (item as any).author || undefined,
       };
 
       // Extract metadata

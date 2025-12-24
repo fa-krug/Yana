@@ -12,29 +12,28 @@
  */
 
 // Angular core
+import { CommonModule } from "@angular/common";
 import {
   Component,
   inject,
   signal,
   ChangeDetectionStrategy,
 } from "@angular/core";
-import { CommonModule } from "@angular/common";
 import { FormBuilder, ReactiveFormsModule, Validators } from "@angular/forms";
-import { Router, ActivatedRoute } from "@angular/router";
-
 // Angular Material
+import { MatButtonModule } from "@angular/material/button";
 import { MatCardModule } from "@angular/material/card";
 import { MatFormFieldModule } from "@angular/material/form-field";
+import { MatIconModule } from "@angular/material/icon";
 import { MatInputModule } from "@angular/material/input";
-import { MatButtonModule } from "@angular/material/button";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
-import { MatIconModule } from "@angular/material/icon";
+import { Router, ActivatedRoute } from "@angular/router";
 
 // Application
-import { HeaderComponent } from "@app/layouts/header.component";
-import { AuthService } from "@app/core/services/auth.service";
 import { LoginResponse } from "@app/core/models";
+import { AuthService } from "@app/core/services/auth.service";
+import { HeaderComponent } from "@app/layouts/header.component";
 
 @Component({
   selector: "app-login",

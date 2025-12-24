@@ -10,22 +10,16 @@ import {
   inArray,
   desc,
   asc,
-  gte,
-  lte,
   lt,
-  sql,
   notInArray,
+  sql,
 } from "drizzle-orm";
-import type { SQLiteSelectBuilder } from "drizzle-orm/sqlite-core";
+
 import { db, articles, feeds, userArticleStates } from "@server/db";
 import { cache } from "@server/utils/cache";
+
 import { filterArticlesByStream } from "./stream-filter.service";
-import {
-  parseItemId,
-  toHexId,
-  getSiteUrl,
-  formatStreamItem,
-} from "./stream-format.service";
+import { parseItemId, formatStreamItem } from "./stream-format.service";
 
 const STATE_READ = "user/-/state/com.google/read";
 const STATE_STARRED = "user/-/state/com.google/starred";

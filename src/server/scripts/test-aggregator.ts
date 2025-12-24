@@ -10,9 +10,8 @@
  *   npm run test:aggregator https://example.com/article
  */
 
-import { getAllAggregators, getAggregatorById } from "../aggregators/registry";
 import type { RawArticle } from "../aggregators/base/types";
-import { logger } from "../utils/logger";
+import { getAllAggregators, getAggregatorById } from "../aggregators/registry";
 
 interface TestResult {
   aggregatorId: string;

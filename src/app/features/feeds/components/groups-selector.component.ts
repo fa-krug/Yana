@@ -2,16 +2,17 @@
  * Groups selector component - handles group selection with autocomplete and chip display.
  */
 
-import { Component, input, output } from "@angular/core";
 import { CommonModule } from "@angular/common";
+import { Component, input, output } from "@angular/core";
 import { FormControl, ReactiveFormsModule } from "@angular/forms";
-import { MatFormFieldModule } from "@angular/material/form-field";
-import { MatInputModule } from "@angular/material/input";
 import { MatAutocompleteModule } from "@angular/material/autocomplete";
 import { MatChipsModule } from "@angular/material/chips";
-import { MatIconModule } from "@angular/material/icon";
-import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatDividerModule } from "@angular/material/divider";
+import { MatFormFieldModule } from "@angular/material/form-field";
+import { MatIconModule } from "@angular/material/icon";
+import { MatInputModule } from "@angular/material/input";
+import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
+
 import { Group } from "@app/core/models";
 
 @Component({

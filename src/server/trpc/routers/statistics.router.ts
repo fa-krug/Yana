@@ -4,9 +4,13 @@
  * Handles statistics endpoints.
  */
 
-import { router, protectedProcedure } from "../procedures";
 import { getStatistics } from "@server/services/statistics.service";
-import { getAuthenticatedUser } from "../procedures";
+
+import {
+  router,
+  protectedProcedure,
+  getAuthenticatedUser,
+} from "../procedures";
 
 /**
  * Statistics router.

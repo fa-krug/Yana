@@ -3,6 +3,7 @@
  */
 
 import * as cheerio from "cheerio";
+
 import { logger } from "@server/utils/logger";
 
 /**

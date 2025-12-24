@@ -4,15 +4,16 @@
  * Provides RSS feed generation for external RSS readers.
  */
 
+import { eq, desc } from "drizzle-orm";
 import { Router } from "express";
 import type { Request, Response } from "express";
-import { asyncHandler } from "../middleware/errorHandler";
-import { loadUser } from "../middleware/auth";
-import { getFeed } from "../services/feed.service";
-import { eq, desc } from "drizzle-orm";
+
 import { db, articles } from "../db";
+import { NotFoundError } from "../errors";
+import { loadUser } from "../middleware/auth";
 import type { AuthenticatedRequest } from "../middleware/auth";
-import { NotFoundError, PermissionDeniedError } from "../errors";
+import { asyncHandler } from "../middleware/errorHandler";
+import { getFeed } from "../services/feed.service";
 import { authenticateUser } from "../services/user.service";
 
 const router = Router();
@@ -77,7 +78,6 @@ function generateRssFeed(
   }>,
 ): string {
   const baseUrl = process.env["BASE_URL"] || "http://localhost:3000";
-  const feedUrl = `${baseUrl}/feeds/${feed.id}/rss.xml`;
   const feedLink = feed.identifier;
   const feedDescription = `Aggregated feed for ${feed.name}`;
 

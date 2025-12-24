@@ -2,35 +2,35 @@
  * Feed articles list component - displays articles for a feed with filters and pagination.
  */
 
+import { CommonModule } from "@angular/common";
 import {
   Component,
-  inject,
   input,
   output,
   signal,
   ChangeDetectionStrategy,
 } from "@angular/core";
-import { CommonModule } from "@angular/common";
-import { RouterModule } from "@angular/router";
 import { FormControl, ReactiveFormsModule } from "@angular/forms";
-import { MatCardModule } from "@angular/material/card";
 import { MatButtonModule } from "@angular/material/button";
-import { MatIconModule } from "@angular/material/icon";
+import { MatCardModule } from "@angular/material/card";
 import { MatFormFieldModule } from "@angular/material/form-field";
+import { MatIconModule } from "@angular/material/icon";
 import { MatInputModule } from "@angular/material/input";
-import { MatSelectModule } from "@angular/material/select";
-import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
-import { MatPaginatorModule, PageEvent } from "@angular/material/paginator";
 import { MatMenuModule } from "@angular/material/menu";
+import { MatPaginatorModule, PageEvent } from "@angular/material/paginator";
+import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
+import { MatSelectModule } from "@angular/material/select";
 import { MatTooltipModule } from "@angular/material/tooltip";
-import { ArticleService } from "@app/core/services/article.service";
+import { RouterModule } from "@angular/router";
+
+import { PrefetchOnIntersectDirective } from "@app/core/directives/prefetch-on-intersect.directive";
 import { Article } from "@app/core/models";
+import { ArticleService } from "@app/core/services/article.service";
 import {
   getProxiedImageUrl,
   getResponsiveImageSrcset,
   getImageSizes,
 } from "@app/core/utils/image-proxy.util";
-import { PrefetchOnIntersectDirective } from "@app/core/directives/prefetch-on-intersect.directive";
 
 @Component({
   selector: "app-feed-articles-list",

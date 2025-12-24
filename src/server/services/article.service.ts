@@ -19,6 +19,7 @@ import {
   gte,
   lte,
 } from "drizzle-orm";
+
 import {
   db,
   articles,
@@ -27,14 +28,9 @@ import {
   feedGroups,
   groups,
 } from "../db";
+import type { Article, User } from "../db/types";
 import { NotFoundError, PermissionDeniedError } from "../errors";
 import { logger } from "../utils/logger";
-import type {
-  Article,
-  ArticleInsert,
-  User,
-  UserArticleState,
-} from "../db/types";
 
 /**
  * Minimal user info needed for article operations.
@@ -81,7 +77,12 @@ export async function listArticles(
   }
 
   if (feedType) {
-    feedConditions.push(eq(feeds.feedType, feedType as any));
+    feedConditions.push(
+      eq(
+        feeds.feedType,
+        feedType as "article" | "youtube" | "podcast" | "reddit",
+      ),
+    );
   }
 
   // Get accessible feed IDs
@@ -686,7 +687,7 @@ export async function reloadArticles(
  */
 export async function getArticleNavigation(
   article: Article,
-  user: UserInfo,
+  _user: UserInfo,
 ): Promise<{ prev: Article | null; next: Article | null }> {
   // Ensure date is a Date object (Drizzle timestamp mode expects Date for comparisons)
   const articleDate =

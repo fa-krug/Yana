@@ -46,8 +46,8 @@ export async function collectFeedIcon(
  */
 export async function extractMetadata(
   this: UtilitiesMixin,
-  sourceData: unknown,
-  article: RawArticle,
+  _sourceData: unknown,
+  _article: RawArticle,
 ): Promise<Partial<Record<string, unknown>>> {
   // Default: no metadata extraction
   return {};

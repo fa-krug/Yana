@@ -2,21 +2,23 @@
  * Basic image extraction strategies (direct URLs, YouTube, Twitter, meta tags).
  */
 
-import sharp from "sharp";
 import axios from "axios";
-import { logger } from "@server/utils/logger";
-import { extractYouTubeVideoId } from "@server/aggregators/base/utils/youtube";
-import {
-  isTwitterUrl,
-  extractTweetId,
-} from "@server/aggregators/base/utils/twitter";
+import sharp from "sharp";
+
 import {
   MAX_HEADER_IMAGE_WIDTH,
   MAX_HEADER_IMAGE_HEIGHT,
 } from "@server/aggregators/base/utils/compression";
-import { fetchSingleImage } from "../fetch";
-import { is4xxError } from "../../http-errors";
+import {
+  isTwitterUrl,
+  extractTweetId,
+} from "@server/aggregators/base/utils/twitter";
+import { extractYouTubeVideoId } from "@server/aggregators/base/utils/youtube";
+import { logger } from "@server/utils/logger";
+
 import { ArticleSkipError } from "../../../exceptions";
+import { is4xxError } from "../../http-errors";
+import { fetchSingleImage } from "../fetch";
 
 const MAX_IMAGE_WIDTH = 600;
 const MAX_IMAGE_HEIGHT = 600;
@@ -90,7 +92,7 @@ export async function handleDirectImageUrl(
         imageData: result.imageData,
         contentType: result.contentType || "image/jpeg",
       };
-    } catch (error) {
+    } catch {
       // If we can't check dimensions, use file size check only
       return {
         imageData: result.imageData,
@@ -297,7 +299,7 @@ export async function handleMetaTagImage(
           contentType: result.contentType || "image/jpeg",
         };
       }
-    } catch (error) {
+    } catch {
       // If we can't check dimensions, use file size check only
       return {
         imageData: result.imageData,

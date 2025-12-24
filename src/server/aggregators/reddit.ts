@@ -5,24 +5,26 @@
  * Based on the legacy Python implementation using PRAW.
  */
 
-import { BaseAggregator } from "./base/aggregator";
-import type { RawArticle } from "./base/types";
-import { logger } from "../utils/logger";
 import axios from "axios";
+
 import { getUserSettings } from "../services/userSettings.service";
+import { logger } from "../utils/logger";
+
+import { BaseAggregator } from "./base/aggregator";
 import { standardizeContentFormat } from "./base/process";
+import type { RawArticle } from "./base/types";
 import { getRedditAccessToken } from "./reddit/auth";
+import { buildPostContent } from "./reddit/content";
+import { extractHeaderImageUrl } from "./reddit/images";
+import { parseRedditPosts } from "./reddit/parsing";
+import { fetchRedditPost } from "./reddit/posts";
+import type { RedditPost } from "./reddit/types";
 import {
   normalizeSubreddit,
   validateSubreddit,
   extractPostInfoFromUrl,
   fetchSubredditInfo,
 } from "./reddit/urls";
-import { extractHeaderImageUrl, extractThumbnailUrl } from "./reddit/images";
-import { buildPostContent } from "./reddit/content";
-import { fetchRedditPost } from "./reddit/posts";
-import { parseRedditPosts } from "./reddit/parsing";
-import type { RedditPost } from "./reddit/types";
 
 // Re-export RedditPost type
 export type { RedditPost } from "./reddit/types";
@@ -511,7 +513,7 @@ export class RedditAggregator extends BaseAggregator {
    */
   protected override async extractContent(
     html: string,
-    article: RawArticle,
+    _article: RawArticle,
   ): Promise<string> {
     // Reddit content is always formatted HTML fragments from buildPostContent (API)
     // No extraction needed - return as-is

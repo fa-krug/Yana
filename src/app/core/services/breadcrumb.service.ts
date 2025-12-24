@@ -2,7 +2,7 @@
  * Breadcrumb service for tracking navigation hierarchy.
  */
 
-import { Injectable, inject, signal, computed } from "@angular/core";
+import { Injectable, inject, signal } from "@angular/core";
 import { Router, NavigationEnd, ActivatedRouteSnapshot } from "@angular/router";
 import { filter, map } from "rxjs/operators";
 
@@ -152,7 +152,6 @@ export class BreadcrumbService {
       const isArticleDetail = this.isArticleDetailRoute(children);
       if (isArticleDetail) {
         // Use "Article" as the label for article detail pages
-        const url = this.buildUrl(children);
         breadcrumbs.push({ label: "Article", url: null }); // null URL makes it non-clickable (current page)
         // Don't recurse further - article detail is the final breadcrumb
         return;

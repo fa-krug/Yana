@@ -2,6 +2,7 @@
  * Article content component - displays article content with HTML sanitization.
  */
 
+import { CommonModule } from "@angular/common";
 import {
   Component,
   inject,
@@ -10,21 +11,22 @@ import {
   signal,
   effect,
 } from "@angular/core";
-import { CommonModule } from "@angular/common";
-import { RouterModule } from "@angular/router";
-import { DomSanitizer, SafeHtml } from "@angular/platform-browser";
+import { FormsModule } from "@angular/forms";
+import { MatButtonModule } from "@angular/material/button";
 import { MatCardModule } from "@angular/material/card";
 import { MatChipsModule } from "@angular/material/chips";
-import { MatIconModule } from "@angular/material/icon";
-import { MatButtonModule } from "@angular/material/button";
 import { MatFormFieldModule } from "@angular/material/form-field";
+import { MatIconModule } from "@angular/material/icon";
 import { MatInputModule } from "@angular/material/input";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
-import { FormsModule } from "@angular/forms";
+import { DomSanitizer, SafeHtml } from "@angular/platform-browser";
+import { RouterModule } from "@angular/router";
+
 import { ArticleDetail } from "@app/core/models";
-import { ArticleMediaComponent } from "./article-media.component";
 import { ArticleService } from "@app/core/services/article.service";
+
+import { ArticleMediaComponent } from "./article-media.component";
 
 @Component({
   selector: "app-article-content",

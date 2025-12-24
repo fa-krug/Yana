@@ -4,8 +4,8 @@
 
 import * as cheerio from "cheerio";
 import type pino from "pino";
+
 import { ContentFetchError } from "../base/exceptions";
-import { fetchArticleContent as baseFetchArticleContent } from "../base/fetch";
 
 /**
  * Fetch all pages of a multi-page article and combine the content.

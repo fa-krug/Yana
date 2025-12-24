@@ -5,9 +5,11 @@
  * All procedures require superuser access.
  */
 
-import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { router, superuserProcedure } from "../procedures";
+import { z } from "zod";
+
+import { getScheduler } from "@server/scheduler";
+import { getExecutionHistory } from "@server/services/taskHistory.service";
 import {
   listTasks,
   getTaskDetails,
@@ -16,13 +18,13 @@ import {
   clearTaskHistory,
   type TaskFilters,
 } from "@server/services/taskQueue.service";
-import { getScheduler } from "@server/scheduler";
-import { getExecutionHistory } from "@server/services/taskHistory.service";
+import { taskListSchema } from "@server/validation/schemas";
 import {
   getTaskMetrics,
   getWorkerPoolStatus,
 } from "@server/workers/monitoring";
-import { taskListSchema } from "@server/validation/schemas";
+
+import { router, superuserProcedure } from "../procedures";
 
 /**
  * Helper to convert date to ISO string.

@@ -3,12 +3,13 @@
  */
 
 import { eq, and } from "drizzle-orm";
-import { db, articles } from "@server/db";
-import { logger } from "@server/utils/logger";
-import type { Feed } from "@server/db/types";
-import type { RawArticle } from "@server/aggregators/base/types";
+
 import type { BaseAggregator } from "@server/aggregators/base/aggregator";
+import type { RawArticle } from "@server/aggregators/base/types";
 import { shouldSkipArticleByDuplicate } from "@server/aggregators/base/utils";
+import { db, articles } from "@server/db";
+import type { Feed } from "@server/db/types";
+import { logger } from "@server/utils/logger";
 
 /**
  * Process and save articles from aggregation.
@@ -48,7 +49,7 @@ export async function saveAggregatedArticles(
         // INSTRUMENTATION: Log when articles are filtered by date
         if (
           process.env["NODE_ENV"] === "test" &&
-          (global as any).__TEST_TRACE
+          (global as { __TEST_TRACE?: boolean }).__TEST_TRACE
         ) {
           console.log(
             `[SAVE_TRACE] Article ${rawArticle.url} filtered: too old (${publishedDate.toISOString()} < ${publishedCutoffDate.toISOString()})`,
@@ -67,7 +68,10 @@ export async function saveAggregatedArticles(
         );
 
       // INSTRUMENTATION: Log duplicate detection
-      if (process.env["NODE_ENV"] === "test" && (global as any).__TEST_TRACE) {
+      if (
+        process.env["NODE_ENV"] === "test" &&
+        (global as { __TEST_TRACE?: boolean }).__TEST_TRACE
+      ) {
         console.log(
           `[SAVE_TRACE] Article ${rawArticle.url}: shouldSkip=${shouldSkip}, shouldUpdate=${shouldUpdate}, reason=${reason || "none"}`,
         );

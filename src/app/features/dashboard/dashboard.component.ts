@@ -2,6 +2,7 @@
  * Dashboard component displaying statistics and quick actions.
  */
 
+import { CommonModule } from "@angular/common";
 import {
   Component,
   inject,
@@ -10,15 +11,15 @@ import {
   ChangeDetectionStrategy,
   isDevMode,
 } from "@angular/core";
-import { CommonModule } from "@angular/common";
-import { RouterModule, Router } from "@angular/router";
-import { MatCardModule } from "@angular/material/card";
 import { MatButtonModule } from "@angular/material/button";
+import { MatCardModule } from "@angular/material/card";
+import { MatGridListModule } from "@angular/material/grid-list";
 import { MatIconModule } from "@angular/material/icon";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
-import { MatGridListModule } from "@angular/material/grid-list";
-import { StatisticsService } from "@app/core/services/statistics.service";
+import { RouterModule, Router } from "@angular/router";
 import { interval, Subject, takeUntil } from "rxjs";
+
+import { StatisticsService } from "@app/core/services/statistics.service";
 
 @Component({
   selector: "app-dashboard",

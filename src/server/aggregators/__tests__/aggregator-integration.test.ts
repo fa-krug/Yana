@@ -8,25 +8,27 @@
  * To update fixtures, run: npx tsx src/server/aggregators/__tests__/download-fixtures.ts
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
 import * as fs from "fs/promises";
 import * as path from "path";
+
 import axios from "axios";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+
 import type { RawArticle } from "../base/types";
-import { FullWebsiteAggregator } from "../full_website";
-import { HeiseAggregator } from "../heise";
-import { MerkurAggregator } from "../merkur";
-import { TagesschauAggregator } from "../tagesschau";
-import { ExplosmAggregator } from "../explosm";
-import { MacTechNewsAggregator } from "../mactechnews";
 import { CaschysBlogAggregator } from "../caschys_blog";
 import { DarkLegacyAggregator } from "../dark_legacy";
-import { OglafAggregator } from "../oglaf";
-import { MeinMmoAggregator } from "../mein_mmo";
+import { ExplosmAggregator } from "../explosm";
 import { FeedContentAggregator } from "../feed_content";
-import { RedditAggregator } from "../reddit";
-import { YouTubeAggregator } from "../youtube";
+import { FullWebsiteAggregator } from "../full_website";
+import { HeiseAggregator } from "../heise";
+import { MacTechNewsAggregator } from "../mactechnews";
+import { MeinMmoAggregator } from "../mein_mmo";
+import { MerkurAggregator } from "../merkur";
+import { OglafAggregator } from "../oglaf";
 import { PodcastAggregator } from "../podcast";
+import { RedditAggregator } from "../reddit";
+import { TagesschauAggregator } from "../tagesschau";
+import { YouTubeAggregator } from "../youtube";
 
 // Mock logger
 vi.mock("../../utils/logger", () => ({
@@ -42,7 +44,7 @@ vi.mock("../../utils/logger", () => ({
       error: vi.fn(),
     })),
   },
-  createLogger: vi.fn((context) => ({
+  createLogger: vi.fn((_context) => ({
     info: vi.fn(),
     debug: vi.fn(),
     warn: vi.fn(),
@@ -192,7 +194,7 @@ async function loadHtmlFixture(aggregatorId: string): Promise<string | null> {
   try {
     const html = await fs.readFile(fixturePath, "utf-8");
     return html;
-  } catch (error) {
+  } catch {
     // Fixture file doesn't exist
     return null;
   }
@@ -206,7 +208,7 @@ async function loadApiFixture(aggregatorId: string): Promise<any | null> {
   try {
     const json = await fs.readFile(fixturePath, "utf-8");
     return JSON.parse(json);
-  } catch (error) {
+  } catch {
     // Fixture file doesn't exist
     return null;
   }

@@ -6,15 +6,11 @@
 
 import { Router } from "express";
 import type { Response } from "express";
-import { asyncHandler } from "../middleware/errorHandler";
+
+import { NotFoundError, PermissionDeniedError } from "../errors";
 import { requireAuth, loadUser, requireSuperuser } from "../middleware/auth";
-import { validateBody, validateQuery } from "../utils/validation";
-import {
-  adminUpdateUserSchema,
-  adminCreateUserSchema,
-  adminChangePasswordSchema,
-  adminListUsersSchema,
-} from "../validation/schemas";
+import type { AuthenticatedRequest } from "../middleware/auth";
+import { asyncHandler } from "../middleware/errorHandler";
 import {
   createUser,
   getUserById,
@@ -24,12 +20,13 @@ import {
   updateUser,
   deleteUser,
 } from "../services/user.service";
+import { validateBody, validateQuery } from "../utils/validation";
 import {
-  AuthenticationError,
-  NotFoundError,
-  PermissionDeniedError,
-} from "../errors";
-import type { AuthenticatedRequest } from "../middleware/auth";
+  adminUpdateUserSchema,
+  adminCreateUserSchema,
+  adminChangePasswordSchema,
+  adminListUsersSchema,
+} from "../validation/schemas";
 
 const router = Router();
 

@@ -2,10 +2,12 @@
  * Fetch utilities for aggregators.
  */
 
-import Parser from "rss-parser";
-import { chromium, type Browser } from "playwright";
 import axios from "axios";
+import { chromium, type Browser } from "playwright";
+import Parser from "rss-parser";
+
 import { logger } from "@server/utils/logger";
+
 import { ContentFetchError, ArticleSkipError } from "./exceptions";
 import { is4xxError } from "./utils/http-errors";
 
@@ -29,7 +31,7 @@ export async function getBrowser(): Promise<Browser> {
 export async function fetchFeed(
   feedUrl: string,
   options: { timeout?: number } = {},
-): Promise<Parser.Output<any>> {
+): Promise<Parser.Output<unknown>> {
   const startTime = Date.now();
   const { timeout = 25000 } = options; // Default 25s for RSS feed fetching
 

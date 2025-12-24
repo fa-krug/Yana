@@ -2,8 +2,9 @@
  * Service for handling search operations in feed form (subreddits, YouTube channels).
  */
 
-import { Injectable, signal } from "@angular/core";
+import { Injectable, inject, signal } from "@angular/core";
 import { from } from "rxjs";
+
 import { TRPCService } from "../trpc/trpc.service";
 
 export interface SubredditSearchResult {
@@ -25,7 +26,7 @@ export interface ChannelSearchResult {
   providedIn: "root",
 })
 export class FeedFormSearchService {
-  constructor(private trpc: TRPCService) {}
+  private trpc = inject(TRPCService);
 
   // Subreddit search
   subredditSearchResults = signal<SubredditSearchResult[]>([]);

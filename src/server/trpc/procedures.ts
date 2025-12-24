@@ -4,6 +4,7 @@
 
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
+
 import type { Context } from "./context";
 import {
   requireAuth,
@@ -23,10 +24,12 @@ const t = initTRPC.context<Context>().create({
 
     // Check if fieldErrors was attached to the error
     if (
-      (error as any).fieldErrors &&
-      typeof (error as any).fieldErrors === "object"
+      (error as { fieldErrors?: unknown }).fieldErrors &&
+      typeof (error as { fieldErrors?: unknown }).fieldErrors === "object"
     ) {
-      fieldErrors = (error as any).fieldErrors;
+      fieldErrors = (
+        error as unknown as { fieldErrors: Record<string, string> }
+      ).fieldErrors;
     }
     // Otherwise check the cause
     else if (
@@ -35,7 +38,7 @@ const t = initTRPC.context<Context>().create({
       !(error.cause instanceof Error)
     ) {
       // Check if cause has field error properties (not just a generic error)
-      const cause = error.cause as any;
+      const cause = error.cause as Record<string, unknown>;
       if (
         "clientId" in cause ||
         "clientSecret" in cause ||
@@ -43,7 +46,7 @@ const t = initTRPC.context<Context>().create({
         "apiUrl" in cause ||
         "general" in cause
       ) {
-        fieldErrors = cause;
+        fieldErrors = cause as Record<string, string>;
       }
     }
 

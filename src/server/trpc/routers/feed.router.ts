@@ -4,10 +4,15 @@
  * Handles feed management endpoints.
  */
 
-import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { router, protectedProcedure } from "../procedures";
-import { getAuthenticatedUser } from "../procedures";
+import { z } from "zod";
+
+import type { Feed } from "@server/db/types";
+import { NotFoundError, PermissionDeniedError } from "@server/errors";
+import {
+  listArticles,
+  enrichArticleData,
+} from "@server/services/article.service";
 import {
   listFeeds,
   getFeed,
@@ -22,18 +27,13 @@ import {
   getFeedUnreadCount,
 } from "@server/services/feed.service";
 import { getFeedGroups } from "@server/services/group.service";
+import { createFeedSchema, updateFeedSchema } from "@server/validation/schemas";
+
 import {
-  listArticles,
-  enrichArticleData,
-} from "@server/services/article.service";
-import type { Feed } from "@server/db/types";
-import {
-  createFeedSchema,
-  updateFeedSchema,
-  articleListSchema,
-  idParamSchema,
-} from "@server/validation/schemas";
-import { NotFoundError, PermissionDeniedError } from "@server/errors";
+  router,
+  protectedProcedure,
+  getAuthenticatedUser,
+} from "../procedures";
 
 /**
  * Feed list input schema.

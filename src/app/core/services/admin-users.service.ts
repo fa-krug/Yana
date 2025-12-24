@@ -1,6 +1,6 @@
 import { Injectable, inject } from "@angular/core";
-import { Observable, from } from "rxjs";
-import { map } from "rxjs";
+import { Observable, from, map } from "rxjs";
+
 import { TRPCService } from "../trpc/trpc.service";
 
 export interface User {

@@ -24,7 +24,11 @@ export function getYouTubeErrorMessage(error: unknown): string {
   if (axios.isAxiosError(error)) {
     const axiosError = error as AxiosError;
     const status = axiosError.response?.status;
-    const errorData = axiosError.response?.data as any;
+    const errorData = axiosError.response?.data as
+      | {
+          error?: { errors?: Array<{ reason?: string }> };
+        }
+      | undefined;
 
     // Check for specific error reasons in the response
     if (errorData?.error?.errors?.[0]?.reason) {

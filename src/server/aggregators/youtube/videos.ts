@@ -3,6 +3,7 @@
  */
 
 import axios, { AxiosError } from "axios";
+
 import { logger } from "@server/utils/logger";
 
 /**
@@ -92,7 +93,10 @@ export async function fetchVideosFromPlaylist(
 
       const videoItems = videosResponse.data.items || [];
       // INSTRUMENTATION
-      if (process.env["NODE_ENV"] === "test" && (global as any).__TEST_TRACE) {
+      if (
+        process.env["NODE_ENV"] === "test" &&
+        (global as { __TEST_TRACE?: boolean }).__TEST_TRACE
+      ) {
         console.log(
           `[VIDEOS_TRACE:youtube] videosResponse.data.items.length: ${videoItems.length}`,
         );
@@ -105,7 +109,10 @@ export async function fetchVideosFromPlaylist(
     }
   } catch (error) {
     // INSTRUMENTATION
-    if (process.env["NODE_ENV"] === "test" && (global as any).__TEST_TRACE) {
+    if (
+      process.env["NODE_ENV"] === "test" &&
+      (global as { __TEST_TRACE?: boolean }).__TEST_TRACE
+    ) {
       console.log(
         `[VIDEOS_TRACE:youtube] fetchVideosFromPlaylist error:`,
         error,
@@ -116,7 +123,10 @@ export async function fetchVideosFromPlaylist(
   }
 
   // INSTRUMENTATION
-  if (process.env["NODE_ENV"] === "test" && (global as any).__TEST_TRACE) {
+  if (
+    process.env["NODE_ENV"] === "test" &&
+    (global as { __TEST_TRACE?: boolean }).__TEST_TRACE
+  ) {
     console.log(
       `[VIDEOS_TRACE:youtube] fetchVideosFromPlaylist returning ${videos.length} videos`,
     );

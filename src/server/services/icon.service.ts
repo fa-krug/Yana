@@ -7,9 +7,11 @@
 
 import axios from "axios";
 import * as cheerio from "cheerio";
-import { logger } from "../utils/logger";
-import { enqueueTask } from "./taskQueue.service";
+
 import type { Feed } from "../db/types";
+import { logger } from "../utils/logger";
+
+import { enqueueTask } from "./taskQueue.service";
 
 /**
  * Fetch favicon URL from a website.

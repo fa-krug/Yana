@@ -4,13 +4,15 @@
 
 import * as cheerio from "cheerio";
 import sharp from "sharp";
-import { logger } from "@server/utils/logger";
+
 import {
   MAX_HEADER_IMAGE_WIDTH,
   MAX_HEADER_IMAGE_HEIGHT,
 } from "@server/aggregators/base/utils/compression";
-import { fetchSingleImage } from "../fetch";
+import { logger } from "@server/utils/logger";
+
 import { extractImageDimensions } from "../dimensions";
+import { fetchSingleImage } from "../fetch";
 
 const MAX_IMAGE_WIDTH = 600;
 const MAX_IMAGE_HEIGHT = 600;
@@ -128,7 +130,7 @@ export async function handlePageImages(
               "Header image too small",
             );
           }
-        } catch (error) {
+        } catch {
           // If we can't check dimensions, use file size check only
           logger.debug(
             { size: result.imageData.length },

@@ -14,6 +14,7 @@
  */
 
 // Angular core
+import { CommonModule } from "@angular/common";
 import {
   Component,
   OnInit,
@@ -22,32 +23,24 @@ import {
   signal,
   ChangeDetectionStrategy,
 } from "@angular/core";
-import { CommonModule } from "@angular/common";
-import { ActivatedRoute, Router, RouterModule } from "@angular/router";
-import {
-  DomSanitizer,
-  SafeHtml,
-  SafeResourceUrl,
-} from "@angular/platform-browser";
-
-// RxJS
-import { switchMap, tap, delay } from "rxjs";
-
-// Angular Material
 import { MatButtonModule } from "@angular/material/button";
+import { MatDialog, MatDialogModule } from "@angular/material/dialog";
 import { MatIconModule } from "@angular/material/icon";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
-import { MatDialog, MatDialogModule } from "@angular/material/dialog";
+import { ActivatedRoute, Router, RouterModule } from "@angular/router";
+// RxJS
+import { switchMap, tap } from "rxjs";
 
 // Application
+import { ArticleDetail } from "@app/core/models";
+import { ArticleActionsService } from "@app/core/services/article-actions.service";
 import { ArticleService } from "@app/core/services/article.service";
 import { BreadcrumbService } from "@app/core/services/breadcrumb.service";
-import { ArticleActionsService } from "@app/core/services/article-actions.service";
-import { ArticleDetail } from "@app/core/models";
 import { ConfirmDialogComponent } from "@app/shared/components/confirm-dialog.component";
-import { ArticleToolbarComponent } from "./components/article-toolbar.component";
+
 import { ArticleContentComponent } from "./components/article-content.component";
+import { ArticleToolbarComponent } from "./components/article-toolbar.component";
 
 @Component({
   selector: "app-article-detail",
@@ -207,8 +200,6 @@ export class ArticleDetailComponent implements OnInit, OnDestroy {
         switchMap((params) => {
           // Support both route structures: /articles/:id and /feeds/:feedId/articles/:articleId
           const articleId = Number(params["articleId"] || params["id"]);
-          const feedIdParam = params["feedId"] || params["id"]; // For breadcrumb key
-          const articleIdParam = params["articleId"] || params["id"]; // For breadcrumb key
 
           this.loading.set(true);
           this.loadingContent.set(false);

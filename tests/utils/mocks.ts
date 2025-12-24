@@ -2,10 +2,11 @@
  * Mock utilities for testing.
  */
 
-import { vi } from "vitest";
 import type { Request, Response } from "express";
-import type { AuthenticatedRequest } from "../../src/server/middleware/auth";
+import { vi } from "vitest";
+
 import type { User } from "../../src/server/db/types";
+import type { AuthenticatedRequest } from "../../src/server/middleware/auth";
 
 /**
  * Create a mock Express request.

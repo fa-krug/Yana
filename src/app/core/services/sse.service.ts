@@ -5,10 +5,10 @@
  * Uses fetch API to support credentials (cookies) for authentication.
  */
 
-import { Injectable, PLATFORM_ID, inject } from "@angular/core";
 import { isPlatformBrowser } from "@angular/common";
-import { Observable, Subject, throwError, timer } from "rxjs";
-import { catchError, retryWhen, delayWhen, takeUntil } from "rxjs/operators";
+import { Injectable, PLATFORM_ID, inject } from "@angular/core";
+import { Observable, Subject, throwError } from "rxjs";
+import { catchError } from "rxjs/operators";
 
 export interface SSEEvent {
   event: string;

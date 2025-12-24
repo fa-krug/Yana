@@ -4,9 +4,24 @@
  * Discovers and manages all available aggregators.
  */
 
-import type { AggregatorMetadata } from "./base/types";
-import { BaseAggregator } from "./base/aggregator";
 import { logger } from "../utils/logger";
+
+import { BaseAggregator } from "./base/aggregator";
+import type { AggregatorMetadata } from "./base/types";
+import { CaschysBlogAggregator } from "./caschys_blog";
+import { DarkLegacyAggregator } from "./dark_legacy";
+import { ExplosmAggregator } from "./explosm";
+import { FeedContentAggregator } from "./feed_content";
+import { FullWebsiteAggregator } from "./full_website";
+import { HeiseAggregator } from "./heise";
+import { MacTechNewsAggregator } from "./mactechnews";
+import { MeinMmoAggregator } from "./mein_mmo";
+import { MerkurAggregator } from "./merkur";
+import { OglafAggregator } from "./oglaf";
+import { PodcastAggregator } from "./podcast";
+import { RedditAggregator } from "./reddit";
+import { TagesschauAggregator } from "./tagesschau";
+import { YouTubeAggregator } from "./youtube";
 
 /**
  * Map aggregator ID to feed type.
@@ -66,22 +81,6 @@ function getIconForAggregator(
 
   return feedTypeIconMap[feedType] || feedTypeIconMap["article"];
 }
-
-// Import aggregators
-import { FullWebsiteAggregator } from "./full_website";
-import { HeiseAggregator } from "./heise";
-import { MerkurAggregator } from "./merkur";
-import { YouTubeAggregator } from "./youtube";
-import { RedditAggregator } from "./reddit";
-import { PodcastAggregator } from "./podcast";
-import { TagesschauAggregator } from "./tagesschau";
-import { ExplosmAggregator } from "./explosm";
-import { MacTechNewsAggregator } from "./mactechnews";
-import { CaschysBlogAggregator } from "./caschys_blog";
-import { DarkLegacyAggregator } from "./dark_legacy";
-import { OglafAggregator } from "./oglaf";
-import { MeinMmoAggregator } from "./mein_mmo";
-import { FeedContentAggregator } from "./feed_content";
 
 // Registry of all aggregators
 const aggregatorClasses = new Map<string, new () => BaseAggregator>([

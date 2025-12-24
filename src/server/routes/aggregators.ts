@@ -7,18 +7,17 @@
 import { Router } from "express";
 import type { Response } from "express";
 import { z } from "zod";
-import { asyncHandler } from "../middleware/errorHandler";
+
 import { loadUser } from "../middleware/auth";
-import { validateParams } from "../utils/validation";
-import { idParamSchema } from "../validation/schemas";
+import type { AuthenticatedRequest } from "../middleware/auth";
+import { asyncHandler } from "../middleware/errorHandler";
 import {
   getAllAggregatorMetadata,
-  getAggregatorMetadataById,
   getAggregatorOptions,
   getGroupedAggregatorMetadata,
   getAggregatorDetail,
 } from "../services/aggregator.service";
-import type { AuthenticatedRequest } from "../middleware/auth";
+import { validateParams } from "../utils/validation";
 
 const router = Router();
 

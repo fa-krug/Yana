@@ -2,20 +2,16 @@
  * Tests for aggregator base functionality and template method flow.
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { BaseAggregator } from "../base/aggregator";
-import type { RawArticle } from "../base/types";
-import { FullWebsiteAggregator } from "../full_website";
-import { FeedContentAggregator } from "../feed_content";
 import Parser from "rss-parser";
-import {
-  setupTestDb,
-  teardownTestDb,
-  getTestDb,
-} from "../../../../tests/utils/testDb";
-import { db, articles, feeds, users } from "../../db";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+
 import { testUser } from "../../../../tests/utils/fixtures";
+import { setupTestDb, teardownTestDb } from "../../../../tests/utils/testDb";
+import { db, articles, feeds } from "../../db";
 import { createUser } from "../../services/user.service";
+import type { RawArticle } from "../base/types";
+import { FeedContentAggregator } from "../feed_content";
+import { FullWebsiteAggregator } from "../full_website";
 
 // Mock logger
 vi.mock("../../utils/logger", () => ({
@@ -31,7 +27,7 @@ vi.mock("../../utils/logger", () => ({
       error: vi.fn(),
     })),
   },
-  createLogger: vi.fn((context) => ({
+  createLogger: vi.fn((_context) => ({
     info: vi.fn(),
     debug: vi.fn(),
     warn: vi.fn(),
@@ -93,7 +89,7 @@ describe("BaseAggregator - Template Method Flow", () => {
       aggregator.initialize(mockFeed, false, {});
 
       // Mock fetchSourceData
-      const mockFeedData: Parser.Output<any> = {
+      const mockFeedData: Parser.Output<unknown> = {
         items: [
           {
             title: "Test Article",
@@ -348,7 +344,7 @@ describe("BaseAggregator - Template Method Flow", () => {
       };
 
       // Mock fetchSourceData to return valid feed data
-      const mockFeedData: Parser.Output<any> = {
+      const mockFeedData: Parser.Output<unknown> = {
         items: [
           {
             title: "Test Article",
@@ -379,7 +375,7 @@ describe("BaseAggregator - Template Method Flow", () => {
                 article.url,
                 article,
               );
-            } catch (error) {
+            } catch {
               // Fallback to summary
               article.content = article.summary || "";
             }

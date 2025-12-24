@@ -2,12 +2,13 @@
  * Scheduled task definitions.
  */
 
-import { logger } from "../utils/logger";
-import { db, articles, tasks } from "../db";
-import { lt, or, eq, and } from "drizzle-orm";
 import { subMonths, subDays } from "date-fns";
-import { recordExecution } from "../services/taskHistory.service";
+import { lt, and } from "drizzle-orm";
+
+import { db, articles, tasks } from "../db";
 import { getEventEmitter } from "../services/eventEmitter.service";
+import { recordExecution } from "../services/taskHistory.service";
+import { logger } from "../utils/logger";
 
 /**
  * Aggregate all feeds.
@@ -54,9 +55,7 @@ export async function deleteOldArticlesTask(months: number = 2): Promise<void> {
     const cutoffDate = subMonths(new Date(), months);
 
     // Delete articles older than cutoff
-    const result = await db
-      .delete(articles)
-      .where(lt(articles.createdAt, cutoffDate));
+    await db.delete(articles).where(lt(articles.createdAt, cutoffDate));
 
     const duration = Date.now() - startTime;
     logger.info({ months, cutoffDate }, "Old articles deleted");
@@ -92,7 +91,7 @@ export async function cleanupTaskHistoryTask(days: number = 7): Promise<void> {
     const cutoffDate = subDays(new Date(), days);
 
     // Delete completed and failed tasks older than cutoff
-    const result = await db.delete(tasks).where(
+    await db.delete(tasks).where(
       and(
         lt(tasks.createdAt, cutoffDate),
         // Only delete completed or failed tasks

@@ -2,6 +2,7 @@
  * Shared header component used across the application.
  */
 
+import { CommonModule } from "@angular/common";
 import {
   Component,
   inject,
@@ -9,17 +10,17 @@ import {
   output,
   ChangeDetectionStrategy,
 } from "@angular/core";
-import { CommonModule } from "@angular/common";
-import { Router } from "@angular/router";
-import { MatToolbarModule } from "@angular/material/toolbar";
 import { MatButtonModule } from "@angular/material/button";
+import { MatDividerModule } from "@angular/material/divider";
 import { MatIconModule } from "@angular/material/icon";
 import { MatMenuModule } from "@angular/material/menu";
-import { MatDividerModule } from "@angular/material/divider";
+import { MatToolbarModule } from "@angular/material/toolbar";
 import { MatTooltipModule } from "@angular/material/tooltip";
+import { Router } from "@angular/router";
+
 import { AuthService } from "@app/core/services/auth.service";
-import { ThemeService } from "@app/core/services/theme.service";
 import { KeyboardShortcutsService } from "@app/core/services/keyboard-shortcuts.service";
+import { ThemeService } from "@app/core/services/theme.service";
 
 @Component({
   selector: "app-header",

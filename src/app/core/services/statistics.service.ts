@@ -3,10 +3,10 @@
  * Now uses tRPC for type-safe API calls.
  */
 
-import { Injectable, inject, signal, PLATFORM_ID } from "@angular/core";
 import { isPlatformBrowser } from "@angular/common";
-import { from, of } from "rxjs";
-import { tap, catchError } from "rxjs";
+import { Injectable, inject, signal, PLATFORM_ID } from "@angular/core";
+import { from, of, tap, catchError } from "rxjs";
+
 import { Statistics } from "../models";
 import { TRPCService } from "../trpc/trpc.service";
 

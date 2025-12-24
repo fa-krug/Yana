@@ -3,8 +3,10 @@
  */
 
 import { logger } from "@server/utils/logger";
-import { convertRedditMarkdown, escapeHtml } from "./markdown";
-import { fixRedditMediaUrl, decodeHtmlEntitiesInUrl } from "./urls";
+
+import { ArticleSkipError } from "../base/exceptions";
+
+import { fetchPostComments, formatCommentHtml } from "./comments";
 import {
   extractAnimatedGifUrl,
   extractRedditVideoPreview,
@@ -13,9 +15,9 @@ import {
   wouldUseYouTubeAsHeader,
   wouldUseGifAsHeader,
 } from "./images";
-import { fetchPostComments, formatCommentHtml } from "./comments";
-import { ArticleSkipError } from "../base/exceptions";
+import { convertRedditMarkdown, escapeHtml } from "./markdown";
 import type { RedditPostData } from "./types";
+import { fixRedditMediaUrl, decodeHtmlEntitiesInUrl } from "./urls";
 
 /**
  * Build post content with comments.

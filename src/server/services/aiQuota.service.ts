@@ -5,10 +5,12 @@
  */
 
 import { eq } from "drizzle-orm";
+
 import { db, userAIQuotas } from "../db";
-import { AIQuotaExceededError } from "./ai.service.interface";
-import { logger } from "../utils/logger";
 import type { UserAIQuota } from "../db/types";
+import { logger } from "../utils/logger";
+
+import { AIQuotaExceededError } from "./ai.service.interface";
 
 /**
  * Get user AI quota.

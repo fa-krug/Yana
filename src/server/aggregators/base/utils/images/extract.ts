@@ -3,7 +3,12 @@
  */
 
 import * as cheerio from "cheerio";
+
 import { logger } from "@server/utils/logger";
+
+import { ArticleSkipError } from "../../exceptions";
+import { is4xxError } from "../http-errors";
+
 import {
   handleDirectImageUrl,
   handleYouTubeThumbnail,
@@ -12,8 +17,6 @@ import {
   handleInlineSvg,
   handlePageImages,
 } from "./strategies/index";
-import { is4xxError } from "../http-errors";
-import { ArticleSkipError } from "../../exceptions";
 
 /**
  * Extract an image from a URL using multiple strategies.
@@ -51,7 +54,7 @@ export async function extractImageFromUrl(
     // This ensures we get dynamically loaded content like inline SVGs
     // We'll keep the page open to potentially screenshot SVG elements with their backgrounds
     const fetchModule = await import("../../fetch");
-    const browser = await (fetchModule as any).getBrowser();
+    const browser = await fetchModule.getBrowser();
     const page = await browser.newPage();
 
     let html: string;
@@ -150,7 +153,7 @@ export async function extractImageFromUrl(
     logger.warn({ error, url }, "Failed to extract image from URL");
     // Make sure page is closed even on error
     try {
-      const page = (error as any).page;
+      const page = (error as { page?: { close: () => Promise<void> } }).page;
       if (page) await page.close();
     } catch {
       // Ignore cleanup errors

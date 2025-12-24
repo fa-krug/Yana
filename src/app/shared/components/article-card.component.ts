@@ -2,14 +2,15 @@
  * Shared article card component - displays article in grid/list layout.
  */
 
-import { Component, inject, input, output } from "@angular/core";
 import { CommonModule } from "@angular/common";
-import { RouterModule } from "@angular/router";
-import { MatCardModule } from "@angular/material/card";
+import { Component, input, output } from "@angular/core";
 import { MatButtonModule } from "@angular/material/button";
-import { MatIconModule } from "@angular/material/icon";
+import { MatCardModule } from "@angular/material/card";
 import { MatChipsModule } from "@angular/material/chips";
+import { MatIconModule } from "@angular/material/icon";
 import { MatTooltipModule } from "@angular/material/tooltip";
+import { RouterModule } from "@angular/router";
+
 import { Article } from "@app/core/models";
 import { getProxiedImageUrl } from "@app/core/utils/image-proxy.util";
 

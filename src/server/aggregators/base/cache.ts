@@ -89,7 +89,11 @@ export function getCache(
   if (!aggregatorCaches.has(aggregatorId)) {
     aggregatorCaches.set(aggregatorId, new LRUCache(maxSize, ttl));
   }
-  return aggregatorCaches.get(aggregatorId)!;
+  const cache = aggregatorCaches.get(aggregatorId);
+  if (!cache) {
+    throw new Error(`Cache not found for aggregator: ${aggregatorId}`);
+  }
+  return cache;
 }
 
 /**

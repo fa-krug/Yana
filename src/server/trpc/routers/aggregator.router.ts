@@ -5,20 +5,22 @@
  * All endpoints are public (no authentication required).
  */
 
-import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { router, publicProcedure, protectedProcedure } from "../procedures";
+import { z } from "zod";
+
+import { NotFoundError } from "@server/errors";
 import {
   getAllAggregatorMetadata,
   getAggregatorDetail,
   getAggregatorOptions,
   getGroupedAggregatorMetadata,
 } from "@server/services/aggregator.service";
-import { NotFoundError } from "@server/errors";
 import { searchRedditSubreddits } from "@server/services/reddit.service";
-import { searchYouTubeChannels } from "@server/services/youtube.service";
 import { getUserSettings } from "@server/services/userSettings.service";
+import { searchYouTubeChannels } from "@server/services/youtube.service";
+
 import { getAuthenticatedUser } from "../middleware";
+import { router, publicProcedure, protectedProcedure } from "../procedures";
 
 /**
  * Aggregator router.

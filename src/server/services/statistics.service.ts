@@ -5,9 +5,11 @@
  */
 
 import { eq, and, or, isNull, sql, gte, inArray } from "drizzle-orm";
+
 import { db, articles, feeds, userArticleStates } from "../db";
-import type { UserInfo } from "./article.service";
 import { cache } from "../utils/cache";
+
+import type { UserInfo } from "./article.service";
 
 /**
  * Statistics data structure.

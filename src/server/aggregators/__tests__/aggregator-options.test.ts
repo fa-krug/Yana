@@ -5,30 +5,30 @@
  * and persist through all stages without being overwritten.
  */
 
+import axios from "axios";
+import { eq } from "drizzle-orm";
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { setupTestDb, teardownTestDb } from "../../../../tests/utils/testDb";
+
+import { db, feeds } from "@server/db";
+
 import { testUser } from "../../../../tests/utils/fixtures";
+import { setupTestDb, teardownTestDb } from "../../../../tests/utils/testDb";
 import { createUser } from "../../services/user.service";
+import { FullWebsiteAggregator } from "../full_website";
+import { HeiseAggregator } from "../heise";
+import { MacTechNewsAggregator } from "../mactechnews";
+import { MeinMmoAggregator } from "../mein_mmo";
+import { RedditAggregator } from "../reddit";
+import { YouTubeAggregator } from "../youtube";
+
 import {
   createFeedWithOptions,
   runFullAggregation,
   getFeedArticles,
   verifyArticleContent,
-  verifyArticleMetadata,
   verifySelectorsRemoved,
-  verifyRegexReplacements,
   traceAggregation,
 } from "./options-helpers";
-import { FullWebsiteAggregator } from "../full_website";
-import { RedditAggregator } from "../reddit";
-import { YouTubeAggregator } from "../youtube";
-import { MacTechNewsAggregator } from "../mactechnews";
-import { HeiseAggregator } from "../heise";
-import { MeinMmoAggregator } from "../mein_mmo";
-import Parser from "rss-parser";
-import axios from "axios";
-import { db, feeds } from "@server/db";
-import { eq } from "drizzle-orm";
 
 // Mock logger
 vi.mock("../../utils/logger", () => ({
@@ -44,7 +44,7 @@ vi.mock("../../utils/logger", () => ({
       error: vi.fn(),
     })),
   },
-  createLogger: vi.fn((context) => ({
+  createLogger: vi.fn((_context) => ({
     info: vi.fn(),
     debug: vi.fn(),
     warn: vi.fn(),
@@ -690,7 +690,7 @@ describe("Aggregator Options Integration Tests", () => {
             const urlObj = new URL(url);
             typeParam = urlObj.searchParams.get("type");
             qParam = urlObj.searchParams.get("q");
-          } catch (e) {
+          } catch {
             // If URL parsing fails, try to extract from config params
             if (config?.params) {
               typeParam = config.params.type || null;
@@ -772,7 +772,7 @@ describe("Aggregator Options Integration Tests", () => {
             const urlObj = new URL(url);
             partParam = urlObj.searchParams.get("part");
             forUsernameParam = urlObj.searchParams.get("forUsername");
-          } catch (e) {
+          } catch {
             // If URL parsing fails, try to extract from config params
             if (config?.params) {
               partParam = config.params.part || null;
@@ -1212,11 +1212,9 @@ describe("Aggregator Options Integration Tests", () => {
       // When traverse_multipage is enabled, fetchArticleContentInternal calls fetchAllPages
       // Mock fetchAllPages to return combined multipage content
       const fetchingModule = await import("../mein_mmo/fetching");
-      const fetchAllPagesSpy = vi
-        .spyOn(fetchingModule, "fetchAllPages")
-        .mockResolvedValue(
-          "<div class='gp-entry-content'><p>Page 1 content</p><p>Page 2 content</p></div>",
-        );
+      vi.spyOn(fetchingModule, "fetchAllPages").mockResolvedValue(
+        "<div class='gp-entry-content'><p>Page 1 content</p><p>Page 2 content</p></div>",
+      );
 
       // Mock the base fetchArticleContentInternal that fetchAllPages will call
       // This needs to be on the prototype since fetchAllPages calls super.fetchArticleContentInternal
@@ -1577,7 +1575,7 @@ describe("Aggregator Options Integration Tests", () => {
       expect(trace1.savedArticles.length).toBe(1);
 
       // Second aggregation with same article (should skip duplicate)
-      const trace2 = await traceAggregation(feed.id, "skipDuplicates-second");
+      await traceAggregation(feed.id, "skipDuplicates-second");
 
       const savedArticles = await getFeedArticles(feed.id);
 
@@ -1645,7 +1643,7 @@ describe("Aggregator Options Integration Tests", () => {
       vi.spyOn(
         aggregator as any,
         "fetchArticleContentInternal",
-      ).mockImplementation(async (url: string) => {
+      ).mockImplementation(async (_url: string) => {
         // Return content with ad div and "old content" text
         // exclude_selectors will remove .ad, regex_replacements will replace "old" with "new"
         // Use full HTML structure for extractContent

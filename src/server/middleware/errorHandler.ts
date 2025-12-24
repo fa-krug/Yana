@@ -6,15 +6,14 @@
  */
 
 import type { Request, Response, NextFunction } from "express";
-import { logger } from "../utils/logger";
+
 import {
   ServiceError,
   NotFoundError,
-  PermissionDeniedError,
   ValidationError,
   DatabaseError,
-  AuthenticationError,
 } from "../errors";
+import { logger } from "../utils/logger";
 
 const isDevelopment = process.env["NODE_ENV"] === "development";
 
@@ -26,7 +25,7 @@ export function errorHandler(
   err: Error,
   req: Request,
   res: Response,
-  next: NextFunction,
+  _next: NextFunction,
 ): void {
   // Ensure we have a proper error message
   const errorMessage = err.message || String(err) || "Unknown error";

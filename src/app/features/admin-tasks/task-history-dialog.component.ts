@@ -2,6 +2,7 @@
  * Task history dialog component.
  */
 
+import { CommonModule } from "@angular/common";
 import {
   Component,
   inject,
@@ -9,16 +10,16 @@ import {
   signal,
   ChangeDetectionStrategy,
 } from "@angular/core";
-import { CommonModule } from "@angular/common";
+import { MatChipsModule } from "@angular/material/chips";
 import {
   MatDialogModule,
   MatDialogRef,
   MAT_DIALOG_DATA,
 } from "@angular/material/dialog";
-import { MatTableModule } from "@angular/material/table";
-import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatIconModule } from "@angular/material/icon";
-import { MatChipsModule } from "@angular/material/chips";
+import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
+import { MatTableModule } from "@angular/material/table";
+
 import {
   AdminTasksService,
   type TaskExecution,

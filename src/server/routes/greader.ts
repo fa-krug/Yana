@@ -6,15 +6,16 @@
 
 import { Router } from "express";
 import type { Request, Response } from "express";
+
+import { NotFoundError, PermissionDeniedError } from "../errors";
+import { loadUser } from "../middleware/auth";
+import type { AuthenticatedRequest } from "../middleware/auth";
 import { asyncHandler } from "../middleware/errorHandler";
 import {
   authenticateWithCredentials,
   authenticateRequest,
   generateSessionToken,
 } from "../services/greader/auth.service";
-import { loadUser } from "../middleware/auth";
-import type { AuthenticatedRequest } from "../middleware/auth";
-import { NotFoundError, PermissionDeniedError } from "../errors";
 
 const router = Router();
 

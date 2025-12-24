@@ -1,20 +1,21 @@
+import { CommonModule } from "@angular/common";
 import {
   Component,
-  OnInit,
   AfterViewInit,
   inject,
   signal,
   ViewChild,
 } from "@angular/core";
-import { CommonModule } from "@angular/common";
+import { MatIconModule } from "@angular/material/icon";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
-import { MatIconModule } from "@angular/material/icon";
+
 import { UserSettingsService } from "@app/core/services/user-settings.service";
+
+import { OpenAISettingsComponent } from "./components/openai-settings.component";
 import { ProfileSettingsComponent } from "./components/profile-settings.component";
 import { RedditSettingsComponent } from "./components/reddit-settings.component";
 import { YouTubeSettingsComponent } from "./components/youtube-settings.component";
-import { OpenAISettingsComponent } from "./components/openai-settings.component";
 
 @Component({
   selector: "app-settings",
@@ -32,7 +33,7 @@ import { OpenAISettingsComponent } from "./components/openai-settings.component"
   templateUrl: "./settings.component.html",
   styleUrls: ["./settings.component.scss"],
 })
-export class SettingsComponent implements OnInit, AfterViewInit {
+export class SettingsComponent implements AfterViewInit {
   private readonly settingsService = inject(UserSettingsService);
   private readonly snackBar = inject(MatSnackBar);
 
@@ -46,10 +47,6 @@ export class SettingsComponent implements OnInit, AfterViewInit {
   protected openaiSettings!: OpenAISettingsComponent;
 
   protected readonly loading = signal(false);
-
-  ngOnInit(): void {
-    // Component initialization - data loading happens in ngAfterViewInit
-  }
 
   ngAfterViewInit(): void {
     // Use setTimeout to ensure ViewChild references are fully available
@@ -87,7 +84,7 @@ export class SettingsComponent implements OnInit, AfterViewInit {
   protected loadSettings(): void {
     // Load basic enabled flags
     this.settingsService.getSettings().subscribe({
-      next: (settings) => {
+      next: (_settings) => {
         // Enabled flags will be set when full settings load
       },
       error: () => {

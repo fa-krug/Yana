@@ -153,6 +153,12 @@ npm run start            # Start Angular dev server (uses proxy to backend)
 # Building
 npm run build            # Build Angular for production
 
+# Code Quality
+npm run lint             # Run ESLint to check for linting errors
+npm run lint:fix          # Run ESLint and auto-fix issues
+npm run format            # Format code with Prettier
+npm run format:check      # Check code formatting with Prettier
+
 # Database
 npm run db:generate      # Generate Drizzle migrations
 npm run db:migrate       # Run database migrations
@@ -467,6 +473,7 @@ npm run build                # Then build frontend
 - `docs/TRPC_API.md` - Complete tRPC API reference documentation
 - `docs/AGGREGATOR_FLOW.md` - Aggregator flow documentation (Template Method Pattern, step-by-step breakdown, debugging tools)
 - `docs/BACKWARDS_COMPATIBILITY.md` - Backwards compatibility guide explaining how the new architecture maintains compatibility
+- `docs/ESLINT.md` - ESLint configuration, usage, and troubleshooting guide
 
 ## 📄 License
 

@@ -5,15 +5,16 @@
  * throughout the aggregation flow, including after filtering.
  */
 
+import Parser from "rss-parser";
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+
+import { testUser } from "../../../../tests/utils/fixtures";
+import { setupTestDb, teardownTestDb } from "../../../../tests/utils/testDb";
+import { db, articles, feeds } from "../../db";
+import { createUser } from "../../services/user.service";
+import type { RawArticle } from "../base/types";
 import { FullWebsiteAggregator } from "../full_website";
 import { RedditAggregator } from "../reddit";
-import type { RawArticle } from "../base/types";
-import { setupTestDb, teardownTestDb } from "../../../../tests/utils/testDb";
-import { db, articles, feeds, users } from "../../db";
-import { testUser } from "../../../../tests/utils/fixtures";
-import { createUser } from "../../services/user.service";
-import Parser from "rss-parser";
 
 // Mock logger
 vi.mock("../../utils/logger", () => ({
@@ -29,7 +30,7 @@ vi.mock("../../utils/logger", () => ({
       error: vi.fn(),
     })),
   },
-  createLogger: vi.fn((context) => ({
+  createLogger: vi.fn((_context) => ({
     info: vi.fn(),
     debug: vi.fn(),
     warn: vi.fn(),
@@ -128,7 +129,7 @@ describe("Daily Limit Integration Tests", () => {
       aggregator.initialize(feed, false, {});
 
       // Mock fetchSourceData to return feed with 10 items
-      const mockFeedData: Parser.Output<any> = {
+      const mockFeedData: Parser.Output<unknown> = {
         items: Array.from({ length: 10 }, (_, i) => ({
           title: `Article ${i + 1}`,
           link: `https://example.com/article${i + 1}`,
@@ -216,7 +217,7 @@ describe("Daily Limit Integration Tests", () => {
       aggregator.initialize(feed, false, {});
 
       // Mock fetchSourceData
-      const mockFeedData: Parser.Output<any> = {
+      const mockFeedData: Parser.Output<unknown> = {
         items: [
           {
             title: "New Article",
@@ -293,7 +294,7 @@ describe("Daily Limit Integration Tests", () => {
       );
 
       // Mock second run: fetch 10 articles
-      const mockFeedData: Parser.Output<any> = {
+      const mockFeedData: Parser.Output<unknown> = {
         items: Array.from({ length: 10 }, (_, i) => ({
           title: `Second Run Article ${i + 1}`,
           link: `https://example.com/second${i + 1}`,
@@ -379,7 +380,7 @@ describe("Daily Limit Integration Tests", () => {
 
       // Mock fetchSourceData - getDynamicFetchLimit would suggest fetching ~2 posts
       // But we fetch more to account for filtering, say 10 posts
-      const mockFeedData: Parser.Output<any> = {
+      const mockFeedData: Parser.Output<unknown> = {
         items: Array.from({ length: 10 }, (_, i) => ({
           title: `New Article ${i + 1}`,
           link: `https://example.com/new${i + 1}`,

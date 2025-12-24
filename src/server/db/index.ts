@@ -4,13 +4,16 @@
  * Provides Drizzle ORM connection to SQLite database with error handling.
  */
 
+import { mkdirSync, existsSync } from "node:fs";
+import { dirname } from "node:path";
+
 import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
-import * as schema from "./schema";
+
 import { DatabaseError } from "../errors";
 import { logger } from "../utils/logger";
-import { dirname } from "node:path";
-import { mkdirSync, existsSync } from "node:fs";
+
+import * as schema from "./schema";
 
 let sqlite: Database.Database | null = null;
 

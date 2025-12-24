@@ -6,21 +6,22 @@
 
 import { Router } from "express";
 import type { Response } from "express";
-import { asyncHandler } from "../middleware/errorHandler";
+
+import { AuthenticationError } from "../errors";
 import { requireAuth, loadUser } from "../middleware/auth";
+import type { AuthenticatedRequest } from "../middleware/auth";
+import { asyncHandler } from "../middleware/errorHandler";
+import { getUserById, updateUserProfile } from "../services/user.service";
+import {
+  getUserSettings,
+  updateUserSettings,
+} from "../services/userSettings.service";
 import { validateBody } from "../utils/validation";
 import {
   updateUserSettingsSchema,
   updateProfileSchema,
   updatePasswordSchema,
 } from "../validation/schemas";
-import {
-  getUserSettings,
-  updateUserSettings,
-} from "../services/userSettings.service";
-import { getUserById, updateUserProfile } from "../services/user.service";
-import { AuthenticationError } from "../errors";
-import type { AuthenticatedRequest } from "../middleware/auth";
 
 const router = Router();
 
@@ -61,7 +62,7 @@ router.put(
       throw new AuthenticationError("User not found in request");
     }
 
-    const user = await updateUserProfile(req.user.id, req.body);
+    await updateUserProfile(req.user.id, req.body);
     res.json({
       success: true,
       message: "Profile updated successfully",
@@ -277,7 +278,7 @@ router.post(
     // Verify current password
     try {
       await authenticateUser(req.user.username, current_password);
-    } catch (error) {
+    } catch {
       throw new AuthenticationError("Current password is incorrect");
     }
 

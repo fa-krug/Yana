@@ -2,12 +2,13 @@
  * Worker pool monitoring and metrics.
  */
 
-import { getTasksByStatus, listTasks } from "../services/taskQueue.service";
-import { getWorkerPool } from "./pool";
-import { logger } from "../utils/logger";
-import { db, tasks } from "../db";
 import { sql } from "drizzle-orm";
+
+import { db, tasks } from "../db";
+import { getTasksByStatus } from "../services/taskQueue.service";
 import type { TaskStatus } from "../services/taskQueue.service";
+
+import { getWorkerPool } from "./pool";
 
 export interface WorkerMetrics {
   pendingTasks: number;

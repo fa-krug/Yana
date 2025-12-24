@@ -4,14 +4,13 @@
  */
 
 import { Injectable, inject, signal, computed } from "@angular/core";
-import { Observable, from, of } from "rxjs";
-import { tap, catchError, map } from "rxjs";
+import { Observable, from, of, tap, catchError, map } from "rxjs";
+
 import {
   Aggregator,
   AggregatorList,
   AggregatorDetail,
   AggregatorOption,
-  PaginatedResponse,
 } from "../models";
 import { TRPCService } from "../trpc/trpc.service";
 

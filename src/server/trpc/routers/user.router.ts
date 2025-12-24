@@ -4,14 +4,10 @@
  * Handles user profile and settings endpoints.
  */
 
-import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { router, protectedProcedure } from "../procedures";
-import { getAuthenticatedUser } from "../procedures";
-import {
-  getUserSettings,
-  updateUserSettings,
-} from "@server/services/userSettings.service";
+
+import { testOpenAICredentials } from "@server/services/openai.service";
+import { testRedditCredentials } from "@server/services/reddit.service";
 import {
   getUserById,
   updateUserProfile,
@@ -19,14 +15,21 @@ import {
   authenticateUser,
 } from "@server/services/user.service";
 import {
+  getUserSettings,
+  updateUserSettings,
+} from "@server/services/userSettings.service";
+import { testYouTubeCredentials } from "@server/services/youtube.service";
+import {
   updateUserSettingsSchema,
   updateProfileSchema,
   updatePasswordSchema,
 } from "@server/validation/schemas";
-import { AuthenticationError } from "@server/errors";
-import { testRedditCredentials } from "@server/services/reddit.service";
-import { testYouTubeCredentials } from "@server/services/youtube.service";
-import { testOpenAICredentials } from "@server/services/openai.service";
+
+import {
+  router,
+  protectedProcedure,
+  getAuthenticatedUser,
+} from "../procedures";
 
 /**
  * User router.
@@ -132,7 +135,7 @@ export const userRouter = router({
             message: "Reddit credentials validation failed",
             cause: testResult.errors,
           });
-          (error as any).fieldErrors = testResult.errors;
+          (error as { fieldErrors?: unknown }).fieldErrors = testResult.errors;
           throw error;
         }
       }
@@ -203,7 +206,7 @@ export const userRouter = router({
             message: "YouTube credentials validation failed",
             cause: testResult.errors,
           });
-          (error as any).fieldErrors = testResult.errors;
+          (error as { fieldErrors?: unknown }).fieldErrors = testResult.errors;
           throw error;
         }
       }
@@ -295,7 +298,7 @@ export const userRouter = router({
             message: "OpenAI credentials validation failed",
             cause: testResult.errors,
           });
-          (error as any).fieldErrors = testResult.errors;
+          (error as { fieldErrors?: unknown }).fieldErrors = testResult.errors;
           throw error;
         }
       }
@@ -327,7 +330,7 @@ export const userRouter = router({
       // Verify current password
       try {
         await authenticateUser(user.username, current_password);
-      } catch (error) {
+      } catch {
         throw new TRPCError({
           code: "UNAUTHORIZED",
           message: "Current password is incorrect",

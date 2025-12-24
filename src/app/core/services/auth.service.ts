@@ -4,6 +4,7 @@
  * Now uses tRPC for type-safe API calls.
  */
 
+import { isPlatformBrowser } from "@angular/common";
 import {
   Injectable,
   signal,
@@ -11,11 +12,10 @@ import {
   inject,
   PLATFORM_ID,
 } from "@angular/core";
-import { isPlatformBrowser } from "@angular/common";
 import { Router } from "@angular/router";
-import { Observable, from, of } from "rxjs";
-import { tap, catchError, map } from "rxjs";
-import { AuthStatus, LoginRequest, LoginResponse, User } from "../models";
+import { Observable, from, of, tap, catchError, map } from "rxjs";
+
+import { LoginRequest, LoginResponse, User } from "../models";
 import { TRPCService } from "../trpc/trpc.service";
 
 @Injectable({
@@ -101,7 +101,10 @@ export class AuthService {
   ): Observable<LoginResponse | null> {
     const credentials: LoginRequest =
       typeof credentialsOrUsername === "string"
-        ? { username: credentialsOrUsername, password: password! }
+        ? {
+            username: credentialsOrUsername,
+            password: password ?? "",
+          }
         : credentialsOrUsername;
     this.loadingSignal.set(true);
     return from(

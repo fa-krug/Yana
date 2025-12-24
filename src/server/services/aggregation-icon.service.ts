@@ -3,10 +3,11 @@
  */
 
 import { eq } from "drizzle-orm";
-import { db, feeds } from "@server/db";
-import { logger } from "@server/utils/logger";
-import type { Feed } from "@server/db/types";
+
 import type { BaseAggregator } from "@server/aggregators/base/aggregator";
+import { db, feeds } from "@server/db";
+import type { Feed } from "@server/db/types";
+import { logger } from "@server/utils/logger";
 
 /**
  * Collect and update feed icon from aggregator.

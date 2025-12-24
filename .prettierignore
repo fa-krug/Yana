@@ -1,0 +1,21 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+.angular/
+out-tsc/
+coverage/
+
+# Generated files
+**/*.gen.ts
+**/*.gen.*
+
+# Public assets
+public/
+
+# Minified files
+*.min.js
+
+# Type definitions (often generated)
+*.d.ts

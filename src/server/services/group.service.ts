@@ -4,16 +4,17 @@
  * Handles feed group management operations.
  */
 
-import { eq, and, or, isNull, inArray, ne } from "drizzle-orm";
+import { eq, and, isNull, inArray, ne, or } from "drizzle-orm";
+
 import { db, groups, feedGroups, feeds } from "../db";
+import type { Group } from "../db/types";
 import { NotFoundError, PermissionDeniedError, ConflictError } from "../errors";
 import { logger } from "../utils/logger";
-import type { Group, GroupInsert } from "../db/types";
 
 /**
  * Minimal user info needed for group operations.
  */
-type UserInfo = Pick<
+type _UserInfo = Pick<
   { id: number; isSuperuser: boolean },
   "id" | "isSuperuser"
 >;

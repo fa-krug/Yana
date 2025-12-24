@@ -5,9 +5,10 @@
  *   tsx src/server/scripts/createSuperuser.ts <username> <email> <password>
  */
 
-import { createUser } from "../services/user.service";
-import { db, users } from "../db";
 import { eq } from "drizzle-orm";
+
+import { db, users } from "../db";
+import { createUser } from "../services/user.service";
 import { logger } from "../utils/logger";
 
 async function createSuperuser(

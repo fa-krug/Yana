@@ -4,8 +4,8 @@
  */
 
 import { Injectable, inject, signal, computed } from "@angular/core";
-import { Observable, from, of } from "rxjs";
-import { tap, catchError, map } from "rxjs";
+import { Observable, from, of, tap, catchError, map } from "rxjs";
+
 import {
   Feed,
   FeedCreateRequest,
@@ -14,6 +14,7 @@ import {
   PaginatedResponse,
 } from "../models";
 import { TRPCService } from "../trpc/trpc.service";
+
 import { CacheService } from "./cache.service";
 
 export interface FeedFilters {

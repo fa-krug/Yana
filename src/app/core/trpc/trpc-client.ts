@@ -6,6 +6,7 @@
 
 import { createTRPCProxyClient, httpBatchLink } from "@trpc/client";
 import superjson from "superjson";
+
 // Import AppRouter type from server
 // Note: This import works because both src/app and src/server are in the same src directory
 import type { AppRouter } from "@server/trpc/router";

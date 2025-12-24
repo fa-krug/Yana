@@ -5,10 +5,11 @@
  * without fetching full articles from the web.
  */
 
-import { BaseAggregator } from "./base/aggregator";
-import type { RawArticle } from "./base/types";
-import { fetchFeed } from "./base/fetch";
 import Parser from "rss-parser";
+
+import { BaseAggregator } from "./base/aggregator";
+import { fetchFeed } from "./base/fetch";
+import type { RawArticle } from "./base/types";
 
 export class FeedContentAggregator extends BaseAggregator {
   override readonly id: string = "feed_content";
@@ -25,7 +26,7 @@ export class FeedContentAggregator extends BaseAggregator {
    */
   protected override async fetchSourceData(
     limit?: number,
-  ): Promise<Parser.Output<any>> {
+  ): Promise<Parser.Output<unknown>> {
     const startTime = Date.now();
     this.logger.info(
       {
@@ -78,7 +79,7 @@ export class FeedContentAggregator extends BaseAggregator {
       "Parsing RSS feed items",
     );
 
-    const feed = sourceData as Parser.Output<any>;
+    const feed = sourceData as Parser.Output<unknown>;
     const items = feed.items || [];
 
     const articles: RawArticle[] = items.map((item) => ({
@@ -87,7 +88,7 @@ export class FeedContentAggregator extends BaseAggregator {
       published: item.pubDate ? new Date(item.pubDate) : new Date(),
       content: item.content || item.contentSnippet || "",
       summary: item.contentSnippet || item.content || "",
-      author: item.creator || item.author || undefined,
+      author: item.creator || (item as any).author || undefined,
     }));
 
     const elapsed = Date.now() - startTime;
@@ -109,7 +110,7 @@ export class FeedContentAggregator extends BaseAggregator {
   /**
    * Check if content should be fetched - RSS-only aggregator never fetches.
    */
-  protected override shouldFetchContent(article: RawArticle): boolean {
+  protected override shouldFetchContent(_article: RawArticle): boolean {
     // RSS-only aggregator uses content from feed, never fetches from web
     return false;
   }

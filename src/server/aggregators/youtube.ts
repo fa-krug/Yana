@@ -55,14 +55,15 @@
  * For a feed with 50 videos and 10 comments per video: ~53-54 API units per aggregation run.
  */
 
+import { getUserSettings } from "../services/userSettings.service";
+
 import { BaseAggregator } from "./base/aggregator";
 import type { RawArticle } from "./base/types";
-import { getUserSettings } from "../services/userSettings.service";
-import { YouTubeAPIError } from "./youtube/errors";
 import { resolveChannelId, validateYouTubeIdentifier } from "./youtube/channel";
-import type { YouTubeVideo } from "./youtube/videos";
-import { parseYouTubeVideos } from "./youtube/parsing";
+import { YouTubeAPIError } from "./youtube/errors";
 import { fetchYouTubeChannelData } from "./youtube/fetching";
+import { parseYouTubeVideos } from "./youtube/parsing";
+import type { YouTubeVideo } from "./youtube/videos";
 
 // Re-export YouTubeAPIError for external use
 export { YouTubeAPIError } from "./youtube/errors";
@@ -236,7 +237,7 @@ export class YouTubeAggregator extends BaseAggregator {
 
     // Store channel ID for use in fetchSourceData
     // channelId is guaranteed to be non-null here due to the check above
-    (this as any).__channelId = channelId;
+    (this as { __channelId?: string }).__channelId = channelId;
   }
 
   /**
@@ -248,7 +249,7 @@ export class YouTubeAggregator extends BaseAggregator {
     }
 
     const apiKey = await this.getApiKey();
-    const channelId = (this as any).__channelId as string | undefined;
+    const channelId = (this as { __channelId?: string }).__channelId;
 
     if (!channelId) {
       throw new YouTubeAPIError(
@@ -340,7 +341,7 @@ export class YouTubeAggregator extends BaseAggregator {
    */
   protected override async removeElementsBySelectors(
     html: string,
-    article: RawArticle,
+    _article: RawArticle,
   ): Promise<string> {
     const { removeElementsBySelectors } = await import("./base/utils");
     const cheerio = await import("cheerio");
@@ -376,7 +377,7 @@ export class YouTubeAggregator extends BaseAggregator {
         if (response.status === 200) {
           return thumbnailUrl;
         }
-      } catch (error) {
+      } catch {
         // Try next quality
         continue;
       }

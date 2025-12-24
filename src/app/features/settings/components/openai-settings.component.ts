@@ -2,16 +2,17 @@
  * OpenAI settings component - OpenAI API configuration form.
  */
 
-import { Component, inject, input, output } from "@angular/core";
 import { CommonModule } from "@angular/common";
+import { Component, inject, input, output } from "@angular/core";
 import { FormBuilder, FormGroup, ReactiveFormsModule } from "@angular/forms";
+import { MatButtonModule } from "@angular/material/button";
 import { MatCardModule } from "@angular/material/card";
+import { MatCheckboxModule } from "@angular/material/checkbox";
 import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatInputModule } from "@angular/material/input";
-import { MatButtonModule } from "@angular/material/button";
-import { MatCheckboxModule } from "@angular/material/checkbox";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
+
 import { UserSettingsService } from "@app/core/services/user-settings.service";
 
 @Component({

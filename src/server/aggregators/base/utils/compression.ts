@@ -3,6 +3,7 @@
  */
 
 import sharp from "sharp";
+
 import { logger } from "@server/utils/logger";
 
 // Image compression settings
@@ -53,13 +54,13 @@ export async function compressImage(
       metadata.height &&
       (metadata.width > maxWidth || metadata.height > maxHeight);
 
-    if (needsResize) {
+    if (needsResize && metadata.width && metadata.height) {
       const ratio = Math.min(
-        maxWidth / metadata.width!,
-        maxHeight / metadata.height!,
+        maxWidth / metadata.width,
+        maxHeight / metadata.height,
       );
-      const newWidth = Math.round(metadata.width! * ratio);
-      const newHeight = Math.round(metadata.height! * ratio);
+      const newWidth = Math.round(metadata.width * ratio);
+      const newHeight = Math.round(metadata.height * ratio);
       img = img.resize(newWidth, newHeight, {
         kernel: sharp.kernel.lanczos3,
       });

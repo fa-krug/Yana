@@ -11,6 +11,7 @@
  * - Responsive table layout
  */
 
+import { CommonModule } from "@angular/common";
 import {
   Component,
   OnInit,
@@ -19,26 +20,24 @@ import {
   signal,
   ChangeDetectionStrategy,
 } from "@angular/core";
-import { CommonModule } from "@angular/common";
 import { FormControl, ReactiveFormsModule } from "@angular/forms";
-import { debounceTime, distinctUntilChanged, Subject, takeUntil } from "rxjs";
-
 // Angular Material
-import { MatCardModule } from "@angular/material/card";
 import { MatButtonModule } from "@angular/material/button";
-import { MatIconModule } from "@angular/material/icon";
-import { MatFormFieldModule } from "@angular/material/form-field";
-import { MatInputModule } from "@angular/material/input";
-import { MatSelectModule } from "@angular/material/select";
-import { MatTableModule } from "@angular/material/table";
-import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
-import { MatPaginatorModule, PageEvent } from "@angular/material/paginator";
-import { MatMenuModule } from "@angular/material/menu";
-import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
-import { MatDialog, MatDialogModule } from "@angular/material/dialog";
-import { MatTooltipModule } from "@angular/material/tooltip";
+import { MatCardModule } from "@angular/material/card";
 import { MatCheckboxModule } from "@angular/material/checkbox";
 import { MatChipsModule } from "@angular/material/chips";
+import { MatDialog, MatDialogModule } from "@angular/material/dialog";
+import { MatFormFieldModule } from "@angular/material/form-field";
+import { MatIconModule } from "@angular/material/icon";
+import { MatInputModule } from "@angular/material/input";
+import { MatMenuModule } from "@angular/material/menu";
+import { MatPaginatorModule, PageEvent } from "@angular/material/paginator";
+import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
+import { MatSelectModule } from "@angular/material/select";
+import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
+import { MatTableModule } from "@angular/material/table";
+import { MatTooltipModule } from "@angular/material/tooltip";
+import { debounceTime, distinctUntilChanged, Subject, takeUntil } from "rxjs";
 
 // Application
 import {
@@ -46,13 +45,14 @@ import {
   User,
   PaginatedUsers,
 } from "@app/core/services/admin-users.service";
-import { UserEditDialogComponent } from "./user-edit-dialog.component";
-import { UserCreateDialogComponent } from "./user-create-dialog.component";
-import { AdminChangePasswordDialogComponent } from "./admin-change-password-dialog.component";
 import {
   ConfirmDialogComponent,
   ConfirmDialogData,
 } from "@app/shared/components/confirm-dialog.component";
+
+import { AdminChangePasswordDialogComponent } from "./admin-change-password-dialog.component";
+import { UserCreateDialogComponent } from "./user-create-dialog.component";
+import { UserEditDialogComponent } from "./user-edit-dialog.component";
 
 @Component({
   selector: "app-users-list",
@@ -668,7 +668,7 @@ export class UsersListComponent implements OnInit, OnDestroy {
           this.usersData.set(data);
           this.loading.set(false);
         },
-        error: (error) => {
+        error: (_error) => {
           this.snackBar.open("Failed to load users", "Close", {
             duration: 3000,
           });

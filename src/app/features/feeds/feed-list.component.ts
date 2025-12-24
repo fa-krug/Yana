@@ -13,6 +13,7 @@
  */
 
 // Angular core
+import { CommonModule } from "@angular/common";
 import {
   Component,
   OnInit,
@@ -22,38 +23,34 @@ import {
   ChangeDetectionStrategy,
   isDevMode,
 } from "@angular/core";
-import { CommonModule } from "@angular/common";
+import { FormControl } from "@angular/forms";
+// Angular Material
+import { MatButtonModule } from "@angular/material/button";
+import { MatCardModule } from "@angular/material/card";
+import { MatDialog, MatDialogModule } from "@angular/material/dialog";
+import { MatIconModule } from "@angular/material/icon";
+import { MatPaginatorModule, PageEvent } from "@angular/material/paginator";
+import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
+import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
 import { RouterModule, ActivatedRoute } from "@angular/router";
-import { FormControl, ReactiveFormsModule } from "@angular/forms";
-
-// RxJS
 import {
   debounceTime,
   distinctUntilChanged,
   interval,
   Subject,
   takeUntil,
-  forkJoin,
 } from "rxjs";
 
-// Angular Material
-import { MatButtonModule } from "@angular/material/button";
-import { MatIconModule } from "@angular/material/icon";
-import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
-import { MatPaginatorModule, PageEvent } from "@angular/material/paginator";
-import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
-import { MatDialog, MatDialogModule } from "@angular/material/dialog";
-import { MatCardModule } from "@angular/material/card";
-
 // Application
-import { FeedService, FeedFilters } from "@app/core/services/feed.service";
 import { Feed } from "@app/core/models";
-import { ConfirmDialogComponent } from "@app/shared/components/confirm-dialog.component";
-import { ConfirmationService } from "@app/core/services/confirmation.service";
 import { ArticleService } from "@app/core/services/article.service";
+import { ConfirmationService } from "@app/core/services/confirmation.service";
+import { FeedService, FeedFilters } from "@app/core/services/feed.service";
 import { GroupService } from "@app/core/services/group.service";
-import { FeedFiltersComponent } from "./components/feed-filters.component";
+import { ConfirmDialogComponent } from "@app/shared/components/confirm-dialog.component";
+
 import { FeedCardComponent } from "./components/feed-card.component";
+import { FeedFiltersComponent } from "./components/feed-filters.component";
 
 @Component({
   selector: "app-feed-list",
@@ -334,7 +331,13 @@ export class FeedListComponent implements OnInit, OnDestroy {
   loadFeeds(silent: boolean = false) {
     const filters: FeedFilters = {
       search: this.searchControl.value || undefined,
-      feedType: this.typeControl.value as any,
+      feedType:
+        (this.typeControl.value as
+          | "article"
+          | "youtube"
+          | "podcast"
+          | "reddit"
+          | null) || undefined,
       enabled: this.enabledControl.value ?? undefined,
       groupId: this.groupControl.value ?? undefined,
       page: this.feedService.currentPage(),
@@ -351,7 +354,13 @@ export class FeedListComponent implements OnInit, OnDestroy {
   onPageChange(event: PageEvent) {
     const filters: FeedFilters = {
       search: this.searchControl.value || undefined,
-      feedType: this.typeControl.value as any,
+      feedType:
+        (this.typeControl.value as
+          | "article"
+          | "youtube"
+          | "podcast"
+          | "reddit"
+          | null) || undefined,
       enabled: this.enabledControl.value ?? undefined,
       groupId: this.groupControl.value ?? undefined,
       page: event.pageIndex + 1,
@@ -387,7 +396,13 @@ export class FeedListComponent implements OnInit, OnDestroy {
           // Refresh feeds to get updated disabled state
           const filters: FeedFilters = {
             search: this.searchControl.value || undefined,
-            feedType: this.typeControl.value as any,
+            feedType:
+              (this.typeControl.value as
+                | "article"
+                | "youtube"
+                | "podcast"
+                | "reddit"
+                | null) || undefined,
             enabled: this.enabledControl.value ?? undefined,
             groupId: this.groupControl.value ?? undefined,
             page: this.feedService.currentPage(),

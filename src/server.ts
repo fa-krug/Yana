@@ -4,11 +4,11 @@
  * This server serves the Angular SSR app and provides API endpoints.
  */
 
-// Load environment variables from .env file
-import { config } from "dotenv";
-
 // Import Angular compiler first to enable JIT compilation when needed
 import "@angular/compiler";
+
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import {
   AngularNodeAppEngine,
@@ -16,28 +16,32 @@ import {
   isMainModule,
   writeResponseToNodeResponse,
 } from "@angular/ssr/node";
-import express from "express";
 import cookieParser from "cookie-parser";
-import session from "express-session";
 import cors from "cors";
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { config } from "dotenv";
+import express from "express";
+import session from "express-session";
 
 // Load .env file after resolve is imported
 config({ path: resolve(process.cwd(), ".env") });
 
-import { requestLogger } from "./server/middleware/requestLogger";
+import { getDatabase } from "./server/db";
+import { checkDbHealth } from "./server/db/transactions";
 import {
   errorHandler,
   notFoundHandler,
 } from "./server/middleware/errorHandler";
-import { logger } from "./server/utils/logger";
-import { checkDbHealth } from "./server/db/transactions";
+import { requestLogger } from "./server/middleware/requestLogger";
 import { setupSecurity } from "./server/middleware/security";
-import { getWorkerPool } from "./server/workers/pool";
-import { startScheduler } from "./server/services/scheduler.service";
-import { getDatabase } from "./server/db";
 import { SQLiteStore } from "./server/middleware/sessionStore";
+import { adminTasksSSERoutes } from "./server/routes/admin-tasks-sse";
+import { greaderRoutes } from "./server/routes/greader";
+import { imageProxyRoutes } from "./server/routes/images";
+import { youtubeRoutes } from "./server/routes/youtube";
+import { startScheduler } from "./server/services/scheduler.service";
+import { createTRPCMiddleware } from "./server/trpc/express";
+import { logger } from "./server/utils/logger";
+import { getWorkerPool } from "./server/workers/pool";
 
 const app = express();
 
@@ -48,7 +52,6 @@ const browserDistFolder = resolve(serverDistFolder, "../browser");
 // Initialize Angular SSR app
 const angularApp = new AngularNodeAppEngine();
 
-const PORT = process.env["PORT"] || 3000;
 const NODE_ENV = process.env["NODE_ENV"] || "development";
 const isDevelopment = NODE_ENV === "development";
 
@@ -69,7 +72,10 @@ app.use((req, res, next) => {
         if (visitor.scheme === "https") {
           // Override req.protocol and req.secure by modifying the connection
           // This is needed because express-session checks req.secure before setting secure cookies
-          (req as any).connection.encrypted = true;
+          (req as { connection?: { encrypted?: boolean } }).connection = {
+            ...req.connection,
+            encrypted: true,
+          };
           // Also set protocol directly
           Object.defineProperty(req, "protocol", {
             value: "https",
@@ -201,15 +207,9 @@ app.get("/api/debug/headers", (req, res) => {
 });
 
 // tRPC API routes - must be synchronous to ensure it's registered before SSR middleware
-import { createTRPCMiddleware } from "./server/trpc/express";
 app.use("/trpc", createTRPCMiddleware());
 
 // API routes - load synchronously to ensure they're registered before requests
-// Import routes synchronously (they're already compiled)
-import { youtubeRoutes } from "./server/routes/youtube";
-import { greaderRoutes } from "./server/routes/greader";
-import { adminTasksSSERoutes } from "./server/routes/admin-tasks-sse";
-import { imageProxyRoutes } from "./server/routes/images";
 
 app.use("/api", youtubeRoutes());
 app.use("/api/greader", greaderRoutes()); // Google Reader API

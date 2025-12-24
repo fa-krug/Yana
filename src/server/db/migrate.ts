@@ -8,13 +8,15 @@
  *   npm run db:migrate
  */
 
-import { migrate } from "drizzle-orm/better-sqlite3/migrator";
+import * as fs from "fs";
+
 import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
-import * as schema from "./schema";
-import * as fs from "fs";
-import * as path from "path";
+import { migrate } from "drizzle-orm/better-sqlite3/migrator";
+
 import { logger } from "../utils/logger";
+
+import * as schema from "./schema";
 
 const databasePath = process.env["DATABASE_URL"] || "./db.sqlite3";
 const migrationsFolder = "./src/server/db/migrations";

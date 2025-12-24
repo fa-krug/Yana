@@ -5,9 +5,11 @@
  */
 
 import { eq, and, asc, desc, inArray, gte, lte, sql } from "drizzle-orm";
+
 import { db, tasks } from "../db";
-import { logger } from "../utils/logger";
 import type { Task, TaskInsert } from "../db/types";
+import { logger } from "../utils/logger";
+
 import { getEventEmitter } from "./eventEmitter.service";
 
 export type TaskStatus = "pending" | "running" | "completed" | "failed";

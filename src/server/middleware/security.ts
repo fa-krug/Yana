@@ -4,9 +4,9 @@
  * Provides security headers, rate limiting, and XSS protection.
  */
 
-import helmet from "helmet";
-import rateLimit from "express-rate-limit";
 import type { Express } from "express";
+import rateLimit from "express-rate-limit";
+import helmet from "helmet";
 
 const isDevelopment = process.env["NODE_ENV"] === "development";
 

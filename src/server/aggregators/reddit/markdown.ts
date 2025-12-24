@@ -3,6 +3,7 @@
  */
 
 import { marked } from "marked";
+
 import { decodeHtmlEntitiesInUrl } from "./urls";
 
 // Configure marked with extensions similar to Python version
@@ -25,7 +26,7 @@ export async function convertRedditMarkdown(text: string): Promise<string> {
 
   // Handle Reddit preview images
   text = text.replace(
-    /(?<!\[\(])https?:\/\/preview\.redd\.it\/[^\s\)]+/g,
+    /(?<!\[\(])https?:\/\/preview\.redd\.it\/[^\s)]+/g,
     (match) => {
       const decodedUrl = decodeHtmlEntitiesInUrl(match);
       return `<img src="${decodedUrl}" alt="Reddit preview image">`;
@@ -34,7 +35,7 @@ export async function convertRedditMarkdown(text: string): Promise<string> {
 
   // Convert markdown links with preview.redd.it URLs to image tags
   text = text.replace(
-    /\[([^\]]*)\]\((https?:\/\/preview\.redd\.it\/[^\)]+)\)/g,
+    /\[([^\]]*)\]\((https?:\/\/preview\.redd\.it\/[^)]+)\)/g,
     (_, alt, url) => {
       const decodedUrl = decodeHtmlEntitiesInUrl(url);
       return `<img src="${decodedUrl}" alt="${alt || "Reddit preview image"}">`;
@@ -43,13 +44,13 @@ export async function convertRedditMarkdown(text: string): Promise<string> {
 
   // Handle Giphy images
   text = text.replace(
-    /!\[([^\]]*)\]\(giphy\|([a-zA-Z0-9]+)(?:\|[^\)]+)?\)/gi,
+    /!\[([^\]]*)\]\(giphy\|([a-zA-Z0-9]+)(?:\|[^)]+)?\)/gi,
     (_, __, giphyId) =>
       `<img src="https://i.giphy.com/${giphyId}.gif" alt="Giphy GIF">`,
   );
 
   text = text.replace(
-    /<img\s+[^>]*src=\s*["']giphy\|([^"'\|]+)[^"']*["'][^>]*>/gi,
+    /<img\s+[^>]*src=\s*["']giphy\|([^"'|]+)[^"']*["'][^>]*>/gi,
     (_, giphyId) =>
       `<img src="https://i.giphy.com/${giphyId}.gif" alt="Giphy GIF">`,
   );

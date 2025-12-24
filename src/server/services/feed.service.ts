@@ -23,12 +23,11 @@ export {
 } from "./feed-crud.service";
 
 // Import and re-export preview and reload functions (keeping them here for now)
-import { eq } from "drizzle-orm";
-import { db, feeds } from "../db";
-import { logger } from "../utils/logger";
-import type { Feed, FeedInsert, User } from "../db/types";
-import { getAggregatorById } from "../aggregators/registry";
 import type { RawArticle } from "../aggregators/base/types";
+import { getAggregatorById } from "../aggregators/registry";
+import type { Feed, FeedInsert, User } from "../db/types";
+import { logger } from "../utils/logger";
+
 import { getFeed } from "./feed-query.service";
 
 /**
@@ -67,7 +66,7 @@ export async function previewFeed(
 }> {
   // Implementation moved to feed-preview.service.ts in future refactoring
   // For now, keeping original implementation here
-  const previewStart = Date.now();
+  const _previewStart = Date.now();
   logger.info(
     {
       userId: user.id,
@@ -137,7 +136,6 @@ export async function previewFeed(
     const timeoutMs = 120000;
     const articleLimits = [1, 5, 10, 25, 50];
     let rawArticles: RawArticle[] = [];
-    let lastError: Error | null = null;
 
     const timeoutPromise = new Promise<never>((_, reject) => {
       setTimeout(() => {
@@ -157,7 +155,8 @@ export async function previewFeed(
           break;
         }
       } catch (error: unknown) {
-        lastError = error instanceof Error ? error : new Error(String(error));
+        const _lastError =
+          error instanceof Error ? error : new Error(String(error));
         if (String(error).includes("timed out")) {
           return {
             success: false,

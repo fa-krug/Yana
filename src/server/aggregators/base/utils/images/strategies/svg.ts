@@ -4,11 +4,12 @@
 
 import * as cheerio from "cheerio";
 import sharp from "sharp";
-import { logger } from "@server/utils/logger";
+
 import {
   MAX_HEADER_IMAGE_WIDTH,
   MAX_HEADER_IMAGE_HEIGHT,
 } from "@server/aggregators/base/utils/compression";
+import { logger } from "@server/utils/logger";
 
 const MAX_IMAGE_WIDTH = 600;
 const MAX_IMAGE_HEIGHT = 600;
@@ -19,7 +20,19 @@ const MAX_IMAGE_HEIGHT = 600;
 export async function handleInlineSvg(
   page: {
     evaluate: (fn: () => unknown) => Promise<unknown>;
-    locator?: (selector: string) => any;
+    locator?: (selector: string) => {
+      first: () => {
+        count: () => Promise<number>;
+        evaluate: (fn: (svg: SVGSVGElement) => unknown) => Promise<unknown>;
+        locator?: (selector: string) => {
+          first: () => {
+            count: () => Promise<number>;
+            elementHandle: () => Promise<unknown>;
+          };
+        };
+      };
+      elementHandle: () => Promise<unknown>;
+    };
   } | null,
   $: cheerio.CheerioAPI,
   html: string,
@@ -33,7 +46,7 @@ export async function handleInlineSvg(
     try {
       // Find the first SVG element - check if it or its parent has a background
       const firstSvg = inlineSvgs.first();
-      let elementToScreenshot = firstSvg[0];
+      let _elementToScreenshot = firstSvg[0];
 
       // Check if parent has background color/style
       const parent = firstSvg.parent();
@@ -48,15 +61,12 @@ export async function handleInlineSvg(
         ) {
           // Try to find the parent element on the page
           const parentSelector = parent.length > 0 ? `:has(> svg)` : null;
-          if (parentSelector && page && page.locator) {
+          if (parentSelector && page?.locator) {
             try {
-              const parentElement = await page
-                .locator("svg")
-                .first()
-                .locator("..")
-                .first();
-              if ((await parentElement.count()) > 0) {
-                elementToScreenshot = await parentElement.elementHandle();
+              const svgElement = page.locator("svg").first();
+              const parentElement = svgElement.locator?.("..").first();
+              if (parentElement && (await parentElement.count()) > 0) {
+                _elementToScreenshot = (await parentElement.elementHandle()) as any;
               }
             } catch {
               // Fallback to SVG itself
@@ -66,11 +76,11 @@ export async function handleInlineSvg(
       }
 
       // Try to extract SVG with its background color
-      if (page && page.locator) {
+      if (page?.locator) {
         const svgLocator = page.locator("svg").first();
         if ((await svgLocator.count()) > 0) {
           // Get SVG HTML, background color, and text color from parent
-          const svgData = await svgLocator.evaluate((svg: SVGSVGElement) => {
+          const svgData = (await svgLocator.evaluate((svg: SVGSVGElement) => {
             const parent = svg.parentElement;
             const parentStyle = parent ? window.getComputedStyle(parent) : null;
             const svgStyle = window.getComputedStyle(svg);
@@ -142,7 +152,13 @@ export async function handleInlineSvg(
               width,
               height,
             };
-          });
+          })) as {
+            svgHtml: string;
+            backgroundColor: string | null;
+            textColor: string | null;
+            width: number;
+            height: number;
+          } | null;
 
           if (svgData && svgData.svgHtml) {
             logger.debug(

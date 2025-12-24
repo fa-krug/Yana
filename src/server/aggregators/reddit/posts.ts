@@ -3,9 +3,11 @@
  */
 
 import axios from "axios";
+
 import { logger } from "@server/utils/logger";
+
 import { getRedditAccessToken } from "./auth";
-import type { RedditPost, RedditPostData } from "./types";
+import type { RedditPostData } from "./types";
 
 /**
  * Fetch a single Reddit post by ID.

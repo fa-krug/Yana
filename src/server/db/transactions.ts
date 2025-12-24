@@ -4,9 +4,10 @@
  * Provides transaction helpers with rollback on errors and retry logic.
  */
 
-import { db } from "./index";
 import { DatabaseError } from "../errors";
 import { logger } from "../utils/logger";
+
+import { db } from "./index";
 
 /**
  * Execute a function within a database transaction.

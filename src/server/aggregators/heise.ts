@@ -4,14 +4,14 @@
  * Specialized aggregator for Heise.de (German tech news).
  */
 
-import { FullWebsiteAggregator } from "./full_website";
-import type { RawArticle } from "./base/types";
-import { extractContent } from "./base/extract";
-import { standardizeContentFormat } from "./base/process";
-import { sanitizeHtml } from "./base/utils";
 import * as cheerio from "cheerio";
+
 import { ContentFetchError } from "./base/exceptions";
+import { extractContent } from "./base/extract";
 import { fetchArticleContent } from "./base/fetch";
+import type { RawArticle } from "./base/types";
+import { sanitizeHtml } from "./base/utils";
+import { FullWebsiteAggregator } from "./full_website";
 
 export class HeiseAggregator extends FullWebsiteAggregator {
   override readonly id = "heise";

@@ -51,7 +51,7 @@ export interface Feed {
   skipDuplicates: boolean;
   useCurrentTimestamp: boolean;
   dailyPostLimit: number;
-  aggregatorOptions: Record<string, any>;
+  aggregatorOptions: Record<string, unknown>;
   userId?: number;
   createdAt: string;
   updatedAt: string;
@@ -78,7 +78,7 @@ export interface FeedCreateRequest {
   skipDuplicates?: boolean;
   useCurrentTimestamp?: boolean;
   dailyPostLimit?: number;
-  aggregatorOptions?: Record<string, any>;
+  aggregatorOptions?: Record<string, unknown>;
   groupIds?: number[];
   // AI features
   aiTranslateTo?: string;
@@ -90,9 +90,7 @@ export interface FeedUpdateRequest extends Partial<FeedCreateRequest> {
   id: number;
 }
 
-export interface FeedPreviewRequest extends FeedCreateRequest {
-  // Same as FeedCreateRequest - used for preview endpoint
-}
+export type FeedPreviewRequest = FeedCreateRequest;
 
 export interface PreviewArticle {
   title: string;

@@ -3,6 +3,7 @@
  */
 
 import type pino from "pino";
+
 import type { RawArticle } from "../types";
 
 /**

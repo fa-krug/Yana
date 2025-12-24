@@ -4,10 +4,14 @@
  * Handles feed group management endpoints.
  */
 
-import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { router, protectedProcedure } from "../procedures";
-import { getAuthenticatedUser } from "../procedures";
+import { z } from "zod";
+
+import {
+  NotFoundError,
+  PermissionDeniedError,
+  ConflictError,
+} from "@server/errors";
 import {
   listGroups,
   getGroup,
@@ -16,11 +20,12 @@ import {
   deleteGroup,
   getFeedGroups,
 } from "@server/services/group.service";
+
 import {
-  NotFoundError,
-  PermissionDeniedError,
-  ConflictError,
-} from "@server/errors";
+  router,
+  protectedProcedure,
+  getAuthenticatedUser,
+} from "../procedures";
 
 /**
  * Helper to convert date to ISO string.

@@ -5,9 +5,10 @@
  * and CORS problems. This ensures images load reliably across all browsers.
  */
 
+import axios from "axios";
 import { Router } from "express";
 import type { Request, Response } from "express";
-import axios from "axios";
+
 import { logger } from "../utils/logger";
 
 const router = Router();
@@ -33,7 +34,7 @@ router.get("/image-proxy", async (req: Request, res: Response) => {
     let parsedUrl: URL;
     try {
       parsedUrl = new URL(imageUrl);
-    } catch (error) {
+    } catch {
       res.status(400).json({ error: "Invalid URL format" });
       return;
     }

@@ -2,13 +2,13 @@
  * AI options component - displays AI-related configuration options.
  */
 
-import { Component, input } from "@angular/core";
 import { CommonModule } from "@angular/common";
-import { FormGroup, ReactiveFormsModule } from "@angular/forms";
+import { Component, input } from "@angular/core";
+import { FormControl, ReactiveFormsModule } from "@angular/forms";
+import { MatCheckboxModule } from "@angular/material/checkbox";
 import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatInputModule } from "@angular/material/input";
 import { MatSelectModule } from "@angular/material/select";
-import { MatCheckboxModule } from "@angular/material/checkbox";
 
 @Component({
   selector: "app-ai-options",
@@ -107,7 +107,7 @@ import { MatCheckboxModule } from "@angular/material/checkbox";
 })
 export class AIOptionsComponent {
   readonly showAIOptions = input.required<boolean>();
-  readonly aiSummarizeControl = input.required<any>();
-  readonly aiTranslateToControl = input.required<any>();
-  readonly aiCustomPromptControl = input.required<any>();
+  readonly aiSummarizeControl = input.required<FormControl>();
+  readonly aiTranslateToControl = input.required<FormControl>();
+  readonly aiCustomPromptControl = input.required<FormControl>();
 }

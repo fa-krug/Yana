@@ -2,8 +2,9 @@
  * Worker health checks.
  */
 
-import { getWorkerMetrics } from "./monitoring";
 import { logger } from "../utils/logger";
+
+import { getWorkerMetrics } from "./monitoring";
 
 /**
  * Get worker health status.

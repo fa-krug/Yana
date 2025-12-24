@@ -6,8 +6,9 @@
  */
 
 import { Router, type Request, type Response } from "express";
-import { asyncHandler } from "../middleware/errorHandler";
+
 import { loadUser, requireAuth, requireSuperuser } from "../middleware/auth";
+import { asyncHandler } from "../middleware/errorHandler";
 import { getEventEmitter } from "../services/eventEmitter.service";
 import { logger } from "../utils/logger";
 
@@ -23,7 +24,7 @@ router.get(
   requireAuth,
   requireSuperuser,
   asyncHandler(async (req: Request, res: Response) => {
-    const session = req.session as { userId?: number; isSuperuser?: boolean };
+    const _session = req.session as { userId?: number; isSuperuser?: boolean };
 
     // IMPORTANT: Don't send response headers after this point - SSE needs to keep connection open
     // Set SSE headers BEFORE any writes
@@ -62,7 +63,7 @@ router.get(
     const heartbeatInterval = setInterval(() => {
       try {
         res.write(`: heartbeat\n\n`);
-      } catch (error) {
+      } catch {
         clearInterval(heartbeatInterval);
         unsubscribe();
         res.end();

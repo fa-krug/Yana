@@ -2,9 +2,11 @@
  * Reddit URL utilities.
  */
 
-import { logger } from "@server/utils/logger";
-import { getRedditAccessToken } from "./auth";
 import axios from "axios";
+
+import { logger } from "@server/utils/logger";
+
+import { getRedditAccessToken } from "./auth";
 
 /**
  * Reddit subreddit info interface.
@@ -208,7 +210,7 @@ export function extractUrlsFromText(text: string): string[] {
   const urls: string[] = [];
 
   // Pattern for markdown links: [text](url)
-  const markdownLinkPattern = /\[([^\]]*)\]\((https?:\/\/[^\)]+)\)/g;
+  const markdownLinkPattern = /\[([^\]]*)\]\((https?:\/\/[^)]+)\)/g;
   let match;
   while ((match = markdownLinkPattern.exec(text)) !== null) {
     urls.push(decodeHtmlEntitiesInUrl(match[2]));
@@ -216,7 +218,7 @@ export function extractUrlsFromText(text: string): string[] {
 
   // Pattern for plain URLs: http:// or https://
   // This regex matches URLs but avoids matching URLs already found in markdown links
-  const plainUrlPattern = /(?<!\]\()(https?:\/\/[^\s\)]+)/g;
+  const plainUrlPattern = /(?<!\]\()(https?:\/\/[^\s)]+)/g;
   while ((match = plainUrlPattern.exec(text)) !== null) {
     // Remove trailing punctuation that might be part of the sentence
     const url = match[1].replace(/[.,;:!?)]+$/, "");

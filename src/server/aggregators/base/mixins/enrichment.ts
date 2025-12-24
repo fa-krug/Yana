@@ -3,8 +3,9 @@
  */
 
 import type pino from "pino";
-import type { RawArticle } from "../types";
+
 import { ArticleSkipError } from "../exceptions";
+import type { RawArticle } from "../types";
 
 /**
  * Interface for aggregator with enrichment functionality.

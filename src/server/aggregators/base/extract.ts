@@ -3,9 +3,9 @@
  */
 
 import * as cheerio from "cheerio";
-import type { AnyNode, Element } from "domhandler";
+import type { AnyNode } from "domhandler";
+
 import { logger } from "@server/utils/logger";
-import { removeElementsBySelectors } from "./utils";
 
 export interface ExtractOptions {
   selectorsToRemove?: string[];

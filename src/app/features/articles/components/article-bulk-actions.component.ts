@@ -11,6 +11,7 @@
  */
 
 // Angular core
+import { CommonModule } from "@angular/common";
 import {
   Component,
   inject,
@@ -19,17 +20,13 @@ import {
   signal,
   ChangeDetectionStrategy,
 } from "@angular/core";
-import { CommonModule } from "@angular/common";
-
-// RxJS
-import { finalize } from "rxjs";
-
 // Angular Material
 import { MatButtonModule } from "@angular/material/button";
-import { MatIconModule } from "@angular/material/icon";
-import { MatTooltipModule } from "@angular/material/tooltip";
-import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
 import { MatDialog, MatDialogModule } from "@angular/material/dialog";
+import { MatIconModule } from "@angular/material/icon";
+import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
+import { MatTooltipModule } from "@angular/material/tooltip";
+import { finalize } from "rxjs";
 
 // Application
 import {

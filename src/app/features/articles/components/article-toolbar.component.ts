@@ -2,13 +2,14 @@
  * Article toolbar component - action buttons for article detail view.
  */
 
-import { Component, input, output } from "@angular/core";
 import { CommonModule } from "@angular/common";
-import { RouterModule } from "@angular/router";
+import { Component, input, output } from "@angular/core";
 import { MatButtonModule } from "@angular/material/button";
 import { MatIconModule } from "@angular/material/icon";
 import { MatMenuModule } from "@angular/material/menu";
 import { MatTooltipModule } from "@angular/material/tooltip";
+import { RouterModule } from "@angular/router";
+
 import { ArticleDetail } from "@app/core/models";
 
 @Component({

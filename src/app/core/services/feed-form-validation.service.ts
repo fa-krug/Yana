@@ -2,21 +2,21 @@
  * Service for feed form validation logic.
  */
 
-import { Injectable } from "@angular/core";
+import { Injectable, inject } from "@angular/core";
 import {
   FormBuilder,
   FormGroup,
-  FormControl,
   Validators,
   AbstractControl,
 } from "@angular/forms";
+
 import { AggregatorDetail } from "../models";
 
 @Injectable({
   providedIn: "root",
 })
 export class FeedFormValidationService {
-  constructor(private fb: FormBuilder) {}
+  private fb = inject(FormBuilder);
 
   /**
    * Create the base feed form group.
@@ -71,7 +71,7 @@ export class FeedFormValidationService {
           try {
             JSON.parse(control.value);
             return null;
-          } catch (e) {
+          } catch {
             return { jsonInvalid: true };
           }
         });

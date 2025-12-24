@@ -5,10 +5,10 @@
  */
 
 import { eq } from "drizzle-orm";
+
 import { db, userSettings } from "../db";
-import { NotFoundError } from "../errors";
-import { logger } from "../utils/logger";
 import type { UserSettings, UserSettingsInsert } from "../db/types";
+import { logger } from "../utils/logger";
 
 /**
  * Get user settings by user ID.

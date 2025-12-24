@@ -3,16 +3,21 @@
  * Creates HTML elements (img or iframe) from URLs with proper handling for
  * different URL types (images, YouTube, Twitter/X, Reddit, etc.).
  */
-
+import { fetchRedditIcon } from "@server/services/icon.service";
 import { logger } from "@server/utils/logger";
-import { extractImageFromUrl } from "./images/extract";
+
+import { extractPostInfoFromUrl } from "../../reddit/urls";
+import { ArticleSkipError } from "../exceptions";
+
 import {
   compressImage,
   MAX_HEADER_IMAGE_WIDTH,
   MAX_HEADER_IMAGE_HEIGHT,
 } from "./compression";
+import { is4xxError } from "./http-errors";
+import { fetchSingleImage } from "./images";
+import { extractImageFromUrl } from "./images/extract";
 import { extractYouTubeVideoId, createYouTubeEmbedHtml } from "./youtube";
-import { extractPostInfoFromUrl } from "../../reddit/urls";
 
 /**
  * Check if URL is a Reddit video embed URL (vxreddit.com or reddit.com with /embed).
@@ -49,10 +54,6 @@ function createRedditEmbedHtml(embedUrl: string, caption?: string): string {
     `</div>`;
   return iframeHtml;
 }
-import { fetchRedditIcon } from "@server/services/icon.service";
-import { fetchSingleImage } from "./images";
-import { is4xxError } from "./http-errors";
-import { ArticleSkipError } from "../exceptions";
 
 /**
  * Create a header HTML element from a URL.
@@ -221,7 +222,7 @@ export async function createHeaderElementFromUrl(
     const dataUri = `data:${outputType};base64,${imageB64}`;
 
     // Create img element with base64 data URI
-    let imgHtml = `<p><img src="${dataUri}" alt="${alt}" style="max-width: 100%; height: auto;"></p>`;
+    const imgHtml = `<p><img src="${dataUri}" alt="${alt}" style="max-width: 100%; height: auto;"></p>`;
 
     logger.debug(
       { url, contentType: outputType, size: compressedData.length },

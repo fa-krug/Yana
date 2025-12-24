@@ -2,15 +2,17 @@
  * Tests for authentication router.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { appRouter } from "@server/trpc/router";
-import { createContext } from "@server/trpc/context";
+import bcrypt from "bcrypt";
+import { eq } from "drizzle-orm";
 import type { Request, Response } from "express";
 import type { Session } from "express-session";
-import { setupTestDb, teardownTestDb } from "../../../../../tests/utils/testDb";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+
 import { db, users } from "@server/db";
-import { eq } from "drizzle-orm";
-import bcrypt from "bcrypt";
+import { createContext } from "@server/trpc/context";
+import { appRouter } from "@server/trpc/router";
+
+import { setupTestDb, teardownTestDb } from "../../../../../tests/utils/testDb";
 
 describe("Auth Router", () => {
   let testUser: {

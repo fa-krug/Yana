@@ -5,11 +5,12 @@
  * with the new Template Method Pattern aggregator architecture.
  */
 
-import { describe, it, expect } from "vitest";
-import { appRouter } from "@server/trpc/router";
-import { createContext } from "@server/trpc/context";
 import type { Request, Response } from "express";
 import type { Session } from "express-session";
+import { describe, it, expect } from "vitest";
+
+import { createContext } from "@server/trpc/context";
+import { appRouter } from "@server/trpc/router";
 
 describe("Aggregator Router", () => {
   const createMockContext = async () => {

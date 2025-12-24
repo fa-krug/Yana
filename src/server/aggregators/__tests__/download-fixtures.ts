@@ -5,11 +5,12 @@
  * Usage: npx tsx src/server/aggregators/__tests__/download-fixtures.ts
  */
 
-import { chromium, type Browser } from "playwright";
 import * as fs from "fs/promises";
 import * as path from "path";
+
+import { chromium, type Browser } from "playwright";
+
 import { fetchFeed } from "../base/fetch";
-import Parser from "rss-parser";
 
 /**
  * RSS feed URLs for each aggregator.

@@ -3,10 +3,11 @@
  * Uses Sharp to resize the PNG logo to various sizes.
  */
 
-import sharp from "sharp";
 import { existsSync } from "fs";
 import { mkdir } from "fs/promises";
 import { join } from "path";
+
+import sharp from "sharp";
 
 const sizes = [72, 96, 128, 144, 152, 192, 384, 512];
 const publicDir = join(process.cwd(), "public");
@@ -24,6 +25,7 @@ async function generateIcons() {
     await mkdir(iconsDir, { recursive: true });
   }
 
+  // eslint-disable-next-line no-console
   console.log("Generating icons...");
 
   for (const size of sizes) {
@@ -37,9 +39,11 @@ async function generateIcons() {
       .png()
       .toFile(iconPath);
 
+    // eslint-disable-next-line no-console
     console.log(`✓ Generated ${iconPath}`);
   }
 
+  // eslint-disable-next-line no-console
   console.log("\nAll icons generated successfully!");
 }
 

@@ -4,16 +4,17 @@
  * Provides aggregator metadata and options.
  */
 
+import type {
+  AggregatorMetadata,
+  OptionsSchema,
+} from "../aggregators/base/types";
 import {
   getAggregatorById,
   getAllAggregators,
   getAggregatorMetadata,
 } from "../aggregators/registry";
-import type {
-  AggregatorMetadata,
-  OptionsSchema,
-} from "../aggregators/base/types";
 import { NotFoundError } from "../errors";
+
 import { getUserSettings } from "./userSettings.service";
 
 /**
@@ -145,7 +146,7 @@ export async function getAllAggregatorMetadata(
       // All other aggregators are always available
       return true;
     });
-  } catch (error) {
+  } catch {
     // If we can't get user settings, return all aggregators
     return all;
   }

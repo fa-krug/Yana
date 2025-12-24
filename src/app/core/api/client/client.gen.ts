@@ -3,6 +3,7 @@
 import { createSseClient } from "../core/serverSentEvents.gen";
 import type { HttpMethod } from "../core/types.gen";
 import { getValidRequestBody } from "../core/utils.gen";
+
 import type {
   Client,
   Config,
@@ -76,7 +77,7 @@ export const createClient = (config: Config = {}): Client => {
   };
 
   const request: Client["request"] = async (options) => {
-    // @ts-expect-error
+    // @ts-expect-error - beforeRequest expects a different options type than Client.request provides
     const { opts, url } = await beforeRequest(options);
     const requestInit: ReqInit = {
       redirect: "follow",

@@ -1,5 +1,5 @@
-import { Component, inject } from "@angular/core";
 import { CommonModule } from "@angular/common";
+import { Component, inject } from "@angular/core";
 import {
   FormBuilder,
   FormGroup,
@@ -8,12 +8,13 @@ import {
   AbstractControl,
   ValidationErrors,
 } from "@angular/forms";
-import { MatDialogRef, MatDialogModule } from "@angular/material/dialog";
-import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
-import { MatFormFieldModule } from "@angular/material/form-field";
-import { MatInputModule } from "@angular/material/input";
 import { MatButtonModule } from "@angular/material/button";
 import { MatCheckboxModule } from "@angular/material/checkbox";
+import { MatDialogRef, MatDialogModule } from "@angular/material/dialog";
+import { MatFormFieldModule } from "@angular/material/form-field";
+import { MatInputModule } from "@angular/material/input";
+import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
+
 import { AdminUsersService } from "@app/core/services/admin-users.service";
 
 @Component({
@@ -315,7 +316,7 @@ export class UserCreateDialogComponent {
     if (this.userForm.valid) {
       this.loading = true;
       const formValue = this.userForm.value;
-      const { confirmPassword, ...userData } = formValue;
+      const { confirmPassword: _confirmPassword, ...userData } = formValue;
       this.usersService.createUser(userData).subscribe({
         next: () => {
           this.loading = false;

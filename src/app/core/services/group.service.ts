@@ -4,8 +4,8 @@
  */
 
 import { Injectable, inject, signal } from "@angular/core";
-import { Observable, from, of } from "rxjs";
-import { tap, catchError, map } from "rxjs";
+import { Observable, from, of, tap, catchError, map } from "rxjs";
+
 import { Group } from "../models";
 import { TRPCService } from "../trpc/trpc.service";
 

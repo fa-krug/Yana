@@ -3,13 +3,15 @@
  */
 
 import { eq } from "drizzle-orm";
-import { db, feeds, articles } from "../db";
-import { logger } from "../utils/logger";
-import type { Feed, FeedInsert, User } from "../db/types";
+
 import { getAggregatorById } from "../aggregators/registry";
+import { db, feeds, articles } from "../db";
+import type { Feed, FeedInsert, User } from "../db/types";
+import { logger } from "../utils/logger";
+
 import { getAggregatorMetadataById } from "./aggregator.service";
-import { setFeedGroups } from "./group.service";
 import { getFeed } from "./feed-query.service";
+import { setFeedGroups } from "./group.service";
 
 /**
  * Minimal user info needed for feed operations.

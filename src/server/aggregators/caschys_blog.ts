@@ -4,13 +4,11 @@
  * Specialized aggregator for Caschys Blog (German tech blog).
  */
 
-import { FullWebsiteAggregator } from "./full_website";
-import type { RawArticle } from "./base/types";
-import { fetchArticleContent } from "./base/fetch";
-import { extractContent } from "./base/extract";
-import { standardizeContentFormat } from "./base/process";
-import { sanitizeHtml } from "./base/utils";
 import { logger } from "../utils/logger";
+
+import { extractContent } from "./base/extract";
+import type { RawArticle } from "./base/types";
+import { FullWebsiteAggregator } from "./full_website";
 
 export class CaschysBlogAggregator extends FullWebsiteAggregator {
   override readonly id = "caschys_blog";

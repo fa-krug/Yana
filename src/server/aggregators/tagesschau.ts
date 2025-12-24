@@ -6,14 +6,13 @@
  * and filters out video news and podcasts.
  */
 
-import { FullWebsiteAggregator } from "./full_website";
-import type { RawArticle } from "./base/types";
-import { fetchArticleContent } from "./base/fetch";
-import { extractContent } from "./base/extract";
-import { standardizeContentFormat } from "./base/process";
-import { sanitizeHtml, createHeaderElementFromUrl } from "./base/utils";
-import { logger } from "../utils/logger";
 import * as cheerio from "cheerio";
+
+import { logger } from "../utils/logger";
+
+import type { RawArticle } from "./base/types";
+import { sanitizeHtml, createHeaderElementFromUrl } from "./base/utils";
+import { FullWebsiteAggregator } from "./full_website";
 
 export class TagesschauAggregator extends FullWebsiteAggregator {
   override readonly id = "tagesschau";
@@ -119,7 +118,7 @@ export class TagesschauAggregator extends FullWebsiteAggregator {
       try {
         // Parse the JSON data (it's HTML-encoded)
         // Decode HTML entities: &quot; -> ", &#39; -> ', &amp; -> &
-        let dataVDecoded = dataV
+        const dataVDecoded = dataV
           .replace(/&quot;/g, '"')
           .replace(/&#39;/g, "'")
           .replace(/&amp;/g, "&")
@@ -206,7 +205,7 @@ export class TagesschauAggregator extends FullWebsiteAggregator {
         // Try to extract embed code from pluginData
         const pluginData = playerData.pluginData || {};
         const sharingData = pluginData["sharing@web"] || {};
-        let embedCode = sharingData.embedCode || "";
+        const embedCode = sharingData.embedCode || "";
 
         if (embedCode) {
           // The embed code is HTML-encoded, decode it
@@ -439,7 +438,7 @@ export class TagesschauAggregator extends FullWebsiteAggregator {
     }
 
     // Process content (remove empty elements, sanitize)
-    let $ = cheerio.load(html);
+    const $ = cheerio.load(html);
 
     // Remove empty elements
     $("p, div, span").each((_, el) => {

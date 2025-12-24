@@ -5,18 +5,18 @@
 import * as cheerio from "cheerio";
 import type { Element } from "domhandler";
 import sharp from "sharp";
+
+import { logger } from "@server/utils/logger";
+
+import { ArticleSkipError } from "./exceptions";
 import type { RawArticle } from "./types";
 import {
-  extractImageFromUrl,
   compressImage,
   MAX_HEADER_IMAGE_WIDTH,
   MAX_HEADER_IMAGE_HEIGHT,
   extractYouTubeVideoId,
-  getYouTubeProxyUrl,
   createHeaderElementFromUrl,
 } from "./utils";
-import { logger } from "@server/utils/logger";
-import { ArticleSkipError } from "./exceptions";
 
 /**
  * Standardize content format across all feeds.
@@ -132,7 +132,7 @@ export async function standardizeContentFormat(
                     "Found matching image element in content",
                   );
                 }
-              } catch (error) {
+              } catch {
                 // Invalid URL, skip
               }
             }
@@ -231,7 +231,7 @@ export async function standardizeContentFormat(
               // Parse data URI: data:image/png;base64,iVBORw0KG...
               if (firstUrl.includes(";base64,")) {
                 const [header, encoded] = firstUrl.split(";base64,", 2);
-                let contentType = header.split(":")[1] || "image/jpeg";
+                const contentType = header.split(":")[1] || "image/jpeg";
 
                 // CRITICAL: Validate that data URI is actually an image
                 if (!contentType.startsWith("image/")) {
@@ -356,7 +356,7 @@ export async function standardizeContentFormat(
                           "Removed duplicate YouTube link from content",
                         );
                       }
-                    } catch (error) {
+                    } catch {
                       // Invalid URL, skip
                     }
                   }
@@ -417,12 +417,12 @@ export async function standardizeContentFormat(
                 // Embed URL format: https://vxreddit.com/r/subreddit/comments/postId/title
                 // or https://reddit.com/r/subreddit/comments/postId/title/embed
                 // We need to find the original v.redd.it URL that was used to create this embed
-                let vRedditUrl: string | null = null;
                 try {
                   // Try to extract from article URL or check if we can derive it
                   // For now, we'll match any v.redd.it URL in links
-                  vRedditUrl = article.url; // Will be used for matching
-                } catch (error) {
+                  // Note: vRedditUrl was intended for matching but is not currently used
+                  void article.url; // Will be used for matching in future
+                } catch {
                   // Ignore
                 }
 
@@ -476,7 +476,7 @@ export async function standardizeContentFormat(
                           "Removed duplicate v.redd.it link from content",
                         );
                       }
-                    } catch (error) {
+                    } catch {
                       // Invalid URL, skip
                     }
                   }
@@ -537,7 +537,7 @@ export async function standardizeContentFormat(
                           );
                         }
                       }
-                    } catch (error) {
+                    } catch {
                       // Invalid URL, skip
                     }
                   }

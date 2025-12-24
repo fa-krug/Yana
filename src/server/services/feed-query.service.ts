@@ -3,6 +3,7 @@
  */
 
 import { eq, and, or, isNull, desc, sql, like, inArray } from "drizzle-orm";
+
 import {
   db,
   feeds,
@@ -11,8 +12,8 @@ import {
   feedGroups,
   groups,
 } from "../db";
-import { NotFoundError, PermissionDeniedError } from "../errors";
 import type { Feed, User } from "../db/types";
+import { NotFoundError, PermissionDeniedError } from "../errors";
 
 /**
  * Minimal user info needed for feed operations.

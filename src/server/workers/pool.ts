@@ -8,6 +8,7 @@ import { fork, spawn, type ChildProcess } from "child_process";
 import * as fs from "fs";
 import * as path from "path";
 import { fileURLToPath } from "url";
+
 import {
   getNextTask,
   updateTaskStatus,
@@ -52,10 +53,10 @@ function getDirname(): string {
     // Fall through to CommonJS
   }
   // CommonJS: use __dirname
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   return typeof __dirname !== "undefined"
     ? __dirname
-    : (globalThis as any).__dirname || process.cwd();
+    : (globalThis as { __dirname?: string }).__dirname || process.cwd();
 }
 
 export class WorkerPool {
@@ -154,7 +155,7 @@ export class WorkerPool {
       if (!this.running) return;
 
       // Check for available workers
-      const availableWorkers = this.workers.filter(
+      const _availableWorkers = this.workers.filter(
         (w) => !w.connected || w.killed,
       );
 

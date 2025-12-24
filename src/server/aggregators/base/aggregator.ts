@@ -4,10 +4,10 @@
  * All aggregators must extend this class.
  */
 
-import type { Feed, Article } from "@server/db/types";
+import type { Feed } from "@server/db/types";
+import { logger, createLogger } from "@server/utils/logger";
+
 import type { RawArticle, AggregatorOptions, OptionsSchema } from "./types";
-import { logger } from "@server/utils/logger";
-import { createLogger } from "@server/utils/logger";
 
 export abstract class BaseAggregator {
   protected feed: Feed | null = null;
@@ -194,7 +194,11 @@ export abstract class BaseAggregator {
     article: RawArticle,
   ): Promise<Partial<RawArticle>> {
     const utilities = await import("./mixins/utilities");
-    return utilities.extractMetadata.call(this as any, sourceData, article);
+    return utilities.extractMetadata.call(
+      this as any,
+      sourceData,
+      article,
+    );
   }
 
   /**
@@ -327,7 +331,11 @@ export abstract class BaseAggregator {
     content: string,
   ): Promise<void> {
     const caching = await import("./mixins/caching");
-    return caching.setCachedContent.call(this as any, article, content);
+    return caching.setCachedContent.call(
+      this as any,
+      article,
+      content,
+    );
   }
 
   /**
@@ -336,7 +344,7 @@ export abstract class BaseAggregator {
    */
   protected async fetchArticleContentInternal(
     url: string,
-    article: RawArticle,
+    _article: RawArticle,
   ): Promise<string> {
     // Default: use the generic fetch function (no retries)
     const { fetchArticleContent: fetchContent } = await import("./fetch");
@@ -355,7 +363,11 @@ export abstract class BaseAggregator {
     article: RawArticle,
   ): Promise<string> {
     const contentProcessing = await import("./mixins/contentProcessing");
-    return contentProcessing.extractContent.call(this as any, html, article);
+    return contentProcessing.extractContent.call(
+      this as any,
+      html,
+      article,
+    );
   }
 
   /**
@@ -408,7 +420,11 @@ export abstract class BaseAggregator {
     article: RawArticle,
   ): Promise<string> {
     const contentProcessing = await import("./mixins/contentProcessing");
-    return contentProcessing.processContent.call(this as any, html, article);
+    return contentProcessing.processContent.call(
+      this as any,
+      html,
+      article,
+    );
   }
 
   /**
@@ -420,7 +436,11 @@ export abstract class BaseAggregator {
     article: RawArticle,
   ): Promise<void> {
     const contentProcessing = await import("./mixins/contentProcessing");
-    return contentProcessing.extractImages.call(this as any, content, article);
+    return contentProcessing.extractImages.call(
+      this as any,
+      content,
+      article,
+    );
   }
 
   /**
@@ -431,7 +451,10 @@ export abstract class BaseAggregator {
     articles: RawArticle[],
   ): Promise<RawArticle[]> {
     const contentProcessing = await import("./mixins/contentProcessing");
-    return contentProcessing.finalizeArticles.call(this as any, articles);
+    return contentProcessing.finalizeArticles.call(
+      this as any,
+      articles,
+    );
   }
 
   /**
@@ -440,7 +463,10 @@ export abstract class BaseAggregator {
    */
   protected async processArticle(article: RawArticle): Promise<string> {
     const contentProcessing = await import("./mixins/contentProcessing");
-    return contentProcessing.processArticle.call(this as any, article);
+    return contentProcessing.processArticle.call(
+      this as any,
+      article,
+    );
   }
 
   /**
@@ -502,7 +528,10 @@ export abstract class BaseAggregator {
    */
   async getDynamicFetchLimit(forceRefresh: boolean = false): Promise<number> {
     const dailyLimit = await import("./mixins/dailyLimit");
-    return dailyLimit.getDynamicFetchLimit.call(this as any, forceRefresh);
+    return dailyLimit.getDynamicFetchLimit.call(
+      this as any,
+      forceRefresh,
+    );
   }
 
   /**

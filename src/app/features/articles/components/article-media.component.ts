@@ -2,15 +2,16 @@
  * Article media component - handles YouTube, Podcast, and Reddit media rendering.
  */
 
+import { CommonModule, NgOptimizedImage } from "@angular/common";
 import {
   ChangeDetectionStrategy,
   Component,
   inject,
   input,
 } from "@angular/core";
-import { CommonModule, NgOptimizedImage } from "@angular/common";
-import { DomSanitizer, SafeResourceUrl } from "@angular/platform-browser";
 import { MatIconModule } from "@angular/material/icon";
+import { DomSanitizer, SafeResourceUrl } from "@angular/platform-browser";
+
 import { ArticleDetail } from "@app/core/models";
 
 @Component({

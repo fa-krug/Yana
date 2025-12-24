@@ -5,6 +5,7 @@
  */
 
 import { Injectable } from "@angular/core";
+
 import { createTRPCClient, type AppRouter } from "./trpc-client";
 
 @Injectable({

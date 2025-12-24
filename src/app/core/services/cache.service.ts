@@ -4,8 +4,8 @@
  */
 
 import { Injectable } from "@angular/core";
-import { Observable, of, from } from "rxjs";
-import { map, catchError } from "rxjs/operators";
+import { Observable, of } from "rxjs";
+import { map } from "rxjs/operators";
 
 interface CacheEntry<T> {
   data: T;
@@ -17,7 +17,7 @@ interface CacheEntry<T> {
   providedIn: "root",
 })
 export class CacheService {
-  private memoryCache = new Map<string, CacheEntry<any>>();
+  private memoryCache = new Map<string, CacheEntry<unknown>>();
   private readonly defaultTTL = 5 * 60 * 1000; // 5 minutes
 
   /**

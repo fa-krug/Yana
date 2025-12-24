@@ -3,15 +3,15 @@
  */
 
 import { logger } from "@server/utils/logger";
+
 import { extractYouTubeVideoId } from "../base/utils";
-import { extractThumbnailUrlFromPage } from "../base/utils/thumbnails";
+
+import type { RedditPostData } from "./types";
 import {
   fixRedditMediaUrl,
   extractUrlsFromText,
   decodeHtmlEntitiesInUrl,
-  convertRedditPreviewUrl,
 } from "./urls";
-import type { RedditPostData } from "./types";
 
 /**
  * Check if a direct image URL would be used as a header element.
@@ -167,7 +167,7 @@ export function wouldUseGifAsHeader(
 
   // Check if it's a Reddit post URL (should not be used as header)
   const redditPostUrlPattern =
-    /https?:\/\/[^\s]*reddit\.com\/r\/[^\/\s]+\/comments\/[a-zA-Z0-9]+\/[^\/\s]+\/?$/;
+    /https?:\/\/[^\s]*reddit\.com\/r\/[^/\s]+\/comments\/[a-zA-Z0-9]+\/[^/\s]+\/?$/;
   if (redditPostUrlPattern.test(decodedUrl)) {
     return false; // Reddit post URLs are not used as headers
   }
@@ -527,7 +527,7 @@ export async function extractHeaderImageUrl(
       // Ignore Reddit post URLs - they have pattern: /comments/{postId}/{title}/
       // (not comment URLs which have /comments/{postId}/{title}/{commentId})
       const redditPostUrlPattern =
-        /https?:\/\/[^\s]*reddit\.com\/r\/[^\/\s]+\/comments\/[a-zA-Z0-9]+\/[^\/\s]+\/?$/;
+        /https?:\/\/[^\s]*reddit\.com\/r\/[^/\s]+\/comments\/[a-zA-Z0-9]+\/[^/\s]+\/?$/;
       if (redditPostUrlPattern.test(decodedUrl)) {
         logger.debug({ url: decodedUrl }, "Skipping Reddit post URL");
         // Continue to next priority instead of returning
@@ -567,7 +567,7 @@ export async function extractHeaderImageUrl(
       // Reddit comment URLs have pattern: /comments/{postId}/{title}/{commentId}
       let selftextToProcess = post.selftext;
       const commentUrlPattern =
-        /https?:\/\/[^\s]*\/comments\/[a-zA-Z0-9]+\/[^\/\s]+\/[a-zA-Z0-9]+/;
+        /https?:\/\/[^\s]*\/comments\/[a-zA-Z0-9]+\/[^/\s]+\/[a-zA-Z0-9]+/;
       const commentUrlMatch = selftextToProcess.match(commentUrlPattern);
       if (commentUrlMatch && commentUrlMatch.index !== undefined) {
         // Truncate at the start of the comment URL

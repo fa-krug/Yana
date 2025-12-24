@@ -2,8 +2,9 @@
  * YouTube content building utilities.
  */
 
-import { fetchVideoComments } from "./comments";
 import { ArticleSkipError } from "../base/exceptions";
+
+import { fetchVideoComments } from "./comments";
 
 /**
  * Escape HTML special characters.

@@ -5,6 +5,7 @@
  */
 
 import pinoHttp from "pino-http";
+
 import { logger } from "../utils/logger";
 
 /**

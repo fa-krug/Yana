@@ -2,8 +2,8 @@
  * Theme service - manages dark/light theme.
  */
 
-import { Injectable, signal, effect, PLATFORM_ID, inject } from "@angular/core";
 import { isPlatformBrowser } from "@angular/common";
+import { Injectable, signal, effect, PLATFORM_ID, inject } from "@angular/core";
 
 export type Theme = "light" | "dark";
 

@@ -4,10 +4,10 @@
  * Handles article management endpoints.
  */
 
-import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { router, protectedProcedure } from "../procedures";
-import { getAuthenticatedUser } from "../procedures";
+import { z } from "zod";
+
+import { NotFoundError, PermissionDeniedError } from "@server/errors";
 import {
   listArticles,
   getArticle,
@@ -27,13 +27,14 @@ import {
   enrichArticleData,
 } from "@server/services/article.service";
 import { getFeed } from "@server/services/feed.service";
-import {
-  articleListSchema,
-  markArticlesSchema,
-} from "@server/validation/schemas";
-import { NotFoundError, PermissionDeniedError } from "@server/errors";
-import { logger } from "@server/utils/logger";
 import { getTask } from "@server/services/taskQueue.service";
+import { logger } from "@server/utils/logger";
+
+import {
+  router,
+  protectedProcedure,
+  getAuthenticatedUser,
+} from "../procedures";
 
 /**
  * Article list input schema.

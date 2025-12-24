@@ -4,12 +4,14 @@
  * Handles login, logout, and authentication status.
  */
 
-import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { router, publicProcedure, protectedProcedure } from "../procedures";
+import { z } from "zod";
+
 import { authenticateUser } from "@server/services/user.service";
 import { logger } from "@server/utils/logger";
 import { loginSchema } from "@server/validation/schemas";
+
+import { router, publicProcedure, protectedProcedure } from "../procedures";
 
 /**
  * Login input schema.

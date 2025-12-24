@@ -3,10 +3,13 @@
  */
 
 import crypto from "crypto";
+
 import { eq } from "drizzle-orm";
+
 import { db, users, greaderAuthTokens } from "@server/db";
-import { authenticateUser } from "../user.service";
 import { logger } from "@server/utils/logger";
+
+import { authenticateUser } from "../user.service";
 
 /**
  * Authenticate user with credentials and create token.

@@ -4,8 +4,8 @@
 
 import * as cheerio from "cheerio";
 import type pino from "pino";
+
 import type { RawArticle } from "../base/types";
-import { isTwitterUrl } from "../base/utils";
 
 /**
  * Extract header image with width="16" and height="9".

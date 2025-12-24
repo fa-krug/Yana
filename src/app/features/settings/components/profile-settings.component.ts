@@ -2,22 +2,24 @@
  * Profile settings component - user profile form.
  */
 
-import { Component, inject, input, output } from "@angular/core";
 import { CommonModule } from "@angular/common";
+import { Component, inject, input, output } from "@angular/core";
 import {
   FormBuilder,
   FormGroup,
   ReactiveFormsModule,
   Validators,
 } from "@angular/forms";
+import { MatButtonModule } from "@angular/material/button";
 import { MatCardModule } from "@angular/material/card";
+import { MatDialog, MatDialogModule } from "@angular/material/dialog";
 import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatInputModule } from "@angular/material/input";
-import { MatButtonModule } from "@angular/material/button";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
-import { MatDialog, MatDialogModule } from "@angular/material/dialog";
 import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
+
 import { UserSettingsService } from "@app/core/services/user-settings.service";
+
 import { ChangePasswordDialogComponent } from "../change-password-dialog.component";
 
 @Component({

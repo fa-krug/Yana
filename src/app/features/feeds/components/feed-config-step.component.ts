@@ -2,24 +2,30 @@
  * Feed config step component - step 2 of feed creation form (feed configuration).
  */
 
-import { Component, input, output } from "@angular/core";
 import { CommonModule } from "@angular/common";
+import { Component, computed, input, output } from "@angular/core";
 import { FormControl, FormGroup, ReactiveFormsModule } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
+import { MatCheckboxModule } from "@angular/material/checkbox";
 import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatInputModule } from "@angular/material/input";
-import { MatCheckboxModule } from "@angular/material/checkbox";
 import { MatStepperModule } from "@angular/material/stepper";
+
 import {
   AggregatorDetail,
   Aggregator,
   Group,
   AggregatorOption,
 } from "@app/core/models";
-import { IdentifierFieldComponent } from "./identifier-field.component";
-import { GroupsSelectorComponent } from "./groups-selector.component";
+import {
+  SubredditSearchResult,
+  ChannelSearchResult,
+} from "@app/core/services/feed-form-search.service";
+
 import { AggregatorOptionsComponent } from "./aggregator-options.component";
 import { AIOptionsComponent } from "./ai-options.component";
+import { GroupsSelectorComponent } from "./groups-selector.component";
+import { IdentifierFieldComponent } from "./identifier-field.component";
 
 @Component({
   selector: "app-feed-config-step",
@@ -58,7 +64,7 @@ import { AIOptionsComponent } from "./ai-options.component";
           [searchingSubreddits]="searchingSubreddits()"
           [searchingChannels]="searchingChannels()"
           [subredditSearchResults]="subredditSearchResults()"
-          [channelSearchResults]="channelSearchResults()"
+          [channelSearchResults]="channelsForIdentifier()"
           (subredditSearch)="onSubredditSearch($event)"
           (subredditSelected)="onSubredditSelected($event)"
           (channelSearch)="onChannelSearch($event)"
@@ -209,8 +215,8 @@ export class FeedConfigStepComponent {
   readonly isIdentifierEditable = input.required<boolean>();
   readonly searchingSubreddits = input.required<boolean>();
   readonly searchingChannels = input.required<boolean>();
-  readonly subredditSearchResults = input.required<any[]>();
-  readonly channelSearchResults = input.required<any[]>();
+  readonly subredditSearchResults = input.required<SubredditSearchResult[]>();
+  readonly channelSearchResults = input.required<ChannelSearchResult[]>();
   readonly groupInputControl = input.required<FormControl<string | null>>();
   readonly selectedGroupIds = input.required<number[]>();
   readonly filteredGroups = input.required<Group[]>();
@@ -221,15 +227,26 @@ export class FeedConfigStepComponent {
     AggregatorOption
   > | null>();
   readonly showAIOptions = input.required<boolean>();
-  readonly aiSummarizeControl = input.required<any>();
-  readonly aiTranslateToControl = input.required<any>();
-  readonly aiCustomPromptControl = input.required<any>();
+  readonly aiSummarizeControl = input.required<FormControl>();
+  readonly aiTranslateToControl = input.required<FormControl>();
+  readonly aiCustomPromptControl = input.required<FormControl>();
 
   readonly subredditSearch = output<Event>();
-  readonly subredditSelected = output<any>();
+  readonly subredditSelected = output<string | SubredditSearchResult | null>();
   readonly channelSearch = output<Event>();
-  readonly channelSelected = output<any>();
+  readonly channelSelected = output<string | ChannelSearchResult | null>();
   readonly groupSelected = output<Group>();
+
+  // Convert ChannelSearchResult[] to Channel[] for identifier-field component
+  readonly channelsForIdentifier = computed(() => {
+    return this.channelSearchResults().map((result) => ({
+      channelId: result.channelId,
+      title: result.title,
+      handle: result.handle,
+      thumbnailUrl: result.thumbnailUrl ?? undefined,
+      subscriberCount: result.subscriberCount,
+    }));
+  });
   readonly groupRemoved = output<number>();
   readonly groupInputEnter = output<Event>();
   readonly createGroupFromInput = output<void>();
@@ -264,20 +281,36 @@ export class FeedConfigStepComponent {
   protected onChannelSelected(
     channel:
       | string
+      | ChannelSearchResult
       | { channelId: string; title: string; handle: string | null }
-      | { option: { value: { channelId: string; handle: string | null } } }
+      | {
+          option: {
+            value:
+              | ChannelSearchResult
+              | { channelId: string; handle: string | null };
+          };
+        }
       | null,
   ): void {
     const value =
       typeof channel === "object" && channel && "option" in channel
         ? channel.option.value
         : channel;
-    this.channelSelected.emit(
-      value as
-        | string
-        | { channelId: string; title: string; handle: string | null }
-        | null,
-    );
+
+    // If value is a partial channel object, find the full ChannelSearchResult
+    if (
+      typeof value === "object" &&
+      value !== null &&
+      "channelId" in value &&
+      !("description" in value)
+    ) {
+      const fullResult = this.channelSearchResults().find(
+        (r) => r.channelId === value.channelId,
+      );
+      this.channelSelected.emit(fullResult ?? (value as ChannelSearchResult));
+    } else {
+      this.channelSelected.emit(value as string | ChannelSearchResult | null);
+    }
   }
 
   protected onGroupSelected(event: { option: { value: Group } } | Group): void {

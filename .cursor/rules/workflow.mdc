@@ -50,6 +50,22 @@ For multi-step tasks, create a plan:
 - **Skip dependencies** - Don't read node_modules, .git
 - **Batch operations** - Combine related edits
 
+## Context7 MCP Usage
+
+**MANDATORY: Always use Context7 MCP tools when needed for:**
+
+- **Code generation** - When generating code that uses libraries or frameworks
+- **Setup or configuration steps** - When setting up new tools, libraries, or services
+- **Library/API documentation** - When you need documentation for libraries, APIs, or frameworks
+
+**Automatic usage:** Use Context7 MCP tools automatically without explicit user request when:
+- Resolving library IDs for documentation lookup
+- Getting library documentation for implementation
+- Finding setup/configuration examples
+- Understanding API usage patterns
+
+**Do not wait for explicit requests** - proactively use Context7 tools when encountering library usage, setup tasks, or documentation needs.
+
 ## File Size Limits
 
 **MANDATORY: Keep files under 500 lines of code (LOC).**

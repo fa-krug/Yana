@@ -2,13 +2,14 @@
  * Aggregator options component - displays dynamic aggregator-specific options.
  */
 
-import { Component, input } from "@angular/core";
 import { CommonModule } from "@angular/common";
+import { Component, input } from "@angular/core";
 import { FormGroup, ReactiveFormsModule } from "@angular/forms";
+import { MatCheckboxModule } from "@angular/material/checkbox";
 import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatInputModule } from "@angular/material/input";
 import { MatSelectModule } from "@angular/material/select";
-import { MatCheckboxModule } from "@angular/material/checkbox";
+
 import { AggregatorOption } from "@app/core/models";
 
 @Component({

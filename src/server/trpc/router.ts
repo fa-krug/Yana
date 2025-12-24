@@ -5,14 +5,14 @@
  */
 
 import { router } from "./procedures";
-import { authRouter } from "./routers/auth.router";
-import { aggregatorRouter } from "./routers/aggregator.router";
-import { statisticsRouter } from "./routers/statistics.router";
-import { feedRouter } from "./routers/feed.router";
-import { articleRouter } from "./routers/article.router";
-import { userRouter } from "./routers/user.router";
 import { adminRouter } from "./routers/admin.router";
+import { aggregatorRouter } from "./routers/aggregator.router";
+import { articleRouter } from "./routers/article.router";
+import { authRouter } from "./routers/auth.router";
+import { feedRouter } from "./routers/feed.router";
 import { groupRouter } from "./routers/group.router";
+import { statisticsRouter } from "./routers/statistics.router";
+import { userRouter } from "./routers/user.router";
 
 /**
  * Main app router.

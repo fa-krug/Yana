@@ -4,14 +4,12 @@
  * Specialized aggregator for Merkur.de (German news).
  */
 
-import { FullWebsiteAggregator } from "./full_website";
-import type { RawArticle } from "./base/types";
-import { fetchArticleContent } from "./base/fetch";
-import { extractContent } from "./base/extract";
-import { standardizeContentFormat } from "./base/process";
-import { sanitizeHtml } from "./base/utils";
-import { logger } from "../utils/logger";
 import * as cheerio from "cheerio";
+
+import { extractContent } from "./base/extract";
+import type { RawArticle } from "./base/types";
+import { sanitizeHtml } from "./base/utils";
+import { FullWebsiteAggregator } from "./full_website";
 
 export class MerkurAggregator extends FullWebsiteAggregator {
   override readonly id = "merkur";

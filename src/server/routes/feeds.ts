@@ -5,20 +5,17 @@
  */
 
 import { Router } from "express";
-import type { Request, Response } from "express";
-import { asyncHandler } from "../middleware/errorHandler";
+import type { Response } from "express";
+
+import { AuthenticationError } from "../errors";
 import { requireAuth, loadUser } from "../middleware/auth";
+import type { AuthenticatedRequest } from "../middleware/auth";
+import { asyncHandler } from "../middleware/errorHandler";
 import {
-  validateBody,
-  validateParams,
-  validateQuery,
-} from "../utils/validation";
-import {
-  createFeedSchema,
-  updateFeedSchema,
-  articleListSchema,
-  idParamSchema,
-} from "../validation/schemas";
+  parsePagination,
+  formatPaginatedResponse,
+} from "../middleware/pagination";
+import { listArticles } from "../services/article.service";
 import {
   listFeeds,
   getFeed,
@@ -33,12 +30,30 @@ import {
   getFeedUnreadCount,
 } from "../services/feed.service";
 import { getFeedGroups } from "../services/group.service";
-import { listArticles } from "../services/article.service";
 import {
-  parsePagination,
-  formatPaginatedResponse,
-} from "../middleware/pagination";
-import type { AuthenticatedRequest } from "../middleware/auth";
+  validateBody,
+  validateParams,
+  validateQuery,
+} from "../utils/validation";
+import {
+  createFeedSchema,
+  updateFeedSchema,
+  articleListSchema,
+  idParamSchema,
+} from "../validation/schemas";
+
+/**
+ * Get authenticated user from request.
+ * Throws if user is not present (should not happen after requireAuth).
+ */
+function getAuthenticatedUser(
+  req: AuthenticatedRequest,
+): NonNullable<AuthenticatedRequest["user"]> {
+  if (!req.user) {
+    throw new AuthenticationError("User not found in request");
+  }
+  return req.user;
+}
 
 const router = Router();
 
@@ -63,8 +78,9 @@ router.get(
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     const pagination = parsePagination(req);
     const { search, feedType, enabled, groupId } = req.query;
+    const user = getAuthenticatedUser(req);
 
-    const result = await listFeeds(req.user!, {
+    const result = await listFeeds(user, {
       search: search as string | undefined,
       feedType: feedType as string | undefined,
       enabled: enabled !== undefined ? enabled === "true" : undefined,
@@ -76,10 +92,8 @@ router.get(
     const enrichedFeeds = await Promise.all(
       result.feeds.map(async (feed) => {
         const articleCount = await getFeedArticleCount(feed.id);
-        const unreadCount = await getFeedUnreadCount(feed.id, req.user!.id);
-        const groups = await getFeedGroups(feed.id, req.user!.id).catch(
-          () => [],
-        );
+        const unreadCount = await getFeedUnreadCount(feed.id, user.id);
+        const groups = await getFeedGroups(feed.id, user.id).catch(() => []);
         return {
           ...feed,
           articleCount: articleCount,
@@ -107,19 +121,18 @@ router.get(
   validateParams(idParamSchema),
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     const { id } = req.params;
-    const feed = await getFeed(parseInt(id), req.user!);
+    const user = getAuthenticatedUser(req);
+    const feed = await getFeed(parseInt(id), user);
 
     // Get aggregator metadata
     const aggregatorMetadata = await getFeedAggregatorMetadata(feed);
 
     // Get article counts
     const articleCount = await getFeedArticleCount(parseInt(id));
-    const unreadCount = await getFeedUnreadCount(parseInt(id), req.user!.id);
+    const unreadCount = await getFeedUnreadCount(parseInt(id), user.id);
 
     // Get groups
-    const groups = await getFeedGroups(parseInt(id), req.user!.id).catch(
-      () => [],
-    );
+    const groups = await getFeedGroups(parseInt(id), user.id).catch(() => []);
 
     // Build response with camelCase
     const response = {
@@ -147,7 +160,8 @@ router.post(
   "/",
   validateBody(createFeedSchema),
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-    const feed = await createFeed(req.user!, req.body);
+    const user = getAuthenticatedUser(req);
+    const feed = await createFeed(user, req.body);
     res.status(201).json(feed);
   }),
 );
@@ -162,7 +176,8 @@ router.patch(
   validateBody(updateFeedSchema),
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     const { id } = req.params;
-    const feed = await updateFeed(parseInt(id), req.user!, req.body);
+    const user = getAuthenticatedUser(req);
+    const feed = await updateFeed(parseInt(id), user, req.body);
     res.json(feed);
   }),
 );
@@ -176,7 +191,8 @@ router.delete(
   validateParams(idParamSchema),
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     const { id } = req.params;
-    await deleteFeed(parseInt(id), req.user!);
+    const user = getAuthenticatedUser(req);
+    await deleteFeed(parseInt(id), user);
     res.status(204).send();
   }),
 );
@@ -189,7 +205,8 @@ router.post(
   "/preview",
   validateBody(createFeedSchema),
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-    const result = await previewFeed(req.user!, req.body);
+    const user = getAuthenticatedUser(req);
+    const result = await previewFeed(user, req.body);
     res.json(result);
   }),
 );
@@ -203,8 +220,9 @@ router.post(
   validateParams(idParamSchema),
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     const { id } = req.params;
+    const user = getAuthenticatedUser(req);
     const force = (req.query["force"] as string) === "true";
-    const result = await reloadFeed(parseInt(id), req.user!, force);
+    const result = await reloadFeed(parseInt(id), user, force);
     res.json(result);
   }),
 );
@@ -218,7 +236,8 @@ router.post(
   validateParams(idParamSchema),
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     const { id } = req.params;
-    await clearFeedArticles(parseInt(id), req.user!);
+    const user = getAuthenticatedUser(req);
+    await clearFeedArticles(parseInt(id), user);
     res.json({ success: true, message: "Articles cleared" });
   }),
 );
@@ -235,10 +254,11 @@ router.get(
   validateQuery(articleListSchema),
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     const { feedId } = req.params;
+    const user = getAuthenticatedUser(req);
     const pagination = parsePagination(req);
     const { search, isRead, isSaved } = req.query;
 
-    const result = await listArticles(req.user!, {
+    const result = await listArticles(user, {
       feedId: parseInt(feedId),
       search: search as string | undefined,
       isRead: isRead !== undefined ? isRead === "true" : undefined,

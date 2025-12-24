@@ -4,8 +4,6 @@
  */
 
 import { HttpInterceptorFn } from "@angular/common/http";
-import { PLATFORM_ID, inject } from "@angular/core";
-import { isPlatformBrowser } from "@angular/common";
 
 /**
  * Get CSRF token from cookies.
@@ -21,7 +19,7 @@ function getCsrfToken(): string | null {
   const name = "csrftoken";
   const cookies = document.cookie.split(";");
 
-  for (let cookie of cookies) {
+  for (const cookie of cookies) {
     const [key, value] = cookie.trim().split("=");
     if (key === name) {
       return decodeURIComponent(value);
@@ -50,10 +48,6 @@ export const csrfInterceptor: HttpInterceptorFn = (req, next) => {
           "X-CSRFToken": csrfToken,
         },
       });
-    } else {
-      // Log warning if CSRF token is missing for state-changing requests
-      // This helps debug CSRF issues
-      console.warn("CSRF token not found in cookies for", req.method, req.url);
     }
   }
 

@@ -8,13 +8,13 @@
  *   tsx src/server/scripts/migrateData.ts [--source-db <path>] [--dry-run]
  */
 
+import * as fs from "fs";
+
 import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
+
 import * as schema from "../db/schema";
 import { logger } from "../utils/logger";
-import * as bcrypt from "bcrypt";
-import * as path from "path";
-import * as fs from "fs";
 
 interface MigrationOptions {
   sourceDbPath: string;

@@ -3,8 +3,9 @@
  */
 
 import axios from "axios";
-import { logger } from "@server/utils/logger";
+
 import { getUserSettings } from "@server/services/userSettings.service";
+import { logger } from "@server/utils/logger";
 
 /**
  * Token cache entry.

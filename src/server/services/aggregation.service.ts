@@ -5,21 +5,22 @@
  */
 
 import { eq, and } from "drizzle-orm";
-import { db, feeds, articles } from "@server/db";
-import { getAggregatorById } from "@server/aggregators/registry";
-import { enqueueTask } from "./taskQueue.service";
-import { logger } from "@server/utils/logger";
-import { NotFoundError } from "@server/errors";
-import type { Feed } from "@server/db/types";
+
 import type { RawArticle } from "@server/aggregators/base/types";
+import { getAggregatorById } from "@server/aggregators/registry";
+import { db, feeds, articles } from "@server/db";
+import { NotFoundError } from "@server/errors";
+import { logger } from "@server/utils/logger";
+
+import { saveAggregatedArticles } from "./aggregation-article.service";
+import { collectFeedIcon } from "./aggregation-icon.service";
 import {
   validateAndPrepareAggregation,
   loadExistingUrls,
   initializeAggregator,
   calculateArticleLimit,
 } from "./aggregation-validation.service";
-import { collectFeedIcon } from "./aggregation-icon.service";
-import { saveAggregatedArticles } from "./aggregation-article.service";
+import { enqueueTask } from "./taskQueue.service";
 
 /**
  * Aggregate a single feed.
@@ -236,7 +237,17 @@ export async function processArticleReload(articleId: number): Promise<void> {
     url: article.url,
     published: article.date,
   };
-  const html = await (aggregator as any).fetchArticleContentInternal(
+  // Type assertion to access protected methods (needed for external access)
+  const aggregatorInstance = aggregator as unknown as {
+    fetchArticleContentInternal: (
+      url: string,
+      article: RawArticle,
+    ) => Promise<string>;
+    extractContent: (html: string, article: RawArticle) => Promise<string>;
+    processContent: (html: string, article: RawArticle) => Promise<string>;
+  };
+
+  const html = await aggregatorInstance.fetchArticleContentInternal(
     article.url,
     rawArticleForFetch,
   );
@@ -267,8 +278,8 @@ export async function processArticleReload(articleId: number): Promise<void> {
 
   // Use aggregator's template method flow (extractContent + processContent)
   // This ensures generateTitleImage and addSourceFooter are respected
-  const extracted = await (aggregator as any).extractContent(html, rawArticle);
-  const processed = await (aggregator as any).processContent(
+  const extracted = await aggregatorInstance.extractContent(html, rawArticle);
+  const processed = await aggregatorInstance.processContent(
     extracted,
     rawArticle,
   );

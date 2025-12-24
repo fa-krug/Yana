@@ -3,7 +3,9 @@
  */
 
 import axios, { AxiosError } from "axios";
+
 import { logger } from "@server/utils/logger";
+
 import { YouTubeAPIError } from "./errors";
 import {
   fetchVideosFromPlaylist,
@@ -112,7 +114,7 @@ export async function fetchYouTubeChannelData(
         // INSTRUMENTATION
         if (
           process.env["NODE_ENV"] === "test" &&
-          (global as any).__TEST_TRACE
+          (global as { __TEST_TRACE?: boolean }).__TEST_TRACE
         ) {
           console.log(
             `[FETCH_TRACE:youtube] fetchVideosFromPlaylist returned ${videos.length} videos`,
