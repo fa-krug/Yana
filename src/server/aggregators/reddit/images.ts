@@ -14,6 +14,43 @@ import {
 } from "./urls";
 
 /**
+ * Check if a post has higher priority content (videos, galleries)
+ * that would take precedence over a direct image or GIF.
+ */
+function hasHigherPriorityContent(
+  post: RedditPostData & { selftext?: string },
+): boolean {
+  // Check for gallery (Priority 1)
+  if (post.is_gallery && post.media_metadata && post.gallery_data?.items?.[0]) {
+    return true;
+  }
+
+  // Check for YouTube videos (Priority 0)
+  if (post.url) {
+    const postUrl = decodeHtmlEntitiesInUrl(post.url);
+    if (extractYouTubeVideoId(postUrl)) {
+      return true;
+    }
+    // Check for v.redd.it videos (Priority 0)
+    if (postUrl.includes("v.redd.it")) {
+      return true;
+    }
+  }
+
+  // Check selftext for YouTube/v.redd.it videos (Priority 0)
+  if (post.is_self && post.selftext) {
+    const urls = extractUrlsFromText(post.selftext);
+    for (const textUrl of urls) {
+      if (extractYouTubeVideoId(textUrl) || textUrl.includes("v.redd.it")) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+/**
  * Check if a direct image URL would be used as a header element.
  * Returns true if the URL would be used as a header image (Priority 2).
  *
@@ -43,51 +80,7 @@ export function wouldUseDirectImageAsHeader(
     return false;
   }
 
-  // Check for gallery (Priority 1 - takes priority over direct images)
-  if (post.is_gallery && post.media_metadata && post.gallery_data?.items?.[0]) {
-    return false; // Gallery takes priority
-  }
-
-  // Check for YouTube videos (Priority 0 - takes priority over direct images)
-  if (post.url) {
-    const postUrl = decodeHtmlEntitiesInUrl(post.url);
-    const videoId = extractYouTubeVideoId(postUrl);
-    if (videoId) {
-      return false; // YouTube video takes priority
-    }
-  }
-
-  // Check selftext for YouTube videos
-  if (post.is_self && post.selftext) {
-    const urls = extractUrlsFromText(post.selftext);
-    for (const textUrl of urls) {
-      const videoId = extractYouTubeVideoId(textUrl);
-      if (videoId) {
-        return false; // YouTube video in selftext takes priority
-      }
-    }
-  }
-
-  // Check for v.redd.it videos (Priority 0 - takes priority over direct images)
-  if (post.url) {
-    const postUrl = decodeHtmlEntitiesInUrl(post.url);
-    if (postUrl.includes("v.redd.it")) {
-      return false; // v.redd.it video takes priority
-    }
-  }
-
-  // Check selftext for v.redd.it videos
-  if (post.is_self && post.selftext) {
-    const urls = extractUrlsFromText(post.selftext);
-    for (const textUrl of urls) {
-      if (textUrl.includes("v.redd.it")) {
-        return false; // v.redd.it video in selftext takes priority
-      }
-    }
-  }
-
-  // No higher priority content found, direct image will be used as header
-  return true;
+  return !hasHigherPriorityContent(post);
 }
 
 /**
@@ -122,47 +115,8 @@ export function wouldUseGifAsHeader(
     return false;
   }
 
-  // Check for gallery (Priority 1 - takes priority over GIFs)
-  if (post.is_gallery && post.media_metadata && post.gallery_data?.items?.[0]) {
-    return false; // Gallery takes priority
-  }
-
-  // Check for YouTube videos (Priority 0 - takes priority over GIFs)
-  if (post.url) {
-    const postUrl = decodeHtmlEntitiesInUrl(post.url);
-    const videoId = extractYouTubeVideoId(postUrl);
-    if (videoId) {
-      return false; // YouTube video takes priority
-    }
-  }
-
-  // Check selftext for YouTube videos
-  if (post.is_self && post.selftext) {
-    const urls = extractUrlsFromText(post.selftext);
-    for (const textUrl of urls) {
-      const videoId = extractYouTubeVideoId(textUrl);
-      if (videoId) {
-        return false; // YouTube video in selftext takes priority
-      }
-    }
-  }
-
-  // Check for v.redd.it videos (Priority 0 - takes priority over GIFs)
-  if (post.url) {
-    const postUrl = decodeHtmlEntitiesInUrl(post.url);
-    if (postUrl.includes("v.redd.it")) {
-      return false; // v.redd.it video takes priority
-    }
-  }
-
-  // Check selftext for v.redd.it videos
-  if (post.is_self && post.selftext) {
-    const urls = extractUrlsFromText(post.selftext);
-    for (const textUrl of urls) {
-      if (textUrl.includes("v.redd.it")) {
-        return false; // v.redd.it video in selftext takes priority
-      }
-    }
+  if (hasHigherPriorityContent(post)) {
+    return false;
   }
 
   // Check if it's a Reddit post URL (should not be used as header)
@@ -187,6 +141,73 @@ export function wouldUseYouTubeAsHeader(url: string): boolean {
 }
 
 /**
+ * Check if a post URL has higher priority content than a v.redd.it video.
+ */
+function hasHigherPriorityThanVReddit(
+  post: RedditPostData & { selftext?: string },
+  decodedUrl: string,
+): boolean {
+  // Check if there's a YouTube video that would take priority (Priority 0, checked first)
+  if (extractYouTubeVideoId(decodedUrl)) {
+    return true;
+  }
+
+  // Check selftext for YouTube videos (Priority 0, checked before v.redd.it)
+  if (post.is_self && post.selftext) {
+    const urls = extractUrlsFromText(post.selftext);
+    for (const url of urls) {
+      if (extractYouTubeVideoId(url)) {
+        return true;
+      }
+    }
+  }
+
+  // Check for gallery (Priority 1 - takes priority over v.redd.it)
+  if (post.is_gallery && post.media_metadata && post.gallery_data?.items?.[0]) {
+    return true;
+  }
+
+  // Check for direct image (Priority 2 - takes priority over v.redd.it)
+  const url = decodedUrl.toLowerCase();
+  if ([".jpg", ".jpeg", ".png", ".webp"].some((ext) => url.endsWith(ext))) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Check if a v.redd.it in selftext would be prioritized as a header.
+ */
+function hasHigherPriorityThanVRedditInSelftext(
+  post: RedditPostData & { selftext?: string },
+  urls: string[],
+): boolean {
+  // Check if there's a YouTube video that would take priority
+  for (const url of urls) {
+    if (extractYouTubeVideoId(url)) {
+      return true;
+    }
+  }
+
+  // Check for gallery (Priority 1)
+  if (post.is_gallery && post.media_metadata && post.gallery_data?.items?.[0]) {
+    return true;
+  }
+
+  // Check post.url for direct image (Priority 2)
+  if (post.url) {
+    const decodedUrl = decodeHtmlEntitiesInUrl(post.url);
+    const url = decodedUrl.toLowerCase();
+    if ([".jpg", ".jpeg", ".png", ".webp"].some((ext) => url.endsWith(ext))) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
  * Check if a v.redd.it URL would be used as a header element.
  * Returns true if the v.redd.it video would be prioritized as a header.
  *
@@ -207,85 +228,17 @@ export function wouldUseVRedditAsHeader(
   if (post.url) {
     const decodedUrl = decodeHtmlEntitiesInUrl(post.url);
     if (decodedUrl.includes("v.redd.it")) {
-      // Check if there's a YouTube video that would take priority (Priority 0, checked first)
-      const videoId = extractYouTubeVideoId(decodedUrl);
-      if (videoId) {
-        return false; // YouTube video takes priority
-      }
-
-      // Check selftext for YouTube videos (Priority 0, checked before v.redd.it)
-      if (post.is_self && post.selftext) {
-        const urls = extractUrlsFromText(post.selftext);
-        for (const url of urls) {
-          const videoId = extractYouTubeVideoId(url);
-          if (videoId) {
-            return false; // YouTube video in selftext takes priority
-          }
-        }
-      }
-
-      // Check for gallery (Priority 1 - takes priority over v.redd.it)
-      if (
-        post.is_gallery &&
-        post.media_metadata &&
-        post.gallery_data?.items?.[0]
-      ) {
-        return false; // Gallery takes priority
-      }
-
-      // Check for direct image (Priority 2 - takes priority over v.redd.it)
-      const url = decodedUrl.toLowerCase();
-      if ([".jpg", ".jpeg", ".png", ".webp"].some((ext) => url.endsWith(ext))) {
-        return false; // Direct image takes priority
-      }
-
-      // No higher priority content found, v.redd.it will be used as header
-      return true;
+      return !hasHigherPriorityThanVReddit(post, decodedUrl);
     }
   }
 
   // Check selftext for v.redd.it URLs (only if post.url is not v.redd.it)
   if (post.is_self && post.selftext) {
     const urls = extractUrlsFromText(post.selftext);
-    let hasVReddit = false;
-    for (const url of urls) {
-      if (url.includes("v.redd.it")) {
-        hasVReddit = true;
-        break;
-      }
-    }
+    const hasVReddit = urls.some((url) => url.includes("v.redd.it"));
 
     if (hasVReddit) {
-      // Check if there's a YouTube video that would take priority
-      for (const url of urls) {
-        const videoId = extractYouTubeVideoId(url);
-        if (videoId) {
-          return false; // YouTube video takes priority
-        }
-      }
-
-      // Check for gallery (Priority 1)
-      if (
-        post.is_gallery &&
-        post.media_metadata &&
-        post.gallery_data?.items?.[0]
-      ) {
-        return false; // Gallery takes priority
-      }
-
-      // Check post.url for direct image (Priority 2)
-      if (post.url) {
-        const decodedUrl = decodeHtmlEntitiesInUrl(post.url);
-        const url = decodedUrl.toLowerCase();
-        if (
-          [".jpg", ".jpeg", ".png", ".webp"].some((ext) => url.endsWith(ext))
-        ) {
-          return false; // Direct image takes priority
-        }
-      }
-
-      // No higher priority content found, v.redd.it in selftext will be used as header
-      return true;
+      return !hasHigherPriorityThanVRedditInSelftext(post, urls);
     }
   }
 
@@ -293,55 +246,73 @@ export function wouldUseVRedditAsHeader(
 }
 
 /**
+ * Get thumbnail from post thumbnail property.
+ */
+function getThumbnailFromPost(post: RedditPostData): string | null {
+  if (
+    post.thumbnail &&
+    !["self", "default", "nsfw", "spoiler"].includes(post.thumbnail)
+  ) {
+    if (post.thumbnail.startsWith("http")) {
+      return decodeHtmlEntitiesInUrl(post.thumbnail);
+    }
+    if (post.thumbnail.startsWith("/")) {
+      return decodeHtmlEntitiesInUrl(`https://reddit.com${post.thumbnail}`);
+    }
+  }
+  return null;
+}
+
+/**
+ * Get thumbnail from post preview images.
+ */
+function getThumbnailFromPreview(post: RedditPostData): string | null {
+  if (post.preview?.images?.[0]?.source?.url) {
+    const decoded = decodeURIComponent(post.preview.images[0].source.url);
+    const decodedEntities = decodeHtmlEntitiesInUrl(decoded);
+    return fixRedditMediaUrl(decodedEntities);
+  }
+  return null;
+}
+
+/**
+ * Get thumbnail from post URL if it's an image or video.
+ */
+function getThumbnailFromMediaUrl(post: RedditPostData): string | null {
+  if (!post.url) return null;
+
+  const decodedUrl = decodeHtmlEntitiesInUrl(post.url);
+  const urlLower = decodedUrl.toLowerCase();
+
+  // For image posts
+  if (
+    [".jpg", ".jpeg", ".png", ".webp", ".gif"].some((ext) =>
+      urlLower.endsWith(ext),
+    )
+  ) {
+    return decodedUrl;
+  }
+
+  // For video posts
+  if (urlLower.includes("v.redd.it")) {
+    return extractRedditVideoPreview(post);
+  }
+
+  return null;
+}
+
+/**
  * Extract thumbnail URL from Reddit post.
  */
 export function extractThumbnailUrl(post: RedditPostData): string | null {
   try {
-    // Check if submission has a valid thumbnail URL
-    if (
-      post.thumbnail &&
-      !["self", "default", "nsfw", "spoiler"].includes(post.thumbnail)
-    ) {
-      if (post.thumbnail.startsWith("http")) {
-        return decodeHtmlEntitiesInUrl(post.thumbnail);
-      }
-      if (post.thumbnail.startsWith("/")) {
-        return decodeHtmlEntitiesInUrl(`https://reddit.com${post.thumbnail}`);
-      }
-    }
+    const thumbnail = getThumbnailFromPost(post);
+    if (thumbnail) return thumbnail;
 
-    // Try to get from preview data
-    if (post.preview?.images?.[0]?.source?.url) {
-      const decoded = decodeURIComponent(post.preview.images[0].source.url);
-      const decodedEntities = decodeHtmlEntitiesInUrl(decoded);
-      return fixRedditMediaUrl(decodedEntities);
-    }
+    const preview = getThumbnailFromPreview(post);
+    if (preview) return preview;
 
-    // For image posts, use the URL directly if it's an image
-    if (post.url) {
-      const decodedUrl = decodeHtmlEntitiesInUrl(post.url);
-      const url = decodedUrl.toLowerCase();
-      if (
-        [".jpg", ".jpeg", ".png", ".webp", ".gif"].some((ext) =>
-          url.endsWith(ext),
-        )
-      ) {
-        return decodedUrl;
-      }
-    }
-
-    // For video posts, try to get preview
-    if (post.url) {
-      const decodedUrl = decodeHtmlEntitiesInUrl(post.url);
-      if (decodedUrl.includes("v.redd.it")) {
-        const previewUrl = extractRedditVideoPreview(post);
-        if (previewUrl) {
-          return previewUrl;
-        }
-      }
-    }
-
-    return null;
+    return getThumbnailFromMediaUrl(post);
   } catch (error) {
     logger.debug({ error }, "Could not extract thumbnail URL");
     return null;
@@ -403,6 +374,119 @@ export function extractAnimatedGifUrl(post: RedditPostData): string | null {
 }
 
 /**
+ * Extract video embed URL (YouTube or v.redd.it) from post URL or selftext.
+ */
+function extractVideoEmbedUrl(
+  post: RedditPostData & { selftext?: string },
+): string | null {
+  // Check post URL first
+  if (post.url) {
+    const decodedUrl = decodeHtmlEntitiesInUrl(post.url);
+
+    // Check for v.redd.it videos
+    if (decodedUrl.includes("v.redd.it")) {
+      const decodedPermalink = decodeHtmlEntitiesInUrl(post.permalink);
+      const normalizedPermalink = decodedPermalink.replace(/\/$/, "");
+      return `https://vxreddit.com${normalizedPermalink}`;
+    }
+
+    // Check for YouTube videos
+    if (extractYouTubeVideoId(decodedUrl)) {
+      return decodedUrl;
+    }
+  }
+
+  // Check URLs in selftext
+  if (post.is_self && post.selftext) {
+    const urls = extractUrlsFromText(post.selftext);
+    for (const url of urls) {
+      if (url.includes("v.redd.it")) {
+        const decodedPermalink = decodeHtmlEntitiesInUrl(post.permalink);
+        const normalizedPermalink = decodedPermalink.replace(/\/$/, "");
+        return `https://vxreddit.com${normalizedPermalink}`;
+      }
+
+      if (extractYouTubeVideoId(url)) {
+        return url;
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Extract high-quality image URL from a Reddit gallery post.
+ */
+function extractGalleryImageUrl(post: RedditPostData): string | null {
+  if (post.is_gallery && post.media_metadata && post.gallery_data?.items?.[0]) {
+    const mediaId = post.gallery_data.items[0].media_id;
+    const mediaInfo = post.media_metadata[mediaId];
+
+    if (mediaInfo) {
+      // For animated images, prefer GIF or MP4
+      if (mediaInfo.e === "AnimatedImage") {
+        const animatedUrl = mediaInfo.s?.gif || mediaInfo.s?.mp4;
+        if (animatedUrl) {
+          const decoded = decodeURIComponent(animatedUrl);
+          return fixRedditMediaUrl(decodeHtmlEntitiesInUrl(decoded));
+        }
+      }
+      // For regular images, get the high-quality URL
+      else if (mediaInfo.e === "Image" && mediaInfo.s?.u) {
+        const decoded = decodeURIComponent(mediaInfo.s.u);
+        return fixRedditMediaUrl(decodeHtmlEntitiesInUrl(decoded));
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * Extract image URL from selftext URLs.
+ */
+function extractImageUrlFromSelftext(
+  post: RedditPostData & { selftext?: string },
+): string | null {
+  if (!post.is_self || !post.selftext) {
+    return null;
+  }
+
+  // Truncate selftext before comment URLs
+  let selftextToProcess = post.selftext;
+  const commentUrlPattern =
+    /https?:\/\/[^\s]*\/comments\/[a-zA-Z0-9]+\/[^/\s]+\/[a-zA-Z0-9]+/;
+  const commentUrlMatch = commentUrlPattern.exec(selftextToProcess);
+  if (commentUrlMatch) {
+    selftextToProcess = selftextToProcess.substring(0, commentUrlMatch.index);
+  }
+
+  const urls = extractUrlsFromText(selftextToProcess);
+  if (urls.length === 0) {
+    return null;
+  }
+
+  let firstValidUrl: string | null = null;
+  for (const url of urls) {
+    if (!url.startsWith("http://") && !url.startsWith("https://")) {
+      continue;
+    }
+    if (firstValidUrl === null) {
+      firstValidUrl = url;
+    }
+    if (
+      [".jpg", ".jpeg", ".png", ".webp", ".gif"].some((ext) =>
+        url.toLowerCase().endsWith(ext),
+      )
+    ) {
+      return url;
+    }
+  }
+
+  return firstValidUrl;
+}
+
+/**
  * Extract high-quality header image URL from a Reddit post.
  * Prioritizes YouTube videos for embedding, then high-quality images suitable for use as header images.
  */
@@ -411,112 +495,15 @@ export async function extractHeaderImageUrl(
 ): Promise<string | null> {
   try {
     // Priority 0: Check for YouTube videos and v.redd.it videos (highest priority - embed instead of image)
-    // Check post URL first
-    if (post.url) {
-      const decodedUrl = decodeHtmlEntitiesInUrl(post.url);
-
-      // Check for v.redd.it videos
-      if (decodedUrl.includes("v.redd.it")) {
-        // Construct vxreddit embed URL from permalink
-        const decodedPermalink = decodeHtmlEntitiesInUrl(post.permalink);
-        // Remove trailing slash to avoid double slash in embed URL
-        const normalizedPermalink = decodedPermalink.replace(/\/$/, "");
-        const embedUrl = `https://vxreddit.com${normalizedPermalink}`;
-        logger.debug(
-          { url: decodedUrl, embedUrl },
-          "Found v.redd.it video in post URL",
-        );
-        return embedUrl; // Return vxreddit embed URL for iframe embedding
-      }
-
-      // Check for YouTube videos
-      const videoId = extractYouTubeVideoId(decodedUrl);
-      if (videoId) {
-        logger.debug(
-          { url: decodedUrl, videoId },
-          "Found YouTube video in post URL",
-        );
-        return decodedUrl; // Return YouTube URL for embedding
-      }
+    const videoUrl = extractVideoEmbedUrl(post);
+    if (videoUrl) {
+      return videoUrl;
     }
 
-    // Check URLs in selftext for v.redd.it and YouTube videos
-    if (post.is_self && post.selftext) {
-      logger.debug(
-        { selftext: post.selftext },
-        "Extracting URLs from selftext",
-      );
-      const urls = extractUrlsFromText(post.selftext);
-      logger.debug({ urls }, "Extracted URLs from selftext");
-      for (const url of urls) {
-        logger.debug({ url }, "Checking if URL is a video");
-
-        // Check for v.redd.it videos
-        if (url.includes("v.redd.it")) {
-          // Construct vxreddit embed URL from permalink
-          const decodedPermalink = decodeHtmlEntitiesInUrl(post.permalink);
-          // Remove trailing slash to avoid double slash in embed URL
-          const normalizedPermalink = decodedPermalink.replace(/\/$/, "");
-          const embedUrl = `https://vxreddit.com${normalizedPermalink}`;
-          logger.debug({ url, embedUrl }, "Found v.redd.it video in selftext");
-          return embedUrl; // Return vxreddit embed URL for iframe embedding
-        }
-
-        // Check for YouTube videos
-        const videoId = extractYouTubeVideoId(url);
-        logger.debug({ videoId }, "Extracted YouTube video ID from URL");
-        if (videoId) {
-          logger.debug({ url, videoId }, "Found YouTube video in selftext");
-          return url; // Return YouTube URL for embedding
-        } else {
-          logger.debug({ url }, "Not a video");
-        }
-      }
-    }
     // Priority 1: Gallery posts - get first high-quality image
-    if (
-      post.is_gallery &&
-      post.media_metadata &&
-      post.gallery_data?.items?.[0]
-    ) {
-      const mediaId = post.gallery_data.items[0].media_id;
-      const mediaInfo = post.media_metadata[mediaId];
-
-      if (mediaInfo) {
-        // For animated images, prefer GIF or MP4
-        if (mediaInfo.e === "AnimatedImage") {
-          if (mediaInfo.s?.gif) {
-            const decoded = decodeURIComponent(mediaInfo.s.gif);
-            const decodedEntities = decodeHtmlEntitiesInUrl(decoded);
-            const gifUrl = fixRedditMediaUrl(decodedEntities);
-            logger.debug(
-              { url: gifUrl },
-              "Extracted header image from gallery GIF",
-            );
-            return gifUrl;
-          } else if (mediaInfo.s?.mp4) {
-            const decoded = decodeURIComponent(mediaInfo.s.mp4);
-            const decodedEntities = decodeHtmlEntitiesInUrl(decoded);
-            const mp4Url = fixRedditMediaUrl(decodedEntities);
-            logger.debug(
-              { url: mp4Url },
-              "Extracted header image from gallery MP4",
-            );
-            return mp4Url;
-          }
-        }
-        // For regular images, get the high-quality URL
-        else if (mediaInfo.e === "Image" && mediaInfo.s?.u) {
-          const decoded = decodeURIComponent(mediaInfo.s.u);
-          const decodedEntities = decodeHtmlEntitiesInUrl(decoded);
-          const imageUrl = fixRedditMediaUrl(decodedEntities);
-          logger.debug(
-            { url: imageUrl },
-            "Extracted header image from gallery",
-          );
-          return imageUrl;
-        }
-      }
+    const galleryUrl = extractGalleryImageUrl(post);
+    if (galleryUrl) {
+      return galleryUrl;
     }
 
     // Priority 2: Direct image posts (including GIFs) - extract imageUrl from URL
@@ -524,100 +511,32 @@ export async function extractHeaderImageUrl(
       const decodedUrl = decodeHtmlEntitiesInUrl(post.url);
       const urlLower = decodedUrl.toLowerCase();
 
-      // Ignore Reddit post URLs - they have pattern: /comments/{postId}/{title}/
-      // (not comment URLs which have /comments/{postId}/{title}/{commentId})
+      // Ignore Reddit post URLs
       const redditPostUrlPattern =
         /https?:\/\/[^\s]*reddit\.com\/r\/[^/\s]+\/comments\/[a-zA-Z0-9]+\/[^/\s]+\/?$/;
-      if (redditPostUrlPattern.test(decodedUrl)) {
-        logger.debug({ url: decodedUrl }, "Skipping Reddit post URL");
-        // Continue to next priority instead of returning
-      } else {
-        // Check if it's a direct image URL (including GIFs)
+
+      if (!redditPostUrlPattern.test(decodedUrl)) {
         const isDirectImage =
           [".jpg", ".jpeg", ".png", ".webp", ".gif", ".gifv"].some((ext) =>
             urlLower.endsWith(ext),
           ) ||
           urlLower.includes("i.redd.it") ||
           (urlLower.includes("preview.redd.it") && urlLower.includes(".gif"));
+
         if (isDirectImage) {
-          logger.debug(
-            { url: decodedUrl },
-            "Found direct image/GIF URL for header",
-          );
           return decodedUrl;
         }
-        // For other URLs, continue to next priority
       }
     }
 
     // Priority 4: Fall back to thumbnail extraction
     const thumbnailUrl = extractThumbnailUrl(post);
     if (thumbnailUrl) {
-      logger.debug(
-        { url: thumbnailUrl },
-        "Falling back to thumbnail as header",
-      );
       return thumbnailUrl;
     }
 
     // Priority 5: Extract URLs from text post selftext and try to find images
-    // Only if no better image was found above
-    if (post.is_self && post.selftext) {
-      // Truncate selftext before comment URLs to avoid extracting images from comments
-      // Reddit comment URLs have pattern: /comments/{postId}/{title}/{commentId}
-      let selftextToProcess = post.selftext;
-      const commentUrlPattern =
-        /https?:\/\/[^\s]*\/comments\/[a-zA-Z0-9]+\/[^/\s]+\/[a-zA-Z0-9]+/;
-      const commentUrlMatch = selftextToProcess.match(commentUrlPattern);
-      if (commentUrlMatch && commentUrlMatch.index !== undefined) {
-        // Truncate at the start of the comment URL
-        selftextToProcess = selftextToProcess.substring(
-          0,
-          commentUrlMatch.index,
-        );
-      }
-      const urls = extractUrlsFromText(selftextToProcess);
-      if (urls.length > 0) {
-        logger.debug(
-          { count: urls.length },
-          "Found URL(s) in selftext, checking for images",
-        );
-        // Try each URL - prioritize direct image URLs, then other URLs
-        // The actual image extraction will be done by standardizeContentFormat()
-        // URLs from extractUrlsFromText are already decoded
-        let firstValidUrl: string | null = null;
-        for (const url of urls) {
-          // Skip invalid URLs
-          if (!url.startsWith("http://") && !url.startsWith("https://")) {
-            continue;
-          }
-          // Track first valid URL for fallback
-          if (firstValidUrl === null) {
-            firstValidUrl = url;
-          }
-          // If it's a direct image URL, return it immediately
-          if (
-            [".jpg", ".jpeg", ".png", ".webp", ".gif"].some((ext) =>
-              url.toLowerCase().endsWith(ext),
-            )
-          ) {
-            logger.debug({ url }, "Found direct image URL in selftext");
-            return url;
-          }
-        }
-        // If no direct image URLs found, return first valid URL
-        // standardizeContentFormat() will try to extract an image from it
-        if (firstValidUrl) {
-          logger.debug(
-            { url: firstValidUrl },
-            "Found URL in selftext, will extract image",
-          );
-          return firstValidUrl;
-        }
-      }
-    }
-
-    return null;
+    return extractImageUrlFromSelftext(post);
   } catch (error) {
     logger.debug({ error }, "Could not extract header image URL");
     return null;

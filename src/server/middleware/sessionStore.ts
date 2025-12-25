@@ -118,51 +118,7 @@ export class SQLiteStore extends session.Store {
     try {
       const expire = this.getExpireTime(sessionData.cookie);
 
-      // Create a clean copy of session data, excluding non-serializable properties
-      const cleanData: Record<string, unknown> = {};
-
-      // Copy all enumerable properties
-      for (const key in sessionData) {
-        if (Object.prototype.hasOwnProperty.call(sessionData, key)) {
-          const value = sessionData[key as keyof session.SessionData];
-
-          // Skip functions and undefined
-          if (typeof value === "function" || value === undefined) {
-            continue;
-          }
-
-          // Handle Date objects
-          if (value instanceof Date) {
-            cleanData[key] = value.toISOString();
-            continue;
-          }
-
-          // Try to serialize the value to check if it's serializable
-          try {
-            JSON.stringify(value);
-            cleanData[key] = value;
-          } catch (e) {
-            // Skip non-serializable values
-            logger.debug(
-              { key, error: e },
-              "Skipping non-serializable session property",
-            );
-          }
-        }
-      }
-
-      // Always include cookie data (express-session needs it)
-      if (sessionData.cookie) {
-        cleanData["cookie"] = {
-          originalMaxAge: sessionData.cookie.originalMaxAge,
-          expires: sessionData.cookie.expires?.toISOString(),
-          secure: sessionData.cookie.secure,
-          httpOnly: sessionData.cookie.httpOnly,
-          sameSite: sessionData.cookie.sameSite,
-          path: sessionData.cookie.path,
-        };
-      }
-
+      const cleanData = this.sanitizeSessionData(sessionData);
       const sess = JSON.stringify(cleanData);
 
       const stmt = this.db.prepare(
@@ -188,6 +144,63 @@ export class SQLiteStore extends session.Store {
         callback(err);
       }
     }
+  }
+
+  /**
+   * Sanitize session data to ensure it's serializable.
+   */
+  private sanitizeSessionData(
+    sessionData: session.SessionData,
+  ): Record<string, unknown> {
+    // Create a clean copy of session data, excluding non-serializable properties
+    const cleanData: Record<string, unknown> = {};
+
+    // Copy all enumerable properties
+    for (const [key, rawValue] of Object.entries(sessionData)) {
+      // Use type assertion to allow runtime null/undefined checks
+      const value = rawValue as unknown;
+
+      // Skip functions and undefined/null values
+      if (typeof value === "function") {
+        continue;
+      }
+      // Check for undefined or null - using == to catch both
+      if (value == null) {
+        continue;
+      }
+
+      // Handle Date objects
+      if (value instanceof Date) {
+        cleanData[key] = value.toISOString();
+        continue;
+      }
+
+      // Try to serialize the value to check if it's serializable
+      try {
+        JSON.stringify(value);
+        cleanData[key] = value;
+      } catch (e) {
+        // Skip non-serializable values
+        logger.debug(
+          { key, error: e },
+          "Skipping non-serializable session property",
+        );
+      }
+    }
+
+    // Always include cookie data (express-session needs it)
+    if (sessionData.cookie) {
+      cleanData["cookie"] = {
+        originalMaxAge: sessionData.cookie.originalMaxAge,
+        expires: sessionData.cookie.expires?.toISOString(),
+        secure: sessionData.cookie.secure,
+        httpOnly: sessionData.cookie.httpOnly,
+        sameSite: sessionData.cookie.sameSite,
+        path: sessionData.cookie.path,
+      };
+    }
+
+    return cleanData;
   }
 
   /**

@@ -65,6 +65,21 @@ function formatDuration(seconds: number): string {
 }
 
 /**
+ * Get property value from object by trying multiple possible keys.
+ */
+function getAnyProperty<T>(
+  obj: Record<string, unknown>,
+  keys: string[],
+): T | null {
+  for (const key of keys) {
+    if (obj[key] !== undefined && obj[key] !== null) {
+      return obj[key] as T;
+    }
+  }
+  return null;
+}
+
+/**
  * Extract audio enclosure from RSS entry.
  */
 function extractEnclosure(item: Record<string, unknown>): {
@@ -72,12 +87,9 @@ function extractEnclosure(item: Record<string, unknown>): {
   type: string;
 } {
   // Try enclosures array
-  if (
-    item["enclosures"] &&
-    Array.isArray(item["enclosures"]) &&
-    (item["enclosures"] as unknown[]).length > 0
-  ) {
-    for (const enclosure of item["enclosures"] as unknown[]) {
+  const enclosures = item["enclosures"];
+  if (Array.isArray(enclosures) && enclosures.length > 0) {
+    for (const enclosure of enclosures as unknown[]) {
       const enclosureObj = enclosure as {
         url?: string;
         href?: string;
@@ -97,15 +109,12 @@ function extractEnclosure(item: Record<string, unknown>): {
   }
 
   // Try links with enclosure rel
-  if (item["links"] && Array.isArray(item["links"])) {
-    for (const link of item["links"] as unknown[]) {
+  const links = item["links"];
+  if (Array.isArray(links)) {
+    for (const link of links as unknown[]) {
       const linkObj = link as { rel?: string; href?: string; type?: string };
-      if (linkObj.rel === "enclosure") {
-        const url = linkObj.href || "";
-        const type = linkObj.type || "";
-        if (url) {
-          return { url, type: type || "audio/mpeg" };
-        }
+      if (linkObj.rel === "enclosure" && linkObj.href) {
+        return { url: linkObj.href, type: linkObj.type || "audio/mpeg" };
       }
     }
   }
@@ -115,37 +124,13 @@ function extractEnclosure(item: Record<string, unknown>): {
 
 /**
  * Extract duration from RSS entry.
- *
- * RSS parsers may convert namespaces differently:
- * - rss-parser typically converts itunes:duration to itunes_duration
- * - Some parsers keep the colon format
  */
 function extractDuration(item: Record<string, unknown>): number | null {
-  // Try itunes_duration (rss-parser format)
-  if (item["itunes_duration"]) {
-    const durationValue = item["itunes_duration"];
-    if (typeof durationValue === "string") {
-      const duration = parseDurationToSeconds(durationValue);
-      if (duration !== null) return duration;
-    }
-  }
+  const keys = ["itunes_duration", "itunes:duration", "duration"];
+  const durationValue = getAnyProperty<string>(item, keys);
 
-  // Try itunes:duration (colon format)
-  if (item["itunes:duration"]) {
-    const durationValue = item["itunes:duration"];
-    if (typeof durationValue === "string") {
-      const duration = parseDurationToSeconds(durationValue);
-      if (duration !== null) return duration;
-    }
-  }
-
-  // Try duration (generic)
-  if (item["duration"]) {
-    const durationValue = item["duration"];
-    if (typeof durationValue === "string") {
-      const duration = parseDurationToSeconds(durationValue);
-      if (duration !== null) return duration;
-    }
+  if (typeof durationValue === "string") {
+    return parseDurationToSeconds(durationValue);
   }
 
   return null;
@@ -153,71 +138,25 @@ function extractDuration(item: Record<string, unknown>): number | null {
 
 /**
  * Extract episode or show artwork URL.
- *
- * RSS parsers may convert namespaces differently:
- * - rss-parser typically converts itunes:image to itunes_image
- * - Some parsers keep the colon format
  */
 function extractImage(item: Record<string, unknown>): string {
-  // Try itunes_image (rss-parser format)
-  if (item["itunes_image"]) {
-    const itunesImage = item["itunes_image"];
-    if (
-      typeof itunesImage === "object" &&
-      itunesImage !== null &&
-      "href" in itunesImage
-    ) {
-      return (itunesImage as { href: string }).href;
-    }
-    if (typeof itunesImage === "string") {
-      return itunesImage;
-    }
-  }
+  const keys = ["itunes_image", "itunes:image", "image"];
+  const image = getAnyProperty<any>(item, keys);
 
-  // Try itunes:image (colon format)
-  if (item["itunes:image"]) {
-    const itunesImage = item["itunes:image"];
-    if (
-      typeof itunesImage === "object" &&
-      itunesImage !== null &&
-      "href" in itunesImage
-    ) {
-      return (itunesImage as { href: string }).href;
-    }
-    if (typeof itunesImage === "string") {
-      return itunesImage;
-    }
-  }
-
-  // Try image (RSS standard)
-  if (item["image"]) {
-    const image = item["image"];
-    if (typeof image === "object" && image !== null) {
-      const imgObj = image as { href?: string; url?: string };
-      return imgObj.href || imgObj.url || "";
+  if (image != null) {
+    if (typeof image === "object") {
+      return image.href || image.url || "";
     }
     if (typeof image === "string") {
       return image;
     }
   }
 
-  // Try media_thumbnail (rss-parser format)
-  if (
-    item["media_thumbnail"] &&
-    Array.isArray(item["media_thumbnail"]) &&
-    (item["media_thumbnail"] as unknown[]).length > 0
-  ) {
-    const thumb = (item["media_thumbnail"] as unknown[])[0] as { url?: string };
-    return thumb.url || "";
-  }
-
-  // Try media:thumbnail (colon format)
-  if (
-    item["media:thumbnail"] &&
-    Array.isArray(item["media:thumbnail"]) &&
-    item["media:thumbnail"].length > 0
-  ) {
-    return item["media:thumbnail"][0].url || "";
+  // Try media_thumbnail
+  const mediaThumbs =
+    item["media_thumbnail"] || item["media:thumbnail"] || null;
+  if (Array.isArray(mediaThumbs) && mediaThumbs.length > 0) {
+    return (mediaThumbs[0] as { url?: string }).url || "";
   }
 
   return "";
@@ -225,51 +164,28 @@ function extractImage(item: Record<string, unknown>): string {
 
 /**
  * Extract episode description/show notes.
- *
- * RSS parsers may convert namespaces differently:
- * - rss-parser typically converts itunes:summary to itunes_summary
- * - Some parsers keep the colon format
  */
 function extractDescription(item: Record<string, unknown>): string {
   // Try content:encoded (full HTML)
-  if (item["content"] && Array.isArray(item["content"])) {
-    for (const content of item["content"] as unknown[]) {
+  const contents = item["content"];
+  if (Array.isArray(contents)) {
+    for (const content of contents as unknown[]) {
       const contentObj = content as { type?: string; value?: string };
-      if (contentObj.type === "text/html") {
-        return contentObj.value || "";
+      if (contentObj.type === "text/html" && contentObj.value) {
+        return contentObj.value;
       }
     }
   }
 
-  // Try content_encoded (rss-parser format)
-  if (item["content_encoded"]) {
-    const contentEncoded = item["content_encoded"];
-    if (typeof contentEncoded === "string") {
-      return contentEncoded;
-    }
-  }
+  const keys = ["content_encoded", "itunes_summary", "itunes:summary"];
+  const summaryValue = getAnyProperty<string>(item, keys);
+  if (typeof summaryValue === "string") return summaryValue;
 
-  // Try itunes_summary (rss-parser format)
-  if (item["itunes_summary"]) {
-    const itunesSummary = item["itunes_summary"];
-    if (typeof itunesSummary === "string") {
-      return itunesSummary;
-    }
-  }
-
-  // Try itunes:summary (colon format)
-  if (item["itunes:summary"]) {
-    const itunesSummary = item["itunes:summary"];
-    if (typeof itunesSummary === "string") {
-      return itunesSummary;
-    }
-  }
-
-  // Try description
   const summary = item["summary"];
   const description = item["description"];
   if (typeof summary === "string") return summary;
   if (typeof description === "string") return description;
+
   return "";
 }
 
@@ -359,96 +275,14 @@ export class PodcastAggregator extends BaseAggregator {
 
     const feed = sourceData as import("rss-parser").Output<unknown>;
     const items = feed.items || [];
-
     const articles: RawArticle[] = [];
 
     for (const item of items) {
       try {
-        // Extract podcast-specific data
-        const { url: audioUrl, type: audioType } = extractEnclosure(item as Record<string, unknown>);
-        const duration = extractDuration(item as Record<string, unknown>);
-        const imageUrl = extractImage(item as Record<string, unknown>);
-        const description = extractDescription(item as Record<string, unknown>);
-
-        if (!audioUrl) {
-          this.logger.warn(
-            {
-              step: "parseToRawArticles",
-              subStep: "parseEpisode",
-              aggregator: this.id,
-              feedId: this.feed?.id,
-              title: item.title,
-            },
-            "Podcast episode has no audio enclosure, skipping",
-          );
-          continue;
+        const article = await this.parseEpisode(item as any);
+        if (article) {
+          articles.push(article);
         }
-
-        // Build HTML content with embedded audio player
-        const htmlParts: string[] = [];
-
-        // Episode artwork
-        if (imageUrl) {
-          htmlParts.push(
-            `<div class="podcast-artwork"><img src="${imageUrl}" alt="Episode artwork" loading="lazy"></div>`,
-          );
-        }
-
-        // Audio player
-        htmlParts.push(
-          `<div class="podcast-player"><audio controls preload="metadata"><source src="${audioUrl}" type="${audioType || "audio/mpeg"}">Your browser does not support the audio element.</audio>`,
-        );
-
-        // Duration badge
-        if (duration) {
-          const formattedDuration = formatDuration(duration);
-          htmlParts.push(
-            `<span class="podcast-duration">${formattedDuration}</span>`,
-          );
-        }
-
-        // Download link
-        htmlParts.push(
-          `<a href="${audioUrl}" class="podcast-download" download><i class="bi bi-download"></i> Download Episode</a></div>`,
-        );
-
-        // Episode description/show notes
-        if (description) {
-          htmlParts.push('<div class="podcast-description">');
-          htmlParts.push("<h4>Show Notes</h4>");
-          // Parse HTML or convert plain text
-          if (description.includes("<") && description.includes(">")) {
-            // Already HTML - sanitize it
-            const $ = cheerio.load(description);
-            $("script, iframe, embed, object").remove();
-            htmlParts.push($.html());
-          } else {
-            // Plain text - convert to paragraphs
-            const paragraphs = description.split("\n\n");
-            for (const para of paragraphs) {
-              const trimmed = para.trim();
-              if (trimmed) {
-                const withBreaks = trimmed.replace(/\n/g, "<br>");
-                htmlParts.push(`<p>${withBreaks}</p>`);
-              }
-            }
-          }
-          htmlParts.push("</div>");
-        }
-
-        const content = htmlParts.join("\n");
-
-        articles.push({
-          title: item.title || "Untitled",
-          url: item.link || "",
-          published: item.pubDate ? new Date(item.pubDate) : new Date(),
-          content,
-          summary: description,
-          thumbnailUrl: imageUrl || undefined,
-          mediaUrl: audioUrl,
-          duration: duration || undefined,
-          mediaType: audioType || "audio/mpeg",
-        });
       } catch (error) {
         this.logger.error(
           {
@@ -461,7 +295,6 @@ export class PodcastAggregator extends BaseAggregator {
           },
           "Error processing podcast episode",
         );
-        continue;
       }
     }
 
@@ -479,6 +312,108 @@ export class PodcastAggregator extends BaseAggregator {
     );
 
     return articles;
+  }
+
+  /**
+   * Parse a single podcast episode.
+   */
+  private async parseEpisode(item: any): Promise<RawArticle | null> {
+    // Extract podcast-specific data
+    const { url: audioUrl, type: audioType } = extractEnclosure(
+      item as Record<string, unknown>,
+    );
+    const duration = extractDuration(item as Record<string, unknown>);
+    const imageUrl = extractImage(item as Record<string, unknown>);
+    const description = extractDescription(item as Record<string, unknown>);
+
+    if (!audioUrl) {
+      this.logger.warn(
+        {
+          step: "parseToRawArticles",
+          subStep: "parseEpisode",
+          aggregator: this.id,
+          feedId: this.feed?.id,
+          title: item.title,
+        },
+        "Podcast episode has no audio enclosure, skipping",
+      );
+      return null;
+    }
+
+    // Build HTML content with embedded audio player
+    const htmlParts: string[] = [];
+
+    // Episode artwork
+    if (imageUrl) {
+      htmlParts.push(
+        `<div class="podcast-artwork"><img src="${imageUrl}" alt="Episode artwork" loading="lazy"></div>`,
+      );
+    }
+
+    // Audio player
+    htmlParts.push(
+      `<div class="podcast-player"><audio controls preload="metadata"><source src="${audioUrl}" type="${audioType || "audio/mpeg"}">Your browser does not support the audio element.</audio>`,
+    );
+
+    // Duration badge
+    if (duration) {
+      const formattedDuration = formatDuration(duration);
+      htmlParts.push(
+        `<span class="podcast-duration">${formattedDuration}</span>`,
+      );
+    }
+
+    // Download link
+    htmlParts.push(
+      `<a href="${audioUrl}" class="podcast-download" download><i class="bi bi-download"></i> Download Episode</a></div>`,
+    );
+
+    // Episode description/show notes
+    if (description) {
+      htmlParts.push('<div class="podcast-description">');
+      htmlParts.push("<h4>Show Notes</h4>");
+      htmlParts.push(this.formatEpisodeDescription(description));
+      htmlParts.push("</div>");
+    }
+
+    const content = htmlParts.join("\n");
+
+    return {
+      title: item.title || "Untitled",
+      url: item.link || "",
+      published: item.pubDate ? new Date(item.pubDate) : new Date(),
+      content,
+      summary: description,
+      thumbnailUrl: imageUrl || undefined,
+      mediaUrl: audioUrl,
+      duration: duration || undefined,
+      mediaType: audioType || "audio/mpeg",
+    };
+  }
+
+  /**
+   * Format episode description into HTML.
+   */
+  private formatEpisodeDescription(description: string): string {
+    // Parse HTML or convert plain text
+    if (description.includes("<") && description.includes(">")) {
+      // Already HTML - sanitize it
+      const $ = cheerio.load(description);
+      $("script, iframe, embed, object").remove();
+      return $.html();
+    }
+
+    // Plain text - convert to paragraphs
+    const paragraphs = description.split("\n\n");
+    const htmlParts: string[] = [];
+    for (const para of paragraphs) {
+      const trimmed = para.trim();
+      if (trimmed) {
+        const withBreaks = trimmed.replace(/\n/g, "<br>");
+        htmlParts.push(`<p>${withBreaks}</p>`);
+      }
+    }
+    return htmlParts.join("\n");
   }
 
   /**

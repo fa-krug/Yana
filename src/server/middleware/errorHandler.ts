@@ -18,20 +18,9 @@ import { logger } from "../utils/logger";
 const isDevelopment = process.env["NODE_ENV"] === "development";
 
 /**
- * Error handler middleware.
- * Must be added after all routes.
+ * Log error with context.
  */
-export function errorHandler(
-  err: Error,
-  req: Request,
-  res: Response,
-  _next: NextFunction,
-): void {
-  // Ensure we have a proper error message
-  const errorMessage = err.message || String(err) || "Unknown error";
-  const errorName = err.name || "Error";
-
-  // Log the error with full details
+function logError(err: Error, req: Request): void {
   // Check for user property (may exist on authenticated requests)
   const authenticatedReq = req as Request & { user?: { id: number } };
 
@@ -65,11 +54,15 @@ export function errorHandler(
       );
     }
   }
+}
 
-  // Determine status code
-  const statusCode = err instanceof ServiceError ? err.statusCode : 500;
+/**
+ * Build error response object.
+ */
+function buildErrorResponse(err: Error): Record<string, unknown> {
+  const errorMessage = err.message || String(err) || "Unknown error";
+  const errorName = err.name || "Error";
 
-  // Build response
   const response: {
     error: string;
     message: string;
@@ -89,6 +82,27 @@ export function errorHandler(
   if (isDevelopment && err.stack) {
     response.stack = err.stack;
   }
+
+  return response;
+}
+
+/**
+ * Error handler middleware.
+ * Must be added after all routes.
+ */
+export function errorHandler(
+  err: Error,
+  req: Request,
+  res: Response,
+  _next: NextFunction,
+): void {
+  logError(err, req);
+
+  // Determine status code
+  const statusCode = err instanceof ServiceError ? err.statusCode : 500;
+
+  // Build response
+  const response = buildErrorResponse(err);
 
   // Send response
   res.status(statusCode).json(response);

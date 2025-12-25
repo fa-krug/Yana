@@ -20,6 +20,167 @@ import type { RedditPostData } from "./types";
 import { fixRedditMediaUrl, decodeHtmlEntitiesInUrl } from "./urls";
 
 /**
+ * Add selftext part to content.
+ */
+async function addSelftextPart(post: RedditPostData, contentParts: string[]): Promise<void> {
+  if (post.selftext) {
+    const selftextHtml = await convertRedditMarkdown(post.selftext);
+    contentParts.push(`<div>${selftextHtml}</div>`);
+  }
+}
+
+/**
+ * Process a single gallery item.
+ */
+function processGalleryItem(item: { media_id: string; caption?: string }, post: RedditPostData): string | null {
+  const mediaInfo = post.media_metadata?.[item.media_id];
+  if (!mediaInfo) return null;
+
+  const isAnimated = mediaInfo.e === "AnimatedImage";
+  let mediaUrl: string | undefined | null = null;
+  if (isAnimated) {
+    mediaUrl = mediaInfo.s?.gif || mediaInfo.s?.mp4;
+  } else if (mediaInfo.e === "Image") {
+    mediaUrl = mediaInfo.s?.u;
+  }
+
+  if (!mediaUrl) return null;
+
+  const fixedUrl = fixRedditMediaUrl(decodeHtmlEntitiesInUrl(decodeURIComponent(mediaUrl)));
+  const caption = item.caption || "";
+  let alt = "Gallery image";
+  if (caption) {
+    alt = escapeHtml(caption);
+  } else if (isAnimated) {
+    alt = "Animated GIF";
+  }
+
+  if (caption) {
+    return `<figure><img src="${fixedUrl}" alt="${alt}"><figcaption>${alt}</figcaption></figure>`;
+  }
+  return `<p><img src="${fixedUrl}" alt="${alt}"></p>`;
+}
+
+/**
+ * Add gallery media to content.
+ */
+function addGalleryMedia(post: RedditPostData, contentParts: string[]): void {
+  if (!post.is_gallery || !post.media_metadata || !post.gallery_data?.items) return;
+
+  for (const item of post.gallery_data.items) {
+    const html = processGalleryItem(item, post);
+    if (html) contentParts.push(html);
+  }
+}
+
+/**
+ * Handle GIF media in links.
+ */
+function handleGifMedia(post: RedditPostData, url: string, urlLower: string, contentParts: string[]): boolean {
+  if (urlLower.endsWith(".gif") || urlLower.endsWith(".gifv")) {
+    if (!wouldUseGifAsHeader(post, url)) {
+      const gifUrl = extractAnimatedGifUrl(post) || (urlLower.endsWith(".gifv") ? url.slice(0, -1) : url);
+      const fixedUrl = fixRedditMediaUrl(gifUrl);
+      if (fixedUrl) contentParts.push(`<p><img src="${fixedUrl}" alt="Animated GIF"></p>`);
+    }
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Handle direct image media in links.
+ */
+function handleImageMedia(post: RedditPostData, url: string, urlLower: string, contentParts: string[]): boolean {
+  const isImage = [".jpg", ".jpeg", ".png", ".webp"].some((ext) => urlLower.endsWith(ext)) || urlLower.includes("i.redd.it");
+  if (isImage) {
+    if (!wouldUseDirectImageAsHeader(post, url)) {
+      const fixedUrl = fixRedditMediaUrl(url);
+      if (fixedUrl) contentParts.push(`<p><a href="${fixedUrl}">${escapeHtml(fixedUrl)}</a></p>`);
+    }
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Handle video and YouTube media in links.
+ */
+function handleVideoMedia(post: RedditPostData, url: string, urlLower: string, contentParts: string[]): boolean {
+  if (urlLower.includes("v.redd.it")) {
+    if (!wouldUseVRedditAsHeader(post)) {
+      const previewUrl = extractRedditVideoPreview(post);
+      if (previewUrl) contentParts.push(`<p><img src="${previewUrl}" alt="Video thumbnail"></p>`);
+      contentParts.push(`<p><a href="${url}">▶ View Video</a></p>`);
+    }
+    return true;
+  }
+
+  if (urlLower.includes("youtube.com") || urlLower.includes("youtu.be")) {
+    if (!wouldUseYouTubeAsHeader(url)) {
+      contentParts.push(`<p><a href="${url}">▶ View Video on YouTube</a></p>`);
+    }
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Add link media to content.
+ */
+function addLinkMedia(post: RedditPostData, contentParts: string[], isCrossPost: boolean): void {
+  if (!post.url || post.is_gallery) return;
+
+  const url = decodeHtmlEntitiesInUrl(post.url);
+  const urlLower = url.toLowerCase();
+
+  if (handleGifMedia(post, url, urlLower, contentParts)) return;
+  if (handleImageMedia(post, url, urlLower, contentParts)) return;
+  if (handleVideoMedia(post, url, urlLower, contentParts)) return;
+
+  // Fallback link
+  if (!isCrossPost && !post.is_self) {
+    contentParts.push(`<p><a href="${url}">${escapeHtml(url)}</a></p>`);
+  }
+}
+
+/**
+ * Add comments section to content.
+ */
+async function addCommentsSection(
+  post: RedditPostData,
+  commentLimit: number,
+  subreddit: string,
+  userId: number,
+  contentParts: string[],
+): Promise<void> {
+  const decodedPermalink = decodeHtmlEntitiesInUrl(post.permalink);
+  const permalink = `https://reddit.com${decodedPermalink}`;
+  const commentSectionParts: string[] = [`<h3><a href="${permalink}" target="_blank" rel="noopener">Comments</a></h3>`];
+
+  if (commentLimit > 0) {
+    try {
+      const comments = await fetchPostComments(subreddit, post.id, commentLimit, userId);
+      if (comments.length > 0) {
+        const commentHtmls = await Promise.all(comments.map(formatCommentHtml));
+        commentSectionParts.push(commentHtmls.join(""));
+      } else {
+        commentSectionParts.push("<p><em>No comments yet.</em></p>");
+      }
+    } catch (error) {
+      if (error instanceof ArticleSkipError) throw error;
+      logger.warn({ error, subreddit, postId: post.id }, "Failed to fetch comments");
+      commentSectionParts.push("<p><em>Comments unavailable.</em></p>");
+    }
+  } else {
+    commentSectionParts.push("<p><em>Comments disabled.</em></p>");
+  }
+
+  contentParts.push(`<section>${commentSectionParts.join("")}</section>`);
+}
+
+/**
  * Build post content with comments.
  */
 export async function buildPostContent(
@@ -31,179 +192,10 @@ export async function buildPostContent(
 ): Promise<string> {
   const contentParts: string[] = [];
 
-  // Post content (selftext or link)
-  // Check for selftext first - image posts can have text descriptions too
-  if (post.selftext) {
-    // Text content - convert Reddit markdown to HTML
-    const selftextHtml = await convertRedditMarkdown(post.selftext);
-    contentParts.push(`<div>${selftextHtml}</div>`);
-  }
-
-  // Handle media content (images, galleries, videos)
-  if (post.is_gallery && post.media_metadata && post.gallery_data?.items) {
-    // Reddit gallery - extract all images at high resolution
-    for (const item of post.gallery_data.items) {
-      const mediaId = item.media_id;
-      const caption = item.caption || "";
-      const mediaInfo = post.media_metadata[mediaId];
-
-      if (mediaInfo) {
-        // Check if it's an animated GIF
-        if (mediaInfo.e === "AnimatedImage") {
-          const gifUrl = mediaInfo.s?.gif || mediaInfo.s?.mp4;
-          if (gifUrl) {
-            const decoded = decodeURIComponent(gifUrl);
-            const decodedEntities = decodeHtmlEntitiesInUrl(decoded);
-            const fixedUrl = fixRedditMediaUrl(decodedEntities);
-            if (caption) {
-              contentParts.push(
-                `<figure><img src="${fixedUrl}" alt="${escapeHtml(caption)}"><figcaption>${escapeHtml(caption)}</figcaption></figure>`,
-              );
-            } else {
-              contentParts.push(
-                `<p><img src="${fixedUrl}" alt="Animated GIF"></p>`,
-              );
-            }
-          }
-        } else if (mediaInfo.e === "Image" && mediaInfo.s?.u) {
-          const decoded = decodeURIComponent(mediaInfo.s.u);
-          const decodedEntities = decodeHtmlEntitiesInUrl(decoded);
-          const imageUrl = fixRedditMediaUrl(decodedEntities);
-          if (caption) {
-            contentParts.push(
-              `<figure><img src="${imageUrl}" alt="${escapeHtml(caption)}"><figcaption>${escapeHtml(caption)}</figcaption></figure>`,
-            );
-          } else {
-            contentParts.push(
-              `<p><img src="${imageUrl}" alt="Gallery image"></p>`,
-            );
-          }
-        }
-      }
-    }
-  } else if (post.url) {
-    // Link post
-    const decodedUrl = decodeHtmlEntitiesInUrl(post.url);
-    const url = decodedUrl;
-
-    if (
-      url.toLowerCase().endsWith(".gif") ||
-      url.toLowerCase().endsWith(".gifv")
-    ) {
-      // Check if GIF will be used as header - if so, skip adding to body
-      const willBeUsedAsHeader = wouldUseGifAsHeader(post, url);
-      if (!willBeUsedAsHeader) {
-        // Try to get animated GIF URL first
-        const gifUrl = extractAnimatedGifUrl(post);
-        if (gifUrl) {
-          const fixedUrl = fixRedditMediaUrl(gifUrl);
-          if (fixedUrl) {
-            contentParts.push(
-              `<p><img src="${fixedUrl}" alt="Animated GIF"></p>`,
-            );
-          }
-        } else {
-          const finalUrl = url.toLowerCase().endsWith(".gifv")
-            ? url.slice(0, -1)
-            : url;
-          const fixedUrl = fixRedditMediaUrl(finalUrl);
-          if (fixedUrl) {
-            contentParts.push(
-              `<p><img src="${fixedUrl}" alt="Animated GIF"></p>`,
-            );
-          }
-        }
-      }
-      // If willBeUsedAsHeader is true, skip adding to content (will be in header)
-    } else if (
-      [".jpg", ".jpeg", ".png", ".webp"].some((ext) =>
-        url.toLowerCase().endsWith(ext),
-      ) ||
-      url.includes("i.redd.it")
-    ) {
-      // Direct image URL - skip if it will be used as header element
-      const willBeUsedAsHeader = wouldUseDirectImageAsHeader(post, url);
-      if (!willBeUsedAsHeader) {
-        const fixedUrl = fixRedditMediaUrl(url);
-        if (fixedUrl) {
-          contentParts.push(
-            `<p><a href="${fixedUrl}">${escapeHtml(fixedUrl)}</a></p>`,
-          );
-        }
-      }
-      // If willBeUsedAsHeader is true, skip adding to content (will be in header)
-    } else if (url.includes("v.redd.it")) {
-      // Reddit video - only add thumbnail and link if it won't be used as header
-      // (if it will be used as header, it will be embedded in the header element)
-      const willBeUsedAsHeader = wouldUseVRedditAsHeader(post);
-      if (!willBeUsedAsHeader) {
-        // Extract preview and add to content
-        const previewUrl = extractRedditVideoPreview(post);
-        if (previewUrl) {
-          contentParts.push(
-            `<p><img src="${previewUrl}" alt="Video thumbnail"></p>`,
-          );
-        }
-        contentParts.push(`<p><a href="${url}">▶ View Video</a></p>`);
-      }
-      // If willBeUsedAsHeader is true, skip adding to content (will be in header)
-    } else if (url.includes("youtube.com") || url.includes("youtu.be")) {
-      // YouTube video - skip if it will be used as header element
-      const willBeUsedAsHeader = wouldUseYouTubeAsHeader(url);
-      if (!willBeUsedAsHeader) {
-        // Create a link - standardize_format will convert it to an embed
-        contentParts.push(
-          `<p><a href="${url}">▶ View Video on YouTube</a></p>`,
-        );
-      }
-      // If willBeUsedAsHeader is true, skip adding to content (will be in header)
-    } else if (!isCrossPost && !post.is_self) {
-      // For other URLs, just add as link - standardizeContentFormat will handle image extraction
-      // Skip adding original link for cross posts and self-posts (text-only posts)
-      contentParts.push(`<p><a href="${url}">${escapeHtml(url)}</a></p>`);
-    }
-  }
-
-  // Comments section
-  const decodedPermalink = decodeHtmlEntitiesInUrl(post.permalink);
-  const permalink = `https://reddit.com${decodedPermalink}`;
-  const commentSectionParts: string[] = [
-    `<h3><a href="${permalink}" target="_blank" rel="noopener">Comments</a></h3>`,
-  ];
-
-  // Fetch and format comments
-  if (commentLimit > 0) {
-    try {
-      const comments = await fetchPostComments(
-        subreddit,
-        post.id,
-        commentLimit,
-        userId,
-      );
-      if (comments.length > 0) {
-        const commentHtmls = await Promise.all(comments.map(formatCommentHtml));
-        commentSectionParts.push(commentHtmls.join(""));
-      } else {
-        commentSectionParts.push("<p><em>No comments yet.</em></p>");
-      }
-    } catch (error) {
-      // Re-throw ArticleSkipError to propagate it up
-      if (error instanceof ArticleSkipError) {
-        throw error;
-      }
-      // For other errors, log and continue without comments
-      logger.warn(
-        { error, subreddit, postId: post.id },
-        "Failed to fetch comments, continuing without them",
-      );
-      commentSectionParts.push("<p><em>Comments unavailable.</em></p>");
-    }
-  } else {
-    commentSectionParts.push("<p><em>Comments disabled.</em></p>");
-  }
-
-  // Wrap comments in section tag
-  contentParts.push(`<section>${commentSectionParts.join("")}</section>`);
+  await addSelftextPart(post, contentParts);
+  addGalleryMedia(post, contentParts);
+  addLinkMedia(post, contentParts, isCrossPost);
+  await addCommentsSection(post, commentLimit, subreddit, userId, contentParts);
 
   return contentParts.join("");
 }

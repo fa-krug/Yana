@@ -407,34 +407,7 @@ export class HeiseAggregator extends FullWebsiteAggregator {
       });
 
       const $ = cheerio.load(html);
-
-      // Try different comment selectors
-      const commentSelectors = [
-        "li.posting_element",
-        '[id^="posting_"]',
-        ".posting",
-        ".a-comment",
-      ];
-
-      let commentElements: cheerio.Cheerio<any> | null = null;
-      for (const selector of commentSelectors) {
-        const elements = $(selector);
-        if (elements.length > 0) {
-          this.logger.info(
-            {
-              step: "enrichArticles",
-              subStep: "extractComments",
-              aggregator: this.id,
-              feedId: this.feed?.id,
-              selector,
-              count: elements.length,
-            },
-            "Found comments using selector",
-          );
-          commentElements = elements;
-          break;
-        }
-      }
+      const commentElements = this.findCommentElements($);
 
       if (!commentElements || commentElements.length === 0) {
         this.logger.info(
@@ -457,78 +430,14 @@ export class HeiseAggregator extends FullWebsiteAggregator {
 
       commentElements.slice(0, maxComments).each((i, element) => {
         try {
-          const $el = $(element);
-          let author = "Unknown";
-          const isListItem = element.tagName === "li";
-
-          if (isListItem) {
-            // Extract from list view
-            const authorElem = $el
-              .find(".tree_thread_list--written_by_user, .pseudonym")
-              .first();
-            if (authorElem.length) {
-              author = authorElem.text().trim();
-            }
-
-            const titleLink = $el.find("a.posting_subject").first();
-            if (!titleLink.length) {
-              return;
-            }
-
-            const title = titleLink.text().trim();
-            const content = `<p>${cheerio.load(title).text()}</p>`;
-            const commentUrl = titleLink.attr("href") || "";
-
-            commentHtmlParts.push(
-              `<blockquote><p><strong>${author}</strong> | <a href="${commentUrl}">source</a></p><div>${content}</div></blockquote>`,
-            );
-            extractedCount++;
-          } else {
-            // Extract from full posting view
-            const authorSelectors = [
-              'a[href*="/forum/heise-online/Meinungen"]',
-              ".pseudonym",
-              ".username",
-              "strong",
-            ];
-
-            for (const selector of authorSelectors) {
-              const authorElem = $el.find(selector).first();
-              if (authorElem.length) {
-                const authorText = authorElem.text().trim();
-                if (authorText && authorText.length < 50) {
-                  author = authorText;
-                  break;
-                }
-              }
-            }
-
-            // Extract content
-            const contentSelectors = [
-              ".text",
-              ".posting-content",
-              ".comment-body",
-              "p",
-            ];
-            let content = "";
-            for (const selector of contentSelectors) {
-              const contentElem = $el.find(selector).first();
-              if (contentElem.length) {
-                content = contentElem.html() || "";
-                break;
-              }
-            }
-
-            const commentId = $el.attr("id") || `comment-${i}`;
-            const commentUrl = `${articleUrl}#${commentId}`;
-
-            if (!content || !content.trim()) {
-              return;
-            }
-
-            commentHtmlParts.push(
-              `<blockquote><p><strong>${author}</strong> | <a href="${commentUrl}">source</a></p><div>${content}</div></blockquote>`,
-            );
+          const commentHtml = this.processCommentElement(
+            $,
+            element,
+            i,
+            articleUrl,
+          );
+          if (commentHtml) {
+            commentHtmlParts.push(commentHtml);
             extractedCount++;
           }
         } catch (error) {
@@ -590,6 +499,133 @@ export class HeiseAggregator extends FullWebsiteAggregator {
       }
       return null;
     }
+  }
+
+  /**
+   * Find comment elements using various selectors.
+   */
+  private findCommentElements($: cheerio.CheerioAPI): cheerio.Cheerio<any> | null {
+    const commentSelectors = [
+      "li.posting_element",
+      '[id^="posting_"]',
+      ".posting",
+      ".a-comment",
+    ];
+
+    for (const selector of commentSelectors) {
+      const elements = $(selector);
+      if (elements.length > 0) {
+        this.logger.info(
+          {
+            step: "enrichArticles",
+            subStep: "extractComments",
+            aggregator: this.id,
+            feedId: this.feed?.id,
+            selector,
+            count: elements.length,
+          },
+          "Found comments using selector",
+        );
+        return elements;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Process a single comment element.
+   */
+  private processCommentElement(
+    $: cheerio.CheerioAPI,
+    element: any,
+    i: number,
+    articleUrl: string,
+  ): string | null {
+    const $el = $(element);
+    const isListItem = element.tagName === "li";
+
+    if (isListItem) {
+      return this.processListItemComment($el);
+    } else {
+      return this.processFullViewComment($el, i, articleUrl);
+    }
+  }
+
+  /**
+   * Process a comment in list item view.
+   */
+  private processListItemComment($el: cheerio.Cheerio<any>): string | null {
+    let author = "Unknown";
+    const authorElem = $el
+      .find(".tree_thread_list--written_by_user, .pseudonym")
+      .first();
+    if (authorElem.length) {
+      author = authorElem.text().trim();
+    }
+
+    const titleLink = $el.find("a.posting_subject").first();
+    if (!titleLink.length) {
+      return null;
+    }
+
+    const title = titleLink.text().trim();
+    const content = `<p>${cheerio.load(title).text()}</p>`;
+    const commentUrl = titleLink.attr("href") || "";
+
+    return `<blockquote><p><strong>${author}</strong> | <a href="${commentUrl}">source</a></p><div>${content}</div></blockquote>`;
+  }
+
+  /**
+   * Process a comment in full view.
+   */
+  private processFullViewComment(
+    $el: cheerio.Cheerio<any>,
+    i: number,
+    articleUrl: string,
+  ): string | null {
+    let author = "Unknown";
+    const authorSelectors = [
+      'a[href*="/forum/heise-online/Meinungen"]',
+      ".pseudonym",
+      ".username",
+      "strong",
+    ];
+
+    for (const selector of authorSelectors) {
+      const authorElem = $el.find(selector).first();
+      if (authorElem.length) {
+        const authorText = authorElem.text().trim();
+        if (authorText && authorText.length < 50) {
+          author = authorText;
+          break;
+        }
+      }
+    }
+
+    // Extract content
+    const contentSelectors = [
+      ".text",
+      ".posting-content",
+      ".comment-body",
+      "p",
+    ];
+    let content = "";
+    for (const selector of contentSelectors) {
+      const contentElem = $el.find(selector).first();
+      if (contentElem.length) {
+        content = contentElem.html() || "";
+        break;
+      }
+    }
+
+    const commentId = $el.attr("id") || `comment-${i}`;
+    const commentUrl = `${articleUrl}#${commentId}`;
+
+    if (!content || !content.trim()) {
+      return null;
+    }
+
+    return `<blockquote><p><strong>${author}</strong> | <a href="${commentUrl}">source</a></p><div>${content}</div></blockquote>`;
   }
 
   /**

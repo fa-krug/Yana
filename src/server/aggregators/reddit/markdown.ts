@@ -24,6 +24,12 @@ marked.setOptions({
 export async function convertRedditMarkdown(text: string): Promise<string> {
   if (!text) return "";
 
+  // Limit input size to prevent regex DoS attacks
+  const MAX_TEXT_LENGTH = 100000; // 100KB limit
+  if (text.length > MAX_TEXT_LENGTH) {
+    text = text.substring(0, MAX_TEXT_LENGTH);
+  }
+
   // Handle Reddit preview images
   text = text.replace(
     /(?<!\[\(])https?:\/\/preview\.redd\.it\/[^\s)]+/g,
@@ -34,8 +40,9 @@ export async function convertRedditMarkdown(text: string): Promise<string> {
   );
 
   // Convert markdown links with preview.redd.it URLs to image tags
+  // Use non-greedy quantifiers and limit length to prevent backtracking
   text = text.replace(
-    /\[([^\]]*)\]\((https?:\/\/preview\.redd\.it\/[^)]+)\)/g,
+    /\[([^\]]{0,200})\]\((https?:\/\/preview\.redd\.it\/[^\s)]{1,500})\)/g,
     (_, alt, url) => {
       const decodedUrl = decodeHtmlEntitiesInUrl(url);
       return `<img src="${decodedUrl}" alt="${alt || "Reddit preview image"}">`;
@@ -44,19 +51,20 @@ export async function convertRedditMarkdown(text: string): Promise<string> {
 
   // Handle Giphy images
   text = text.replace(
-    /!\[([^\]]*)\]\(giphy\|([a-zA-Z0-9]+)(?:\|[^)]+)?\)/gi,
+    /!\[([^\]]*)\]\(giphy\|([a-z0-9]+)(?:\|[^)]+)?\)/gi,
     (_, __, giphyId) =>
       `<img src="https://i.giphy.com/${giphyId}.gif" alt="Giphy GIF">`,
   );
 
+  // Match img tags with giphy URLs - limit backtracking with specific patterns
   text = text.replace(
-    /<img\s+[^>]*src=\s*["']giphy\|([^"'|]+)[^"']*["'][^>]*>/gi,
+    /<img\s+[^>]{0,200}src\s*=\s*["']giphy\|([a-z0-9]{1,50})(?:\|[^"']{0,100})?["'][^>]{0,200}>/gi,
     (_, giphyId) =>
       `<img src="https://i.giphy.com/${giphyId}.gif" alt="Giphy GIF">`,
   );
 
   text = text.replace(
-    /(?<!["'])giphy\|([a-zA-Z0-9]+)(?!["'])/g,
+    /(?<!["'])giphy\|([a-z0-9]+)(?!["'])/gi,
     (_, giphyId) =>
       `<img src="https://i.giphy.com/${giphyId}.gif" alt="Giphy GIF">`,
   );
