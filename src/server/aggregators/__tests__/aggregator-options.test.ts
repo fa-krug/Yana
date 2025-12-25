@@ -30,6 +30,45 @@ import {
   traceAggregation,
 } from "./options-helpers";
 
+// --- Helper Functions for Tests ---
+
+const createRedditMockComment = (i: number) => ({
+  id: `comment${i}`,
+  body: `Comment ${i}`,
+  author: "user",
+  score: 10 - i,
+  permalink: `/r/programming/comments/test123/test_post/comment${i}/`,
+});
+
+const mapRedditCommentToChild = (c: ReturnType<typeof createRedditMockComment>) => ({
+  data: c,
+});
+
+const createYouTubeMockComment = (i: number) => ({
+  id: `comment${i}`,
+  snippet: {
+    topLevelComment: {
+      snippet: {
+        textDisplay: `Comment ${i}`,
+        textOriginal: `Comment ${i}`,
+        authorDisplayName: "User",
+        likeCount: 10 - i,
+        publishedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+    },
+    totalReplyCount: 0,
+    canReply: true,
+  },
+});
+
+const createMacTechNewsCommentHtml = (i: number, articleUrl: string) =>
+  `<blockquote><p><strong>User ${i}</strong> | <a href="${articleUrl}#comment-${i}">source</a></p><div>Comment ${i}</div></blockquote>`;
+
+const createHeiseCommentDiv = (i: number) => `<div>Comment ${i}</div>`;
+
+// --- End Helper Functions ---
+
 // Mock logger
 vi.mock("../../utils/logger", () => ({
   logger: {
@@ -88,6 +127,7 @@ describe("Aggregator Options Integration Tests", () => {
     const user = await createUser(
       testUser.username,
       testUser.email,
+      // eslint-disable-next-line sonarjs/no-hardcoded-passwords
       "password",
     );
     testUserId = user.id;
@@ -489,13 +529,10 @@ describe("Aggregator Options Integration Tests", () => {
         if (url.includes("/r/programming/comments/test123")) {
           // Mock comments - return 10 comments but should only use 5
           // Reddit comments API returns array: [0] = post, [1] = comments
-          const comments = Array.from({ length: 10 }, (_, i) => ({
-            id: `comment${i}`,
-            body: `Comment ${i}`,
-            author: "user",
-            score: 10 - i,
-            permalink: `/r/programming/comments/test123/test_post/comment${i}/`,
-          }));
+          const comments = [];
+          for (let i = 0; i < 10; i++) {
+            comments.push(createRedditMockComment(i));
+          }
           return Promise.resolve({
             data: [
               {
@@ -515,7 +552,7 @@ describe("Aggregator Options Integration Tests", () => {
               },
               {
                 data: {
-                  children: comments.map((c) => ({ data: c })),
+                  children: comments.map(mapRedditCommentToChild),
                 },
               },
             ],
@@ -873,23 +910,10 @@ describe("Aggregator Options Integration Tests", () => {
         if (url.includes("/commentThreads")) {
           // Return 10 comments but should only use 3
           // Match the YouTubeComment interface structure
-          const comments = Array.from({ length: 10 }, (_, i) => ({
-            id: `comment${i}`,
-            snippet: {
-              topLevelComment: {
-                snippet: {
-                  textDisplay: `Comment ${i}`,
-                  textOriginal: `Comment ${i}`,
-                  authorDisplayName: "User",
-                  likeCount: 10 - i,
-                  publishedAt: new Date().toISOString(),
-                  updatedAt: new Date().toISOString(),
-                },
-              },
-              totalReplyCount: 0,
-              canReply: true,
-            },
-          }));
+          const comments = [];
+          for (let i = 0; i < 10; i++) {
+            comments.push(createYouTubeMockComment(i));
+          }
           return Promise.resolve({
             data: { items: comments },
           } as any);
@@ -1005,11 +1029,11 @@ describe("Aggregator Options Integration Tests", () => {
 
           // If maxComments > 0, replace any existing comments section with exactly maxComments comments
           if (maxComments > 0) {
-            const comments = Array.from(
-              { length: maxComments },
-              (_, i) =>
-                `<blockquote><p><strong>User ${i}</strong> | <a href="${article.url}#comment-${i}">source</a></p><div>Comment ${i}</div></blockquote>`,
-            ).join("\n");
+            const commentsArr = [];
+            for (let i = 0; i < maxComments; i++) {
+              commentsArr.push(createMacTechNewsCommentHtml(i, article.url));
+            }
+            const comments = commentsArr.join("\n");
             const commentsSection = `<section><h3><a href="${article.url}#comments" target="_blank" rel="noopener">Comments</a></h3>${comments}</section>`;
 
             // Remove any existing comments section and add our controlled one
@@ -1139,10 +1163,12 @@ describe("Aggregator Options Integration Tests", () => {
           maxComments: number,
         ) => {
           // Return only the specified number of comments
-          return Array.from(
-            { length: Math.min(maxComments, 10) },
-            (_, i) => `<div>Comment ${i}</div>`,
-          ).join("");
+          const count = Math.min(maxComments, 10);
+          const comments = [];
+          for (let i = 0; i < count; i++) {
+            comments.push(createHeiseCommentDiv(i));
+          }
+          return comments.join("");
         },
       );
 
@@ -1153,10 +1179,12 @@ describe("Aggregator Options Integration Tests", () => {
           articleHtml: string,
           maxComments: number,
         ) => {
-          return Array.from(
-            { length: Math.min(maxComments, 10) },
-            (_, i) => `<div>Comment ${i}</div>`,
-          ).join("");
+          const count = Math.min(maxComments, 10);
+          const comments = [];
+          for (let i = 0; i < count; i++) {
+            comments.push(createHeiseCommentDiv(i));
+          }
+          return comments.join("");
         },
       );
 

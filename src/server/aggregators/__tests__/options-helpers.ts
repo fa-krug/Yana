@@ -239,6 +239,46 @@ export async function traceAggregation(
 }
 
 /**
+ * Check if article content contains required strings.
+ */
+function checkContains(articleContent: string, contains: string[]): void {
+  for (const text of contains) {
+    expect(articleContent).toContain(text);
+  }
+}
+
+/**
+ * Check if article content does not contain specified strings.
+ */
+function checkNotContains(articleContent: string, notContains: string[]): void {
+  for (const text of notContains) {
+    expect(articleContent).not.toContain(text);
+  }
+}
+
+/**
+ * Check if article has header element.
+ */
+function expectHeaderToExist($: cheerio.CheerioAPI): void {
+  expect($("header").length).toBeGreaterThan(0);
+}
+
+function expectHeaderToNotExist($: cheerio.CheerioAPI): void {
+  expect($("header").length).toBe(0);
+}
+
+/**
+ * Check if article has footer element.
+ */
+function expectFooterToExist($: cheerio.CheerioAPI): void {
+  expect($("footer").length).toBeGreaterThan(0);
+}
+
+function expectFooterToNotExist($: cheerio.CheerioAPI): void {
+  expect($("footer").length).toBe(0);
+}
+
+/**
  * Verify article content contains expected elements.
  */
 export function verifyArticleContent(
@@ -254,44 +294,34 @@ export function verifyArticleContent(
 ): void {
   const $ = cheerio.load(articleContent);
 
-  // Check for required strings
   if (checks.contains) {
-    for (const text of checks.contains) {
-      expect(articleContent).toContain(text);
-    }
+    checkContains(articleContent, checks.contains);
   }
 
-  // Check for absent strings
   if (checks.notContains) {
-    for (const text of checks.notContains) {
-      expect(articleContent).not.toContain(text);
-    }
+    checkNotContains(articleContent, checks.notContains);
   }
 
-  // Check for header
   if (checks.hasHeader !== undefined) {
     if (checks.hasHeader) {
-      expect($("header").length).toBeGreaterThan(0);
+      expectHeaderToExist($);
     } else {
-      expect($("header").length).toBe(0);
+      expectHeaderToNotExist($);
     }
   }
 
-  // Check for footer
   if (checks.hasFooter !== undefined) {
     if (checks.hasFooter) {
-      expect($("footer").length).toBeGreaterThan(0);
+      expectFooterToExist($);
     } else {
-      expect($("footer").length).toBe(0);
+      expectFooterToNotExist($);
     }
   }
 
-  // Check header image count
   if (checks.headerImageCount !== undefined) {
     expect($("header img").length).toBe(checks.headerImageCount);
   }
 
-  // Check footer link count
   if (checks.footerLinkCount !== undefined) {
     expect($("footer a").length).toBe(checks.footerLinkCount);
   }
@@ -357,7 +387,7 @@ export function verifyRegexReplacements(
   content: string,
   replacements: Array<{ pattern: string; replacement: string }>,
 ): void {
-  for (const { pattern: _pattern, replacement } of replacements) {
+  for (const { replacement } of replacements) {
     // Check that replacement text exists
     expect(content).toContain(replacement);
     // Check that original pattern doesn't exist (unless it's a partial match)
