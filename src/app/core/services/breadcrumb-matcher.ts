@@ -4,6 +4,7 @@
  */
 
 import { ActivatedRouteSnapshot } from "@angular/router";
+
 import type { BreadcrumbItem } from "./breadcrumb.service";
 
 /**

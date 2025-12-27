@@ -1,12 +1,14 @@
 /**
  * YouTube service.
  *
- * Handles YouTube API authentication and credential testing.
+ * Handles YouTube API authentication and channel search functionality.
  */
 
 import axios from "axios";
 
 import { logger } from "../utils/logger";
+import { mapAxiosErrorToMessage } from "./youtube-error-mapper";
+import { fetchChannelDetailsWithFallback } from "./youtube-channel-detail-fetcher";
 
 export interface YouTubeCredentials {
   apiKey: string;
@@ -152,86 +154,19 @@ export async function searchYouTubeChannels(
   }
 
   try {
-    const url = "https://www.googleapis.com/youtube/v3/search";
-    const response = await axios.get(url, {
-      params: {
-        part: "snippet",
-        q: query,
-        type: "channel",
-        maxResults: Math.min(limit, 50), // YouTube API max is 50
-        key: apiKey,
-        order: "relevance",
-      },
-      timeout: 10000,
-    });
+    const searchResults = await fetchSearchResults(query, apiKey, limit);
 
-    const channels: YouTubeChannelSearchResult[] = [];
-
-    if (response.data?.items) {
-      for (const item of response.data.items) {
-        const snippet = item.snippet;
-        if (snippet && item.id?.channelId) {
-          // Get additional channel details (subscriber count, handle)
-          try {
-            const channelDetailsResponse = await axios.get(
-              "https://www.googleapis.com/youtube/v3/channels",
-              {
-                params: {
-                  part: "snippet,statistics",
-                  id: item.id.channelId,
-                  key: apiKey,
-                },
-                timeout: 10000,
-              },
-            );
-
-            const channelDetails = channelDetailsResponse.data?.items?.[0];
-            const channelSnippet = channelDetails?.snippet;
-            const channelStatistics = channelDetails?.statistics;
-
-            // Extract handle from customUrl or try to find it
-            let handle: string | null = null;
-            if (channelSnippet?.customUrl) {
-              handle = channelSnippet.customUrl.replace("@", "");
-            } else if (channelSnippet?.handle) {
-              handle = channelSnippet.handle.replace("@", "");
-            }
-
-            channels.push({
-              channelId: item.id.channelId,
-              title: snippet.title || "",
-              description: snippet.description || "",
-              thumbnailUrl:
-                snippet.thumbnails?.high?.url ||
-                snippet.thumbnails?.default?.url ||
-                null,
-              subscriberCount: parseInt(
-                channelStatistics?.subscriberCount || "0",
-                10,
-              ),
-              handle: handle,
-            });
-          } catch (detailError) {
-            // If we can't get details, still add the channel with basic info
-            logger.warn(
-              { error: detailError, channelId: item.id.channelId },
-              "Could not fetch channel details, using basic info",
-            );
-            channels.push({
-              channelId: item.id.channelId,
-              title: snippet.title || "",
-              description: snippet.description || "",
-              thumbnailUrl:
-                snippet.thumbnails?.high?.url ||
-                snippet.thumbnails?.default?.url ||
-                null,
-              subscriberCount: 0,
-              handle: null,
-            });
-          }
-        }
-      }
+    if (!searchResults?.items) {
+      return [];
     }
+
+    const channels = await Promise.all(
+      searchResults.items
+        .filter((item) => item.snippet && item.id?.channelId)
+        .map((item) =>
+          fetchChannelDetailsWithFallback(item, item.snippet, apiKey),
+        ),
+    );
 
     logger.info(
       { query, count: channels.length },
@@ -240,65 +175,35 @@ export async function searchYouTubeChannels(
     return channels;
   } catch (error) {
     logger.error({ error, query }, "Error searching YouTube channels");
+
     if (axios.isAxiosError(error)) {
-      if (error.response?.status === 403) {
-        const errorData = error.response.data;
-        const errorReason = errorData?.error?.errors?.[0]?.reason;
-        const errorMessage = errorData?.error?.message;
-
-        // Handle specific 403 error reasons
-        if (errorReason === "quotaExceeded") {
-          throw new Error(
-            "YouTube API quota exceeded. Please try again later.",
-          );
-        }
-        if (errorReason === "accessNotConfigured") {
-          throw new Error(
-            "YouTube Data API v3 is not enabled. Enable it in Google Cloud Console.",
-          );
-        }
-        if (errorReason === "ipRefererBlocked") {
-          throw new Error(
-            "API key is restricted by IP address or referer. Check API key restrictions in Google Cloud Console.",
-          );
-        }
-        if (errorReason === "forbidden") {
-          throw new Error(
-            "API key is restricted or invalid. Check API key restrictions in Google Cloud Console.",
-          );
-        }
-
-        // Fallback: use API error message if available, otherwise generic message
-        throw new Error(
-          errorMessage ||
-            "YouTube API access denied. Check API key restrictions in Google Cloud Console.",
-        );
-      }
-      if (error.response?.status === 400) {
-        const errorData = error.response.data;
-        const errorMessage = errorData?.error?.message;
-        throw new Error(errorMessage || "Invalid search query or API key.");
-      }
-      if (error.response?.status === 401) {
-        throw new Error("Invalid YouTube API key.");
-      }
-      if (error.code === "ECONNABORTED" || error.code === "ETIMEDOUT") {
-        throw new Error(
-          "Connection timeout. Please check your internet connection.",
-        );
-      }
-      if (error.code === "ENOTFOUND" || error.code === "ECONNREFUSED") {
-        throw new Error(
-          "Cannot connect to YouTube API. Please check your internet connection.",
-        );
-      }
-      const errorData = error.response?.data;
-      const errorMessage = errorData?.error?.message;
-      throw new Error(
-        errorMessage ||
-          `YouTube API error: ${error.response?.statusText || error.message}`,
-      );
+      throw new Error(mapAxiosErrorToMessage(error));
     }
+
     throw error;
   }
+}
+
+/**
+ * Fetch search results from YouTube search API.
+ */
+async function fetchSearchResults(
+  query: string,
+  apiKey: string,
+  limit: number,
+): Promise<any> {
+  const url = "https://www.googleapis.com/youtube/v3/search";
+  const response = await axios.get(url, {
+    params: {
+      part: "snippet",
+      q: query,
+      type: "channel",
+      maxResults: Math.min(limit, 50), // YouTube API max is 50
+      key: apiKey,
+      order: "relevance",
+    },
+    timeout: 10000,
+  });
+
+  return response.data;
 }
