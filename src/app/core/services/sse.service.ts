@@ -10,11 +10,9 @@ import { Injectable, PLATFORM_ID, inject } from "@angular/core";
 import { Observable, Subject, throwError } from "rxjs";
 import { catchError } from "rxjs/operators";
 
-export interface SSEEvent {
-  event: string;
-  data: unknown;
-  id?: string;
-}
+import { SSEStreamReader, type SSEEvent } from "./sse-stream-reader";
+
+export type { SSEEvent };
 
 export type ConnectionState =
   | "disconnected"
@@ -104,87 +102,13 @@ export class SSEService {
           this.connectionState$.next("connected");
           this.reconnectAttempts = 0;
 
-          // Read the stream
+          // Read and parse the stream
           const reader = response.body.getReader();
           const decoder = new TextDecoder();
-          let buffer = "";
 
-          const readStream = async () => {
-            try {
-              while (true) {
-                const { done, value } = await reader.read();
+          const streamReader = new SSEStreamReader(reader, decoder, subject, signal);
 
-                if (done) {
-                  break;
-                }
-
-                // Decode chunk and add to buffer
-                buffer += decoder.decode(value, { stream: true });
-
-                // Process complete lines
-                const lines = buffer.split("\n");
-                buffer = lines.pop() || ""; // Keep incomplete line in buffer
-
-                let currentEvent: Partial<SSEEvent> | null = null;
-
-                for (const line of lines) {
-                  const trimmed = line.trim();
-
-                  // Skip empty lines and comments
-                  if (!trimmed || trimmed.startsWith(":")) {
-                    if (trimmed === "" && currentEvent) {
-                      // Empty line = end of event, emit it
-                      if (
-                        currentEvent.event &&
-                        currentEvent.data !== undefined
-                      ) {
-                        subject.next({
-                          event: currentEvent.event,
-                          data: currentEvent.data,
-                          id: currentEvent.id,
-                        });
-                      }
-                      currentEvent = null;
-                    }
-                    continue;
-                  }
-
-                  // Parse SSE format
-                  if (trimmed.startsWith("event:")) {
-                    currentEvent = { event: trimmed.slice(6).trim() };
-                  } else if (trimmed.startsWith("data:")) {
-                    const dataStr = trimmed.slice(5).trim();
-                    if (!currentEvent) {
-                      currentEvent = { event: "message" };
-                    }
-                    try {
-                      currentEvent.data = JSON.parse(dataStr);
-                    } catch {
-                      currentEvent.data = dataStr;
-                    }
-                  } else if (trimmed.startsWith("id:")) {
-                    if (!currentEvent) {
-                      currentEvent = {};
-                    }
-                    currentEvent.id = trimmed.slice(3).trim();
-                  } else if (trimmed.startsWith("retry:")) {
-                    // Server can suggest retry delay, but we handle it ourselves
-                    // Could use this in the future
-                  }
-                }
-              }
-            } catch (error) {
-              if (signal.aborted) {
-                return;
-              }
-              throw error;
-            } finally {
-              reader.releaseLock();
-            }
-          };
-
-          // Start reading
-          readStream().catch((error) => {
+          streamReader.readStream().catch((error) => {
             if (!signal.aborted) {
               console.error("[SSE] Stream read error:", error);
               this.connectionState$.next("error");
