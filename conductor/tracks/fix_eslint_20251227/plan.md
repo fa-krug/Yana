@@ -6,7 +6,7 @@
 - [x] Task: Conductor - User Manual Verification 'Analysis and Preparation' (Protocol in workflow.md) 377cad1
 
 ## Phase 2: Fix Core Source Issues
-- [ ] Task: Fix "Unused Variable" errors in `src/`.
+- [x] Task: Fix "Unused Variable" errors in `src/`. e420dff
 - [ ] Task: Fix "Type Safety" related errors (e.g., `any` usage) in `src/`.
 - [ ] Task: Fix "Import" related errors in `src/`.
 - [ ] Task: Fix remaining miscellaneous errors in `src/`.
