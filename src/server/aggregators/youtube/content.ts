@@ -1,4 +1,5 @@
-import { ArticleSkipError } from "../base/errors";
+import { ArticleSkipError } from "../base/exceptions";
+
 import { fetchVideoComments } from "./fetching";
 
 /**
