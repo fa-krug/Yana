@@ -6,6 +6,14 @@ import { Injectable, inject, signal } from "@angular/core";
 import { Router, NavigationEnd, ActivatedRouteSnapshot } from "@angular/router";
 import { filter, map } from "rxjs/operators";
 
+import {
+  FeedEditPatternMatcher,
+  ArticleDetailPatternMatcher,
+  ParameterizedRouteMatcher,
+  RegularRouteMatcher,
+  type MatchContext,
+} from "./breadcrumb-matcher";
+
 export interface BreadcrumbItem {
   label: string;
   url: string | null;
@@ -22,6 +30,14 @@ export class BreadcrumbService {
 
   // Current breadcrumbs
   breadcrumbs = signal<BreadcrumbItem[]>([]);
+
+  // Pattern matchers
+  private feedEditMatcher = new FeedEditPatternMatcher();
+  private articleDetailMatcher = new ArticleDetailPatternMatcher();
+  private parameterizedMatcher = new ParameterizedRouteMatcher(
+    this.articleDetailMatcher,
+  );
+  private regularMatcher = new RegularRouteMatcher();
 
   constructor() {
     // Listen to route changes
@@ -95,112 +111,39 @@ export class BreadcrumbService {
       return;
     }
 
-    // Check if route path is a combined path with parameter (e.g., ":id/edit", "articles/:articleId")
-    if (routePath.includes("/") && routePath.includes(":")) {
-      const parts = routePath.split("/");
-      const paramPart = parts.find((p) => p.startsWith(":"));
-      const basePath = parts[0];
+    // Create match context for pattern matchers
+    const context: MatchContext = {
+      dynamicLabels: this.dynamicLabels(),
+      isArticleDetailRoute: (route) => this.isArticleDetailRoute(route),
+      buildUrl: (route) => this.buildUrl(route),
+    };
 
-      // Handle ":id/edit" pattern for feeds
-      if (paramPart === ":id" && parts[1] === "edit") {
-        // Check if we're in feeds context by checking all ancestor routes
-        let parent = children.parent;
-        let isFeedsContext = false;
-        while (parent) {
-          const parentPath = parent.routeConfig?.path;
-          if (parentPath === "feeds") {
-            isFeedsContext = true;
-            break;
-          }
-          parent = parent.parent;
-        }
-        if (isFeedsContext) {
-          // Check if we have a dynamic label for this feed (feed name)
-          const paramValue =
-            children.params["id"] || children.paramMap.get("id");
-          const labelKey = `id:${paramValue}`;
-          const dynamicLabel = this.dynamicLabels().get(labelKey);
-
-          // Use feed name if available, otherwise fall back to "Feed"
-          const label = dynamicLabel || "Feed";
-          breadcrumbs.push({ label, url: null }); // null URL makes it non-clickable (current page)
-          return;
-        }
-      }
-
-      // Handle "articles/:articleId" pattern
-      if (basePath === "articles" && paramPart) {
-        const paramName = paramPart.substring(1);
-        // Check if this is an article ID parameter
-        if (paramName === "id" || paramName === "articleId") {
-          // Use "Article" as the label for article detail pages
-          breadcrumbs.push({ label: "Article", url: null }); // null URL makes it non-clickable (current page)
-          // Don't recurse further - article detail is the final breadcrumb
-          return;
-        }
-      }
+    // Try pattern matchers in order
+    let match = this.feedEditMatcher.match(routePath, children, context);
+    if (!match.handled) {
+      match = this.articleDetailMatcher.match(routePath, children, context);
+    }
+    if (!match.handled) {
+      match = this.parameterizedMatcher.match(routePath, children, context);
+    }
+    if (!match.handled) {
+      match = this.regularMatcher.match(
+        routePath,
+        children,
+        context,
+        (path, route) => this.getRouteLabel(path, route),
+      );
     }
 
-    // Skip if it's a parameterized route without a label
-    if (routePath.startsWith(":")) {
-      const paramName = routePath.substring(1);
-      // Get param value from children params (Angular stores params on the route with the param)
-      const paramValue =
-        children.params[paramName] || children.paramMap.get(paramName);
-
-      // Check if this is an article detail route
-      const isArticleDetail = this.isArticleDetailRoute(children);
-      if (isArticleDetail) {
-        // Use "Article" as the label for article detail pages
-        breadcrumbs.push({ label: "Article", url: null }); // null URL makes it non-clickable (current page)
-        // Don't recurse further - article detail is the final breadcrumb
-        return;
-      }
-
-      // Check if we have a dynamic label for this parameter
-      // Component uses "id:${feed.id}" format
-      const labelKey = `${paramName}:${paramValue}`;
-      const dynamicLabel = this.dynamicLabels().get(labelKey);
-
-      if (dynamicLabel) {
-        const url = this.buildUrl(children);
-        breadcrumbs.push({ label: dynamicLabel, url });
-        // Continue to recurse into child routes
-        this.buildBreadcrumbs(children, breadcrumbs);
-        return;
-      } else {
-        // For numeric IDs without labels, skip adding breadcrumb
-        // The parent route (e.g., "Feeds") will be shown instead
-        if (
-          paramName === "id" &&
-          paramValue &&
-          /^\d+$/.test(String(paramValue))
-        ) {
-          // Don't add a breadcrumb for numeric IDs without labels
-          // Just recurse to child routes (e.g., "edit")
-          this.buildBreadcrumbs(children, breadcrumbs);
-          return;
-        } else {
-          const url = this.buildUrl(children);
-          breadcrumbs.push({ label: paramValue || paramName, url });
-        }
-      }
-    } else {
-      // Regular route segment
-      // Skip "articles" segment if we're going to show an article detail
-      if (routePath === "articles" && this.hasArticleDetailChild(children)) {
-        // Don't add "Articles" breadcrumb, just recurse
-        this.buildBreadcrumbs(children, breadcrumbs);
-        return;
-      }
-
-      const label = this.getRouteLabel(routePath, children);
-      const url = this.buildUrl(children);
-      breadcrumbs.push({ label, url });
+    // Add breadcrumb if matched
+    if (match.handled && match.breadcrumb) {
+      breadcrumbs.push(match.breadcrumb);
     }
 
-    // Recurse into child routes
-    this.buildBreadcrumbs(children, breadcrumbs);
+    // Recurse if needed
+    if (match.shouldRecurse) {
+      this.buildBreadcrumbs(children, breadcrumbs);
+    }
   }
 
   /**
