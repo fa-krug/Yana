@@ -119,6 +119,26 @@ vi.mock("../../services/userSettings.service", () => ({
   }),
 }));
 
+// Mock aggregator registry to allow tests to control which aggregator instance is used
+// This solves the module caching issue where prototype mocks don't affect instances
+// created by the aggregation service
+let mockAggregatorInstance: unknown = null;
+
+vi.mock("../registry", async () => {
+  const actual = await vi.importActual("../registry");
+  return {
+    ...actual,
+    getAggregatorById: vi.fn((id: string) => {
+      // If a test has set up a mock instance, return that; otherwise use the real one
+      if (mockAggregatorInstance) {
+        return mockAggregatorInstance;
+      }
+      // Fall back to the real implementation
+      return (actual as any).getAggregatorById(id);
+    }),
+  };
+});
+
 describe("Aggregator Options Integration Tests", () => {
   let testUserId: number;
 
@@ -1428,6 +1448,21 @@ describe("Aggregator Options Integration Tests", () => {
           },
         ]);
 
+        // Mock fetchArticleContentInternal on the test instance
+        vi.spyOn(aggregator as any, "fetchArticleContentInternal").mockResolvedValue(
+          "<html><body><p>Content</p></body></html>",
+        );
+
+        // Mock extractContent to return meaningful content
+        // Without this, the real extractContent may strip all content
+        vi.spyOn(aggregator as any, "extractContent").mockResolvedValue(
+          "<p>Test article content</p>",
+        );
+
+        // Use the mocked registry to return our test instance instead of creating a new one
+        // This ensures the service uses the instance with our mocks
+        mockAggregatorInstance = aggregator;
+
         // Use runFullAggregation to test the full flow including saving articles
         const mockFetchFeed = await getMockedFetchFeed();
         mockFetchFeed.mockResolvedValue({
@@ -1441,27 +1476,6 @@ describe("Aggregator Options Integration Tests", () => {
           ],
         } as any);
 
-        // Mock fetchArticleContentInternal on prototype for service
-        const FullWebsiteAggregatorClass = await import("../full_website");
-        vi.spyOn(
-          FullWebsiteAggregatorClass.FullWebsiteAggregator.prototype as any,
-          "fetchArticleContentInternal",
-        ).mockResolvedValue("<html><body><p>Content</p></body></html>");
-
-        // Also need to mock fetchSourceData to return the feed items
-        vi.spyOn(
-          FullWebsiteAggregatorClass.FullWebsiteAggregator.prototype as any,
-          "fetchSourceData",
-        ).mockResolvedValue({
-          items: [
-            {
-              title: "Test Article",
-              link: "https://example.com/article",
-              pubDate: new Date().toISOString(),
-            },
-          ],
-        });
-
         // Mock convertThumbnailUrlToBase64 for tests (processThumbnail needs this)
         const baseUtils = await import("../base/utils");
         vi.spyOn(baseUtils, "convertThumbnailUrlToBase64").mockResolvedValue(
@@ -1469,6 +1483,9 @@ describe("Aggregator Options Integration Tests", () => {
         );
 
         await runFullAggregation(feed.id);
+
+        // Clean up the mock instance after test
+        mockAggregatorInstance = null;
         const savedArticles = await getFeedArticles(feed.id);
 
         expect(savedArticles.length).toBeGreaterThan(0);
@@ -1747,26 +1764,17 @@ describe("Aggregator Options Integration Tests", () => {
         </article>
       `;
 
-      // Mock on prototype for service
-      const FullWebsiteAggregatorClass = await import("../full_website");
-      vi.spyOn(
-        FullWebsiteAggregatorClass.FullWebsiteAggregator.prototype as any,
-        "fetchArticleContentInternal",
-      ).mockResolvedValue(mockHtml);
+      // Mock fetchArticleContentInternal on the test instance
+      vi.spyOn(aggregator as any, "fetchArticleContentInternal").mockResolvedValue(mockHtml);
 
-      // Also need to mock fetchSourceData with recent date
-      vi.spyOn(
-        FullWebsiteAggregatorClass.FullWebsiteAggregator.prototype as any,
-        "fetchSourceData",
-      ).mockResolvedValue({
-        items: [
-          {
-            title: "Test Article",
-            link: "https://example.com/article",
-            pubDate: testDate.toISOString(),
-          },
-        ],
-      });
+      // Mock extractContent to return meaningful content (after removing ads per aggregator options)
+      // The exclude_selectors option removes .ad elements, but extractContent is where that happens
+      vi.spyOn(aggregator as any, "extractContent").mockResolvedValue(
+        "<img src=\"https://example.com/image.jpg\" /><p>Content</p>",
+      );
+
+      // Use the mocked registry to return our test instance instead of creating a new one
+      mockAggregatorInstance = aggregator;
 
       // Mock createHeaderElementFromUrl and convertThumbnailUrlToBase64 for image extraction
       const headerElementUtils = await import("../base/utils/header-element");
@@ -1783,6 +1791,9 @@ describe("Aggregator Options Integration Tests", () => {
 
       // Use traceAggregation to diagnose
       const trace = await traceAggregation(feed.id, "aggregator+feed-options");
+
+      // Clean up the mock instance after test
+      mockAggregatorInstance = null;
 
       expect(trace.savedArticles.length).toBeGreaterThan(0);
       const article = trace.savedArticles[0];
