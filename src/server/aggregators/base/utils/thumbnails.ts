@@ -114,6 +114,7 @@ export async function extractThumbnailUrlFromPageAndConvertToBase64(
 ): Promise<string | null> {
   try {
     // First extract the thumbnail URL
+    // eslint-disable-next-line sonarjs/deprecation
     const thumbnailUrl = await extractThumbnailUrlFromPage(url);
     if (!thumbnailUrl) {
       return null;

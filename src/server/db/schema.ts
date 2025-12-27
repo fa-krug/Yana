@@ -25,6 +25,7 @@ export type FeedType = (typeof feedTypeEnum)[number];
 /**
  * Users table
  */
+/* eslint-disable sonarjs/deprecation */
 export const users = sqliteTable(
   "users",
   {
@@ -445,3 +446,4 @@ export const taskExecutions = sqliteTable(
     statusIdx: index("task_executions_status_idx").on(table.status),
   }),
 );
+/* eslint-enable sonarjs/deprecation */

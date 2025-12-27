@@ -123,6 +123,7 @@ async function downloadHtml(
         .catch(() => null);
 
       if (confirmButton) {
+        // eslint-disable-next-line sonarjs/deprecation
         await Promise.all([
           page
             .waitForNavigation({ waitUntil: "networkidle", timeout })
