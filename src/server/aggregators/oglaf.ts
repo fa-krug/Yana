@@ -117,7 +117,7 @@ async function fetchOglafContent(
     if (confirmButton) {
       logger.debug("Found confirmation page, clicking confirm button");
       // Wait for navigation to complete after clicking
-      // eslint-disable-next-line sonarjs/deprecation
+       
       await Promise.all([
         page.waitForNavigation({ waitUntil: "networkidle", timeout }),
         confirmButton.click(),

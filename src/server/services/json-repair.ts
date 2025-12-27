@@ -3,8 +3,6 @@
  * Handles unclosed strings, missing braces, and malformed JSON structure.
  */
 
-import { logger } from "../utils/logger";
-
 /**
  * HTML closing tag patterns used to find reasonable truncation points.
  */
@@ -78,11 +76,9 @@ function findLastHtmlClosingTagPosition(content: string): number {
     const matches = [...content.matchAll(pattern)];
     if (matches.length > 0) {
       const lastMatch = matches[matches.length - 1];
-      if (lastMatch.index !== undefined) {
-        const matchEndPos = lastMatch.index + lastMatch[0].length;
-        if (matchEndPos > lastValidPos) {
-          lastValidPos = matchEndPos;
-        }
+      const matchEndPos = lastMatch.index + lastMatch[0].length;
+      if (matchEndPos > lastValidPos) {
+        lastValidPos = matchEndPos;
       }
     }
   }

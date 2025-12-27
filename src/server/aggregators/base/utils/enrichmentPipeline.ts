@@ -8,6 +8,7 @@ import type pino from "pino";
 import { ArticleSkipError } from "../exceptions";
 import type { EnrichmentMixin } from "../mixins/enrichment";
 import type { RawArticle } from "../types";
+
 import {
   EnrichmentErrorHandler,
   ErrorRecoveryAction,

@@ -22,7 +22,7 @@ export async function extractThumbnailFromUrl(
   url: string,
 ): Promise<string | null> {
   // Default implementation uses generic extraction
-  // eslint-disable-next-line sonarjs/deprecation
+   
   const { extractThumbnailUrlFromPage } = await import("../utils");
   // eslint-disable-next-line sonarjs/deprecation
   return await extractThumbnailUrlFromPage(url);

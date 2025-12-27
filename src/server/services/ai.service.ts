@@ -5,11 +5,12 @@
  * with structured JSON output and retry logic.
  */
 
-import axios, { AxiosError } from "axios";
+import axios from "axios";
 
 import { logger } from "../utils/logger";
 
-import { repairJson } from "./json-repair";
+import { AIRequestRetryHandler } from "./ai-request-handler";
+import { AIResponseParser } from "./ai-response-parser";
 import type { AIServiceConfig } from "./ai.service.interface";
 
 export class AIService {
@@ -87,11 +88,43 @@ export class AIService {
       };
     },
   ): Promise<Record<string, unknown>> {
-    const headers = {
-      Authorization: `Bearer ${this.config.apiKey}`,
-      "Content-Type": "application/json",
-    };
+    const retryHandler = new AIRequestRetryHandler({
+      maxRetries: this.config.maxRetries,
+      retryDelay: this.config.retryDelay,
+    });
+    const responseParser = new AIResponseParser();
 
+    const payload = this.buildRequestPayload(messages, responseFormat);
+    const headers = this.buildRequestHeaders();
+
+    let lastError: Error | null = null;
+
+    for (let attempt = 0; attempt < this.config.maxRetries; attempt++) {
+      try {
+        const data = await this.executeRequest(payload, headers);
+        return this.handleSuccessResponse(data, responseFormat, responseParser);
+      } catch (error) {
+        lastError = await this.handleRequestError(
+          error,
+          attempt,
+          retryHandler,
+          responseParser,
+        );
+      }
+    }
+
+    throw new Error(
+      `AI request failed after ${this.config.maxRetries} retries: ${lastError?.message}`,
+    );
+  }
+
+  /**
+   * Build request payload.
+   */
+  private buildRequestPayload(
+    messages: Array<{ role: string; content: string }>,
+    responseFormat?: Record<string, unknown>,
+  ): Record<string, unknown> {
     const payload: Record<string, unknown> = {
       model: this.config.model,
       messages,
@@ -103,138 +136,109 @@ export class AIService {
       payload["response_format"] = responseFormat;
     }
 
-    let lastError: Error | null = null;
+    return payload;
+  }
 
-    for (let attempt = 0; attempt < this.config.maxRetries; attempt++) {
-      try {
-        const response = await axios.post(
-          `${this.config.apiUrl}/chat/completions`,
-          payload,
-          {
-            headers,
-            timeout: this.config.timeout * 1000, // Convert to milliseconds
-          },
-        );
+  /**
+   * Build request headers.
+   */
+  private buildRequestHeaders(): Record<string, string> {
+    return {
+      Authorization: `Bearer ${this.config.apiKey}`,
+      "Content-Type": "application/json",
+    };
+  }
 
-        const data = response.data;
-        const content = data.choices[0].message.content;
-        const finishReason = data.choices[0].finish_reason || "";
+  /**
+   * Execute API request.
+   */
+  private async executeRequest(
+    payload: Record<string, unknown>,
+    headers: Record<string, string>,
+  ): Promise<Record<string, unknown>> {
+    const response = await axios.post(
+      `${this.config.apiUrl}/chat/completions`,
+      payload,
+      {
+        headers,
+        timeout: this.config.timeout * 1000,
+      },
+    );
+    return response.data;
+  }
 
-        if (finishReason === "length") {
-          logger.warn(
-            {
-              contentLength: content.length,
-              maxTokens: this.config.maxTokens,
-            },
-            "AI response was truncated",
-          );
-        }
+  /**
+   * Handle successful API response.
+   */
+  private handleSuccessResponse(
+    data: Record<string, unknown>,
+    responseFormat: Record<string, unknown> | undefined,
+    responseParser: AIResponseParser,
+  ): Record<string, unknown> {
+    const choices = data.choices as Array<Record<string, unknown>>;
+    const message = choices[0].message as Record<string, unknown>;
+    const contentStr = String(message.content);
+    const finishReason = String(choices[0].finish_reason || "");
 
-        // Parse JSON response if structured output
-        if (responseFormat) {
-          try {
-            return JSON.parse(content) as Record<string, unknown>;
-          } catch (jsonError) {
-            const contentPreview =
-              content.length > 500 ? content.substring(0, 500) : content;
-            logger.warn(
-              {
-                attempt: attempt + 1,
-                maxRetries: this.config.maxRetries,
-                contentLength: content.length,
-                finishReason,
-                contentPreview,
-              },
-              "JSON parse error",
-            );
-
-            // Try to repair JSON
-            const repairedContent = this.repairJson(content);
-            if (repairedContent != content) {
-              try {
-                logger.info("Attempting to parse repaired JSON");
-                return JSON.parse(repairedContent) as Record<string, unknown>;
-              } catch (repairError) {
-                logger.warn(
-                  { error: repairError },
-                  "Repaired JSON still invalid",
-                );
-              }
-            }
-
-            lastError = jsonError as Error;
-
-            // Retry on JSON parsing errors
-            if (attempt < this.config.maxRetries - 1) {
-              const delay = this.config.retryDelay * Math.pow(2, attempt);
-              logger.info({ delay }, "Retrying after delay");
-              await new Promise((resolve) => setTimeout(resolve, delay * 1000));
-              continue;
-            }
-
-            // Final attempt failed
-            if (finishReason === "length") {
-              throw new Error(
-                `Failed to parse JSON response after ${this.config.maxRetries} attempts. ` +
-                  `Response was truncated. Consider increasing max_tokens (current: ${this.config.maxTokens}). ` +
-                  `Content preview: ${contentPreview.substring(0, 300)}...`,
-              );
-            } else {
-              throw new Error(
-                `Failed to parse JSON response after ${this.config.maxRetries} attempts. ` +
-                  `Content length: ${content.length} chars, finish_reason: ${finishReason}`,
-              );
-            }
-          }
-        }
-
-        return { content };
-      } catch (error) {
-        lastError = error as Error;
-
-        // Check for rate limit error
-        let isRateLimit = false;
-        let retryAfter: number | null = null;
-
-        if (axios.isAxiosError(error)) {
-          const axiosError = error as AxiosError;
-          if (axiosError.response?.status === 429) {
-            isRateLimit = true;
-            const retryAfterHeader = axiosError.response.headers["retry-after"];
-            if (retryAfterHeader) {
-              retryAfter = parseInt(retryAfterHeader, 10);
-            }
-          }
-        }
-
-        logger.warn(
-          {
-            attempt: attempt + 1,
-            maxRetries: this.config.maxRetries,
-            error: error instanceof Error ? error.message : String(error),
-            isRateLimit,
-          },
-          "AI request failed",
-        );
-
-        if (attempt < this.config.maxRetries - 1) {
-          let delay: number;
-          if (isRateLimit && retryAfter) {
-            delay = retryAfter;
-            logger.info({ delay }, "Rate limit hit, waiting for Retry-After");
-          } else {
-            delay = this.config.retryDelay * Math.pow(2, attempt);
-          }
-          await new Promise((resolve) => setTimeout(resolve, delay * 1000));
-          continue;
-        }
-        break;
-      }
+    if (responseParser.isTruncated(finishReason)) {
+      responseParser.logTruncation(contentStr.length, this.config.maxTokens);
     }
 
-    throw new Error(
-      `AI request failed after ${this.config.maxRetries} retries: ${lastError?.message}`,
+    if (responseFormat) {
+      return responseParser.parseJSON(
+        contentStr,
+        finishReason,
+        this.config.maxTokens,
+        this.config.maxRetries,
+        0,
+      );
+    }
+
+    return { content: contentStr };
+  }
+
+  /**
+   * Handle request error with retry logic.
+   */
+  private async handleRequestError(
+    error: unknown,
+    attempt: number,
+    retryHandler: AIRequestRetryHandler,
+    responseParser: AIResponseParser,
+  ): Promise<Error> {
+    if (responseParser.isJsonParseError(error)) {
+      const parsedError = error instanceof Error ? error : new Error(String(error));
+      if (retryHandler.shouldRetry(attempt)) {
+        await this.waitBeforeRetry(attempt, retryHandler, null);
+      }
+      return parsedError;
+    }
+
+    const retryInfo = retryHandler.extractRetryInfo(error);
+    retryHandler.logRetryAttempt(
+      attempt,
+      retryInfo.isRateLimit,
+      retryInfo.error.message,
     );
+
+    if (retryHandler.shouldRetry(attempt)) {
+      await this.waitBeforeRetry(attempt, retryHandler, retryInfo.retryAfter);
+    }
+
+    return retryInfo.error;
+  }
+
+  /**
+   * Wait before retrying with appropriate delay.
+   */
+  private async waitBeforeRetry(
+    attempt: number,
+    retryHandler: AIRequestRetryHandler,
+    retryAfter: number | null,
+  ): Promise<void> {
+    const delay = retryHandler.calculateRetryDelay(attempt, retryAfter);
+    logger.info({ delay }, "Retrying after delay");
+    await retryHandler.wait(delay);
   }
 
   /**
