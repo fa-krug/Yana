@@ -10,6 +10,7 @@ import { logger } from "@server/utils/logger";
 
 import { ContentFetchError, ArticleSkipError } from "./exceptions";
 import { is4xxError } from "./utils/http-errors";
+import { getHttpStatusCode } from "./utils/images/playwright-error-handler";
 
 let browser: Browser | null = null;
 
@@ -130,6 +131,60 @@ export async function fetchFeed(
 }
 
 /**
+ * Handle fetch errors with proper 4xx detection and ArticleSkipError throwing.
+ */
+function handleFetchError(
+  error: unknown,
+  url: string,
+  elapsed: number,
+): never {
+  const errorMessage =
+    error instanceof Error ? error.message : String(error || "Unknown error");
+
+  // Try to extract HTTP status code (works for both Axios and Playwright errors)
+  const statusCode = getHttpStatusCode(error);
+
+  if (statusCode !== null && statusCode >= 400 && statusCode < 500) {
+    logger.warn(
+      {
+        error: error instanceof Error ? error : new Error(String(error)),
+        url,
+        elapsed,
+        statusCode,
+        step: "fetchArticleContent",
+        subStep: "error",
+      },
+      "4xx error fetching article content, skipping article",
+    );
+    throw new ArticleSkipError(
+      `Failed to fetch content from ${url}: ${statusCode} ${errorMessage}`,
+      undefined,
+      statusCode,
+      error instanceof Error ? error : undefined,
+    );
+  }
+
+  // Not a 4xx error - throw generic error
+  logger.error(
+    {
+      error: error instanceof Error ? error : new Error(String(error)),
+      url,
+      elapsed,
+      step: "fetchArticleContent",
+      subStep: "error",
+      errorMessage,
+    },
+    "Failed to fetch article content",
+  );
+
+  throw new ContentFetchError(
+    `Failed to fetch content from ${url}: ${errorMessage}`,
+    undefined,
+    error instanceof Error ? error : undefined,
+  );
+}
+
+/**
  * Fetch article content using Playwright.
  * Fail-fast implementation (no retries) - errors are handled by the aggregator template method.
  */
@@ -187,92 +242,7 @@ export async function fetchArticleContent(
     }
   } catch (error) {
     const elapsed = Date.now() - startTime;
-    const errorMessage =
-      error instanceof Error ? error.message : String(error || "Unknown error");
-
-    // Check for 4xx errors - Playwright may throw errors with status information
-    // Check if it's an axios error first (from redirects or other HTTP calls)
-    const statusCode = is4xxError(error);
-    if (statusCode !== null) {
-      logger.warn(
-        {
-          error: error instanceof Error ? error : new Error(String(error)),
-          url,
-          elapsed,
-          statusCode,
-          step: "fetchArticleContent",
-          subStep: "error",
-        },
-        "4xx error fetching article content, skipping article",
-      );
-      throw new ArticleSkipError(
-        `Failed to fetch content from ${url}: ${statusCode} ${errorMessage}`,
-        undefined,
-        statusCode,
-        error instanceof Error ? error : undefined,
-      );
-    }
-
-    // Check for Playwright navigation errors that might indicate 4xx
-    // Playwright throws errors with messages like "net::ERR_ABORTED" or status codes
-    if (error instanceof Error) {
-      const errorMsg = error.message.toLowerCase();
-      // Check for common 4xx indicators in Playwright errors
-      if (
-        errorMsg.includes("404") ||
-        errorMsg.includes("403") ||
-        errorMsg.includes("401") ||
-        errorMsg.includes("410") ||
-        errorMsg.includes("net::err_aborted")
-      ) {
-        // Try to extract status code from error message
-        const statusMatch = /\b(40\d|41\d)\b/.exec(errorMsg);
-        const extractedStatus = statusMatch
-          ? parseInt(statusMatch[1], 10)
-          : null;
-        if (
-          extractedStatus &&
-          extractedStatus >= 400 &&
-          extractedStatus < 500
-        ) {
-          logger.warn(
-            {
-              error,
-              url,
-              elapsed,
-              statusCode: extractedStatus,
-              step: "fetchArticleContent",
-              subStep: "error",
-            },
-            "4xx error fetching article content (detected from Playwright error), skipping article",
-          );
-          throw new ArticleSkipError(
-            `Failed to fetch content from ${url}: ${extractedStatus} ${errorMessage}`,
-            undefined,
-            extractedStatus,
-            error,
-          );
-        }
-      }
-    }
-
-    logger.error(
-      {
-        error: error instanceof Error ? error : new Error(String(error)),
-        url,
-        elapsed,
-        step: "fetchArticleContent",
-        subStep: "error",
-        errorMessage,
-      },
-      "Failed to fetch article content",
-    );
-
-    throw new ContentFetchError(
-      `Failed to fetch content from ${url}: ${errorMessage}`,
-      undefined,
-      error instanceof Error ? error : undefined,
-    );
+    handleFetchError(error, url, elapsed);
   }
 }
 
