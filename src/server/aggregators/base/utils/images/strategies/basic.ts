@@ -129,103 +129,181 @@ export async function handleYouTubeThumbnail(
 }
 
 /**
- * Handle X.com/Twitter image extraction.
+ * Validate Twitter URL and extract tweet ID.
+ * Returns tweet ID if valid, null otherwise.
  */
-export async function handleTwitterImage(
-  url: string,
-): Promise<{ imageData: Buffer; contentType: string } | null> {
+function validateTwitterUrl(url: string): string | null {
   if (!isTwitterUrl(url)) {
     return null;
   }
 
   logger.debug({ url }, "X.com/Twitter URL detected");
-  // Extract tweet ID from URL (e.g., /status/1234567890)
   const tweetId = extractTweetId(url);
-  if (tweetId) {
-    logger.debug({ tweetId }, "Extracted tweet ID");
 
-    // Use fxtwitter.com API to get tweet media
-    try {
-      const apiUrl = `https://api.fxtwitter.com/status/${tweetId}`;
-      logger.debug({ apiUrl }, "Fetching tweet data from fxtwitter API");
+  if (!tweetId) {
+    logger.debug({ url }, "Could not extract tweet ID from URL");
+    return null;
+  }
 
-      const response = await axios.get(apiUrl, { timeout: 10000 });
-      const data = response.data;
+  logger.debug({ tweetId }, "Extracted tweet ID");
+  return tweetId;
+}
 
-      // Try to extract images from the API response
-      const imageUrls: string[] = [];
+/**
+ * Extract photo URLs from tweet.media.photos array.
+ */
+function extractPhotosFromMediaPhotos(data: any): string[] {
+  const photos = data?.tweet?.media?.photos;
 
-      // Check primary location: tweet.media.photos
-      if (
-        data?.tweet?.media?.photos &&
-        Array.isArray(data.tweet.media.photos)
-      ) {
-        for (const photo of data.tweet.media.photos) {
-          if (photo?.url) {
-            imageUrls.push(photo.url);
-          }
-        }
-        logger.debug(
-          { count: imageUrls.length },
-          "Found photos in tweet.media.photos",
-        );
-      }
+  if (!photos || !Array.isArray(photos)) {
+    return [];
+  }
 
-      // Fallback: check tweet.media.all for photo type
-      if (
-        imageUrls.length === 0 &&
-        data?.tweet?.media?.all &&
-        Array.isArray(data.tweet.media.all)
-      ) {
-        for (const media of data.tweet.media.all) {
-          if (media?.type === "photo" && media?.url) {
-            imageUrls.push(media.url);
-          }
-        }
-        logger.debug(
-          { count: imageUrls.length },
-          "Found photos in tweet.media.all",
-        );
-      }
+  const urls: string[] = [];
+  for (const photo of photos) {
+    if (photo?.url) {
+      urls.push(photo.url);
+    }
+  }
 
-      // Download the first image found
-      if (imageUrls.length > 0) {
-        const imageUrl = imageUrls[0];
-        logger.debug({ imageUrl }, "Downloading X.com image");
-        const result = await fetchSingleImage(imageUrl);
-        if (result.imageData) {
-          return {
-            imageData: result.imageData,
-            contentType: result.contentType || "image/jpeg",
-          };
-        }
-      } else {
-        logger.warn({ tweetId }, "No images found in fxtwitter API response");
-      }
-    } catch (error) {
-      // Check for 4xx errors - skip article on client errors
-      const statusCode = is4xxError(error);
-      if (statusCode !== null) {
-        logger.warn(
-          { error, url, statusCode },
-          "4xx error fetching Twitter image, skipping article",
-        );
-        throw new ArticleSkipError(
-          `Failed to extract X.com image: ${statusCode} ${error instanceof Error ? error.message : String(error)}`,
-          undefined,
-          statusCode,
-          error instanceof Error ? error : undefined,
-        );
-      }
+  if (urls.length > 0) {
+    logger.debug({ count: urls.length }, "Found photos in tweet.media.photos");
+  }
+
+  return urls;
+}
+
+/**
+ * Extract photo URLs from tweet.media.all array (fallback).
+ */
+function extractPhotosFromMediaAll(data: any): string[] {
+  const allMedia = data?.tweet?.media?.all;
+
+  if (!allMedia || !Array.isArray(allMedia)) {
+    return [];
+  }
+
+  const urls: string[] = [];
+  for (const media of allMedia) {
+    if (media?.type === "photo" && media?.url) {
+      urls.push(media.url);
+    }
+  }
+
+  if (urls.length > 0) {
+    logger.debug({ count: urls.length }, "Found photos in tweet.media.all");
+  }
+
+  return urls;
+}
+
+/**
+ * Extract all photo URLs from tweet data.
+ * Tries tweet.media.photos first, falls back to tweet.media.all.
+ */
+function extractImageUrlsFromTweetData(data: any, tweetId: string): string[] {
+  // Try primary location first
+  let imageUrls = extractPhotosFromMediaPhotos(data);
+
+  // Fallback to media.all if no photos found
+  if (imageUrls.length === 0) {
+    imageUrls = extractPhotosFromMediaAll(data);
+  }
+
+  if (imageUrls.length === 0) {
+    logger.warn({ tweetId }, "No images found in fxtwitter API response");
+  }
+
+  return imageUrls;
+}
+
+/**
+ * Fetch tweet data from fxtwitter API.
+ * Throws ArticleSkipError on 4xx errors.
+ */
+async function fetchTweetData(tweetId: string): Promise<any> {
+  const apiUrl = `https://api.fxtwitter.com/status/${tweetId}`;
+  logger.debug({ apiUrl }, "Fetching tweet data from fxtwitter API");
+
+  try {
+    const response = await axios.get(apiUrl, { timeout: 10000 });
+    return response.data;
+  } catch (error) {
+    // Check for 4xx errors - skip article on client errors
+    const statusCode = is4xxError(error);
+    if (statusCode !== null) {
       logger.warn(
-        { error, url },
-        "Failed to extract X.com image via fxtwitter API",
+        { error, tweetId, statusCode },
+        "4xx error fetching Twitter data",
+      );
+      throw new ArticleSkipError(
+        `Failed to fetch tweet data: ${statusCode}`,
+        undefined,
+        statusCode,
+        error instanceof Error ? error : undefined,
       );
     }
-  } else {
-    logger.debug({ url }, "Could not extract tweet ID from URL");
+    // Re-throw for caller to handle
+    throw error;
   }
-  return null;
+}
+
+/**
+ * Download Twitter image from URL.
+ */
+async function downloadTwitterImage(
+  imageUrl: string,
+): Promise<{ imageData: Buffer; contentType: string } | null> {
+  logger.debug({ imageUrl }, "Downloading X.com image");
+  const result = await fetchSingleImage(imageUrl);
+
+  if (!result.imageData) {
+    return null;
+  }
+
+  return {
+    imageData: result.imageData,
+    contentType: result.contentType || "image/jpeg",
+  };
+}
+
+/**
+ * Handle X.com/Twitter image extraction.
+ */
+export async function handleTwitterImage(
+  url: string,
+): Promise<{ imageData: Buffer; contentType: string } | null> {
+  // Validate URL and extract tweet ID
+  const tweetId = validateTwitterUrl(url);
+  if (!tweetId) {
+    return null;
+  }
+
+  try {
+    // Fetch tweet data from API
+    const data = await fetchTweetData(tweetId);
+
+    // Extract image URLs from tweet data
+    const imageUrls = extractImageUrlsFromTweetData(data, tweetId);
+    if (imageUrls.length === 0) {
+      return null;
+    }
+
+    // Download first image
+    return await downloadTwitterImage(imageUrls[0]);
+  } catch (error) {
+    // ArticleSkipError already thrown by fetchTweetData for 4xx
+    if (error instanceof ArticleSkipError) {
+      throw error;
+    }
+
+    // Other errors: log and return null
+    logger.warn(
+      { error, url },
+      "Failed to extract X.com image via fxtwitter API",
+    );
+    return null;
+  }
 }
 
 /**
