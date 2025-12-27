@@ -85,6 +85,134 @@ export async function listSubscriptions(userId: number): Promise<
 }
 
 /**
+ * Validate and extract feed ID from stream ID.
+ */
+function validateStreamId(streamId: string): number {
+  if (!streamId) {
+    throw new ValidationError("Missing stream ID");
+  }
+
+  if (!streamId.startsWith("feed/")) {
+    throw new ValidationError("Invalid stream ID");
+  }
+
+  const feedId = parseInt(streamId.slice(5), 10);
+  if (isNaN(feedId)) {
+    throw new ValidationError("Invalid stream ID");
+  }
+
+  return feedId;
+}
+
+/**
+ * Get or create a group for a label.
+ */
+async function getOrCreateGroup(
+  labelName: string,
+  userId: number,
+): Promise<typeof groups.$inferSelect> {
+  let [group] = await db
+    .select()
+    .from(groups)
+    .where(
+      and(
+        eq(groups.name, labelName),
+        or(eq(groups.userId, userId), isNull(groups.userId)),
+      ),
+    )
+    .limit(1);
+
+  if (!group) {
+    const [newGroup] = await db
+      .insert(groups)
+      .values({
+        name: labelName,
+        userId,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning();
+    group = newGroup;
+  }
+
+  return group;
+}
+
+/**
+ * Update feed title.
+ */
+async function updateFeedTitle(
+  feedId: number,
+  newTitle: string,
+  userId: number,
+  feed: typeof feeds.$inferSelect,
+): Promise<void> {
+  if (newTitle && feed.userId === userId) {
+    await db
+      .update(feeds)
+      .set({ name: newTitle, updatedAt: new Date() })
+      .where(eq(feeds.id, feedId));
+  }
+}
+
+/**
+ * Add label to feed.
+ */
+async function addLabelToFeed(
+  feedId: number,
+  addLabel: string,
+  userId: number,
+): Promise<void> {
+  if (!addLabel.startsWith("user/-/label/")) return;
+
+  const labelName = addLabel.slice(13);
+  const group = await getOrCreateGroup(labelName, userId);
+
+  // Add feed to group
+  await db
+    .insert(feedGroups)
+    .values({
+      feedId,
+      groupId: group.id,
+    })
+    .onConflictDoNothing();
+}
+
+/**
+ * Remove label from feed.
+ */
+async function removeLabelFromFeed(
+  feedId: number,
+  removeLabel: string,
+  userId: number,
+): Promise<void> {
+  if (!removeLabel.startsWith("user/-/label/")) return;
+
+  const labelName = removeLabel.slice(13);
+  const [group] = await db
+    .select({ id: groups.id })
+    .from(groups)
+    .where(
+      and(
+        eq(groups.name, labelName),
+        or(eq(groups.userId, userId), isNull(groups.userId)),
+      ),
+    )
+    .limit(1);
+
+  if (group) {
+    await db
+      .delete(feedGroups)
+      .where(
+        and(
+          eq(feedGroups.feedId, feedId),
+          eq(feedGroups.groupId, group.id),
+        ),
+      );
+  }
+}
+
+/**
  * Edit subscription.
  */
 export async function editSubscription(
@@ -99,18 +227,7 @@ export async function editSubscription(
 ): Promise<void> {
   const { streamId, action, newTitle, addLabel, removeLabel } = options;
 
-  if (!streamId) {
-    throw new ValidationError("Missing stream ID");
-  }
-
-  if (!streamId.startsWith("feed/")) {
-    throw new ValidationError("Invalid stream ID");
-  }
-
-  const feedId = parseInt(streamId.slice(5), 10);
-  if (isNaN(feedId)) {
-    throw new ValidationError("Invalid stream ID");
-  }
+  const feedId = validateStreamId(streamId);
 
   // Get feed
   const [feed] = await db
@@ -137,76 +254,13 @@ export async function editSubscription(
     }
   } else {
     // Update title
-    if (newTitle && feed.userId === userId) {
-      await db
-        .update(feeds)
-        .set({ name: newTitle, updatedAt: new Date() })
-        .where(eq(feeds.id, feedId));
-    }
+    await updateFeedTitle(feedId, newTitle, userId, feed);
 
     // Add label
-    if (addLabel.startsWith("user/-/label/")) {
-      const labelName = addLabel.slice(13);
-      // Get or create group
-      let [group] = await db
-        .select()
-        .from(groups)
-        .where(
-          and(
-            eq(groups.name, labelName),
-            or(eq(groups.userId, userId), isNull(groups.userId)),
-          ),
-        )
-        .limit(1);
-
-      if (!group) {
-        const [newGroup] = await db
-          .insert(groups)
-          .values({
-            name: labelName,
-            userId,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          })
-          .returning();
-        group = newGroup;
-      }
-
-      // Add feed to group
-      await db
-        .insert(feedGroups)
-        .values({
-          feedId,
-          groupId: group.id,
-        })
-        .onConflictDoNothing();
-    }
+    await addLabelToFeed(feedId, addLabel, userId);
 
     // Remove label
-    if (removeLabel.startsWith("user/-/label/")) {
-      const labelName = removeLabel.slice(13);
-      const [group] = await db
-        .select({ id: groups.id })
-        .from(groups)
-        .where(
-          and(
-            eq(groups.name, labelName),
-            or(eq(groups.userId, userId), isNull(groups.userId)),
-          ),
-        )
-        .limit(1);
-
-      if (group) {
-        await db
-          .delete(feedGroups)
-          .where(
-            and(
-              eq(feedGroups.feedId, feedId),
-              eq(feedGroups.groupId, group.id),
-            ),
-          );
-      }
-    }
+    await removeLabelFromFeed(feedId, removeLabel, userId);
   }
 }
 

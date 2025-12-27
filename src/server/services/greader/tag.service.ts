@@ -13,6 +13,7 @@ import {
   feedGroups,
 } from "@server/db";
 import { cache } from "@server/utils/cache";
+import { StreamFilterOrchestrator } from "./stream-filter-builder";
 
 const STATE_READ = "user/-/state/com.google/read";
 const STATE_STARRED = "user/-/state/com.google/starred";
@@ -199,6 +200,34 @@ export async function editTags(
 }
 
 /**
+ * Categorize article IDs into create/update batch operations.
+ */
+function categorizeBatchOperations(
+  articleIds: number[],
+  existingStates: typeof userArticleStates.$inferSelect[],
+  userId: number,
+): {
+  toCreate: (typeof userArticleStates.$inferInsert)[];
+  toUpdate: number[];
+} {
+  const existingIds = new Set(existingStates.map((s) => s.articleId));
+  const toCreate = articleIds
+    .filter((id) => !existingIds.has(id))
+    .map((id) => ({
+      userId,
+      articleId: id,
+      isRead: true,
+      isSaved: false,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }));
+
+  const toUpdate = existingStates.filter((s) => !s.isRead).map((s) => s.id);
+
+  return { toCreate, toUpdate };
+}
+
+/**
  * Mark all as read.
  */
 export async function markAllAsRead(
@@ -219,90 +248,24 @@ export async function markAllAsRead(
     }
   }
 
-  // Build base conditions
-  const baseConditions: ReturnType<typeof and>[] = [];
-  let needsFeedJoin = false;
+  // Build stream filter conditions
+  const orchestrator = new StreamFilterOrchestrator();
+  const filterResult = await orchestrator.buildQuery(streamId, userId);
 
-  // Filter by stream
-  if (streamId.startsWith("feed/")) {
-    const feedId = parseInt(streamId.slice(5), 10);
-    if (!isNaN(feedId)) {
-      baseConditions.push(eq(articles.feedId, feedId));
-    } else {
-      return 0;
-    }
-  } else if (streamId.startsWith("user/-/label/")) {
-    const labelName = streamId.slice(13);
-    needsFeedJoin = true;
-    if (labelName === "Reddit") {
-      baseConditions.push(
-        or(eq(feeds.userId, userId), isNull(feeds.userId)),
-        eq(feeds.enabled, true),
-        eq(feeds.feedType, "reddit"),
-      );
-    } else if (labelName === "YouTube") {
-      baseConditions.push(
-        or(eq(feeds.userId, userId), isNull(feeds.userId)),
-        eq(feeds.enabled, true),
-        eq(feeds.feedType, "youtube"),
-      );
-    } else if (labelName === "Podcasts") {
-      baseConditions.push(
-        or(eq(feeds.userId, userId), isNull(feeds.userId)),
-        eq(feeds.enabled, true),
-        eq(feeds.feedType, "podcast"),
-      );
-    } else {
-      // Get group feeds
-      const [group] = await db
-        .select({ id: groups.id })
-        .from(groups)
-        .where(
-          and(
-            eq(groups.name, labelName),
-            or(eq(groups.userId, userId), isNull(groups.userId)),
-          ),
-        )
-        .limit(1);
-
-      if (group) {
-        const groupFeedIds = await db
-          .select({ feedId: feedGroups.feedId })
-          .from(feedGroups)
-          .where(eq(feedGroups.groupId, group.id));
-
-        const feedIds = groupFeedIds.map((g) => g.feedId);
-        if (feedIds.length > 0) {
-          baseConditions.push(inArray(articles.feedId, feedIds));
-        } else {
-          return 0;
-        }
-      } else {
-        return 0;
-      }
-    }
-  } else {
-    // Default: all accessible feeds
-    needsFeedJoin = true;
-    baseConditions.push(
-      or(eq(feeds.userId, userId), isNull(feeds.userId)),
-      eq(feeds.enabled, true),
-    );
-  }
-
-  // Add timestamp filter
+  // Add timestamp filter if provided
+  const conditions = [...filterResult.conditions];
   if (timestampDate) {
-    baseConditions.push(lt(articles.date, timestampDate));
+    conditions.push(lt(articles.date, timestampDate));
   }
 
   // Build query with all conditions
   const baseQuery = db.select({ id: articles.id }).from(articles);
 
-  const articleQuery = needsFeedJoin
+  const articleQuery = filterResult.needsFeedJoin
     ? baseQuery
         .innerJoin(feeds, eq(articles.feedId, feeds.id))
-        .where(and(...baseConditions))
-    : baseQuery.where(and(...baseConditions));
+        .where(and(...conditions))
+    : baseQuery.where(and(...conditions));
 
   const articleIds = await articleQuery;
   const ids = articleIds.map((a) => a.id);
@@ -311,7 +274,7 @@ export async function markAllAsRead(
     return 0;
   }
 
-  // Mark all as read
+  // Get existing states
   const existingStates = await db
     .select()
     .from(userArticleStates)
@@ -322,20 +285,14 @@ export async function markAllAsRead(
       ),
     );
 
-  const existingIds = new Set(existingStates.map((s) => s.articleId));
-  const toCreate = ids
-    .filter((id) => !existingIds.has(id))
-    .map((id) => ({
-      userId,
-      articleId: id,
-      isRead: true,
-      isSaved: false,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    }));
+  // Categorize into create/update operations
+  const { toCreate, toUpdate } = categorizeBatchOperations(
+    ids,
+    existingStates,
+    userId,
+  );
 
-  const toUpdate = existingStates.filter((s) => !s.isRead).map((s) => s.id);
-
+  // Execute batch operations
   if (toCreate.length > 0) {
     await db.insert(userArticleStates).values(toCreate).onConflictDoNothing();
   }

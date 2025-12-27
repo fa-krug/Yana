@@ -9,6 +9,7 @@ import { logger } from "@server/utils/logger";
 
 import { ArticleSkipError } from "../../exceptions";
 import { is4xxError } from "../http-errors";
+import { MimeTypeDetector } from "./mime-type-handlers";
 
 /**
  * Get appropriate referer header for a URL.
@@ -24,6 +25,58 @@ export function getRefererHeader(url: string): string {
     // Safe fallback
     return "https://example.com";
   }
+}
+
+/**
+ * Validate image content using Sharp metadata parsing.
+ * Handles ICO files specially (skips Sharp validation).
+ * Throws if not a valid image.
+ */
+async function validateImageContent(
+  imageBuffer: Buffer,
+  contentType: string,
+  url: string,
+): Promise<void> {
+  // Check if this is an ICO file (Sharp doesn't support ICO files)
+  const isIco =
+    contentType === "image/vnd.microsoft.icon" ||
+    contentType === "image/x-icon" ||
+    url.toLowerCase().endsWith(".ico");
+
+  // Skip Sharp validation for ICO files
+  if (isIco) {
+    logger.debug(
+      { url, size: imageBuffer.length },
+      "Skipping Sharp validation for ICO file (Sharp doesn't support ICO)",
+    );
+    return;
+  }
+
+  // Validate with Sharp
+  try {
+    await sharp(imageBuffer).metadata();
+    logger.debug(
+      { url, contentType, size: imageBuffer.length },
+      "Successfully validated image",
+    );
+  } catch (error) {
+    logger.warn(
+      { url, contentType, error },
+      "Content claims to be image but failed validation",
+    );
+    throw error;
+  }
+}
+
+/**
+ * Build standardized image result object.
+ */
+function buildImageResult(
+  url: string,
+  imageData: Buffer,
+  contentType: string,
+): { url: string; imageData: Buffer; contentType: string } {
+  return { url, imageData, contentType };
 }
 
 /**
@@ -53,65 +106,26 @@ export async function fetchSingleImage(url: string): Promise<{
       maxRedirects: 5,
     });
 
-    // Determine MIME type
-    let contentType = response.headers["content-type"] || "";
-    const urlLower = url.toLowerCase();
-    if (!contentType || contentType === "application/octet-stream") {
-      // Try to guess from URL
-      if (urlLower.endsWith(".jpg") || urlLower.endsWith(".jpeg")) {
-        contentType = "image/jpeg";
-      } else if (urlLower.endsWith(".png")) {
-        contentType = "image/png";
-      } else if (urlLower.endsWith(".gif")) {
-        contentType = "image/gif";
-      } else if (urlLower.endsWith(".webp")) {
-        contentType = "image/webp";
-      } else if (urlLower.endsWith(".ico")) {
-        contentType = "image/vnd.microsoft.icon";
-      } else {
-        contentType = "image/jpeg";
-      }
-    } else {
-      contentType = contentType.split(";")[0].trim();
-    }
+    // Detect MIME type using orchestrator
+    const mimeDetector = new MimeTypeDetector();
+    const contentType = mimeDetector.detect(
+      url,
+      response.headers["content-type"],
+    );
 
     // Validate that we actually got an image
-    if (!contentType.startsWith("image/")) {
+    if (!contentType || !contentType.startsWith("image/")) {
       logger.warn({ url, contentType }, "URL returned non-image content type");
       return { url, imageData: null, contentType: null };
     }
 
     const imageBuffer = Buffer.from(response.data);
 
-    // Check if this is an ICO file (Sharp doesn't support ICO files at all)
-    const isIco =
-      contentType === "image/vnd.microsoft.icon" ||
-      contentType === "image/x-icon" ||
-      urlLower.endsWith(".ico");
-
-    // Handle ICO files: Skip Sharp validation since ICO is a valid image format
-    // that browsers can handle, even though Sharp doesn't support it
-    if (isIco) {
-      logger.debug(
-        { url, size: imageBuffer.length },
-        "Skipping Sharp validation for ICO file (Sharp doesn't support ICO)",
-      );
-      return { url, imageData: imageBuffer, contentType };
-    }
-
-    // Additional validation: Try to parse as image with sharp
+    // Validate image content
     try {
-      await sharp(imageBuffer).metadata(); // This will throw if not a valid image
-      logger.debug(
-        { url, contentType, size: imageBuffer.length },
-        "Successfully validated image",
-      );
-      return { url, imageData: imageBuffer, contentType };
+      await validateImageContent(imageBuffer, contentType, url);
+      return buildImageResult(url, imageBuffer, contentType);
     } catch (error) {
-      logger.warn(
-        { url, contentType, error },
-        "Content claims to be image but failed validation",
-      );
       return { url, imageData: null, contentType: null };
     }
   } catch (error) {
