@@ -1398,12 +1398,6 @@ describe("Aggregator Options Integration Tests", () => {
       [false, "should not add source footer when addSourceFooter=false"],
     ])("addSourceFooter=%s", (addSourceFooter, description) => {
       it(description, async () => {
-        // Ensure prototype mocks from previous tests are restored
-        // This is critical for footer tests that run after header tests
-        const headerElementUtils = await import("../base/utils/header-element");
-        if (vi.isMockFunction(headerElementUtils.createHeaderElementFromUrl)) {
-          (headerElementUtils.createHeaderElementFromUrl as any).mockRestore?.();
-        }
 
         const feed = await createFeedWithOptions(
           testUserId,
