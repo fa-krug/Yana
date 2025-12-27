@@ -7,8 +7,8 @@ import * as cheerio from "cheerio";
 import { logger } from "@server/utils/logger";
 
 import { ArticleSkipError } from "../../exceptions";
-import { is4xxError } from "../http-errors";
 
+import { handlePlaywrightNavigationError } from "./playwright-error-handler";
 import {
   handleDirectImageUrl,
   handleYouTubeThumbnail,
@@ -63,45 +63,7 @@ export async function extractImageFromUrl(
       html = await page.content();
     } catch (error) {
       await page.close();
-      // Check for 4xx errors from Playwright navigation
-      if (error instanceof Error) {
-        const errorMsg = error.message.toLowerCase();
-        if (
-          errorMsg.includes("404") ||
-          errorMsg.includes("403") ||
-          errorMsg.includes("401") ||
-          errorMsg.includes("410") ||
-          errorMsg.includes("net::err_aborted")
-        ) {
-          const statusMatch = /\b(40\d|41\d)\b/.exec(errorMsg);
-          const extractedStatus = statusMatch
-            ? parseInt(statusMatch[1], 10)
-            : null;
-          if (
-            extractedStatus &&
-            extractedStatus >= 400 &&
-            extractedStatus < 500
-          ) {
-            throw new ArticleSkipError(
-              `Failed to extract image from URL: ${extractedStatus} ${error.message}`,
-              undefined,
-              extractedStatus,
-              error,
-            );
-          }
-        }
-      }
-      // Also check if it's an axios error (from redirects)
-      const statusCode = is4xxError(error);
-      if (statusCode !== null) {
-        throw new ArticleSkipError(
-          `Failed to extract image from URL: ${statusCode} ${error instanceof Error ? error.message : String(error)}`,
-          undefined,
-          statusCode,
-          error instanceof Error ? error : undefined,
-        );
-      }
-      throw error;
+      handlePlaywrightNavigationError(error, url);
     }
 
     const $ = cheerio.load(html);

@@ -20,12 +20,12 @@ import {
   initializeAggregator,
   calculateArticleLimit,
 } from "./aggregation-validation.service";
-import { enqueueTask } from "./taskQueue.service";
 import {
   buildRawArticleFromDatabase,
   determineArticleDate,
   processThumbnailBase64,
 } from "./article-reload-helpers";
+import { enqueueTask } from "./taskQueue.service";
 
 /**
  * Aggregate a single feed.

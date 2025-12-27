@@ -7,13 +7,14 @@
 import axios from "axios";
 
 import { logger } from "../utils/logger";
-import { mapAxiosErrorToMessage } from "./youtube-error-mapper";
+
 import { fetchChannelDetailsWithFallback } from "./youtube-channel-detail-fetcher";
 import {
   testYouTubeCredentials,
   type YouTubeCredentials,
   type YouTubeTestResult,
 } from "./youtube-credentials-tester";
+import { mapAxiosErrorToMessage } from "./youtube-error-mapper";
 
 // Re-export for backward compatibility
 export { testYouTubeCredentials };

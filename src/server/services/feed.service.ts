@@ -26,12 +26,12 @@ export {
 import type { FeedInsert, User } from "../db/types";
 import { logger } from "../utils/logger";
 
-import { getFeed } from "./feed-query.service";
-import { validateFeedPreviewInput, getValidatedAggregator } from "./feed-preview-validator";
-import { buildPreviewFeed } from "./feed-preview-builder";
 import { aggregateFeedWithRetry } from "./feed-aggregation-strategy";
 import { processArticlesForPreview } from "./feed-article-preview-processor";
 import { classifyFeedError } from "./feed-error-classifier";
+import { buildPreviewFeed } from "./feed-preview-builder";
+import { validateFeedPreviewInput, getValidatedAggregator } from "./feed-preview-validator";
+import { getFeed } from "./feed-query.service";
 
 /**
  * Minimal user info needed for feed operations.

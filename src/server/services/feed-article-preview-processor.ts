@@ -5,9 +5,9 @@
  * Handles thumbnail extraction and base64 conversion with fallback.
  */
 
-import { logger } from "../utils/logger";
 import type { RawArticle } from "../aggregators/base/types";
 import type { Feed } from "../db/types";
+import { logger } from "../utils/logger";
 
 export interface PreviewArticle {
   title: string;

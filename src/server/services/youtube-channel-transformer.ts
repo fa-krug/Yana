@@ -5,7 +5,7 @@
  * Handles optional chaining and fallback values in a single-responsibility pattern.
  */
 
-import type { YouTubeChannelSearchResult } from "./youtube.service"; // eslint-disable-line import/no-cycle
+import type { YouTubeChannelSearchResult } from "./youtube.service";  
 
 /**
  * Extract channel handle from snippet data.

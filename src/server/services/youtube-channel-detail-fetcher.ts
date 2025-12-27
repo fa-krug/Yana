@@ -8,6 +8,7 @@
 import axios from "axios";
 
 import { logger } from "../utils/logger";
+
 import { transformChannelDetails } from "./youtube-channel-transformer";
 import type { YouTubeChannelSearchResult } from "./youtube.service";
 
