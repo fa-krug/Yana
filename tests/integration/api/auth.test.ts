@@ -112,6 +112,7 @@ describe("Auth API Integration (tRPC)", () => {
 
       const result = await trpcClient.auth.login.mutate({
         username: "testuser",
+        // eslint-disable-next-line sonarjs/no-hardcoded-passwords
         password: "password",
       });
 
@@ -127,6 +128,7 @@ describe("Auth API Integration (tRPC)", () => {
       await expect(
         trpcClient.auth.login.mutate({
           username: "testuser",
+          // eslint-disable-next-line sonarjs/no-hardcoded-passwords
           password: "wrongpassword",
         }),
       ).rejects.toThrow();
@@ -150,6 +152,7 @@ describe("Auth API Integration (tRPC)", () => {
       // Login first to establish session
       await trpcClient.auth.login.mutate({
         username: "testuser",
+        // eslint-disable-next-line sonarjs/no-hardcoded-passwords
         password: "password",
       });
 

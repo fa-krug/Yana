@@ -94,6 +94,7 @@ describe("Auth Router", () => {
 
     const result = await caller.auth.login({
       username: "testuser",
+      // eslint-disable-next-line sonarjs/no-hardcoded-passwords
       password: "testpassword",
     });
 
@@ -125,6 +126,7 @@ describe("Auth Router", () => {
     await expect(
       caller.auth.login({
         username: "testuser",
+        // eslint-disable-next-line sonarjs/no-hardcoded-passwords
         password: "wrongpassword",
       }),
     ).rejects.toThrow();

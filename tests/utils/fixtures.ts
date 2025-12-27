@@ -7,6 +7,7 @@ import type { User, Feed, Article } from "../../src/server/db/types";
 export const testUser: Omit<User, "id" | "createdAt" | "updatedAt"> = {
   username: "testuser",
   email: "test@example.com",
+  // eslint-disable-next-line sonarjs/no-hardcoded-passwords
   passwordHash: "$2b$10$testhash", // bcrypt hash for 'password'
   firstName: "",
   lastName: "",
