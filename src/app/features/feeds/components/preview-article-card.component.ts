@@ -153,8 +153,7 @@ export class PreviewArticleCardComponent {
     const article = this.article();
     if (!article?.link) return "";
 
-    const videoIdMatch = article.link.match(
-      /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&?/]+)/,
+    const videoIdMatch = article./(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/.exec(link)([^&?/]+)/,
     );
     if (!videoIdMatch) return "";
 

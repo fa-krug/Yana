@@ -239,8 +239,8 @@ export class ArticleMediaComponent {
       return this.sanitizer.bypassSecurityTrustResourceUrl(article.mediaUrl);
     }
 
-    const videoIdMatch = article.mediaUrl.match(
-      /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&?/]+)/,
+    const videoIdMatch = /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&?/]+)/.exec(
+      article.mediaUrl,
     );
     if (!videoIdMatch) return "";
 

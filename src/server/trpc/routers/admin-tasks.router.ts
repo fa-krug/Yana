@@ -202,22 +202,27 @@ export const adminTasksRouter = router({
 
       return {
         ...result,
-        items: result.items.map((task) => ({
-          ...task,
-          createdAt: toISOString(task.createdAt),
-          updatedAt: toISOString(task.updatedAt),
-          startedAt: task.startedAt ? toISOString(task.startedAt) : null,
-          completedAt: task.completedAt ? toISOString(task.completedAt) : null,
-          payload:
-            typeof task.payload === "string"
-              ? JSON.parse(task.payload)
-              : task.payload,
-          result: task.result
-            ? typeof task.result === "string"
+        items: result.items.map((task) => {
+          let parsedResult = null;
+          if (task.result) {
+            parsedResult = typeof task.result === "string"
               ? JSON.parse(task.result)
-              : task.result
-            : null,
-        })),
+              : task.result;
+          }
+
+          return {
+            ...task,
+            createdAt: toISOString(task.createdAt),
+            updatedAt: toISOString(task.updatedAt),
+            startedAt: task.startedAt ? toISOString(task.startedAt) : null,
+            completedAt: task.completedAt ? toISOString(task.completedAt) : null,
+            payload:
+              typeof task.payload === "string"
+                ? JSON.parse(task.payload)
+                : task.payload,
+            result: parsedResult,
+          };
+        }),
       };
     }),
 
@@ -236,6 +241,13 @@ export const adminTasksRouter = router({
         });
       }
 
+      let parsedResult = null;
+      if (task.result) {
+        parsedResult = typeof task.result === "string"
+          ? JSON.parse(task.result)
+          : task.result;
+      }
+
       return {
         ...task,
         createdAt: toISOString(task.createdAt),
@@ -246,11 +258,7 @@ export const adminTasksRouter = router({
           typeof task.payload === "string"
             ? JSON.parse(task.payload)
             : task.payload,
-        result: task.result
-          ? typeof task.result === "string"
-            ? JSON.parse(task.result)
-            : task.result
-          : null,
+        result: parsedResult,
       };
     }),
 
@@ -287,6 +295,13 @@ export const adminTasksRouter = router({
         });
       }
 
+      let parsedResult = null;
+      if (task.result) {
+        parsedResult = typeof task.result === "string"
+          ? JSON.parse(task.result)
+          : task.result;
+      }
+
       return {
         ...task,
         createdAt: toISOString(task.createdAt),
@@ -297,11 +312,7 @@ export const adminTasksRouter = router({
           typeof task.payload === "string"
             ? JSON.parse(task.payload)
             : task.payload,
-        result: task.result
-          ? typeof task.result === "string"
-            ? JSON.parse(task.result)
-            : task.result
-          : null,
+        result: parsedResult,
       };
     }),
 

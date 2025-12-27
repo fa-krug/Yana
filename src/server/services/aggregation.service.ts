@@ -291,13 +291,16 @@ export async function processArticleReload(articleId: number): Promise<void> {
 
   // Collect thumbnail if missing and convert to base64
   // Use same logic as processFeedAggregation force refresh path
-  let thumbnailBase64 = rawArticle.thumbnailUrl?.startsWith("data:")
-    ? rawArticle.thumbnailUrl
-    : rawArticle.thumbnailUrl
-      ? await (
-          await import("@server/aggregators/base/utils")
-        ).convertThumbnailUrlToBase64(rawArticle.thumbnailUrl)
-      : null;
+  let thumbnailBase64: string | null;
+  if (rawArticle.thumbnailUrl?.startsWith("data:")) {
+    thumbnailBase64 = rawArticle.thumbnailUrl;
+  } else if (rawArticle.thumbnailUrl) {
+    thumbnailBase64 = await (
+      await import("@server/aggregators/base/utils")
+    ).convertThumbnailUrlToBase64(rawArticle.thumbnailUrl);
+  } else {
+    thumbnailBase64 = null;
+  }
 
   if (!thumbnailBase64) {
     // Use aggregator's thumbnail extraction method (can be overridden)

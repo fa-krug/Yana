@@ -27,8 +27,8 @@ export function extractImageDimensions(
   // Fall back to CSS styles
   const style = $(el).attr("style");
   if (style) {
-    const widthMatch = style.match(/width\s*:\s*(\d+)px/i);
-    const heightMatch = style.match(/height\s*:\s*(\d+)px/i);
+    const widthMatch = /width\s*:\s*(\d+)px/i.exec(style);
+    const heightMatch = /height\s*:\s*(\d+)px/i.exec(style);
     if (widthMatch && heightMatch) {
       const w = parseInt(widthMatch[1], 10);
       const h = parseInt(heightMatch[1], 10);

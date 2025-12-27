@@ -63,6 +63,22 @@ export class ArticleService {
   );
 
   /**
+   * Convert a date or string to ISO string, or return default value.
+   */
+  private toIsoStringOrDefault(
+    value: Date | string | null | undefined,
+    defaultValue: unknown,
+  ): unknown {
+    if (value == null) {
+      return defaultValue;
+    }
+    if (value instanceof Date) {
+      return value.toISOString();
+    }
+    return value;
+  }
+
+  /**
    * Load articles with optional filters
    * @param filters - Filter options
    * @param silent - If true, don't show loading state (for background updates)
@@ -111,16 +127,8 @@ export class ArticleService {
               isRead: isRead,
               isSaved: filters.saved,
               search: filters.search,
-              dateFrom: filters.dateFrom
-                ? filters.dateFrom instanceof Date
-                  ? filters.dateFrom.toISOString()
-                  : filters.dateFrom
-                : undefined,
-              dateTo: filters.dateTo
-                ? filters.dateTo instanceof Date
-                  ? filters.dateTo.toISOString()
-                  : filters.dateTo
-                : undefined,
+              dateFrom: this.toIsoStringOrDefault(filters.dateFrom, undefined),
+              dateTo: this.toIsoStringOrDefault(filters.dateTo, undefined),
             }),
           ),
         // Cache for 2 minutes (shorter TTL for dynamic content)
@@ -761,16 +769,8 @@ export class ArticleService {
           isRead: isRead,
           isSaved: filters.saved,
           search: filters.search ?? undefined,
-          dateFrom: filters.dateFrom
-            ? filters.dateFrom instanceof Date
-              ? filters.dateFrom.toISOString()
-              : filters.dateFrom
-            : undefined,
-          dateTo: filters.dateTo
-            ? filters.dateTo instanceof Date
-              ? filters.dateTo.toISOString()
-              : filters.dateTo
-            : undefined,
+          dateFrom: this.toIsoStringOrDefault(filters.dateFrom, undefined),
+          dateTo: this.toIsoStringOrDefault(filters.dateTo, undefined),
         }),
       ).pipe(
         map((response) => ({
@@ -832,16 +832,8 @@ export class ArticleService {
         isRead: filterIsRead,
         isSaved: filters.saved,
         search: filters.search ?? null,
-        dateFrom: filters.dateFrom
-          ? filters.dateFrom instanceof Date
-            ? filters.dateFrom.toISOString()
-            : filters.dateFrom
-          : null,
-        dateTo: filters.dateTo
-          ? filters.dateTo instanceof Date
-            ? filters.dateTo.toISOString()
-            : filters.dateTo
-          : null,
+        dateFrom: this.toIsoStringOrDefault(filters.dateFrom, null),
+        dateTo: this.toIsoStringOrDefault(filters.dateTo, null),
         isReadValue: isRead,
       }),
     ).pipe(
@@ -916,16 +908,8 @@ export class ArticleService {
         isRead: filterIsRead,
         isSaved: filters.saved,
         search: filters.search ?? null,
-        dateFrom: filters.dateFrom
-          ? filters.dateFrom instanceof Date
-            ? filters.dateFrom.toISOString()
-            : filters.dateFrom
-          : null,
-        dateTo: filters.dateTo
-          ? filters.dateTo instanceof Date
-            ? filters.dateTo.toISOString()
-            : filters.dateTo
-          : null,
+        dateFrom: this.toIsoStringOrDefault(filters.dateFrom, null),
+        dateTo: this.toIsoStringOrDefault(filters.dateTo, null),
       }),
     ).pipe(
       map((result) => ({
@@ -998,16 +982,8 @@ export class ArticleService {
         isRead: filterIsRead,
         isSaved: filters.saved,
         search: filters.search ?? null,
-        dateFrom: filters.dateFrom
-          ? filters.dateFrom instanceof Date
-            ? filters.dateFrom.toISOString()
-            : filters.dateFrom
-          : null,
-        dateTo: filters.dateTo
-          ? filters.dateTo instanceof Date
-            ? filters.dateTo.toISOString()
-            : filters.dateTo
-          : null,
+        dateFrom: this.toIsoStringOrDefault(filters.dateFrom, null),
+        dateTo: this.toIsoStringOrDefault(filters.dateTo, null),
       }),
     ).pipe(
       map((result) => ({
@@ -1039,10 +1015,10 @@ export class ArticleService {
       filters.saved !== undefined ? `saved:${filters.saved}` : "",
       filters.search ? `search:${filters.search}` : "",
       filters.dateFrom
-        ? `dateFrom:${filters.dateFrom instanceof Date ? filters.dateFrom.toISOString() : filters.dateFrom}`
+        ? `dateFrom:${this.toIsoStringOrDefault(filters.dateFrom, filters.dateFrom)}`
         : "",
       filters.dateTo
-        ? `dateTo:${filters.dateTo instanceof Date ? filters.dateTo.toISOString() : filters.dateTo}`
+        ? `dateTo:${this.toIsoStringOrDefault(filters.dateTo, filters.dateTo)}`
         : "",
     ];
     return parts.filter((p) => p).join("|");

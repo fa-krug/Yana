@@ -109,7 +109,7 @@ export function normalizeSubreddit(identifier: string): string {
   identifier = identifier.trim();
 
   // Extract from URL
-  const urlMatch = identifier.match(/(?:reddit\.com)?\/r\/(\w+)/);
+  const urlMatch = /(?:reddit\.com)?\/r\/(\w+)/.exec(identifier);
   if (urlMatch) {
     return urlMatch[1];
   }
@@ -133,7 +133,7 @@ export function extractPostInfoFromUrl(url: string): {
   subreddit: string | null;
   postId: string | null;
 } {
-  const match = url.match(/\/r\/(\w+)\/comments\/([a-zA-Z0-9]+)/);
+  const match = /\/r\/(\w+)\/comments\/([a-zA-Z0-9]+)/.exec(url);
   return match
     ? { subreddit: match[1], postId: match[2] }
     : { subreddit: null, postId: null };

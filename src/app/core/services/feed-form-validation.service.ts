@@ -80,12 +80,12 @@ export class FeedFormValidationService {
       if (option.type === "boolean") {
         // For boolean options, use existing value if provided, otherwise use default
         // Important: if existingValue is explicitly false, use it (don't fall back to default)
-        const initialValue =
-          existingValue != undefined && existingValue != null
-            ? Boolean(existingValue)
-            : option.default != undefined
-              ? Boolean(option.default)
-              : false;
+        let initialValue = false;
+        if (existingValue != undefined && existingValue != null) {
+          initialValue = Boolean(existingValue);
+        } else if (option.default != undefined) {
+          initialValue = Boolean(option.default);
+        }
         formGroup.addControl(fieldName, this.fb.control(initialValue));
       } else if (option.type === "integer" || option.type === "float") {
         formGroup.addControl(
@@ -95,12 +95,12 @@ export class FeedFormValidationService {
       } else if (option.type === "choice") {
         // For choice types, use null if no value (Material Select handles null better than empty string)
         // But prefer the default if available
-        const initialValue =
-          existingValue != undefined && existingValue != null
-            ? existingValue
-            : option.default != undefined && option.default != null
-              ? option.default
-              : null;
+        let initialValue = null;
+        if (existingValue != undefined && existingValue != null) {
+          initialValue = existingValue;
+        } else if (option.default != undefined && option.default != null) {
+          initialValue = option.default;
+        }
         formGroup.addControl(
           fieldName,
           this.fb.control(initialValue, validators),
@@ -199,12 +199,14 @@ export class FeedFormValidationService {
       if (optionType === "integer" || optionType === "float") {
         // Include 0 and negative numbers (like -1 for min_comments)
         if (rawValue != null && rawValue != undefined && rawValue != "") {
-          const numValue =
-            typeof rawValue === "number"
-              ? rawValue
-              : optionType === "integer"
-                ? parseInt(String(rawValue), 10)
-                : parseFloat(String(rawValue));
+          let numValue: number;
+          if (typeof rawValue === "number") {
+            numValue = rawValue;
+          } else if (optionType === "integer") {
+            numValue = parseInt(String(rawValue), 10);
+          } else {
+            numValue = parseFloat(String(rawValue));
+          }
           // Only include if conversion was successful (not NaN)
           if (!isNaN(numValue)) {
             aggregatorOptions[key] = numValue;

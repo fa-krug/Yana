@@ -41,7 +41,7 @@ export function extractTweetId(url: string): string | null {
     }
 
     // Extract tweet ID from URL (e.g., /status/1234567890)
-    const tweetIdMatch = url.match(/\/status\/(\d+)/);
+    const tweetIdMatch = /\/status\/(\d+)/.exec(url);
     if (tweetIdMatch) {
       return tweetIdMatch[1];
     }

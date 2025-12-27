@@ -271,7 +271,7 @@ export function extractPageNumbers(
     const href = $link.attr("href") || "";
     if (href) {
       // Try pattern: /article-name/2/ or /article-name/2
-      const match = href.match(/\/(\d+)\/?$/);
+      const match = /\/(\d+)\/?$/.exec(href);
       if (match) {
         pageNumbers.add(parseInt(match[1], 10));
         logger.debug(

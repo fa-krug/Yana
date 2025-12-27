@@ -125,8 +125,8 @@ export async function extractMeinMmoContent(
           } catch {
             // If parsing fails, try regex extraction from the raw string
             // Look for patterns like: youtube-nocookie.com/embed/VIDEO_ID or youtube.com/embed/VIDEO_ID
-            const embedMatch = embedContent.match(
-              /(?:youtube-nocookie\.com\/embed\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
+            const embedMatch = /(?:youtube-nocookie\.com\/embed\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/.exec(
+              embedContent,
             );
             if (embedMatch && embedMatch[1]) {
               videoId = embedMatch[1];
@@ -294,8 +294,8 @@ export async function extractMeinMmoContent(
           const elementsWithBg = $figure.find("[style*='background-image']");
           if (elementsWithBg.length > 0) {
             const style = elementsWithBg.first().attr("style") || "";
-            const bgMatch = style.match(
-              /background-image:\s*url\(['"]?([^'")]+)['"]?\)/,
+            const bgMatch = /background-image:\s*url\(['"]?([^'")]+)['"]?\)/.exec(
+              style,
             );
             if (bgMatch && bgMatch[1]) {
               imageSrc = bgMatch[1];
