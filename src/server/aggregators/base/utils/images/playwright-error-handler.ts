@@ -65,7 +65,7 @@ export function getHttpStatusCode(error: unknown): number | null {
  */
 export function handlePlaywrightNavigationError(
   error: unknown,
-  url: string,
+  _url: string,
 ): never {
   const statusCode = getHttpStatusCode(error);
 

@@ -126,7 +126,7 @@ export async function fetchSingleImage(url: string): Promise<{
     try {
       await validateImageContent(imageBuffer, contentType, url);
       return buildImageResult(url, imageBuffer, contentType);
-    } catch (error) {
+    } catch (_error) {
       return { url, imageData: null, contentType: null };
     }
   } catch (error) {

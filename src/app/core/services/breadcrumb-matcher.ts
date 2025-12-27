@@ -40,7 +40,6 @@ export class FeedEditPatternMatcher {
 
     const parts = routePath.split("/");
     const paramPart = parts.find((p) => p.startsWith(":"));
-    const basePath = parts[0];
 
     // Handle ":id/edit" pattern for feeds
     if (paramPart === ":id" && parts[1] === "edit") {
@@ -83,7 +82,7 @@ export class FeedEditPatternMatcher {
 export class ArticleDetailPatternMatcher {
   match(
     routePath: string,
-    route: ActivatedRouteSnapshot,
+    _route: ActivatedRouteSnapshot,
     _context: MatchContext,
   ): MatchResult {
     if (!routePath.includes("/") || !routePath.includes(":")) {
@@ -92,7 +91,6 @@ export class ArticleDetailPatternMatcher {
 
     const parts = routePath.split("/");
     const paramPart = parts.find((p) => p.startsWith(":"));
-    const basePath = parts[0];
 
     // Handle "articles/:articleId" pattern
     if (basePath === "articles" && paramPart) {

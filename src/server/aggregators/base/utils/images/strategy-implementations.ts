@@ -66,7 +66,7 @@ export class TwitterStrategy implements ImageStrategy {
  * Requires page content to be loaded.
  */
 export class MetaTagStrategy implements ImageStrategy {
-  canHandle(url: string): boolean {
+  canHandle(_url: string): boolean {
     // This strategy needs the page to be loaded, so it always returns true
     // but only works if $ is provided in context
     return true;
@@ -103,7 +103,7 @@ export class MetaTagStrategy implements ImageStrategy {
  * Requires Playwright page to be loaded.
  */
 export class InlineSvgStrategy implements ImageStrategy {
-  canHandle(url: string): boolean {
+  canHandle(_url: string): boolean {
     // Requires page to be loaded
     return true;
   }
@@ -128,7 +128,7 @@ export class InlineSvgStrategy implements ImageStrategy {
  * Requires page content to be loaded.
  */
 export class PageImagesStrategy implements ImageStrategy {
-  canHandle(url: string): boolean {
+  canHandle(_url: string): boolean {
     // This strategy works for any URL that has page content
     return true;
   }

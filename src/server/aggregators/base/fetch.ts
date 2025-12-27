@@ -9,7 +9,6 @@ import Parser from "rss-parser";
 import { logger } from "@server/utils/logger";
 
 import { ContentFetchError, ArticleSkipError } from "./exceptions";
-import { is4xxError } from "./utils/http-errors";
 import { getHttpStatusCode } from "./utils/images/playwright-error-handler";
 
 let browser: Browser | null = null;
