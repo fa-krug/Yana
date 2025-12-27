@@ -7,17 +7,10 @@ import { logger } from "@server/utils/logger";
 import { ArticleSkipError } from "../base/exceptions";
 
 import { fetchPostComments, formatCommentHtml } from "./comments";
-import {
-  extractAnimatedGifUrl,
-  extractRedditVideoPreview,
-  wouldUseVRedditAsHeader,
-  wouldUseDirectImageAsHeader,
-  wouldUseYouTubeAsHeader,
-  wouldUseGifAsHeader,
-} from "./images";
 import { convertRedditMarkdown, escapeHtml } from "./markdown";
+import { processLinkMedia } from "./media-handlers";
 import type { RedditPostData } from "./types";
-import { fixRedditMediaUrl, decodeHtmlEntitiesInUrl } from "./urls";
+import { decodeHtmlEntitiesInUrl } from "./urls";
 
 /**
  * Add selftext part to content.
@@ -74,70 +67,15 @@ function addGalleryMedia(post: RedditPostData, contentParts: string[]): void {
 }
 
 /**
- * Handle GIF media in links.
- */
-function handleGifMedia(post: RedditPostData, url: string, urlLower: string, contentParts: string[]): boolean {
-  if (urlLower.endsWith(".gif") || urlLower.endsWith(".gifv")) {
-    if (!wouldUseGifAsHeader(post, url)) {
-      const gifUrl = extractAnimatedGifUrl(post) || (urlLower.endsWith(".gifv") ? url.slice(0, -1) : url);
-      const fixedUrl = fixRedditMediaUrl(gifUrl);
-      if (fixedUrl) contentParts.push(`<p><img src="${fixedUrl}" alt="Animated GIF"></p>`);
-    }
-    return true;
-  }
-  return false;
-}
-
-/**
- * Handle direct image media in links.
- */
-function handleImageMedia(post: RedditPostData, url: string, urlLower: string, contentParts: string[]): boolean {
-  const isImage = [".jpg", ".jpeg", ".png", ".webp"].some((ext) => urlLower.endsWith(ext)) || urlLower.includes("i.redd.it");
-  if (isImage) {
-    if (!wouldUseDirectImageAsHeader(post, url)) {
-      const fixedUrl = fixRedditMediaUrl(url);
-      if (fixedUrl) contentParts.push(`<p><a href="${fixedUrl}">${escapeHtml(fixedUrl)}</a></p>`);
-    }
-    return true;
-  }
-  return false;
-}
-
-/**
- * Handle video and YouTube media in links.
- */
-function handleVideoMedia(post: RedditPostData, url: string, urlLower: string, contentParts: string[]): boolean {
-  if (urlLower.includes("v.redd.it")) {
-    if (!wouldUseVRedditAsHeader(post)) {
-      const previewUrl = extractRedditVideoPreview(post);
-      if (previewUrl) contentParts.push(`<p><img src="${previewUrl}" alt="Video thumbnail"></p>`);
-      contentParts.push(`<p><a href="${url}">▶ View Video</a></p>`);
-    }
-    return true;
-  }
-
-  if (urlLower.includes("youtube.com") || urlLower.includes("youtu.be")) {
-    if (!wouldUseYouTubeAsHeader(url)) {
-      contentParts.push(`<p><a href="${url}">▶ View Video on YouTube</a></p>`);
-    }
-    return true;
-  }
-
-  return false;
-}
-
-/**
  * Add link media to content.
  */
 function addLinkMedia(post: RedditPostData, contentParts: string[], isCrossPost: boolean): void {
   if (!post.url || post.is_gallery) return;
 
   const url = decodeHtmlEntitiesInUrl(post.url);
-  const urlLower = url.toLowerCase();
 
-  if (handleGifMedia(post, url, urlLower, contentParts)) return;
-  if (handleImageMedia(post, url, urlLower, contentParts)) return;
-  if (handleVideoMedia(post, url, urlLower, contentParts)) return;
+  // Try media handlers in order
+  if (processLinkMedia(post, url, contentParts)) return;
 
   // Fallback link
   if (!isCrossPost && !post.is_self) {

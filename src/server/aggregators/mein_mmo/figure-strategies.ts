@@ -3,11 +3,13 @@
  */
 
 import * as cheerio from "cheerio";
+
+import { isTwitterUrl } from "../base/utils";
 import {
   extractYouTubeVideoId,
   createYouTubeEmbedHtml,
 } from "../base/utils/youtube";
-import { isTwitterUrl } from "../base/utils";
+
 import type {
   FigureProcessingContext,
   FigureProcessingResult,

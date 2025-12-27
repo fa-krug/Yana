@@ -6,10 +6,14 @@ import { logger } from "@server/utils/logger";
 
 import type { RawArticle } from "../base/types";
 
+import {
+  extractVideoMediaUrl,
+  selectArticleThumbnail,
+  buildArticleFromPost,
+} from "./article-builder";
 import { buildPostContent } from "./content";
 import { extractHeaderImageUrl, extractThumbnailUrl } from "./images";
 import type { RedditPost, RedditPostData } from "./types";
-import { decodeHtmlEntitiesInUrl } from "./urls";
 
 /**
  * Extract original post data from cross-post if present.
@@ -107,10 +111,6 @@ export async function parseRedditPosts(
     const originalSubreddit =
       post.data.crosspost_parent_list?.[0]?.subreddit || subreddit;
 
-    const postDate = new Date(postData.created_utc * 1000);
-    const decodedPermalink = decodeHtmlEntitiesInUrl(postData.permalink);
-    const permalink = `https://reddit.com${decodedPermalink}`;
-
     const rawContent = await buildPostContent(
       postData,
       commentLimit,
@@ -120,39 +120,19 @@ export async function parseRedditPosts(
     );
     const headerImageUrl = await extractHeaderImageUrl(postData);
     const thumbnailUrl = extractThumbnailUrl(postData);
+    const articleThumbnailUrl = selectArticleThumbnail(headerImageUrl, thumbnailUrl);
+    const mediaUrl = extractVideoMediaUrl(postData);
 
-    // For article thumbnail: use header image if available, otherwise use thumbnail
-    const articleThumbnailUrl = headerImageUrl || thumbnailUrl || undefined;
-
-    // Set media_url for Reddit videos
-    let mediaUrl: string | undefined;
-    if (postData.is_video && postData.url) {
-      const decodedUrl = decodeHtmlEntitiesInUrl(postData.url);
-      if (decodedUrl.includes("v.redd.it")) {
-        // Construct vxreddit embed URL from permalink
-        const decodedPermalink = decodeHtmlEntitiesInUrl(postData.permalink);
-        // Remove trailing slash to avoid double slash in embed URL
-        const normalizedPermalink = decodedPermalink.replace(/\/$/, "");
-        mediaUrl = `https://vxreddit.com${normalizedPermalink}`;
-      }
-    }
-
-    articles.push({
-      title: postData.title,
-      url: permalink,
-      published: postDate,
-      content: rawContent, // Will be processed in processContent
-      summary: postData.selftext || "",
-      author: postData.author,
-      score: postData.score,
-      thumbnailUrl: articleThumbnailUrl,
-      mediaUrl,
-      externalId: postData.id,
-      // Store headerImageUrl for use in processContent
-      ...(headerImageUrl ? { headerImageUrl } : {}),
-      // Store num_comments for filtering
-      num_comments: postData.num_comments,
-    } as RawArticle & { headerImageUrl?: string; num_comments?: number });
+    articles.push(
+      buildArticleFromPost(
+        postData,
+        rawContent,
+        articleThumbnailUrl,
+        mediaUrl,
+        headerImageUrl,
+        postData.num_comments,
+      ),
+    );
   }
 
   const elapsed = Date.now() - startTime;

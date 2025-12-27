@@ -8,6 +8,12 @@ import axios from "axios";
 
 import { logger } from "../utils/logger";
 
+import {
+  validateRequiredFields,
+  handleAxiosError,
+  handleUnexpectedError,
+} from "./reddit-credential-handlers";
+
 export interface RedditCredentials {
   clientId: string;
   clientSecret: string;
@@ -30,24 +36,10 @@ export interface RedditTestResult {
 export async function testRedditCredentials(
   credentials: RedditCredentials,
 ): Promise<RedditTestResult> {
-  const errors: RedditTestResult["errors"] = {};
-
   // Validate required fields
-  if (!credentials.clientId || credentials.clientId.trim() === "") {
-    errors.clientId = "Client ID is required";
-  }
-
-  if (!credentials.clientSecret || credentials.clientSecret.trim() === "") {
-    errors.clientSecret = "Client Secret is required";
-  }
-
-  if (!credentials.userAgent || credentials.userAgent.trim() === "") {
-    errors.userAgent = "User Agent is required";
-  }
-
-  // If basic validation fails, return early
-  if (Object.keys(errors).length > 0) {
-    return { success: false, errors };
+  const validationErrors = validateRequiredFields(credentials);
+  if (validationErrors) {
+    return { success: false, errors: validationErrors };
   }
 
   try {
@@ -67,7 +59,7 @@ export async function testRedditCredentials(
         "User-Agent": credentials.userAgent,
         "Content-Type": "application/x-www-form-urlencoded",
       },
-      timeout: 10000, // 10 second timeout
+      timeout: 10000,
     });
 
     // If we get a successful response with an access token, credentials are valid
@@ -77,45 +69,16 @@ export async function testRedditCredentials(
     }
 
     // Unexpected response format
-    errors.general = "Invalid response from Reddit API";
-    return { success: false, errors };
+    return {
+      success: false,
+      errors: { general: "Invalid response from Reddit API" },
+    };
   } catch (error) {
     logger.warn({ error }, "Reddit credentials test failed");
 
-    if (axios.isAxiosError(error)) {
-      // Handle specific HTTP errors
-      if (error.response?.status === 401) {
-        // Unauthorized - invalid credentials
-        errors.general = "Invalid Client ID or Client Secret";
-        // Try to determine which field is wrong (though Reddit doesn't specify)
-        // We'll mark both as potentially wrong
-        errors.clientId = "Invalid Client ID or Client Secret";
-        errors.clientSecret = "Invalid Client ID or Client Secret";
-      } else if (error.response?.status === 403) {
-        // Forbidden - credentials might be valid but app might be misconfigured
-        errors.general =
-          "Reddit app configuration issue. Check app settings on Reddit.";
-      } else if (error.response?.status === 429) {
-        // Rate limited
-        errors.general = "Rate limited by Reddit. Please try again later.";
-      } else if (error.code === "ECONNABORTED" || error.code === "ETIMEDOUT") {
-        // Timeout
-        errors.general =
-          "Connection timeout. Please check your internet connection.";
-      } else if (error.code === "ENOTFOUND" || error.code === "ECONNREFUSED") {
-        // Network error
-        errors.general =
-          "Cannot connect to Reddit API. Please check your internet connection.";
-      } else {
-        // Other HTTP errors
-        errors.general =
-          error.response?.data?.message ||
-          `Reddit API error: ${error.response?.statusText || error.message}`;
-      }
-    } else {
-      // Non-Axios errors
-      errors.general = `Unexpected error: ${error instanceof Error ? error.message : String(error)}`;
-    }
+    const errors = axios.isAxiosError(error)
+      ? handleAxiosError(error)
+      : handleUnexpectedError(error);
 
     return { success: false, errors };
   }

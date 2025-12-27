@@ -8,6 +8,7 @@ import type pino from "pino";
 
 import { extractContent } from "../base/extract";
 import type { RawArticle } from "../base/types";
+
 import {
   FigureProcessingOrchestrator,
   type FigureProcessingContext,
