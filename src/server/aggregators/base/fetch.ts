@@ -226,7 +226,7 @@ export async function fetchArticleContent(
         errorMsg.includes("net::err_aborted")
       ) {
         // Try to extract status code from error message
-        const statusMatch = errorMsg.match(/\b(40[0-9]|41[0-9])\b/);
+        const statusMatch = errorMsg.match(/\b(40\d|41\d)\b/);
         const extractedStatus = statusMatch
           ? parseInt(statusMatch[1], 10)
           : null;

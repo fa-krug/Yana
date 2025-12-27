@@ -107,7 +107,7 @@ export class AIService {
               if (matches.length > 0) {
                 const lastMatch = matches[matches.length - 1];
                 if (
-                  lastMatch.index !== undefined &&
+                  lastMatch.index != undefined &&
                   lastMatch.index + lastMatch[0].length > lastValidPos
                 ) {
                   lastValidPos = lastMatch.index + lastMatch[0].length;
@@ -227,7 +227,7 @@ export class AIService {
 
             // Try to repair JSON
             const repairedContent = this.repairJson(content);
-            if (repairedContent !== content) {
+            if (repairedContent != content) {
               try {
                 logger.info("Attempting to parse repaired JSON");
                 return JSON.parse(repairedContent) as Record<string, unknown>;

@@ -24,8 +24,6 @@ router.get(
   requireAuth,
   requireSuperuser,
   asyncHandler(async (req: Request, res: Response) => {
-    const _session = req.session as { userId?: number; isSuperuser?: boolean };
-
     // IMPORTANT: Don't send response headers after this point - SSE needs to keep connection open
     // Set SSE headers BEFORE any writes
     res.setHeader("Content-Type", "text/event-stream");

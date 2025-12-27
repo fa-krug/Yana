@@ -154,11 +154,6 @@ export class WorkerPool {
     this.pollInterval = setInterval(async () => {
       if (!this.running) return;
 
-      // Check for available workers
-      const _availableWorkers = this.workers.filter(
-        (w) => !w.connected || w.killed,
-      );
-
       // Clean up dead workers
       this.workers = this.workers.filter((w) => w.connected && !w.killed);
 

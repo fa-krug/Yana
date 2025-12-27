@@ -73,7 +73,7 @@ export async function extractImageFromUrl(
           errorMsg.includes("410") ||
           errorMsg.includes("net::err_aborted")
         ) {
-          const statusMatch = errorMsg.match(/\b(40[0-9]|41[0-9])\b/);
+          const statusMatch = errorMsg.match(/\b(40\d|41\d)\b/);
           const extractedStatus = statusMatch
             ? parseInt(statusMatch[1], 10)
             : null;

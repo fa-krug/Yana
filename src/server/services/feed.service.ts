@@ -66,7 +66,6 @@ export async function previewFeed(
 }> {
   // Implementation moved to feed-preview.service.ts in future refactoring
   // For now, keeping original implementation here
-  const _previewStart = Date.now();
   logger.info(
     {
       userId: user.id,
@@ -155,8 +154,6 @@ export async function previewFeed(
           break;
         }
       } catch (error: unknown) {
-        const _lastError =
-          error instanceof Error ? error : new Error(String(error));
         if (String(error).includes("timed out")) {
           return {
             success: false,

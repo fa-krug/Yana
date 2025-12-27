@@ -29,7 +29,7 @@ export interface DailyLimitMixin {
  * @returns Daily post limit (-1=unlimited, 0=disabled, n>0=target)
  */
 export function getDailyPostLimit(this: DailyLimitMixin): number {
-  if (this.feed && this.feed.dailyPostLimit !== undefined) {
+  if (this.feed && this.feed.dailyPostLimit != undefined) {
     return this.feed.dailyPostLimit;
   }
   // Use aggregator's default

@@ -112,9 +112,9 @@ export const adminRouter = router({
 
         // Update additional fields if provided
         if (
-          firstName !== undefined ||
-          lastName !== undefined ||
-          isSuperuser !== undefined
+          firstName != undefined ||
+          lastName != undefined ||
+          isSuperuser != undefined
         ) {
           const updateData: {
             firstName?: string;
@@ -122,9 +122,9 @@ export const adminRouter = router({
             isSuperuser?: boolean;
           } = {};
 
-          if (firstName !== undefined) updateData.firstName = firstName;
-          if (lastName !== undefined) updateData.lastName = lastName;
-          if (isSuperuser !== undefined) updateData.isSuperuser = isSuperuser;
+          if (firstName != undefined) updateData.firstName = firstName;
+          if (lastName != undefined) updateData.lastName = lastName;
+          if (isSuperuser != undefined) updateData.isSuperuser = isSuperuser;
 
           await updateUser(user.id, updateData);
         }
@@ -162,9 +162,9 @@ export const adminRouter = router({
 
         // Update profile fields if provided
         if (
-          email !== undefined ||
-          firstName !== undefined ||
-          lastName !== undefined
+          email != undefined ||
+          firstName != undefined ||
+          lastName != undefined
         ) {
           await updateUserProfile(id, {
             email: email || "",
@@ -174,14 +174,14 @@ export const adminRouter = router({
         }
 
         // Update username and superuser status if provided
-        if (username !== undefined || isSuperuser !== undefined) {
+        if (username != undefined || isSuperuser != undefined) {
           const updateData: {
             username?: string;
             isSuperuser?: boolean;
           } = {};
 
-          if (username !== undefined) updateData.username = username;
-          if (isSuperuser !== undefined) updateData.isSuperuser = isSuperuser;
+          if (username != undefined) updateData.username = username;
+          if (isSuperuser != undefined) updateData.isSuperuser = isSuperuser;
 
           await updateUser(id, updateData);
         }

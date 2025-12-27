@@ -109,7 +109,7 @@ export function normalizeSubreddit(identifier: string): string {
   identifier = identifier.trim();
 
   // Extract from URL
-  const urlMatch = identifier.match(/(?:reddit\.com)?\/r\/([a-zA-Z0-9_]+)/);
+  const urlMatch = identifier.match(/(?:reddit\.com)?\/r\/(\w+)/);
   if (urlMatch) {
     return urlMatch[1];
   }
@@ -133,7 +133,7 @@ export function extractPostInfoFromUrl(url: string): {
   subreddit: string | null;
   postId: string | null;
 } {
-  const match = url.match(/\/r\/([a-zA-Z0-9_]+)\/comments\/([a-zA-Z0-9]+)/);
+  const match = url.match(/\/r\/(\w+)\/comments\/([a-zA-Z0-9]+)/);
   return match
     ? { subreddit: match[1], postId: match[2] }
     : { subreddit: null, postId: null };
@@ -151,7 +151,7 @@ export function validateSubreddit(subreddit: string): {
   }
 
   // Subreddit names: 2-21 characters, alphanumeric and underscores only
-  if (!/^[a-zA-Z0-9_]{2,21}$/.test(subreddit)) {
+  if (!/^\w{2,21}$/.test(subreddit)) {
     return {
       valid: false,
       error:

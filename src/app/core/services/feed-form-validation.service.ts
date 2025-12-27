@@ -60,7 +60,7 @@ export class FeedFormValidationService {
       // Handle null/undefined: if existingValues[key] is null or undefined, use default
       const rawValue = existingValues?.[key];
       const existingValue =
-        rawValue !== undefined && rawValue !== null ? rawValue : option.default;
+        rawValue != undefined && rawValue != null ? rawValue : option.default;
 
       // Add JSON validation for json widget type
       if (option.widget === "json") {
@@ -81,9 +81,9 @@ export class FeedFormValidationService {
         // For boolean options, use existing value if provided, otherwise use default
         // Important: if existingValue is explicitly false, use it (don't fall back to default)
         const initialValue =
-          existingValue !== undefined && existingValue !== null
+          existingValue != undefined && existingValue != null
             ? Boolean(existingValue)
-            : option.default !== undefined
+            : option.default != undefined
               ? Boolean(option.default)
               : false;
         formGroup.addControl(fieldName, this.fb.control(initialValue));
@@ -96,9 +96,9 @@ export class FeedFormValidationService {
         // For choice types, use null if no value (Material Select handles null better than empty string)
         // But prefer the default if available
         const initialValue =
-          existingValue !== undefined && existingValue !== null
+          existingValue != undefined && existingValue != null
             ? existingValue
-            : option.default !== undefined && option.default !== null
+            : option.default != undefined && option.default != null
               ? option.default
               : null;
         formGroup.addControl(
@@ -198,7 +198,7 @@ export class FeedFormValidationService {
       // HTML number inputs return strings, so we need to convert them
       if (optionType === "integer" || optionType === "float") {
         // Include 0 and negative numbers (like -1 for min_comments)
-        if (rawValue !== null && rawValue !== undefined && rawValue !== "") {
+        if (rawValue != null && rawValue != undefined && rawValue != "") {
           const numValue =
             typeof rawValue === "number"
               ? rawValue
@@ -214,7 +214,7 @@ export class FeedFormValidationService {
       }
 
       // For other types, exclude null, undefined, and empty strings
-      if (rawValue !== null && rawValue !== undefined && rawValue !== "") {
+      if (rawValue != null && rawValue != undefined && rawValue != "") {
         aggregatorOptions[key] = rawValue;
       }
     });

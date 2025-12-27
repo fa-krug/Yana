@@ -273,7 +273,7 @@ export class RedditSettingsComponent {
   } | null {
     const getNestedValue = (obj: unknown, ...paths: string[]): unknown => {
       for (const path of paths) {
-        if (typeof obj === "object" && obj !== null && path in obj) {
+        if (typeof obj === "object" && obj != null && path in obj) {
           obj = (obj as Record<string, unknown>)[path];
         } else {
           return undefined;
@@ -300,7 +300,7 @@ export class RedditSettingsComponent {
     if (
       fieldErrors &&
       typeof fieldErrors === "object" &&
-      fieldErrors !== null
+      fieldErrors != null
     ) {
       const err = fieldErrors as Record<string, unknown>;
       return {
@@ -323,10 +323,10 @@ export class RedditSettingsComponent {
   private extractRedditErrorMessage(error: unknown): string {
     if (
       typeof error === "object" &&
-      error !== null &&
+      error != null &&
       "data" in error &&
       typeof (error as { data?: unknown }).data === "object" &&
-      (error as { data?: { message?: unknown } }).data !== null &&
+      (error as { data?: { message?: unknown } }).data != null &&
       "message" in (error as { data: { message?: unknown } }).data &&
       typeof (error as { data: { message: unknown } }).data.message === "string"
     ) {
@@ -334,10 +334,10 @@ export class RedditSettingsComponent {
     }
     if (
       typeof error === "object" &&
-      error !== null &&
+      error != null &&
       "error" in error &&
       typeof (error as { error?: unknown }).error === "object" &&
-      (error as { error?: { message?: unknown } }).error !== null &&
+      (error as { error?: { message?: unknown } }).error != null &&
       "message" in (error as { error: { message?: unknown } }).error &&
       typeof (error as { error: { message: unknown } }).error.message ===
         "string"
@@ -346,7 +346,7 @@ export class RedditSettingsComponent {
     }
     if (
       typeof error === "object" &&
-      error !== null &&
+      error != null &&
       "message" in error &&
       typeof (error as { message: unknown }).message === "string"
     ) {

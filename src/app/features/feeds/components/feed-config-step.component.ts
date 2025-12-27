@@ -300,7 +300,7 @@ export class FeedConfigStepComponent {
     // If value is a partial channel object, find the full ChannelSearchResult
     if (
       typeof value === "object" &&
-      value !== null &&
+      value != null &&
       "channelId" in value &&
       !("description" in value)
     ) {
@@ -315,7 +315,7 @@ export class FeedConfigStepComponent {
 
   protected onGroupSelected(event: { option: { value: Group } } | Group): void {
     const group =
-      typeof event === "object" && event !== null && "option" in event
+      typeof event === "object" && event != null && "option" in event
         ? event.option.value
         : event;
     if (group && typeof group === "object" && "id" in group && group.id) {

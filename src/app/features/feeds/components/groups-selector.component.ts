@@ -198,7 +198,7 @@ export class GroupsSelectorComponent {
 
   protected onGroupSelected(event: { option: { value: Group } } | Group): void {
     const group =
-      typeof event === "object" && event !== null && "option" in event
+      typeof event === "object" && event != null && "option" in event
         ? event.option.value
         : event;
     if (group && typeof group === "object" && "id" in group && group.id) {

@@ -320,7 +320,7 @@ export class ChangePasswordDialogComponent {
       return null;
     }
 
-    if (newPassword.value !== confirmPassword.value) {
+    if (newPassword.value != confirmPassword.value) {
       // Set error on confirmPassword field
       const existingErrors = confirmPassword.errors || {};
       confirmPassword.setErrors({ ...existingErrors, passwordMismatch: true });
@@ -343,7 +343,7 @@ export class ChangePasswordDialogComponent {
     const confirmPassword = this.passwordForm.get("confirmPassword")?.value;
     const confirmPasswordControl = this.passwordForm.get("confirmPassword");
 
-    if (newPassword && confirmPassword && newPassword !== confirmPassword) {
+    if (newPassword && confirmPassword && newPassword != confirmPassword) {
       const existingErrors = confirmPasswordControl?.errors || {};
       confirmPasswordControl?.setErrors({
         ...existingErrors,
@@ -410,10 +410,10 @@ export class ChangePasswordDialogComponent {
     // API validation errors (422) - format: { "detail": [...] }
     if (
       typeof error === "object" &&
-      error !== null &&
+      error != null &&
       "error" in error &&
       typeof (error as { error?: unknown }).error === "object" &&
-      (error as { error?: { detail?: unknown } }).error !== null &&
+      (error as { error?: { detail?: unknown } }).error != null &&
       "detail" in (error as { error: { detail?: unknown } }).error
     ) {
       const detail = (error as { error: { detail: unknown } }).error.detail;
@@ -425,7 +425,7 @@ export class ChangePasswordDialogComponent {
           }
           if (
             typeof item === "object" &&
-            item !== null &&
+            item != null &&
             "msg" in item &&
             typeof (item as { msg?: unknown }).msg === "string"
           ) {
@@ -450,10 +450,10 @@ export class ChangePasswordDialogComponent {
     // Standard message format
     if (
       typeof error === "object" &&
-      error !== null &&
+      error != null &&
       "error" in error &&
       typeof (error as { error?: unknown }).error === "object" &&
-      (error as { error?: { message?: unknown } }).error !== null &&
+      (error as { error?: { message?: unknown } }).error != null &&
       "message" in (error as { error: { message?: unknown } }).error &&
       typeof (error as { error: { message: unknown } }).error.message ===
         "string"
@@ -464,10 +464,10 @@ export class ChangePasswordDialogComponent {
     // Non-field errors
     if (
       typeof error === "object" &&
-      error !== null &&
+      error != null &&
       "error" in error &&
       typeof (error as { error?: unknown }).error === "object" &&
-      (error as { error?: { non_field_errors?: unknown } }).error !== null &&
+      (error as { error?: { non_field_errors?: unknown } }).error != null &&
       "non_field_errors" in
         (error as { error: { non_field_errors?: unknown } }).error
     ) {
@@ -484,7 +484,7 @@ export class ChangePasswordDialogComponent {
     // String error
     if (
       typeof error === "object" &&
-      error !== null &&
+      error != null &&
       "error" in error &&
       typeof (error as { error?: unknown }).error === "string"
     ) {
@@ -494,7 +494,7 @@ export class ChangePasswordDialogComponent {
     // Top-level message
     if (
       typeof error === "object" &&
-      error !== null &&
+      error != null &&
       "message" in error &&
       typeof (error as { message: unknown }).message === "string"
     ) {

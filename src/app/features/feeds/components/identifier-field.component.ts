@@ -135,7 +135,7 @@ interface Channel {
                     <strong>{{
                       channel.handle ? "@" + channel.handle : channel.title
                     }}</strong>
-                    @if (channel.handle && channel.title !== channel.handle) {
+                    @if (channel.handle && channel.title != channel.handle) {
                       <span class="channel-title">{{ channel.title }}</span>
                     }
                     @if (
@@ -284,7 +284,7 @@ export class IdentifierFieldComponent {
     event: { option: { value: Subreddit | string } } | Subreddit | string,
   ): void {
     const subreddit =
-      typeof event === "object" && event !== null && "option" in event
+      typeof event === "object" && event != null && "option" in event
         ? event.option.value
         : event;
     if (subreddit) {
@@ -309,7 +309,7 @@ export class IdentifierFieldComponent {
     event: { option: { value: Channel | string } } | Channel | string,
   ): void {
     const channel =
-      typeof event === "object" && event !== null && "option" in event
+      typeof event === "object" && event != null && "option" in event
         ? event.option.value
         : event;
     if (channel) {

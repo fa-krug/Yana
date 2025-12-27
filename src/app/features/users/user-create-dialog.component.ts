@@ -315,8 +315,8 @@ export class UserCreateDialogComponent {
 
     if (this.userForm.valid) {
       this.loading = true;
-      const formValue = this.userForm.value;
-      const { confirmPassword: _confirmPassword, ...userData } = formValue;
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { confirmPassword, ...userData } = this.userForm.value;
       this.usersService.createUser(userData).subscribe({
         next: () => {
           this.loading = false;
