@@ -213,6 +213,7 @@ export default tseslint.config(
       '*.d.ts',
       '**/*.gen.ts',
       '**/*.gen.*',
+      '.dev/worktree/**', // Ignore git worktree files
     ],
   },
 );
