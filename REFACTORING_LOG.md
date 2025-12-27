@@ -632,6 +632,83 @@ src/server/aggregators/base/
 
 ---
 
-**Last Updated**: Phase 7 Complete
-**Next Phase Recommended**: Phase 8 - YouTube testYouTubeCredentials Response, Remaining Violations (complexity 15+)
-**Status**: Ready to Continue
+## Phase 8+: Remaining Violations Analysis
+
+After completing Phases 1-7, the following violations remain to be addressed:
+
+### Remaining Cognitive Complexity Violations (41 total)
+
+**Critical Violations (Complexity 40+)**:
+1. `src/server/aggregators/__tests__/download-fixtures.ts:733` - Complexity 38
+2. `src/server/aggregators/base/utils/images/strategies/basic.ts:134` - Complexity 43
+3. `src/server/aggregators/base/utils/images/extract.ts:24` - Complexity 43
+4. `src/server/aggregators/mein_mmo/fetching.ts:94` - Complexity 48
+
+**High Violations (Complexity 25-39)**:
+- `src/server/aggregators/youtube/parsing.ts:15` - Complexity 31
+- `src/server/aggregators/base/contentProcessing.ts:136` - Complexity 31
+- `src/server/aggregators/base/utils/html.ts:73` - Complexity 36
+- `src/server/aggregators/base/utils/images/strategies/page.ts:23` - Complexity 37
+- `src/server/aggregators/__tests__/aggregator-options.test.ts:286` - Complexity 27
+- `src/server/aggregators/mein_mmo/fetching.ts:253` - Complexity 27
+- `src/server/aggregators/heise.ts:377` - Complexity 26
+- `src/server/utils/logger.ts:18` - Complexity 26
+- `src/server/aggregators/__tests__/aggregator-integration.test.ts:407` - Complexity 18
+
+**Moderate Violations (Complexity 16-24)**:
+- `src/server/services/feed-crud.service.ts:93` - Complexity 21
+- `src/server/services/openai.service.ts:28` - Complexity 22
+- `src/server/services/reddit.service.ts:30` - Complexity 21
+- `src/server/aggregators/base/utils/images/fetch.ts:32` - Complexity 21
+- `src/server/aggregators/youtube/fetching.ts:38` - Complexity 23
+- And 16 more violations with complexity 16-24
+
+### Recommended Approach for Phase 8+
+
+**Strategy**: Focus on high-impact, extractable functions in aggregator base classes and utilities:
+
+1. **Image Processing Pipeline** (High Priority)
+   - `images/strategies/basic.ts:134` (Complexity 43)
+   - `images/extract.ts:24` (Complexity 43)
+   - Extract image strategy pattern and URL handling
+
+2. **Content Processing** (High Priority)
+   - `contentProcessing.ts:136` (Complexity 31)
+   - `html.ts:73` (Complexity 36)
+   - Extract HTML processing strategies
+
+3. **YouTube Parsing** (Medium Priority)
+   - `youtube/parsing.ts:15` (Complexity 31)
+   - Extract parsing handlers for different formats
+
+4. **Test Files** (Low Priority)
+   - Large test fixture files can be refactored but don't affect production code
+   - Consider extracting test helpers and utilities
+
+### Estimated Impact
+
+- **Phase 8**: Target 8-10 violations reduction (Focus on image/content processing)
+- **Phase 9**: Target 6-8 violations reduction (YouTube/Heise aggregators)
+- **Phase 10**: Target remaining violations in utility functions
+- **Target**: 41 → 15-20 violations (50-70% additional reduction)
+
+### Key Learnings from Phases 1-7
+
+1. **Pipeline Pattern is highly effective** for sequential processing (enrichment, stream reading)
+2. **Handler Pattern excels** at error handling and classification (errors, credentials, validation)
+3. **Strategy Pattern ideal** for algorithm variations (thumbnails, retry logic, transformation)
+4. **Extraction should preserve** testability - move test assertions into focused test functions
+5. **Backward compatibility** maintained throughout by re-exporting from original modules
+
+### Notes for Next Phases
+
+- Image processing has multiple strategy layers - opportunity for Strategy Pattern refactoring
+- Content processing mixin has validation logic mixed with transformation - separate concerns
+- Test files should extract setup/teardown and assertion helpers
+- Aggregator-specific parsing (YouTube, Heise) can use handler pattern for format variations
+
+---
+
+**Last Updated**: Phase 7 Complete (Analysis Added)
+**Next Phase Recommended**: Phase 8 - Image Processing & Content Processing Refactoring
+**Status**: Ready for Phase 8 when resources available
