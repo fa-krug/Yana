@@ -6,6 +6,7 @@
 
 import type {
   AggregatorMetadata,
+  OptionDefinition,
   OptionsSchema,
 } from "../aggregators/base/types";
 import {
@@ -177,6 +178,73 @@ export function getAggregatorOptions(id: string): OptionsSchema | undefined {
 }
 
 /**
+ * Validate aggregator identifier.
+ * Returns array of validation errors (empty if valid).
+ */
+function validateIdentifier(identifier: string): string[] {
+  if (!identifier || identifier.trim() === "") {
+    return ["Identifier is required"];
+  }
+  return [];
+}
+
+/**
+ * Validate required option field.
+ * Returns error message if validation fails, null otherwise.
+ */
+function validateOptionRequired(
+  key: string,
+  def: OptionDefinition,
+  options: Record<string, unknown>,
+): string | null {
+  if (def.required && options[key] === undefined) {
+    return `Option '${key}' is required`;
+  }
+  return null;
+}
+
+/**
+ * Validate option value (type, min, max).
+ * Returns array of validation errors (empty if valid).
+ */
+function validateOptionValue(
+  key: string,
+  def: OptionDefinition,
+  value: unknown,
+): string[] {
+  const errors: string[] = [];
+
+  // Type validation
+  if (def.type === "integer" && typeof value !== "number") {
+    errors.push(`Option '${key}' must be an integer`);
+  } else if (def.type === "boolean" && typeof value !== "boolean") {
+    errors.push(`Option '${key}' must be a boolean`);
+  } else if (def.type === "string" && typeof value !== "string") {
+    errors.push(`Option '${key}' must be a string`);
+  }
+
+  // Min validation
+  if (
+    def.min !== undefined &&
+    typeof value === "number" &&
+    value < def.min
+  ) {
+    errors.push(`Option '${key}' must be at least ${def.min}`);
+  }
+
+  // Max validation
+  if (
+    def.max !== undefined &&
+    typeof value === "number" &&
+    value > def.max
+  ) {
+    errors.push(`Option '${key}' must be at most ${def.max}`);
+  }
+
+  return errors;
+}
+
+/**
  * Validate aggregator configuration.
  */
 export function validateAggregatorConfig(
@@ -194,42 +262,20 @@ export function validateAggregatorConfig(
   }
 
   // Validate identifier
-  if (!identifier || identifier.trim() === "") {
-    errors.push("Identifier is required");
-  }
+  errors.push(...validateIdentifier(identifier));
 
   // Validate options
   if (aggregator.options) {
     for (const [key, def] of Object.entries(aggregator.options)) {
-      if (def.required && options[key] === undefined) {
-        errors.push(`Option '${key}' is required`);
+      // Check required
+      const requiredError = validateOptionRequired(key, def, options);
+      if (requiredError) {
+        errors.push(requiredError);
       }
 
+      // Validate value if present
       if (options[key] !== undefined) {
-        const value = options[key];
-        if (def.type === "integer" && typeof value !== "number") {
-          errors.push(`Option '${key}' must be an integer`);
-        } else if (def.type === "boolean" && typeof value !== "boolean") {
-          errors.push(`Option '${key}' must be a boolean`);
-        } else if (def.type === "string" && typeof value !== "string") {
-          errors.push(`Option '${key}' must be a string`);
-        }
-
-        if (
-          def.min !== undefined &&
-          typeof value === "number" &&
-          value < def.min
-        ) {
-          errors.push(`Option '${key}' must be at least ${def.min}`);
-        }
-
-        if (
-          def.max !== undefined &&
-          typeof value === "number" &&
-          value > def.max
-        ) {
-          errors.push(`Option '${key}' must be at most ${def.max}`);
-        }
+        errors.push(...validateOptionValue(key, def, options[key]));
       }
     }
   }

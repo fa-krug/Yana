@@ -8,8 +8,161 @@ import type { BaseAggregator } from "@server/aggregators/base/aggregator";
 import type { RawArticle } from "@server/aggregators/base/types";
 import { shouldSkipArticleByDuplicate } from "@server/aggregators/base/utils";
 import { db, articles } from "@server/db";
-import type { Feed } from "@server/db/types";
+import type { Article, Feed } from "@server/db/types";
 import { logger } from "@server/utils/logger";
+
+/**
+ * Determine if and how an article should be processed.
+ */
+interface ProcessingDecision {
+  action: "skip" | "update" | "create";
+  existingArticle?: Article;
+  reason?: string;
+}
+
+/**
+ * Check if article is too old (older than cutoff date).
+ * Returns true if article should be skipped due to age.
+ */
+function isArticleTooOld(
+  publishedDate: Date | null,
+  cutoffDate: Date,
+): boolean {
+  if (!publishedDate || Number.isNaN(publishedDate.getTime())) {
+    return false;
+  }
+  return publishedDate < cutoffDate;
+}
+
+/**
+ * Determine if and how an article should be processed.
+ */
+async function determineProcessingAction(
+  rawArticle: RawArticle,
+  feedId: string,
+  userId: number,
+  forceRefresh: boolean,
+): Promise<ProcessingDecision> {
+  const { shouldSkip, shouldUpdate, reason, existingArticle } =
+    await shouldSkipArticleByDuplicate(
+      { url: rawArticle.url, title: rawArticle.title },
+      feedId,
+      userId,
+      forceRefresh,
+    );
+
+  // INSTRUMENTATION: Log duplicate detection
+  if (
+    process.env["NODE_ENV"] === "test" &&
+    (global as { __TEST_TRACE?: boolean }).__TEST_TRACE
+  ) {
+    console.log(
+      `[SAVE_TRACE] Article ${rawArticle.url}: shouldSkip=${shouldSkip}, shouldUpdate=${shouldUpdate}, reason=${reason || "none"}`,
+    );
+  }
+
+  if (shouldSkip) {
+    return { action: "skip", reason };
+  }
+
+  if (shouldUpdate && existingArticle) {
+    return { action: "update", existingArticle };
+  }
+
+  return { action: "create" };
+}
+
+/**
+ * Update an existing article with new data.
+ */
+async function updateExistingArticle(
+  rawArticle: RawArticle,
+  feed: Feed,
+  aggregator: BaseAggregator,
+  existingArticle: Article,
+): Promise<void> {
+  const thumbnailBase64 = await processThumbnail(rawArticle, aggregator);
+  const articleDate = feed.useCurrentTimestamp
+    ? new Date()
+    : (rawArticle.published ?? new Date());
+
+  await db
+    .update(articles)
+    .set({
+      name: rawArticle.title,
+      content: rawArticle.content || "",
+      date: articleDate,
+      author: rawArticle.author || null,
+      externalId: rawArticle.externalId || null,
+      score: rawArticle.score || null,
+      thumbnailUrl: thumbnailBase64 || null,
+      mediaUrl: rawArticle.mediaUrl || null,
+      duration: rawArticle.duration || null,
+      viewCount: rawArticle.viewCount || null,
+      mediaType: rawArticle.mediaType || null,
+      updatedAt: new Date(),
+    })
+    .where(eq(articles.id, existingArticle.id));
+}
+
+/**
+ * Handle force refresh scenario.
+ * Returns true if article was updated, false if it needs to be created.
+ */
+async function handleForceRefresh(
+  rawArticle: RawArticle,
+  feed: Feed,
+  aggregator: BaseAggregator,
+): Promise<boolean> {
+  const [existing] = await db
+    .select()
+    .from(articles)
+    .where(
+      and(eq(articles.url, rawArticle.url), eq(articles.feedId, feed.id)),
+    )
+    .limit(1);
+
+  if (existing) {
+    await updateExistingArticle(rawArticle, feed, aggregator, existing);
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Create a new article in the database.
+ */
+async function createNewArticle(
+  rawArticle: RawArticle,
+  feed: Feed,
+  aggregator: BaseAggregator,
+): Promise<void> {
+  const thumbnailBase64 = await processThumbnail(rawArticle, aggregator);
+  const articleDate = feed.useCurrentTimestamp
+    ? new Date()
+    : (rawArticle.published ?? new Date());
+
+  await db.insert(articles).values({
+    feedId: feed.id,
+    name: rawArticle.title,
+    url: rawArticle.url,
+    date: articleDate,
+    content: rawArticle.content || "",
+    author: rawArticle.author || null,
+    externalId: rawArticle.externalId || null,
+    score: rawArticle.score || null,
+    thumbnailUrl: thumbnailBase64 || null,
+    mediaUrl: rawArticle.mediaUrl || null,
+    duration: rawArticle.duration || null,
+    viewCount: rawArticle.viewCount || null,
+    mediaType: rawArticle.mediaType || null,
+    aiProcessed: false,
+    aiError: "",
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  });
+}
 
 /**
  * Process and save articles from aggregation.
@@ -26,22 +179,18 @@ export async function saveAggregatedArticles(
   const publishedCutoffDate = new Date();
   publishedCutoffDate.setMonth(publishedCutoffDate.getMonth() - 2);
 
-  // Save articles
   for (const rawArticle of rawArticles) {
     try {
+      // Check if article is too old
       const publishedDate = rawArticle.published
         ? new Date(rawArticle.published)
         : null;
 
-      if (
-        publishedDate &&
-        !Number.isNaN(publishedDate.getTime()) &&
-        publishedDate < publishedCutoffDate
-      ) {
+      if (isArticleTooOld(publishedDate, publishedCutoffDate)) {
         logger.debug(
           {
             url: rawArticle.url,
-            published: publishedDate.toISOString(),
+            published: publishedDate?.toISOString(),
             feedId: feed.id,
           },
           "Skipping article older than two months",
@@ -52,143 +201,63 @@ export async function saveAggregatedArticles(
           (global as { __TEST_TRACE?: boolean }).__TEST_TRACE
         ) {
           console.log(
-            `[SAVE_TRACE] Article ${rawArticle.url} filtered: too old (${publishedDate.toISOString()} < ${publishedCutoffDate.toISOString()})`,
+            `[SAVE_TRACE] Article ${rawArticle.url} filtered: too old (${publishedDate?.toISOString()} < ${publishedCutoffDate.toISOString()})`,
           );
         }
         continue;
       }
 
-      // Check if article should be skipped due to duplicates or updated
-      const { shouldSkip, shouldUpdate, reason, existingArticle } =
-        await shouldSkipArticleByDuplicate(
-          { url: rawArticle.url, title: rawArticle.title },
-          feed.id,
-          feed.userId,
-          forceRefresh,
-        );
+      // Determine processing action
+      const decision = await determineProcessingAction(
+        rawArticle,
+        feed.id,
+        feed.userId,
+        forceRefresh,
+      );
 
-      // INSTRUMENTATION: Log duplicate detection
-      if (
-        process.env["NODE_ENV"] === "test" &&
-        (global as { __TEST_TRACE?: boolean }).__TEST_TRACE
-      ) {
-        console.log(
-          `[SAVE_TRACE] Article ${rawArticle.url}: shouldSkip=${shouldSkip}, shouldUpdate=${shouldUpdate}, reason=${reason || "none"}`,
-        );
-      }
-
-      if (shouldSkip) {
-        if (reason) {
+      if (decision.action === "skip") {
+        if (decision.reason) {
           logger.debug(
             {
               url: rawArticle.url,
               name: rawArticle.title,
               feedId: feed.id,
-              reason,
+              reason: decision.reason,
             },
             "Skipping duplicate article",
           );
         }
-        // Don't log for existing URLs (too verbose)
         continue;
       }
 
-      const articleDate = feed.useCurrentTimestamp
-        ? new Date()
-        : (rawArticle.published ?? new Date());
-
-      // Update existing unread article
-      if (shouldUpdate && existingArticle) {
-        const thumbnailBase64 = await processThumbnail(rawArticle, aggregator);
-
-        await db
-          .update(articles)
-          .set({
-            name: rawArticle.title,
-            content: rawArticle.content || "",
-            date: articleDate,
-            author: rawArticle.author || null,
-            externalId: rawArticle.externalId || null,
-            score: rawArticle.score || null,
-            thumbnailUrl: thumbnailBase64 || null,
-            mediaUrl: rawArticle.mediaUrl || null,
-            duration: rawArticle.duration || null,
-            viewCount: rawArticle.viewCount || null,
-            mediaType: rawArticle.mediaType || null,
-            updatedAt: new Date(),
-          })
-          .where(eq(articles.id, existingArticle.id));
-
+      if (decision.action === "update" && decision.existingArticle) {
+        await updateExistingArticle(
+          rawArticle,
+          feed,
+          aggregator,
+          decision.existingArticle,
+        );
         articlesUpdated++;
         continue;
       }
 
-      // Force refresh: Update existing article if it exists
+      // Handle force refresh scenario
       if (forceRefresh) {
-        const [existing] = await db
-          .select()
-          .from(articles)
-          .where(
-            and(eq(articles.url, rawArticle.url), eq(articles.feedId, feed.id)),
-          )
-          .limit(1);
-
-        if (existing) {
-          const thumbnailBase64 = await processThumbnail(
-            rawArticle,
-            aggregator,
-          );
-
-          await db
-            .update(articles)
-            .set({
-              name: rawArticle.title,
-              content: rawArticle.content || "",
-              date: articleDate,
-              author: rawArticle.author || null,
-              externalId: rawArticle.externalId || null,
-              score: rawArticle.score || null,
-              thumbnailUrl: thumbnailBase64 || null,
-              mediaUrl: rawArticle.mediaUrl || null,
-              duration: rawArticle.duration || null,
-              viewCount: rawArticle.viewCount || null,
-              mediaType: rawArticle.mediaType || null,
-              updatedAt: new Date(),
-            })
-            .where(eq(articles.id, existing.id));
-
+        const wasUpdated = await handleForceRefresh(
+          rawArticle,
+          feed,
+          aggregator,
+        );
+        if (wasUpdated) {
           articlesUpdated++;
           continue;
         }
       }
 
-      // Process thumbnail
-      const thumbnailBase64 = await processThumbnail(rawArticle, aggregator);
-
       // Create new article
-      await db.insert(articles).values({
-        feedId: feed.id,
-        name: rawArticle.title,
-        url: rawArticle.url,
-        date: articleDate,
-        content: rawArticle.content || "",
-        author: rawArticle.author || null,
-        externalId: rawArticle.externalId || null,
-        score: rawArticle.score || null,
-        thumbnailUrl: thumbnailBase64 || null,
-        mediaUrl: rawArticle.mediaUrl || null,
-        duration: rawArticle.duration || null,
-        viewCount: rawArticle.viewCount || null,
-        mediaType: rawArticle.mediaType || null,
-        aiProcessed: false,
-        aiError: "",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      });
-
+      await createNewArticle(rawArticle, feed, aggregator);
       articlesCreated++;
     } catch (error: unknown) {
-      // Log errors as actual failures
       logger.error({ error, url: rawArticle.url }, "Failed to save article");
       continue;
     }
