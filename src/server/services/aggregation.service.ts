@@ -21,6 +21,11 @@ import {
   calculateArticleLimit,
 } from "./aggregation-validation.service";
 import { enqueueTask } from "./taskQueue.service";
+import {
+  buildRawArticleFromDatabase,
+  determineArticleDate,
+  processThumbnailBase64,
+} from "./article-reload-helpers";
 
 /**
  * Aggregate a single feed.
@@ -198,6 +203,7 @@ export async function reloadArticle(
  * Process article reload (called by worker).
  */
 export async function processArticleReload(articleId: number): Promise<void> {
+  // 1. Load article and feed
   const [article] = await db
     .select()
     .from(articles)
@@ -218,26 +224,25 @@ export async function processArticleReload(articleId: number): Promise<void> {
     throw new NotFoundError("Feed not found");
   }
 
-  // Get aggregator
+  // 2. Get and initialize aggregator
   const aggregator = getAggregatorById(feed.aggregator);
   if (!aggregator) {
     throw new Error(`Aggregator '${feed.aggregator}' not found`);
   }
 
-  // Initialize aggregator
   aggregator.initialize(
     feed,
     true,
     feed.aggregatorOptions as Record<string, unknown>,
   );
 
-  // Fetch article content using aggregator's internal method (handles special cases like Oglaf)
+  // 3. Fetch and process article content
   const rawArticleForFetch: RawArticle = {
     title: article.name,
     url: article.url,
     published: article.date,
   };
-  // Type assertion to access protected methods (needed for external access)
+
   const aggregatorInstance = aggregator as unknown as {
     fetchArticleContentInternal: (
       url: string,
@@ -252,87 +257,31 @@ export async function processArticleReload(articleId: number): Promise<void> {
     rawArticleForFetch,
   );
 
-  // Create RawArticle from database article
-  // Preserve headerImageUrl if it was set by fetchArticleContentInternal (e.g., Reddit)
-  const rawArticle: RawArticle = {
-    title: article.name,
-    url: article.url,
-    published: article.date,
-    author: article.author || undefined,
-    externalId: article.externalId || undefined,
-    score: article.score || undefined,
-    thumbnailUrl: article.thumbnailUrl || undefined,
-    mediaUrl: article.mediaUrl || undefined,
-    duration: article.duration || undefined,
-    viewCount: article.viewCount || undefined,
-    mediaType: article.mediaType || undefined,
-    ...((rawArticleForFetch as RawArticle & { headerImageUrl?: string })
-      .headerImageUrl
-      ? {
-          headerImageUrl: (
-            rawArticleForFetch as RawArticle & { headerImageUrl?: string }
-          ).headerImageUrl,
-        }
-      : {}),
-  };
+  // 4. Build raw article preserving header image from fetch
+  const headerImageUrl = (
+    rawArticleForFetch as RawArticle & { headerImageUrl?: string }
+  ).headerImageUrl;
+  const rawArticle = buildRawArticleFromDatabase(article, headerImageUrl);
 
-  // Use aggregator's template method flow (extractContent + processContent)
-  // This ensures generateTitleImage and addSourceFooter are respected
+  // 5. Extract and process content
   const extracted = await aggregatorInstance.extractContent(html, rawArticle);
   const processed = await aggregatorInstance.processContent(
     extracted,
     rawArticle,
   );
 
-  // Handle date according to feed.useCurrentTimestamp setting (same as processFeedAggregation)
-  const articleDate = feed.useCurrentTimestamp
-    ? new Date()
-    : (rawArticle.published ?? article.date);
+  // 6. Determine article date
+  const articleDate = determineArticleDate(feed, rawArticle, article.date);
 
-  // Collect thumbnail if missing and convert to base64
-  // Use same logic as processFeedAggregation force refresh path
-  let thumbnailBase64: string | null;
-  if (rawArticle.thumbnailUrl?.startsWith("data:")) {
-    thumbnailBase64 = rawArticle.thumbnailUrl;
-  } else if (rawArticle.thumbnailUrl) {
-    thumbnailBase64 = await (
-      await import("@server/aggregators/base/utils")
-    ).convertThumbnailUrlToBase64(rawArticle.thumbnailUrl);
-  } else {
-    thumbnailBase64 = null;
-  }
+  // 7. Process thumbnail with fallbacks
+  const thumbnailBase64 = await processThumbnailBase64(
+    rawArticle,
+    article,
+    aggregator,
+    processed,
+  );
 
-  if (!thumbnailBase64) {
-    // Use aggregator's thumbnail extraction method (can be overridden)
-    const thumbnailUrl = await aggregator.extractThumbnailFromUrl(article.url);
-    if (thumbnailUrl) {
-      const { convertThumbnailUrlToBase64 } =
-        await import("@server/aggregators/base/utils");
-      thumbnailBase64 = await convertThumbnailUrlToBase64(thumbnailUrl);
-      if (thumbnailBase64) {
-        logger.debug(
-          { articleId },
-          "Extracted and converted thumbnail to base64 during reload",
-        );
-      }
-    }
-
-    // Fallback: try to extract base64 image from content (e.g., header image that was embedded)
-    if (!thumbnailBase64 && processed) {
-      const { extractBase64ImageFromContent } =
-        await import("@server/aggregators/base/utils");
-      thumbnailBase64 = extractBase64ImageFromContent(processed);
-      if (thumbnailBase64) {
-        logger.debug(
-          { articleId },
-          "Extracted base64 thumbnail from article content during reload",
-        );
-      }
-    }
-  }
-
-  // Update article with all fields (same as processFeedAggregation force refresh)
-  // This ensures all features are applied identically
+  // 8. Update article
   await db
     .update(articles)
     .set({
