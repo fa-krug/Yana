@@ -6,6 +6,7 @@ import type pino from "pino";
 
 import { ArticleSkipError } from "../exceptions";
 import type { RawArticle } from "../types";
+import { EnrichmentPipeline } from "../utils/enrichmentPipeline";
 
 /**
  * Interface for aggregator with enrichment functionality.
@@ -53,6 +54,7 @@ export async function enrichArticles(
   for (let i = 0; i < articles.length; i++) {
     const article = articles[i];
     const articleStart = Date.now();
+    const progress = `${i + 1}/${totalArticles}`;
 
     try {
       this.logger.debug(
@@ -61,226 +63,30 @@ export async function enrichArticles(
           subStep: "processArticle",
           aggregator: this.id,
           feedId: this.feed?.id,
-          progress: `${i + 1}/${totalArticles}`,
+          progress,
           url: article.url,
           title: article.title,
         },
         `Processing article ${i + 1}/${totalArticles}`,
       );
 
-      // Check if content should be fetched
-      if (!this.shouldFetchContent(article)) {
-        this.logger.debug(
-          {
-            step: "enrichArticles",
-            subStep: "shouldFetchContent",
-            aggregator: this.id,
-            feedId: this.feed?.id,
-            url: article.url,
-            skip: true,
-          },
-          "Skipping content fetch",
-        );
+      // Run enrichment pipeline
+      const pipeline = new EnrichmentPipeline(this, article, this.logger);
+      const result = await pipeline.run();
+
+      if (!result) {
+        // Article was skipped (content not needed or cache check passed without fetching)
         enriched.push(article);
-        continue;
-      }
-
-      // Try to get cached content
-      let html: string | null = await this.getCachedContent(article);
-      let fromCache = false;
-
-      if (html) {
-        fromCache = true;
-        this.logger.debug(
-          {
-            step: "enrichArticles",
-            subStep: "getCachedContent",
-            aggregator: this.id,
-            feedId: this.feed?.id,
-            url: article.url,
-            cached: true,
-          },
-          "Using cached content",
-        );
       } else {
-        // Fetch article content
-        try {
-          html = await this.fetchArticleContentInternal(article.url, article);
-          this.logger.debug(
-            {
-              step: "enrichArticles",
-              subStep: "fetchArticleContent",
-              aggregator: this.id,
-              feedId: this.feed?.id,
-              url: article.url,
-              cached: false,
-            },
-            "Fetched article content",
-          );
-        } catch (error) {
-          // Check for ArticleSkipError (4xx errors) - skip article entirely
-          if (error instanceof ArticleSkipError) {
-            this.logger.warn(
-              {
-                step: "enrichArticles",
-                subStep: "fetchArticleContent",
-                aggregator: this.id,
-                feedId: this.feed?.id,
-                url: article.url,
-                statusCode: error.statusCode,
-                skipped: true,
-              },
-              "4xx error fetching content, skipping article",
-            );
-            continue;
-          }
-          this.logger.warn(
-            {
-              step: "enrichArticles",
-              subStep: "fetchArticleContent",
-              aggregator: this.id,
-              feedId: this.feed?.id,
-              url: article.url,
-              error: error instanceof Error ? error : new Error(String(error)),
-              fallback: "summary",
-            },
-            "Failed to fetch content, using summary",
-          );
-          // Fallback to summary
-          article.content = article.summary || "";
-          enriched.push(article);
-          continue;
+        // Pipeline processed the article
+        article.content = result.content;
+
+        // Cache processed content if not from cache
+        if (!result.fromCache) {
+          await this.setCachedContent(article, result.content);
         }
-      }
 
-      // Extract content
-      let extracted: string;
-      try {
-        extracted = await this.extractContent(html, article);
-      } catch (error) {
-        // Check for ArticleSkipError (4xx errors) - skip article entirely
-        if (error instanceof ArticleSkipError) {
-          this.logger.warn(
-            {
-              step: "enrichArticles",
-              subStep: "extractContent",
-              aggregator: this.id,
-              feedId: this.feed?.id,
-              url: article.url,
-              statusCode: error.statusCode,
-              skipped: true,
-            },
-            "4xx error extracting content, skipping article",
-          );
-          continue;
-        }
-        this.logger.warn(
-          {
-            step: "enrichArticles",
-            subStep: "extractContent",
-            aggregator: this.id,
-            feedId: this.feed?.id,
-            url: article.url,
-            error: error instanceof Error ? error : new Error(String(error)),
-            fallback: "original",
-          },
-          "Failed to extract content, using original HTML",
-        );
-        extracted = html;
-      }
-
-      // Validate content
-      const isValid = this.validateContent(extracted, article);
-      if (!isValid) {
-        this.logger.warn(
-          {
-            step: "enrichArticles",
-            subStep: "validateContent",
-            aggregator: this.id,
-            feedId: this.feed?.id,
-            url: article.url,
-            valid: false,
-            skipped: true,
-          },
-          "Content validation failed, skipping article",
-        );
-        continue;
-      }
-
-      // Process content
-      let processed: string;
-      try {
-        processed = await this.processContent(extracted, article);
-      } catch (error) {
-        // Check for ArticleSkipError (4xx errors) - skip article entirely
-        if (error instanceof ArticleSkipError) {
-          this.logger.warn(
-            {
-              step: "enrichArticles",
-              subStep: "processContent",
-              aggregator: this.id,
-              feedId: this.feed?.id,
-              url: article.url,
-              statusCode: error.statusCode,
-              skipped: true,
-            },
-            "4xx error processing content, skipping article",
-          );
-          continue;
-        }
-        this.logger.warn(
-          {
-            step: "enrichArticles",
-            subStep: "processContent",
-            aggregator: this.id,
-            feedId: this.feed?.id,
-            url: article.url,
-            error: error instanceof Error ? error : new Error(String(error)),
-            fallback: "extracted",
-          },
-          "Failed to process content, using extracted content",
-        );
-        processed = extracted;
-      }
-
-      // Extract images (optional)
-      try {
-        await this.extractImages(processed, article);
-      } catch (error) {
-        // Check for ArticleSkipError (4xx errors) - skip article entirely
-        if (error instanceof ArticleSkipError) {
-          this.logger.warn(
-            {
-              step: "enrichArticles",
-              subStep: "extractImages",
-              aggregator: this.id,
-              feedId: this.feed?.id,
-              url: article.url,
-              statusCode: error.statusCode,
-              skipped: true,
-            },
-            "4xx error extracting images, skipping article",
-          );
-          continue;
-        }
-        this.logger.debug(
-          {
-            step: "enrichArticles",
-            subStep: "extractImages",
-            aggregator: this.id,
-            feedId: this.feed?.id,
-            url: article.url,
-            error: error instanceof Error ? error : new Error(String(error)),
-          },
-          "Image extraction failed (non-critical)",
-        );
-      }
-
-      article.content = processed;
-
-      // Cache processed content
-      if (!fromCache) {
-        await this.setCachedContent(article, processed);
+        enriched.push(article);
       }
 
       const articleElapsed = Date.now() - articleStart;
@@ -290,14 +96,12 @@ export async function enrichArticles(
           subStep: "processArticle",
           aggregator: this.id,
           feedId: this.feed?.id,
-          progress: `${i + 1}/${totalArticles}`,
+          progress,
           url: article.url,
           elapsed: articleElapsed,
         },
         `Article ${i + 1} processed`,
       );
-
-      enriched.push(article);
     } catch (error) {
       // Check for ArticleSkipError (4xx errors) - skip article entirely
       if (error instanceof ArticleSkipError) {
@@ -307,7 +111,7 @@ export async function enrichArticles(
             subStep: "processArticle",
             aggregator: this.id,
             feedId: this.feed?.id,
-            progress: `${i + 1}/${totalArticles}`,
+            progress,
             url: article.url,
             statusCode: error.statusCode,
             skipped: true,
@@ -322,7 +126,7 @@ export async function enrichArticles(
           subStep: "processArticle",
           aggregator: this.id,
           feedId: this.feed?.id,
-          progress: `${i + 1}/${totalArticles}`,
+          progress,
           url: article.url,
           error: error instanceof Error ? error : new Error(String(error)),
         },
