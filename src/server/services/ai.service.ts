@@ -9,6 +9,7 @@ import axios, { AxiosError } from "axios";
 
 import { logger } from "../utils/logger";
 
+import { repairJson } from "./json-repair";
 import type { AIServiceConfig } from "./ai.service.interface";
 
 export class AIService {
@@ -71,84 +72,6 @@ export class AIService {
     return restored;
   }
 
-  /**
-   * Repair JSON by fixing common issues from truncated responses.
-   */
-  private repairJson(content: string): string {
-    if (!content || !content.trim()) return content;
-
-    let repaired = content.trim();
-
-    // If content starts with { but doesn't end with }, try to close it
-    if (repaired.startsWith("{") && !repaired.endsWith("}")) {
-      const openBraces = (repaired.match(/{/g) || []).length;
-      const closeBraces = (repaired.match(/}/g) || []).length;
-
-      if (openBraces > closeBraces) {
-        // Try to find where a string value might be truncated
-        const lastColon = repaired.lastIndexOf(":");
-        if (lastColon > 0) {
-          const afterColon = repaired.substring(lastColon + 1).trim();
-          if (afterColon.startsWith('"') && !afterColon.endsWith('"')) {
-            // String is unclosed - try to find a reasonable place to close it
-            const htmlClosingPatterns = [
-              /<\/div>/gi,
-              /<\/p>/gi,
-              /<\/ul>/gi,
-              /<\/li>/gi,
-              /<\/h[1-6]>/gi,
-              /<\/article>/gi,
-              /<\/section>/gi,
-            ];
-
-            let lastValidPos = -1;
-            for (const pattern of htmlClosingPatterns) {
-              const matches = [...repaired.matchAll(pattern)];
-              if (matches.length > 0) {
-                const lastMatch = matches[matches.length - 1];
-                if (
-                  lastMatch.index != undefined &&
-                  lastMatch.index + lastMatch[0].length > lastValidPos
-                ) {
-                  lastValidPos = lastMatch.index + lastMatch[0].length;
-                }
-              }
-            }
-
-            if (lastValidPos > 0) {
-              repaired = repaired.substring(0, lastValidPos) + '"';
-            } else {
-              // Fallback: just close the string
-              const lastQuote = repaired.lastIndexOf('"');
-              if (lastQuote > lastColon) {
-                const breakChars = [">", " ", "\n"];
-                for (const breakChar of breakChars) {
-                  const breakPos = repaired.lastIndexOf(breakChar, lastQuote);
-                  if (breakPos > lastQuote) {
-                    repaired =
-                      repaired.substring(0, breakPos + 1) +
-                      '"' +
-                      repaired.substring(breakPos + 1);
-                    break;
-                  }
-                }
-                if (!repaired.endsWith('"')) {
-                  repaired += '"';
-                }
-              }
-            }
-          }
-        }
-
-        // Add missing closing braces
-        for (let i = 0; i < openBraces - closeBraces; i++) {
-          repaired += "}";
-        }
-      }
-    }
-
-    return repaired;
-  }
 
   /**
    * Make API request with retry logic.
