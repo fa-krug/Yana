@@ -14,6 +14,8 @@ import { TRPCService } from "../trpc/trpc.service";
 
 import { SSEService, type SSEEvent } from "./sse.service";
 
+export type TaskStatus = "pending" | "running" | "completed" | "failed";
+
 export interface ScheduledTask {
   id: string;
   name: string;
@@ -37,7 +39,7 @@ export interface TaskExecution {
 export interface Task {
   id: number;
   type: string;
-  status: "pending" | "running" | "completed" | "failed";
+  status: TaskStatus;
   payload: Record<string, unknown>;
   result: Record<string, unknown> | null;
   error: string | null;

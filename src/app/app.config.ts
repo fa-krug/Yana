@@ -6,7 +6,8 @@ import {
   provideZonelessChangeDetection,
 } from "@angular/core";
 import { provideClientHydration } from "@angular/platform-browser";
-import { provideAnimationsAsync } from "@angular/platform-browser/animations/async";
+// eslint-disable-next-line sonarjs/deprecation
+import { provideAnimations } from "@angular/platform-browser/animations";
 import { provideRouter, withPreloading } from "@angular/router";
 import { provideServiceWorker } from "@angular/service-worker";
 import { HotkeysService } from "@ngneat/hotkeys";
@@ -19,7 +20,8 @@ export const appConfig: ApplicationConfig = {
     provideZonelessChangeDetection(),
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes, withPreloading(CustomPreloadingStrategy)),
-    provideAnimationsAsync(),
+    // eslint-disable-next-line sonarjs/deprecation
+    provideAnimations(),
     // HttpClient still needed for non-tRPC endpoints (rss, greader, etc.)
     // Use withFetch() for better SSR performance and compatibility
     provideHttpClient(withFetch()),

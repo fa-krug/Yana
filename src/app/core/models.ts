@@ -3,6 +3,9 @@
  * These will be replaced with auto-generated types once the API client is generated.
  */
 
+// Type definitions
+export type FeedType = "article" | "youtube" | "podcast" | "reddit";
+
 // User models
 export interface User {
   id: number;
@@ -42,7 +45,7 @@ export interface Feed {
   id: number;
   name: string;
   identifier: string;
-  feedType: "article" | "youtube" | "podcast" | "reddit";
+  feedType: FeedType;
   icon?: string;
   aggregator: string;
   enabled: boolean;
@@ -69,7 +72,7 @@ export interface Feed {
 export interface FeedCreateRequest {
   name: string;
   identifier: string;
-  feedType: "article" | "youtube" | "podcast" | "reddit";
+  feedType: FeedType;
   aggregator: string;
   icon?: string;
   enabled?: boolean;

@@ -4,6 +4,7 @@ import angularPlugin from '@angular-eslint/eslint-plugin';
 import angularTemplateParser from '@angular-eslint/template-parser';
 import prettier from 'eslint-config-prettier';
 import importPlugin from 'eslint-plugin-import';
+import sonarjs from 'eslint-plugin-sonarjs';
 
 export default tseslint.config(
   // Base configuration for all files
@@ -14,6 +15,11 @@ export default tseslint.config(
     ...config,
     files: ['**/*.ts'],
   })),
+  // SonarJS recommended configuration - scoped to TypeScript files
+  {
+    files: ['**/*.ts'],
+    ...sonarjs.configs.recommended,
+  },
   {
     files: ['**/*.ts'],
     languageOptions: {

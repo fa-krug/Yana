@@ -5,12 +5,14 @@
 import {
   Component,
   OnInit,
+  OnDestroy,
   inject,
   isDevMode,
   ChangeDetectionStrategy,
 } from "@angular/core";
 import { RouterOutlet } from "@angular/router";
 import { SwUpdate, VersionReadyEvent } from "@angular/service-worker";
+import { Subscription } from "rxjs";
 import { filter } from "rxjs/operators";
 
 import { KeyboardShortcutsService } from "./core/services/keyboard-shortcuts.service";
@@ -23,9 +25,10 @@ import { KeyboardShortcutsService } from "./core/services/keyboard-shortcuts.ser
   template: "<router-outlet></router-outlet>",
   styleUrl: "./app.scss",
 })
-export class AppComponent implements OnInit {
+export class AppComponent implements OnInit, OnDestroy {
   private keyboardShortcuts = inject(KeyboardShortcutsService);
   private swUpdate = inject(SwUpdate);
+  private swUpdateSubscription?: Subscription;
 
   title = "Yana";
 
@@ -35,7 +38,7 @@ export class AppComponent implements OnInit {
     // Handle service worker updates without automatic reload
     if (!isDevMode() && this.swUpdate.isEnabled) {
       // Check for updates periodically, but don't auto-reload
-      this.swUpdate.versionUpdates
+      this.swUpdateSubscription = this.swUpdate.versionUpdates
         .pipe(
           filter(
             (evt): evt is VersionReadyEvent => evt.type === "VERSION_READY",
@@ -46,6 +49,12 @@ export class AppComponent implements OnInit {
           // The service worker will use the new version on next page load
           // Version update handled silently
         });
+    }
+  }
+
+  ngOnDestroy() {
+    if (this.swUpdateSubscription) {
+      this.swUpdateSubscription.unsubscribe();
     }
   }
 }
