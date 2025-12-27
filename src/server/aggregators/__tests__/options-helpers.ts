@@ -268,14 +268,20 @@ function expectHeaderToNotExist($: cheerio.CheerioAPI): void {
 }
 
 /**
- * Check if article has footer element.
+ * Check if article has footer element or footer-like content.
  */
 function expectFooterToExist($: cheerio.CheerioAPI): void {
-  expect($("footer").length).toBeGreaterThan(0);
+  // Check for explicit footer element with link
+  const hasFooterElement = $("footer").length > 0;
+  const hasFooterLink = $("footer a").length > 0;
+  expect(hasFooterElement).toBeTruthy();
+  expect(hasFooterLink).toBe(true);
 }
 
 function expectFooterToNotExist($: cheerio.CheerioAPI): void {
-  expect($("footer").length).toBe(0);
+  // Check that there's no footer element
+  const hasFooterElement = $("footer").length > 0;
+  expect(hasFooterElement).toBeFalsy();
 }
 
 /**
@@ -312,6 +318,11 @@ export function verifyArticleContent(
 
   if (checks.hasFooter !== undefined) {
     if (checks.hasFooter) {
+      // Log full content for debugging footer issues
+      if (process.env["NODE_ENV"] === "test") {
+        console.log("[DEBUG] Checking for footer - Article content:", articleContent.substring(0, 500));
+        console.log("[DEBUG] Article has footer element:", $("footer").length > 0);
+      }
       expectFooterToExist($);
     } else {
       expectFooterToNotExist($);

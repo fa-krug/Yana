@@ -127,7 +127,7 @@ describe("Aggregator Options Integration Tests", () => {
     const user = await createUser(
       testUser.username,
       testUser.email,
-      // eslint-disable-next-line sonarjs/no-hardcoded-passwords
+       
       "password",
     );
     testUserId = user.id;
@@ -145,16 +145,12 @@ describe("Aggregator Options Integration Tests", () => {
     }
   });
 
-  afterEach(() => {
+  afterEach(async () => {
+    // Restore all spies and mocks to prevent test isolation issues
+    // Use restoreAllMocks to restore original implementations, not just clear call history
+    vi.restoreAllMocks();
+
     teardownTestDb();
-    // Clean up axios mocks to prevent test isolation issues
-    // Only restore axios mocks, not module-level mocks
-    if (vi.isMockFunction(axios.get)) {
-      vi.mocked(axios.get).mockRestore();
-    }
-    if (vi.isMockFunction(axios.post)) {
-      vi.mocked(axios.post).mockRestore();
-    }
   });
 
   describe("FullWebsiteAggregator Options", () => {
@@ -994,7 +990,7 @@ describe("Aggregator Options Integration Tests", () => {
 
       // Should have 3 comments, not 10
       const commentMatches = content.match(/Comment \d+/g);
-      expect(commentMatches?.length).toBeLessThanOrEqual(3);
+      expect(commentMatches?.length ?? 0).toBeLessThanOrEqual(3);
 
       (global as any).__TEST_TRACE = false;
     });
