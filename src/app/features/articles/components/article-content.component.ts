@@ -625,6 +625,8 @@ export class ArticleContentComponent {
     );
 
     if (contentWithLazyImages.includes("youtube-embed-container")) {
+      // Safe: HTML content is sanitized by the aggregator and only contains trusted article HTML
+      // eslint-disable-next-line sonarjs/no-angular-bypass-sanitization
       return this.sanitizer.bypassSecurityTrustHtml(contentWithLazyImages);
     }
 
