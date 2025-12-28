@@ -73,7 +73,6 @@ export class AIService {
     return restored;
   }
 
-
   /**
    * Make API request with retry logic.
    */
@@ -178,7 +177,7 @@ export class AIService {
     const choices = data.choices as Array<Record<string, unknown>>;
     const message = choices[0].message as Record<string, unknown>;
     const contentStr = String(message.content);
-    const finishReason = String(choices[0].finish_reason || "");
+    const finishReason = String(choices[0]["finish_reason"] || "");
 
     if (responseParser.isTruncated(finishReason)) {
       responseParser.logTruncation(contentStr.length, this.config.maxTokens);
@@ -207,7 +206,8 @@ export class AIService {
     responseParser: AIResponseParser,
   ): Promise<Error> {
     if (responseParser.isJsonParseError(error)) {
-      const parsedError = error instanceof Error ? error : new Error(String(error));
+      const parsedError =
+        error instanceof Error ? error : new Error(String(error));
       if (retryHandler.shouldRetry(attempt)) {
         await this.waitBeforeRetry(attempt, retryHandler, null);
       }

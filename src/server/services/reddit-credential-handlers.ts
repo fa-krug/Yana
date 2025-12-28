@@ -50,16 +50,20 @@ export function handleAxiosError(error: AxiosError): RedditCredentialErrors {
     errors.clientId = "Invalid Client ID or Client Secret";
     errors.clientSecret = "Invalid Client ID or Client Secret";
   } else if (error.response?.status === 403) {
-    errors.general = "Reddit app configuration issue. Check app settings on Reddit.";
+    errors.general =
+      "Reddit app configuration issue. Check app settings on Reddit.";
   } else if (error.response?.status === 429) {
     errors.general = "Rate limited by Reddit. Please try again later.";
   } else if (error.code === "ECONNABORTED" || error.code === "ETIMEDOUT") {
-    errors.general = "Connection timeout. Please check your internet connection.";
-  } else if (error.code === "ENOTFOUND" || error.code === "ECONNREFUSED") {
-    errors.general = "Cannot connect to Reddit API. Please check your internet connection.";
-  } else {
     errors.general =
-      error.response?.data?.message ||
+      "Connection timeout. Please check your internet connection.";
+  } else if (error.code === "ENOTFOUND" || error.code === "ECONNREFUSED") {
+    errors.general =
+      "Cannot connect to Reddit API. Please check your internet connection.";
+  } else {
+    const data = error.response?.data as { message?: string } | undefined;
+    errors.general =
+      data?.message ||
       `Reddit API error: ${error.response?.statusText || error.message}`;
   }
 

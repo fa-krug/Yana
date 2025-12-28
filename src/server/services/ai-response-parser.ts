@@ -96,10 +96,7 @@ export class AIResponseParser {
         logger.info("Attempting to parse repaired JSON");
         return JSON.parse(repairedContent) as Record<string, unknown>;
       } catch (repairError) {
-        logger.warn(
-          { error: repairError },
-          "Repaired JSON still invalid",
-        );
+        logger.warn({ error: repairError }, "Repaired JSON still invalid");
       }
     }
 
@@ -114,13 +111,13 @@ export class AIResponseParser {
     if (finishReason === "length") {
       throw new Error(
         `Failed to parse JSON response after ${maxRetries} attempts. ` +
-        `Response was truncated. Consider increasing max_tokens (current: ${maxTokens}). ` +
-        `Content preview: ${contentPreviewStr}...`,
+          `Response was truncated. Consider increasing max_tokens (current: ${maxTokens}). ` +
+          `Content preview: ${contentPreviewStr}...`,
       );
     } else {
       throw new Error(
         `Failed to parse JSON response after ${maxRetries} attempts. ` +
-        `Content length: ${content.length} chars, finish_reason: ${finishReason}`,
+          `Content length: ${content.length} chars, finish_reason: ${finishReason}`,
       );
     }
   }

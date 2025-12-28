@@ -42,12 +42,17 @@ export type UserInfo = Pick<User, "id" | "isSuperuser">;
  */
 async function getAccessibleFeedIds(
   user: UserInfo,
-  filters: { feedId?: number; feedType?: string; groupId?: number }
+  filters: { feedId?: number; feedType?: string; groupId?: number },
 ): Promise<number[]> {
   const feedConditions = [or(eq(feeds.userId, user.id), isNull(feeds.userId))];
   if (filters.feedId) feedConditions.push(eq(feeds.id, filters.feedId));
   if (filters.feedType) {
-    feedConditions.push(eq(feeds.feedType, filters.feedType as "article" | "youtube" | "podcast" | "reddit"));
+    feedConditions.push(
+      eq(
+        feeds.feedType,
+        filters.feedType as "article" | "youtube" | "podcast" | "reddit",
+      ),
+    );
   }
 
   let accessibleFeeds = await db
@@ -56,15 +61,68 @@ async function getAccessibleFeedIds(
     .where(and(...feedConditions));
 
   if (filters.groupId) {
-    const [group] = await db.select().from(groups).where(and(eq(groups.id, filters.groupId), or(eq(groups.userId, user.id), isNull(groups.userId)))).limit(1);
-    if (!group) throw new NotFoundError(`Group with id ${filters.groupId} not found`);
+    const [group] = await db
+      .select()
+      .from(groups)
+      .where(
+        and(
+          eq(groups.id, filters.groupId),
+          or(eq(groups.userId, user.id), isNull(groups.userId)),
+        ),
+      )
+      .limit(1);
+    if (!group)
+      throw new NotFoundError(`Group with id ${filters.groupId} not found`);
 
-    const feedIdsInGroup = await db.select({ feedId: feedGroups.feedId }).from(feedGroups).where(eq(feedGroups.groupId, filters.groupId));
+    const feedIdsInGroup = await db
+      .select({ feedId: feedGroups.feedId })
+      .from(feedGroups)
+      .where(eq(feedGroups.groupId, filters.groupId));
     const groupFeedIds = new Set(feedIdsInGroup.map((f) => f.feedId));
     accessibleFeeds = accessibleFeeds.filter((f) => groupFeedIds.has(f.id));
   }
 
   return accessibleFeeds.map((f) => f.id);
+}
+
+/**
+ * Build article filter conditions.
+ */
+function _buildArticleConditions(
+  feedIds: number[],
+  filters: {
+    search?: string;
+    dateFrom?: Date | string;
+    dateTo?: Date | string;
+  },
+): import("drizzle-orm").SQL<unknown>[] {
+  const conditions = [inArray(articles.feedId, feedIds)];
+
+  if (filters.search) {
+    conditions.push(like(articles.name, `%${filters.search}%`));
+  }
+
+  if (filters.dateFrom) {
+    conditions.push(
+      gte(
+        articles.date,
+        filters.dateFrom instanceof Date
+          ? filters.dateFrom
+          : new Date(filters.dateFrom),
+      ),
+    );
+  }
+
+  if (filters.dateTo) {
+    const toDate =
+      filters.dateTo instanceof Date
+        ? filters.dateTo
+        : new Date(filters.dateTo);
+    toDate.setHours(23, 59, 59, 999);
+    conditions.push(lte(articles.date, toDate));
+  }
+
+  return conditions;
 }
 
 /**
@@ -91,35 +149,75 @@ export async function listArticles(
   const feedIds = await getAccessibleFeedIds(user, filters);
   if (feedIds.length === 0) return { articles: [], total: 0 };
 
-  const articleConditions = [inArray(articles.feedId, feedIds)];
-  if (filters.search) articleConditions.push(like(articles.name, `%${filters.search}%`));
-  if (filters.dateFrom) articleConditions.push(gte(articles.date, filters.dateFrom instanceof Date ? filters.dateFrom : new Date(filters.dateFrom)));
-  if (filters.dateTo) {
-    const toDate = filters.dateTo instanceof Date ? filters.dateTo : new Date(filters.dateTo);
-    toDate.setHours(23, 59, 59, 999);
-    articleConditions.push(lte(articles.date, toDate));
-  }
+  const articleConditions = _buildArticleConditions(feedIds, filters);
 
   if (isRead !== undefined || isSaved !== undefined) {
-    const stateConditions: (import("drizzle-orm").SQL<unknown> | undefined)[] = [];
-    if (isRead !== undefined) stateConditions.push(isRead ? eq(userArticleStates.isRead, true) : or(isNull(userArticleStates.id), eq(userArticleStates.isRead, false)));
-    if (isSaved !== undefined) stateConditions.push(isSaved ? eq(userArticleStates.isSaved, true) : or(isNull(userArticleStates.id), eq(userArticleStates.isSaved, false)));
+    const stateConditions: (import("drizzle-orm").SQL<unknown> | undefined)[] =
+      [];
+    if (isRead !== undefined)
+      stateConditions.push(
+        isRead
+          ? eq(userArticleStates.isRead, true)
+          : or(
+              isNull(userArticleStates.id),
+              eq(userArticleStates.isRead, false),
+            ),
+      );
+    if (isSaved !== undefined)
+      stateConditions.push(
+        isSaved
+          ? eq(userArticleStates.isSaved, true)
+          : or(
+              isNull(userArticleStates.id),
+              eq(userArticleStates.isSaved, false),
+            ),
+      );
 
-    const totalResult = await db.select({ count: sql<number>`count(DISTINCT ${articles.id})` }).from(articles)
-      .leftJoin(userArticleStates, and(eq(userArticleStates.articleId, articles.id), eq(userArticleStates.userId, user.id)))
+    const totalResult = await db
+      .select({ count: sql<number>`count(DISTINCT ${articles.id})` })
+      .from(articles)
+      .leftJoin(
+        userArticleStates,
+        and(
+          eq(userArticleStates.articleId, articles.id),
+          eq(userArticleStates.userId, user.id),
+        ),
+      )
       .where(and(...articleConditions, ...stateConditions));
 
-    const articleResults = await db.select().from(articles)
-      .leftJoin(userArticleStates, and(eq(userArticleStates.articleId, articles.id), eq(userArticleStates.userId, user.id)))
+    const articleResults = await db
+      .select()
+      .from(articles)
+      .leftJoin(
+        userArticleStates,
+        and(
+          eq(userArticleStates.articleId, articles.id),
+          eq(userArticleStates.userId, user.id),
+        ),
+      )
       .where(and(...articleConditions, ...stateConditions))
-      .groupBy(articles.id).orderBy(desc(articles.date), desc(articles.id)).limit(pageSize).offset(offset);
+      .groupBy(articles.id)
+      .orderBy(desc(articles.date), desc(articles.id))
+      .limit(pageSize)
+      .offset(offset);
 
-    return { articles: articleResults.map((row) => row.articles), total: totalResult[0]?.count || 0 };
+    return {
+      articles: articleResults.map((row) => row.articles),
+      total: totalResult[0]?.count || 0,
+    };
   }
 
-  const totalResult = await db.select({ count: sql<number>`count(*)` }).from(articles).where(and(...articleConditions));
-  const articleList = await db.select().from(articles).where(and(...articleConditions))
-    .orderBy(desc(articles.date), desc(articles.id)).limit(pageSize).offset(offset);
+  const totalResult = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(articles)
+    .where(and(...articleConditions));
+  const articleList = await db
+    .select()
+    .from(articles)
+    .where(and(...articleConditions))
+    .orderBy(desc(articles.date), desc(articles.id))
+    .limit(pageSize)
+    .offset(offset);
 
   return { articles: articleList, total: totalResult[0]?.count || 0 };
 }
@@ -255,13 +353,28 @@ export async function createArticle(
 /**
  * Fetch accessible article IDs for bulk operations.
  */
-async function getAccessibleIdsForUser(user: UserInfo, articleIds: number[]): Promise<number[]> {
-  const accessibleArticles = await db.select({ id: articles.id }).from(articles).innerJoin(feeds, eq(articles.feedId, feeds.id))
-    .where(and(inArray(articles.id, articleIds), or(eq(feeds.userId, user.id), isNull(feeds.userId)), eq(feeds.enabled, true)));
+async function getAccessibleIdsForUser(
+  user: UserInfo,
+  articleIds: number[],
+): Promise<number[]> {
+  const accessibleArticles = await db
+    .select({ id: articles.id })
+    .from(articles)
+    .innerJoin(feeds, eq(articles.feedId, feeds.id))
+    .where(
+      and(
+        inArray(articles.id, articleIds),
+        or(eq(feeds.userId, user.id), isNull(feeds.userId)),
+        eq(feeds.enabled, true),
+      ),
+    );
 
   const accessibleIds = accessibleArticles.map((a) => a.id);
   const invalidCount = articleIds.length - accessibleIds.length;
-  if (invalidCount > 0) throw new PermissionDeniedError(`Access denied to ${invalidCount} article(s)`);
+  if (invalidCount > 0)
+    throw new PermissionDeniedError(
+      `Access denied to ${invalidCount} article(s)`,
+    );
 
   return accessibleIds;
 }
@@ -280,8 +393,15 @@ export async function markArticlesRead(
   const accessibleIds = await getAccessibleIdsForUser(user, articleIds);
   if (accessibleIds.length === 0) return;
 
-  const existingStates = await db.select().from(userArticleStates)
-    .where(and(eq(userArticleStates.userId, user.id), inArray(userArticleStates.articleId, accessibleIds)));
+  const existingStates = await db
+    .select()
+    .from(userArticleStates)
+    .where(
+      and(
+        eq(userArticleStates.userId, user.id),
+        inArray(userArticleStates.articleId, accessibleIds),
+      ),
+    );
 
   const existingStateMap = new Map(existingStates.map((s) => [s.articleId, s]));
   const now = new Date();
@@ -293,18 +413,33 @@ export async function markArticlesRead(
     if (existing) {
       if (existing.isRead !== isRead) toUpdate.push(existing.id);
     } else {
-      toCreate.push({ userId: user.id, articleId, isRead, isSaved: false, createdAt: now, updatedAt: now });
+      toCreate.push({
+        userId: user.id,
+        articleId,
+        isRead,
+        isSaved: false,
+        createdAt: now,
+        updatedAt: now,
+      });
     }
   }
 
-  if (toCreate.length > 0) await db.insert(userArticleStates).values(toCreate).onConflictDoNothing();
-  if (toUpdate.length > 0) await db.update(userArticleStates).set({ isRead, updatedAt: now }).where(inArray(userArticleStates.id, toUpdate));
+  if (toCreate.length > 0)
+    await db.insert(userArticleStates).values(toCreate).onConflictDoNothing();
+  if (toUpdate.length > 0)
+    await db
+      .update(userArticleStates)
+      .set({ isRead, updatedAt: now })
+      .where(inArray(userArticleStates.id, toUpdate));
 
   const { cache } = await import("../utils/cache");
   cache.delete(`unread_counts_${user.id}_false`);
   cache.delete(`unread_counts_${user.id}_true`);
 
-  logger.info({ userId: user.id, articleIds: accessibleIds, isRead }, "Articles marked as read/unread");
+  logger.info(
+    { userId: user.id, articleIds: accessibleIds, isRead },
+    "Articles marked as read/unread",
+  );
 }
 
 /**
@@ -654,30 +789,51 @@ async function getAccessibleArticleIds(
   const feedIds = await getAccessibleFeedIds(user, filters);
   if (feedIds.length === 0) return [];
 
-  const articleConditions = [inArray(articles.feedId, feedIds)];
-  if (filters.search) articleConditions.push(like(articles.name, `%${filters.search}%`));
-  if (filters.dateFrom) articleConditions.push(gte(articles.date, filters.dateFrom instanceof Date ? filters.dateFrom : new Date(filters.dateFrom)));
-  if (filters.dateTo) {
-    const toDate = filters.dateTo instanceof Date ? filters.dateTo : new Date(filters.dateTo);
-    toDate.setHours(23, 59, 59, 999);
-    articleConditions.push(lte(articles.date, toDate));
-  }
+  const articleConditions = _buildArticleConditions(feedIds, filters);
 
   const { isRead, isSaved } = filters;
   if (isRead !== undefined || isSaved !== undefined) {
-    const stateConditions: (import("drizzle-orm").SQL<unknown> | undefined)[] = [];
-    if (isRead !== undefined) stateConditions.push(isRead ? eq(userArticleStates.isRead, true) : or(isNull(userArticleStates.id), eq(userArticleStates.isRead, false)));
-    if (isSaved !== undefined) stateConditions.push(isSaved ? eq(userArticleStates.isSaved, true) : or(isNull(userArticleStates.id), eq(userArticleStates.isSaved, false)));
+    const stateConditions: (import("drizzle-orm").SQL<unknown> | undefined)[] =
+      [];
+    if (isRead !== undefined)
+      stateConditions.push(
+        isRead
+          ? eq(userArticleStates.isRead, true)
+          : or(
+              isNull(userArticleStates.id),
+              eq(userArticleStates.isRead, false),
+            ),
+      );
+    if (isSaved !== undefined)
+      stateConditions.push(
+        isSaved
+          ? eq(userArticleStates.isSaved, true)
+          : or(
+              isNull(userArticleStates.id),
+              eq(userArticleStates.isSaved, false),
+            ),
+      );
 
-    const articleResults = await db.select({ id: articles.id }).from(articles)
-      .leftJoin(userArticleStates, and(eq(userArticleStates.articleId, articles.id), eq(userArticleStates.userId, user.id)))
+    const articleResults = await db
+      .select({ id: articles.id })
+      .from(articles)
+      .leftJoin(
+        userArticleStates,
+        and(
+          eq(userArticleStates.articleId, articles.id),
+          eq(userArticleStates.userId, user.id),
+        ),
+      )
       .where(and(...articleConditions, ...stateConditions))
       .groupBy(articles.id);
 
     return articleResults.map((row) => row.id);
   }
 
-  const articleResults = await db.select({ id: articles.id }).from(articles).where(and(...articleConditions));
+  const articleResults = await db
+    .select({ id: articles.id })
+    .from(articles)
+    .where(and(...articleConditions));
   return articleResults.map((row) => row.id);
 }
 

@@ -1,6 +1,6 @@
 import { ArticleSkipError } from "../base/exceptions";
 
-import { fetchVideoComments } from "./fetching";
+import { fetchVideoComments } from "./comments";
 
 /**
  * Escape HTML special characters.

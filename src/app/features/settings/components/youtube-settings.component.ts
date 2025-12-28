@@ -247,11 +247,7 @@ export class YouTubeSettingsComponent {
       getNestedValue(error, "data", "cause") ||
       getNestedValue(error, "shape", "data", "cause");
 
-    if (
-      fieldErrors &&
-      typeof fieldErrors === "object" &&
-      fieldErrors != null
-    ) {
+    if (fieldErrors && typeof fieldErrors === "object" && fieldErrors != null) {
       const hasFieldErrors =
         "apiKey" in fieldErrors || "general" in fieldErrors;
 

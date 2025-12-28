@@ -84,7 +84,10 @@ async function getThumbnailForArticle(
         return thumbnailBase64;
       }
     } catch (error) {
-      logger.warn({ error, url: article.thumbnailUrl }, "Failed to convert thumbnail URL");
+      logger.warn(
+        { error, url: article.thumbnailUrl },
+        "Failed to convert thumbnail URL",
+      );
     }
   }
 
@@ -98,7 +101,10 @@ async function getThumbnailForArticle(
       }
     }
   } catch (error) {
-    logger.warn({ error, url: article.url }, "Failed to extract thumbnail from URL");
+    logger.warn(
+      { error, url: article.url },
+      "Failed to extract thumbnail from URL",
+    );
   }
 
   return undefined;
@@ -110,8 +116,7 @@ async function getThumbnailForArticle(
 async function convertThumbnailUrlToBase64(
   url: string,
 ): Promise<string | null> {
-  const { convertThumbnailUrlToBase64 } = await import(
-    "../aggregators/base/utils"
-  );
+  const { convertThumbnailUrlToBase64 } =
+    await import("../aggregators/base/utils");
   return await convertThumbnailUrlToBase64(url);
 }

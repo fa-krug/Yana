@@ -30,7 +30,10 @@ import { aggregateFeedWithRetry } from "./feed-aggregation-strategy";
 import { processArticlesForPreview } from "./feed-article-preview-processor";
 import { classifyFeedError } from "./feed-error-classifier";
 import { buildPreviewFeed } from "./feed-preview-builder";
-import { validateFeedPreviewInput, getValidatedAggregator } from "./feed-preview-validator";
+import {
+  validateFeedPreviewInput,
+  getValidatedAggregator,
+} from "./feed-preview-validator";
 import { getFeed } from "./feed-query.service";
 
 /**

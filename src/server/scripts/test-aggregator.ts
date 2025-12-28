@@ -28,7 +28,10 @@ interface TestResult {
 }
 
 interface TestableAggregator {
-  fetchArticleContentInternal(url: string, article: RawArticle): Promise<string>;
+  fetchArticleContentInternal(
+    url: string,
+    article: RawArticle,
+  ): Promise<string>;
   extractContent(html: string, article: RawArticle): Promise<string>;
   processContent(html: string, article: RawArticle): Promise<string>;
 }
@@ -159,6 +162,32 @@ async function testAggregator(
 }
 
 /**
+ * Format single result line.
+ */
+function _formatResultLine(result: TestResult): string[] {
+  const lines: string[] = [];
+  lines.push(`Aggregator: ${result.aggregatorName} (${result.aggregatorId})`);
+  lines.push(`  Status: ${result.success ? "✓ SUCCESS" : "✗ FAILED"}`);
+  if (result.error) lines.push(`  Error: ${result.error}`);
+  if (result.canFetch !== undefined)
+    lines.push(`  Can Fetch: ${result.canFetch ? "✓" : "✗"}`);
+  if (result.canExtract !== undefined)
+    lines.push(`  Can Extract: ${result.canExtract ? "✓" : "✗"}`);
+  if (result.canProcess !== undefined)
+    lines.push(`  Can Process: ${result.canProcess ? "✓" : "✗"}`);
+  if (result.extractedLength !== undefined)
+    lines.push(`  Extracted Length: ${result.extractedLength} chars`);
+  if (result.processedLength !== undefined)
+    lines.push(`  Processed Length: ${result.processedLength} chars`);
+  if (result.contentLength !== undefined)
+    lines.push(`  Final Content Length: ${result.contentLength} chars`);
+  if (result.processingTime !== undefined)
+    lines.push(`  Processing Time: ${result.processingTime}ms`);
+  lines.push("");
+  return lines;
+}
+
+/**
  * Format test results for display.
  */
 function formatResults(results: TestResult[]): string {
@@ -169,36 +198,9 @@ function formatResults(results: TestResult[]): string {
   lines.push("");
 
   for (const result of results) {
-    lines.push(`Aggregator: ${result.aggregatorName} (${result.aggregatorId})`);
-    lines.push(`  Status: ${result.success ? "✓ SUCCESS" : "✗ FAILED"}`);
-    if (result.error) {
-      lines.push(`  Error: ${result.error}`);
-    }
-    if (result.canFetch !== undefined) {
-      lines.push(`  Can Fetch: ${result.canFetch ? "✓" : "✗"}`);
-    }
-    if (result.canExtract !== undefined) {
-      lines.push(`  Can Extract: ${result.canExtract ? "✓" : "✗"}`);
-    }
-    if (result.canProcess !== undefined) {
-      lines.push(`  Can Process: ${result.canProcess ? "✓" : "✗"}`);
-    }
-    if (result.extractedLength !== undefined) {
-      lines.push(`  Extracted Length: ${result.extractedLength} chars`);
-    }
-    if (result.processedLength !== undefined) {
-      lines.push(`  Processed Length: ${result.processedLength} chars`);
-    }
-    if (result.contentLength !== undefined) {
-      lines.push(`  Final Content Length: ${result.contentLength} chars`);
-    }
-    if (result.processingTime !== undefined) {
-      lines.push(`  Processing Time: ${result.processingTime}ms`);
-    }
-    lines.push("");
+    lines.push(..._formatResultLine(result));
   }
 
-  // Summary
   const successCount = results.filter((r) => r.success).length;
   const totalCount = results.length;
   lines.push("=".repeat(80));

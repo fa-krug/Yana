@@ -205,9 +205,10 @@ export const adminTasksRouter = router({
         items: result.items.map((task) => {
           let parsedResult = null;
           if (task.result) {
-            parsedResult = typeof task.result === "string"
-              ? JSON.parse(task.result)
-              : task.result;
+            parsedResult =
+              typeof task.result === "string"
+                ? JSON.parse(task.result)
+                : task.result;
           }
 
           return {
@@ -215,7 +216,9 @@ export const adminTasksRouter = router({
             createdAt: toISOString(task.createdAt),
             updatedAt: toISOString(task.updatedAt),
             startedAt: task.startedAt ? toISOString(task.startedAt) : null,
-            completedAt: task.completedAt ? toISOString(task.completedAt) : null,
+            completedAt: task.completedAt
+              ? toISOString(task.completedAt)
+              : null,
             payload:
               typeof task.payload === "string"
                 ? JSON.parse(task.payload)
@@ -243,9 +246,10 @@ export const adminTasksRouter = router({
 
       let parsedResult = null;
       if (task.result) {
-        parsedResult = typeof task.result === "string"
-          ? JSON.parse(task.result)
-          : task.result;
+        parsedResult =
+          typeof task.result === "string"
+            ? JSON.parse(task.result)
+            : task.result;
       }
 
       return {
@@ -297,9 +301,10 @@ export const adminTasksRouter = router({
 
       let parsedResult = null;
       if (task.result) {
-        parsedResult = typeof task.result === "string"
-          ? JSON.parse(task.result)
-          : task.result;
+        parsedResult =
+          typeof task.result === "string"
+            ? JSON.parse(task.result)
+            : task.result;
       }
 
       return {

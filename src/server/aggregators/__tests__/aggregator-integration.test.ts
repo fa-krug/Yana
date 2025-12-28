@@ -283,6 +283,7 @@ describe("Aggregator Integration Tests", () => {
     describe(testName, () => {
       it.skipIf(testConfig.skip === true)(
         `should extract and process content from fixture`,
+        // eslint-disable-next-line sonarjs/cognitive-complexity
         async () => {
           // Create aggregator instance
           const aggregator = new testConfig.aggregator();

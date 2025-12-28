@@ -21,7 +21,11 @@ import {
 /**
  * Try meta tag image strategies.
  */
-async function tryMetaTagStrategies($: cheerio.CheerioAPI, url: string, isHeaderImage: boolean): Promise<{ imageData: Buffer; contentType: string } | null> {
+async function tryMetaTagStrategies(
+  $: cheerio.CheerioAPI,
+  url: string,
+  isHeaderImage: boolean,
+): Promise<{ imageData: Buffer; contentType: string } | null> {
   const ogImage = $('meta[property="og:image"]').attr("content");
   if (ogImage) {
     const result = await handleMetaTagImage(ogImage, url, isHeaderImage);
@@ -49,7 +53,11 @@ export async function extractImageFromUrl(
     const parsedUrl = new URL(url);
     const urlPath = parsedUrl.pathname.toLowerCase();
 
-    if ([".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".svg"].some((ext) => urlPath.endsWith(ext))) {
+    if (
+      [".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".svg"].some((ext) =>
+        urlPath.endsWith(ext),
+      )
+    ) {
       const result = await handleDirectImageUrl(url, isHeaderImage);
       if (result) return result;
     }
@@ -70,13 +78,28 @@ export async function extractImageFromUrl(
       const $ = cheerio.load(html);
 
       const metaResult = await tryMetaTagStrategies($, url, isHeaderImage);
-      if (metaResult) { await page.close(); return metaResult; }
+      if (metaResult) {
+        await page.close();
+        return metaResult;
+      }
 
-      const svgResult = await handleInlineSvg(page, $, html, url, isHeaderImage);
-      if (svgResult) { await page.close(); return svgResult; }
+      const svgResult = await handleInlineSvg(
+        page,
+        $,
+        html,
+        url,
+        isHeaderImage,
+      );
+      if (svgResult) {
+        await page.close();
+        return svgResult;
+      }
 
       const pageImageResult = await handlePageImages($, url, isHeaderImage);
-      if (pageImageResult) { await page.close(); return pageImageResult; }
+      if (pageImageResult) {
+        await page.close();
+        return pageImageResult;
+      }
 
       await page.close();
       return null;

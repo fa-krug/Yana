@@ -4,7 +4,11 @@
  * Each strategy handles a specific image source (direct files, YouTube, Twitter, etc.)
  */
 
-import type { ImageExtractionContext, ImageExtractionResult, ImageStrategy } from "./image-strategy";
+import type {
+  ImageExtractionContext,
+  ImageExtractionResult,
+  ImageStrategy,
+} from "./image-strategy";
 import {
   handleDirectImageUrl,
   handleYouTubeThumbnail,
@@ -22,16 +26,21 @@ export class DirectImageStrategy implements ImageStrategy {
     try {
       const parsedUrl = new URL(url);
       const urlPath = parsedUrl.pathname.toLowerCase();
-      return [".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".svg"].some((ext) =>
-        urlPath.endsWith(ext),
+      return [".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".svg"].some(
+        (ext) => urlPath.endsWith(ext),
       );
     } catch {
       return false;
     }
   }
 
-  async extract(context: ImageExtractionContext): Promise<ImageExtractionResult | null> {
-    return await handleDirectImageUrl(context.url, context.isHeaderImage ?? false);
+  async extract(
+    context: ImageExtractionContext,
+  ): Promise<ImageExtractionResult | null> {
+    return await handleDirectImageUrl(
+      context.url,
+      context.isHeaderImage ?? false,
+    );
   }
 }
 
@@ -43,7 +52,9 @@ export class YouTubeStrategy implements ImageStrategy {
     return /youtube\.com|youtu\.be/.test(url);
   }
 
-  async extract(context: ImageExtractionContext): Promise<ImageExtractionResult | null> {
+  async extract(
+    context: ImageExtractionContext,
+  ): Promise<ImageExtractionResult | null> {
     return await handleYouTubeThumbnail(context.url);
   }
 }
@@ -56,7 +67,9 @@ export class TwitterStrategy implements ImageStrategy {
     return /twitter\.com|x\.com/.test(url);
   }
 
-  async extract(context: ImageExtractionContext): Promise<ImageExtractionResult | null> {
+  async extract(
+    context: ImageExtractionContext,
+  ): Promise<ImageExtractionResult | null> {
     return await handleTwitterImage(context.url);
   }
 }
@@ -72,7 +85,9 @@ export class MetaTagStrategy implements ImageStrategy {
     return true;
   }
 
-  async extract(context: ImageExtractionContext): Promise<ImageExtractionResult | null> {
+  async extract(
+    context: ImageExtractionContext,
+  ): Promise<ImageExtractionResult | null> {
     if (!context.$) {
       return null;
     }
@@ -83,14 +98,22 @@ export class MetaTagStrategy implements ImageStrategy {
     // Try og:image meta tag
     const ogImage = $('meta[property="og:image"]').attr("content");
     if (ogImage) {
-      const result = await handleMetaTagImage(ogImage, context.url, isHeaderImage);
+      const result = await handleMetaTagImage(
+        ogImage,
+        context.url,
+        isHeaderImage,
+      );
       if (result) return result;
     }
 
     // Try twitter:image meta tag
     const twitterImage = $('meta[name="twitter:image"]').attr("content");
     if (twitterImage) {
-      const result = await handleMetaTagImage(twitterImage, context.url, isHeaderImage);
+      const result = await handleMetaTagImage(
+        twitterImage,
+        context.url,
+        isHeaderImage,
+      );
       if (result) return result;
     }
 
@@ -108,7 +131,9 @@ export class InlineSvgStrategy implements ImageStrategy {
     return true;
   }
 
-  async extract(context: ImageExtractionContext): Promise<ImageExtractionResult | null> {
+  async extract(
+    context: ImageExtractionContext,
+  ): Promise<ImageExtractionResult | null> {
     if (!context.page || !context.$ || !context.html) {
       return null;
     }
@@ -133,11 +158,17 @@ export class PageImagesStrategy implements ImageStrategy {
     return true;
   }
 
-  async extract(context: ImageExtractionContext): Promise<ImageExtractionResult | null> {
+  async extract(
+    context: ImageExtractionContext,
+  ): Promise<ImageExtractionResult | null> {
     if (!context.$) {
       return null;
     }
 
-    return await handlePageImages(context.$, context.url, context.isHeaderImage ?? false);
+    return await handlePageImages(
+      context.$,
+      context.url,
+      context.isHeaderImage ?? false,
+    );
   }
 }

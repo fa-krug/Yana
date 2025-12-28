@@ -9,10 +9,10 @@ import axios from "axios";
 
 import { logger } from "../utils/logger";
 
-import type { 
-  YouTubeChannelDetails, 
-  YouTubeSearchItem, 
-  YouTubeSnippet 
+import type {
+  YouTubeChannelDetails,
+  YouTubeSearchItem,
+  YouTubeSnippet,
 } from "./youtube-api-types";
 import { transformChannelDetails } from "./youtube-channel-transformer";
 import type { YouTubeChannelSearchResult } from "./youtube.service";

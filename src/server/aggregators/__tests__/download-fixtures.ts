@@ -123,11 +123,8 @@ async function downloadHtml(
         .catch(() => null);
 
       if (confirmButton) {
-         
         await Promise.all([
-          page
-            .waitForNavigation({ waitUntil: "networkidle", timeout })
-            .catch(() => {}),
+          page.waitForLoadState("networkidle").catch(() => {}),
           confirmButton.click(),
         ]).catch(() => {});
       }
@@ -177,179 +174,177 @@ async function getFirstArticleUrl(feedUrl: string): Promise<string | null> {
   }
 }
 
+type AggregatorFixture = (typeof AGGREGATOR_FIXTURES)[number];
+
 /**
- * Main function.
+ * Handle Reddit API fixture generation.
  */
-async function main(): Promise<void> {
-  console.log("Downloading HTML fixtures for aggregator tests...\n");
-
-  // Ensure fixtures directory exists
-  await fs.mkdir(FIXTURES_DIR, { recursive: true });
-
-  // Launch browser
-  const browser = await chromium.launch({
-    headless: true,
-  });
-
-  try {
-    for (const fixture of AGGREGATOR_FIXTURES) {
-      if (fixture.skip) {
-        console.log(
-          `⏭️  Skipping ${fixture.aggregatorName} (${fixture.aggregatorId})`,
-        );
-        continue;
-      }
-
-      const filePath = path.join(FIXTURES_DIR, `${fixture.aggregatorId}.html`);
-
-      try {
-        // Special handling for API-based aggregators
-        if (fixture.aggregatorId === "reddit") {
-          // Create mock Reddit API response fixture
-          const redditApiFixture = {
-            data: {
-              children: [
+async function handleRedditFixture(fixture: AggregatorFixture): Promise<void> {
+  const redditApiFixture = {
+    data: {
+      children: [
+        {
+          data: {
+            id: "test123",
+            title: "Test Reddit Post Title",
+            selftext:
+              "This is a test self post with some content.\n\nIt has multiple paragraphs and **markdown formatting**.",
+            selftext_html:
+              '<div class="md"><p>This is a test self post with some content.</p>\n<p>It has multiple paragraphs and <strong>markdown formatting</strong>.</p>\n</div>',
+            url: "https://example.com/link",
+            permalink:
+              "/r/programming/comments/test123/test_reddit_post_title/",
+            created_utc: Math.floor(Date.now() / 1000),
+            author: "testuser",
+            score: 1234,
+            num_comments: 56,
+            thumbnail: "https://example.com/thumbnail.jpg",
+            preview: {
+              images: [
                 {
-                  data: {
-                    id: "test123",
-                    title: "Test Reddit Post Title",
-                    selftext:
-                      "This is a test self post with some content.\n\nIt has multiple paragraphs and **markdown formatting**.",
-                    selftext_html:
-                      '<div class="md"><p>This is a test self post with some content.</p>\n<p>It has multiple paragraphs and <strong>markdown formatting</strong>.</p>\n</div>',
-                    url: "https://example.com/link",
-                    permalink:
-                      "/r/programming/comments/test123/test_reddit_post_title/",
-                    created_utc: Math.floor(Date.now() / 1000),
-                    author: "testuser",
-                    score: 1234,
-                    num_comments: 56,
-                    thumbnail: "https://example.com/thumbnail.jpg",
-                    preview: {
-                      images: [
-                        {
-                          source: {
-                            url: "https://example.com/image.jpg",
-                            width: 1920,
-                            height: 1080,
-                          },
-                        },
-                      ],
-                    },
-                    is_self: true,
-                    is_gallery: false,
-                    is_video: false,
+                  source: {
+                    url: "https://example.com/image.jpg",
+                    width: 1920,
+                    height: 1080,
                   },
                 },
               ],
             },
-          };
-          const apiFilePath = path.join(
-            FIXTURES_DIR,
-            `${fixture.aggregatorId}-api.json`,
-          );
-          await fs.writeFile(
-            apiFilePath,
-            JSON.stringify(redditApiFixture, null, 2),
-            "utf-8",
-          );
-          console.log(
-            `✅ Saved ${fixture.aggregatorName} API fixture to ${apiFilePath}`,
-          );
-          continue;
+            is_self: true,
+            is_gallery: false,
+            is_video: false,
+          },
+        },
+      ],
+    },
+  };
+  const apiFilePath = path.join(
+    FIXTURES_DIR,
+    `${fixture.aggregatorId}-api.json`,
+  );
+  await fs.writeFile(
+    apiFilePath,
+    JSON.stringify(redditApiFixture, null, 2),
+    "utf-8",
+  );
+  console.log(
+    `✅ Saved ${fixture.aggregatorName} API fixture to ${apiFilePath}`,
+  );
+}
+
+/**
+ * Handle YouTube API fixture generation.
+ */
+async function handleYoutubeFixture(fixture: AggregatorFixture): Promise<void> {
+  const youtubeApiFixture = {
+    items: [
+      {
+        id: "dQw4w9WgXcQ",
+        snippet: {
+          title: "Test YouTube Video Title",
+          description:
+            "This is a test YouTube video description with some content.\n\nIt has multiple lines and formatting.",
+          publishedAt: new Date().toISOString(),
+          channelId: "UCtest123",
+          channelTitle: "Test Channel",
+          thumbnails: {
+            default: {
+              url: "https://i.ytimg.com/vi/dQw4w9WgXcQ/default.jpg",
+              width: 120,
+              height: 90,
+            },
+            medium: {
+              url: "https://i.ytimg.com/vi/dQw4w9WgXcQ/mqdefault.jpg",
+              width: 320,
+              height: 180,
+            },
+            high: {
+              url: "https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg",
+              width: 480,
+              height: 360,
+            },
+          },
+        },
+        statistics: {
+          viewCount: "1000000",
+          likeCount: "50000",
+          commentCount: "5000",
+        },
+        contentDetails: {
+          duration: "PT3M33S",
+        },
+      },
+    ],
+  };
+  const apiFilePath = path.join(
+    FIXTURES_DIR,
+    `${fixture.aggregatorId}-api.json`,
+  );
+  await fs.writeFile(
+    apiFilePath,
+    JSON.stringify(youtubeApiFixture, null, 2),
+    "utf-8",
+  );
+  console.log(
+    `✅ Saved ${fixture.aggregatorName} API fixture to ${apiFilePath}`,
+  );
+}
+
+/**
+ * Download HTML fixture for aggregator.
+ */
+async function handleHtmlFixture(
+  browser: Browser,
+  fixture: AggregatorFixture,
+): Promise<void> {
+  console.log(
+    `📡 Fetching RSS feed for ${fixture.aggregatorName} (${fixture.aggregatorId}) from ${fixture.feedUrl}...`,
+  );
+  const articleUrl = await getFirstArticleUrl(fixture.feedUrl);
+
+  if (!articleUrl) {
+    console.error(
+      `❌ No articles found in RSS feed for ${fixture.aggregatorName}`,
+    );
+    return;
+  }
+
+  console.log(`📄 Found article: ${articleUrl}`);
+  console.log(`📥 Downloading ${fixture.aggregatorName} article HTML...`);
+
+  const waitForSelector =
+    fixture.aggregatorId === "oglaf"
+      ? "#strip, .content img, #content img, .comic img"
+      : undefined;
+
+  const html = await downloadHtml(browser, articleUrl, 30000, waitForSelector);
+  const filePath = path.join(FIXTURES_DIR, `${fixture.aggregatorId}.html`);
+  await fs.writeFile(filePath, html, "utf-8");
+  console.log(
+    `✅ Saved ${fixture.aggregatorName} HTML (${html.length} bytes) to ${filePath}`,
+  );
+}
+
+/**
+ * Main function to download all fixtures.
+ */
+async function main(): Promise<void> {
+  const browser = await chromium.launch();
+
+  try {
+    for (const fixture of AGGREGATOR_FIXTURES) {
+      if (fixture.skip) {
+        continue;
+      }
+
+      try {
+        if (fixture.aggregatorId === "reddit") {
+          await handleRedditFixture(fixture);
+        } else if (fixture.aggregatorId === "youtube") {
+          await handleYoutubeFixture(fixture);
+        } else {
+          await handleHtmlFixture(browser, fixture);
         }
-
-        if (fixture.aggregatorId === "youtube") {
-          // Create mock YouTube API response fixture
-          const youtubeApiFixture = {
-            items: [
-              {
-                id: "dQw4w9WgXcQ",
-                snippet: {
-                  title: "Test YouTube Video Title",
-                  description:
-                    "This is a test YouTube video description with some content.\n\nIt has multiple lines and formatting.",
-                  publishedAt: new Date().toISOString(),
-                  channelId: "UCtest123",
-                  channelTitle: "Test Channel",
-                  thumbnails: {
-                    default: {
-                      url: "https://i.ytimg.com/vi/dQw4w9WgXcQ/default.jpg",
-                      width: 120,
-                      height: 90,
-                    },
-                    medium: {
-                      url: "https://i.ytimg.com/vi/dQw4w9WgXcQ/mqdefault.jpg",
-                      width: 320,
-                      height: 180,
-                    },
-                    high: {
-                      url: "https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg",
-                      width: 480,
-                      height: 360,
-                    },
-                  },
-                },
-                statistics: {
-                  viewCount: "1000000",
-                  likeCount: "50000",
-                  commentCount: "5000",
-                },
-                contentDetails: {
-                  duration: "PT3M33S",
-                },
-              },
-            ],
-          };
-          const apiFilePath = path.join(
-            FIXTURES_DIR,
-            `${fixture.aggregatorId}-api.json`,
-          );
-          await fs.writeFile(
-            apiFilePath,
-            JSON.stringify(youtubeApiFixture, null, 2),
-            "utf-8",
-          );
-          console.log(
-            `✅ Saved ${fixture.aggregatorName} API fixture to ${apiFilePath}`,
-          );
-          continue;
-        }
-
-        // Step 1: Fetch RSS feed to get article URL
-        console.log(
-          `📡 Fetching RSS feed for ${fixture.aggregatorName} (${fixture.aggregatorId}) from ${fixture.feedUrl}...`,
-        );
-        const articleUrl = await getFirstArticleUrl(fixture.feedUrl);
-
-        if (!articleUrl) {
-          console.error(
-            `❌ No articles found in RSS feed for ${fixture.aggregatorName}`,
-          );
-          continue;
-        }
-
-        console.log(`📄 Found article: ${articleUrl}`);
-
-        // Step 2: Download article HTML using Playwright
-        console.log(`📥 Downloading ${fixture.aggregatorName} article HTML...`);
-
-        // Get waitForSelector if this is Oglaf
-        const waitForSelector =
-          fixture.aggregatorId === "oglaf"
-            ? "#strip, .content img, #content img, .comic img"
-            : undefined;
-
-        const html = await downloadHtml(
-          browser,
-          articleUrl,
-          30000,
-          waitForSelector,
-        );
-        await fs.writeFile(filePath, html, "utf-8");
-        console.log(
-          `✅ Saved ${fixture.aggregatorName} HTML (${html.length} bytes) to ${filePath}`,
-        );
       } catch (error) {
         console.error(
           `❌ Failed to download ${fixture.aggregatorName}:`,

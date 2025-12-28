@@ -203,24 +203,21 @@ export class ArticleMediaComponent {
   protected isYouTubeVideo(): boolean {
     const currentArticle = this.article();
     if (!currentArticle) return false;
-    const feedType =
-      currentArticle.feed?.feedType || "";
+    const feedType = currentArticle.feed?.feedType || "";
     return feedType === "youtube" && !!currentArticle.mediaUrl;
   }
 
   protected isPodcast(): boolean {
     const currentArticle = this.article();
     if (!currentArticle) return false;
-    const feedType =
-      currentArticle.feed?.feedType || "";
+    const feedType = currentArticle.feed?.feedType || "";
     return feedType === "podcast" && !!currentArticle.mediaUrl;
   }
 
   protected isRedditVideo(): boolean {
     const currentArticle = this.article();
     if (!currentArticle) return false;
-    const feedType =
-      currentArticle.feed?.feedType || "";
+    const feedType = currentArticle.feed?.feedType || "";
     return (
       feedType === "reddit" &&
       !!currentArticle.mediaUrl &&
@@ -241,9 +238,10 @@ export class ArticleMediaComponent {
       return this.sanitizer.bypassSecurityTrustResourceUrl(article.mediaUrl);
     }
 
-    const videoIdMatch = /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&?/]+)/.exec(
-      article.mediaUrl,
-    );
+    const videoIdMatch =
+      /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&?/]+)/.exec(
+        article.mediaUrl,
+      );
     if (!videoIdMatch) return "";
 
     const videoId = videoIdMatch[1];

@@ -117,9 +117,7 @@ async function handleForceRefresh(
   const [existing] = await db
     .select()
     .from(articles)
-    .where(
-      and(eq(articles.url, rawArticle.url), eq(articles.feedId, feed.id)),
-    )
+    .where(and(eq(articles.url, rawArticle.url), eq(articles.feedId, feed.id)))
     .limit(1);
 
   if (existing) {
@@ -175,24 +173,40 @@ async function processAndSaveArticle(
   forceRefresh: boolean,
   cutoffDate: Date,
 ): Promise<"created" | "updated" | "skipped"> {
-  const publishedDate = rawArticle.published ? new Date(rawArticle.published) : null;
+  const publishedDate = rawArticle.published
+    ? new Date(rawArticle.published)
+    : null;
   if (isArticleTooOld(publishedDate, cutoffDate)) {
-    if (process.env["NODE_ENV"] === "test" && (global as { __TEST_TRACE?: boolean }).__TEST_TRACE) {
+    if (
+      process.env["NODE_ENV"] === "test" &&
+      (global as { __TEST_TRACE?: boolean }).__TEST_TRACE
+    ) {
       console.log(`[SAVE_TRACE] Article ${rawArticle.url} filtered: too old`);
     }
     return "skipped";
   }
 
-  const decision = await determineProcessingAction(rawArticle, String(feed.id), feed.userId, forceRefresh);
+  const decision = await determineProcessingAction(
+    rawArticle,
+    String(feed.id),
+    feed.userId,
+    forceRefresh,
+  );
   if (decision.action === "skip") return "skipped";
 
   if (decision.action === "update" && decision.existingArticle) {
-    await updateExistingArticle(rawArticle, feed, aggregator, decision.existingArticle);
+    await updateExistingArticle(
+      rawArticle,
+      feed,
+      aggregator,
+      decision.existingArticle,
+    );
     return "updated";
   }
 
   if (forceRefresh) {
-    if (await handleForceRefresh(rawArticle, feed, aggregator)) return "updated";
+    if (await handleForceRefresh(rawArticle, feed, aggregator))
+      return "updated";
   }
 
   await createNewArticle(rawArticle, feed, aggregator);
@@ -216,7 +230,13 @@ export async function saveAggregatedArticles(
 
   for (const rawArticle of rawArticles) {
     try {
-      const result = await processAndSaveArticle(rawArticle, feed, aggregator, forceRefresh, publishedCutoffDate);
+      const result = await processAndSaveArticle(
+        rawArticle,
+        feed,
+        aggregator,
+        forceRefresh,
+        publishedCutoffDate,
+      );
       if (result === "created") articlesCreated++;
       else if (result === "updated") articlesUpdated++;
     } catch (error: unknown) {

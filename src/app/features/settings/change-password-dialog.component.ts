@@ -407,11 +407,15 @@ export class ChangePasswordDialogComponent {
   private extractErrorMessage(error: unknown): string {
     if (typeof error !== "object" || error == null) return String(error);
 
-    const errorBody = (error as { error?: {
-      detail?: Array<{ loc?: unknown[]; msg?: string }> | string;
-      message?: string;
-      non_field_errors?: unknown;
-    } }).error;
+    const errorBody = (
+      error as {
+        error?: {
+          detail?: Array<{ loc?: unknown[]; msg?: string }> | string;
+          message?: string;
+          non_field_errors?: unknown;
+        };
+      }
+    ).error;
 
     if (errorBody && typeof errorBody === "object") {
       const arrayErrorMessage = this._extractArrayErrorMessage(errorBody);
@@ -431,44 +435,64 @@ export class ChangePasswordDialogComponent {
     return "Failed to change password. Please check your input and try again.";
   }
 
-  private _extractArrayErrorMessage(
-    errorBody: { detail?: Array<{ loc?: unknown[]; msg?: string }> | string; message?: string; non_field_errors?: unknown },
-  ): string | null {
+  private _extractArrayErrorMessage(errorBody: {
+    detail?: Array<{ loc?: unknown[]; msg?: string }> | string;
+    message?: string;
+    non_field_errors?: unknown;
+  }): string | null {
     const detail = errorBody.detail;
     if (!Array.isArray(detail)) return null;
 
-    return detail.map((item) => {
-      if (typeof item === "string") return item;
-      const loc = item.loc;
-      const field = loc && Array.isArray(loc) && loc.length > 1 ? String(loc[loc.length - 1]) : "";
-      const msg = item.msg || "";
-      return field ? `${field}: ${msg}` : msg;
-    }).join("; ");
+    return detail
+      .map((item) => {
+        if (typeof item === "string") return item;
+        const loc = item.loc;
+        const field =
+          loc && Array.isArray(loc) && loc.length > 1
+            ? String(loc[loc.length - 1])
+            : "";
+        const msg = item.msg || "";
+        return field ? `${field}: ${msg}` : msg;
+      })
+      .join("; ");
   }
 
-  private _extractNonFieldErrorMessage(
-    errorBody: { detail?: Array<{ loc?: unknown[]; msg?: string }> | string; message?: string; non_field_errors?: unknown },
-  ): string | null {
+  private _extractNonFieldErrorMessage(errorBody: {
+    detail?: Array<{ loc?: unknown[]; msg?: string }> | string;
+    message?: string;
+    non_field_errors?: unknown;
+  }): string | null {
     if (typeof errorBody.detail === "string") return errorBody.detail;
 
     const nonFieldErrors = errorBody.non_field_errors;
     if (!nonFieldErrors) return null;
 
-    return Array.isArray(nonFieldErrors) ? nonFieldErrors.map(String).join(" ") : String(nonFieldErrors);
+    return Array.isArray(nonFieldErrors)
+      ? nonFieldErrors.map(String).join(" ")
+      : String(nonFieldErrors);
   }
 
   /**
    * Check if error message refers to current password.
    */
   private isCurrentPwdError(lowerMsg: string): boolean {
-    return lowerMsg.includes("current password") || lowerMsg.includes("current_password") || (lowerMsg.includes("current") && lowerMsg.includes("password"));
+    return (
+      lowerMsg.includes("current password") ||
+      lowerMsg.includes("current_password") ||
+      (lowerMsg.includes("current") && lowerMsg.includes("password"))
+    );
   }
 
   /**
    * Check if error message refers to new password.
    */
   private isNewPwdError(lowerMsg: string): boolean {
-    return lowerMsg.includes("new password") || lowerMsg.includes("new_password") || lowerMsg.includes("password do not match") || (lowerMsg.includes("password") && lowerMsg.includes("match"));
+    return (
+      lowerMsg.includes("new password") ||
+      lowerMsg.includes("new_password") ||
+      lowerMsg.includes("password do not match") ||
+      (lowerMsg.includes("password") && lowerMsg.includes("match"))
+    );
   }
 
   private handleError(message: string): void {
@@ -488,7 +512,9 @@ export class ChangePasswordDialogComponent {
     } else if (this.isNewPwdError(lowerMessage)) {
       if (lowerMessage.includes("confirm") || lowerMessage.includes("match")) {
         this.confirmPasswordError = message;
-        this.passwordForm.get("confirmPassword")?.setErrors({ serverError: true });
+        this.passwordForm
+          .get("confirmPassword")
+          ?.setErrors({ serverError: true });
         this.passwordForm.get("confirmPassword")?.markAsTouched();
       } else {
         this.newPasswordError = message;

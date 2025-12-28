@@ -120,7 +120,10 @@ export async function parseRedditPosts(
     );
     const headerImageUrl = await extractHeaderImageUrl(postData);
     const thumbnailUrl = extractThumbnailUrl(postData);
-    const articleThumbnailUrl = selectArticleThumbnail(headerImageUrl, thumbnailUrl);
+    const articleThumbnailUrl = selectArticleThumbnail(
+      headerImageUrl,
+      thumbnailUrl,
+    );
     const mediaUrl = extractVideoMediaUrl(postData);
 
     articles.push(

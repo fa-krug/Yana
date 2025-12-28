@@ -504,7 +504,9 @@ export class HeiseAggregator extends FullWebsiteAggregator {
   /**
    * Find comment elements using various selectors.
    */
-  private findCommentElements($: cheerio.CheerioAPI): cheerio.Cheerio<cheerio.Element> | null {
+  private findCommentElements(
+    $: cheerio.CheerioAPI,
+  ): cheerio.Cheerio<cheerio.Element> | null {
     const commentSelectors = [
       "li.posting_element",
       '[id^="posting_"]',
@@ -554,7 +556,9 @@ export class HeiseAggregator extends FullWebsiteAggregator {
   /**
    * Process a comment in list item view.
    */
-  private processListItemComment($el: cheerio.Cheerio<cheerio.Element>): string | null {
+  private processListItemComment(
+    $el: cheerio.Cheerio<cheerio.Element>,
+  ): string | null {
     let author = "Unknown";
     const authorElem = $el
       .find(".tree_thread_list--written_by_user, .pseudonym")

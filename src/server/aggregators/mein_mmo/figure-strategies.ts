@@ -19,33 +19,47 @@ import type {
 /**
  * Extract video ID from embed content attribute.
  */
-function extractVideoIdFromEmbedContent(figure: cheerio.Cheerio<cheerio.AnyNode>): string | null {
+function extractVideoIdFromEmbedContent(
+  figure: cheerio.Cheerio<cheerio.AnyNode>,
+): string | null {
   const embedContentDiv = figure.find("[data-sanitized-data-embed-content]");
   if (embedContentDiv.length === 0) return null;
 
-  const embedContent = embedContentDiv.attr("data-sanitized-data-embed-content");
+  const embedContent = embedContentDiv.attr(
+    "data-sanitized-data-embed-content",
+  );
   if (!embedContent) return null;
 
   try {
     const $temp = cheerio.load(`<div>${embedContent}</div>`);
     const iframe = $temp("iframe[src]");
-    if (iframe.length > 0) return extractYouTubeVideoId(iframe.attr("src") || "");
-  } catch { /* Fallback to regex */ }
+    if (iframe.length > 0)
+      return extractYouTubeVideoId(iframe.attr("src") || "");
+  } catch {
+    /* Fallback to regex */
+  }
 
-  const match = /(?:youtube-nocookie\.com\/embed\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/.exec(embedContent);
+  const match =
+    /(?:youtube-nocookie\.com\/embed\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/.exec(
+      embedContent,
+    );
   return match ? match[1] : null;
 }
 
 /**
  * Extract video ID from any YouTube link in the figure.
  */
-function extractVideoIdFromLinks(figure: cheerio.Cheerio<cheerio.AnyNode>): string | null {
+function extractVideoIdFromLinks(
+  figure: cheerio.Cheerio<cheerio.AnyNode>,
+): string | null {
   const youtubeLinks = figure.find("a[href]").filter((_, linkEl) => {
     const href = cheerio.load("")(linkEl).attr("href") || "";
     return href.includes("youtube.com") || href.includes("youtu.be");
   });
   if (youtubeLinks.length === 0) return null;
-  return extractYouTubeVideoId(cheerio.load("")(youtubeLinks[0]).attr("href") || "");
+  return extractYouTubeVideoId(
+    cheerio.load("")(youtubeLinks[0]).attr("href") || "",
+  );
 }
 
 /**
@@ -64,14 +78,25 @@ export class YouTubeEmbedStrategy implements FigureProcessingStrategy {
   process(context: FigureProcessingContext): FigureProcessingResult {
     const { figure: $figure, $, logger, aggregatorId, feedId } = context;
 
-    const videoId = extractVideoIdFromEmbedContent($figure) || extractVideoIdFromLinks($figure);
+    const videoId =
+      extractVideoIdFromEmbedContent($figure) ||
+      extractVideoIdFromLinks($figure);
 
     if (videoId) {
       const figcaption = $figure.find("figcaption");
       const captionHtml = figcaption.length > 0 ? $.html(figcaption) || "" : "";
       const embedHtml = createYouTubeEmbedHtml(videoId, captionHtml);
 
-      logger.debug({ step: "extractContent", subStep: "extractMeinMmo", aggregator: aggregatorId, feedId, videoId }, "Converted YouTube embed to iframe");
+      logger.debug(
+        {
+          step: "extractContent",
+          subStep: "extractMeinMmo",
+          aggregator: aggregatorId,
+          feedId,
+          videoId,
+        },
+        "Converted YouTube embed to iframe",
+      );
       return { replacementHtml: embedHtml, success: true };
     }
 
@@ -164,8 +189,7 @@ export class TwitterEmbedStrategy implements FigureProcessingStrategy {
 
     // Get caption text if available
     const figcaption = $figure.find("figcaption");
-    const captionText =
-      figcaption.length > 0 ? figcaption.text().trim() : "";
+    const captionText = figcaption.length > 0 ? figcaption.text().trim() : "";
 
     // Replace figure with clean link
     const newP = $("<p></p>");
@@ -237,8 +261,7 @@ export class RedditEmbedStrategy implements FigureProcessingStrategy {
     // First, try to find an img tag
     const embedImage = $figure.find("img").first();
     if (embedImage.length > 0) {
-      imageSrc =
-        embedImage.attr("src") || embedImage.attr("data-src") || null;
+      imageSrc = embedImage.attr("src") || embedImage.attr("data-src") || null;
       imageAlt =
         embedImage.attr("alt") || embedImage.attr("title") || "Reddit post";
     }

@@ -21,14 +21,22 @@ import {
 /**
  * Find the first image in the content.
  */
-function findFirstImageInContent($body: cheerio.CheerioAPI, baseUrl: string): { url: string; element: cheerio.Cheerio<Element> } | null {
+function findFirstImageInContent(
+  $body: cheerio.CheerioAPI,
+  baseUrl: string,
+): { url: string; element: cheerio.Cheerio<Element> } | null {
   const firstImg = $body("img").first();
   if (firstImg.length > 0) {
-    const imgSrc = firstImg.attr("src") || firstImg.attr("data-src") || firstImg.attr("data-lazy-src");
+    const imgSrc =
+      firstImg.attr("src") ||
+      firstImg.attr("data-src") ||
+      firstImg.attr("data-lazy-src");
     if (imgSrc) {
       try {
         return { url: new URL(imgSrc, baseUrl).toString(), element: firstImg };
-      } catch { /* skip */ }
+      } catch {
+        /* skip */
+      }
     }
   }
   return null;
@@ -37,17 +45,31 @@ function findFirstImageInContent($body: cheerio.CheerioAPI, baseUrl: string): { 
 /**
  * Find the first valid link in the content.
  */
-function findFirstLinkInContent($body: cheerio.CheerioAPI, baseUrl: string): { url: string; element: cheerio.Cheerio<Element> } | null {
+function findFirstLinkInContent(
+  $body: cheerio.CheerioAPI,
+  baseUrl: string,
+): { url: string; element: cheerio.Cheerio<Element> } | null {
   const firstLink = $body("a[href]").first();
   if (firstLink.length > 0) {
     const linkHref = firstLink.attr("href");
-    if (linkHref && !linkHref.includes("${") && !linkHref.startsWith("data:") && linkHref.trim() !== "") {
+    if (
+      linkHref &&
+      !linkHref.includes("${") &&
+      !linkHref.startsWith("data:") &&
+      linkHref.trim() !== ""
+    ) {
       try {
         const url = new URL(linkHref, baseUrl).toString();
-        if (url.startsWith("http") && !url.includes("${") && !url.includes("%7B")) {
+        if (
+          url.startsWith("http") &&
+          !url.includes("${") &&
+          !url.includes("%7B")
+        ) {
           return { url, element: firstLink };
         }
-      } catch { /* skip */ }
+      } catch {
+        /* skip */
+      }
     }
   }
   return null;
@@ -60,7 +82,10 @@ function findFirstUrlInContent(
   $body: cheerio.CheerioAPI,
   baseUrl: string,
 ): { url: string; element: cheerio.Cheerio<Element> } | null {
-  return findFirstImageInContent($body, baseUrl) || findFirstLinkInContent($body, baseUrl);
+  return (
+    findFirstImageInContent($body, baseUrl) ||
+    findFirstLinkInContent($body, baseUrl)
+  );
 }
 
 /**
@@ -103,13 +128,17 @@ function removeYouTubeDuplicates(
     const href = $body(el).attr("href");
     if (href) {
       try {
-        if (extractYouTubeVideoId(new URL(href, baseUrl).toString()) === videoId) {
+        if (
+          extractYouTubeVideoId(new URL(href, baseUrl).toString()) === videoId
+        ) {
           const $link = $body(el);
           const $parent = $link.parent();
           $link.remove();
           removeEmptyParents($parent);
         }
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     }
   });
 
@@ -137,35 +166,53 @@ function removeRedditDuplicates(
     if (href) {
       try {
         const resolvedHref = new URL(href, baseUrl).toString();
-        const matchesPostUrl = normalizeUrlForComparison(resolvedHref) === normalizeUrlForComparison(basePostUrl);
-        const isVideoLink = linkText.includes("view video") || linkText.includes("▶");
-        if (resolvedHref.includes("v.redd.it") || (matchesPostUrl && isVideoLink)) {
+        const matchesPostUrl =
+          normalizeUrlForComparison(resolvedHref) ===
+          normalizeUrlForComparison(basePostUrl);
+        const isVideoLink =
+          linkText.includes("view video") || linkText.includes("▶");
+        if (
+          resolvedHref.includes("v.redd.it") ||
+          (matchesPostUrl && isVideoLink)
+        ) {
           const $parent = $link.parent();
           $link.remove();
           removeEmptyParents($parent);
         }
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     }
   });
 
   $body("img").each((_, el) => {
     const $img = $body(el);
-    const imgSrc = $img.attr("src") || $img.attr("data-src") || $img.attr("data-lazy-src");
+    const imgSrc =
+      $img.attr("src") || $img.attr("data-src") || $img.attr("data-lazy-src");
     if (imgSrc) {
       try {
         const resolvedImgSrc = new URL(imgSrc, baseUrl).toString();
-        const isRedditImg = resolvedImgSrc.includes("preview.redd.it") || resolvedImgSrc.includes("i.redd.it") || resolvedImgSrc.includes("external-preview.redd.it");
+        const isRedditImg =
+          resolvedImgSrc.includes("preview.redd.it") ||
+          resolvedImgSrc.includes("i.redd.it") ||
+          resolvedImgSrc.includes("external-preview.redd.it");
         if (isRedditImg) {
           const altText = ($img.attr("alt") || "").toLowerCase();
           const parentText = $img.parent().text().toLowerCase();
-          const isVideoThumbnail = altText.includes("video") || altText.includes("thumbnail") || parentText.includes("view video") || parentText.includes("▶");
+          const isVideoThumbnail =
+            altText.includes("video") ||
+            altText.includes("thumbnail") ||
+            parentText.includes("view video") ||
+            parentText.includes("▶");
           if (isVideoThumbnail) {
             const $parent = $img.parent();
             $img.remove();
             removeEmptyParents($parent);
           }
         }
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     }
   });
 }
@@ -200,7 +247,9 @@ function removeDuplicates(
 /**
  * Create header element from data URI.
  */
-async function createHeaderFromDataUri(firstUrl: string): Promise<string | null> {
+async function createHeaderFromDataUri(
+  firstUrl: string,
+): Promise<string | null> {
   if (!firstUrl.includes(";base64,")) return null;
 
   const [header, encoded] = firstUrl.split(";base64,", 2);
@@ -210,7 +259,12 @@ async function createHeaderFromDataUri(firstUrl: string): Promise<string | null>
   try {
     const imageData = Buffer.from(encoded, "base64");
     await sharp(imageData).metadata();
-    const compressed = await compressImage(imageData, contentType, MAX_HEADER_IMAGE_WIDTH, MAX_HEADER_IMAGE_HEIGHT);
+    const compressed = await compressImage(
+      imageData,
+      contentType,
+      MAX_HEADER_IMAGE_WIDTH,
+      MAX_HEADER_IMAGE_HEIGHT,
+    );
     const dataUri = `data:${compressed.contentType};base64,${compressed.imageData.toString("base64")}`;
     return `<header><p><img src="${dataUri}" alt="Article image" style="max-width: 100%; height: auto;"></p></header>`;
   } catch {
@@ -237,24 +291,44 @@ async function createHeaderPart(
   }
 
   try {
-    const headerElement = await createHeaderElementFromUrl(firstUrl, "Article image");
+    const headerElement = await createHeaderElementFromUrl(
+      firstUrl,
+      "Article image",
+    );
     if (!headerElement) return;
 
-    const cleaned = headerElement.replace(/<div[^>]*data-article-header[^>]*>/gi, "").replace(/<\/div>/gi, "");
-    const wrappedHeader = (headerElement.includes("<header>") || headerElement.includes("<header ")) ? headerElement : `<header>${cleaned}</header>`;
+    const cleaned = headerElement
+      .replace(/<div[^>]*data-article-header[^>]*>/gi, "")
+      .replace(/<\/div>/gi, "");
+    const wrappedHeader =
+      headerElement.includes("<header>") || headerElement.includes("<header ")
+        ? headerElement
+        : `<header>${cleaned}</header>`;
     contentParts.push(wrappedHeader);
     article.thumbnailUrl = firstUrl;
 
     if (isUsingHeaderImageUrl || (firstElement && firstElement.length > 0)) {
       const videoId = extractYouTubeVideoId(firstUrl);
-      const isRedditEmbed = firstUrl.includes("vxreddit.com") || (firstUrl.includes("/embed") && (firstUrl.includes("reddit.com") || firstUrl.includes("v.redd.it")));
+      const isRedditEmbed =
+        firstUrl.includes("vxreddit.com") ||
+        (firstUrl.includes("/embed") &&
+          (firstUrl.includes("reddit.com") || firstUrl.includes("v.redd.it")));
       let basePostUrl = firstUrl;
       if (firstUrl.includes("vxreddit.com")) {
         basePostUrl = firstUrl.replace("vxreddit.com", "reddit.com");
       } else if (firstUrl.includes("/embed")) {
-        basePostUrl = firstUrl.replace(/\/embed$/, "").replace(/\/embed\//, "/");
+        basePostUrl = firstUrl
+          .replace(/\/embed$/, "")
+          .replace(/\/embed\//, "/");
       }
-      removeDuplicates($body, videoId, isRedditEmbed, basePostUrl, firstElement, baseUrl);
+      removeDuplicates(
+        $body,
+        videoId,
+        isRedditEmbed,
+        basePostUrl,
+        firstElement,
+        baseUrl,
+      );
     }
   } catch (error) {
     if (error instanceof ArticleSkipError) throw error;
@@ -275,10 +349,13 @@ function buildArticleStructure(
   articleUrl: string,
 ): string {
   const existingHeaderHtml = existingHeaders.join("");
-  const newHeaderHtml = contentParts.find((part) => part.includes("<header>")) || "";
+  const newHeaderHtml =
+    contentParts.find((part) => part.includes("<header>")) || "";
   const headerHtml = existingHeaderHtml || newHeaderHtml;
 
-  const mainContentSection = bodyHtml.trim() ? `<section>${bodyHtml}</section>` : "";
+  const mainContentSection = bodyHtml.trim()
+    ? `<section>${bodyHtml}</section>`
+    : "";
   const commentSectionsHtml = commentSections.join("");
 
   let footerHtml = "";
@@ -309,7 +386,11 @@ function findFirstHeaderImageUrl(
   headerImageUrl: string | undefined,
   finalBaseUrl: string,
   articleUrl: string,
-): { firstUrl: string; firstElement: cheerio.Cheerio<Element> | null; isUsingHeaderImageUrl: boolean } {
+): {
+  firstUrl: string;
+  firstElement: cheerio.Cheerio<Element> | null;
+  isUsingHeaderImageUrl: boolean;
+} {
   if (headerImageUrl) {
     const firstUrl = new URL(headerImageUrl, finalBaseUrl).toString();
     const normalizedHeaderUrl = normalizeUrlForComparison(firstUrl);
@@ -317,13 +398,22 @@ function findFirstHeaderImageUrl(
 
     $body("img").each((_, el) => {
       if (firstElement) return;
-      const imgSrc = $body(el).attr("src") || $body(el).attr("data-src") || $body(el).attr("data-lazy-src");
+      const imgSrc =
+        $body(el).attr("src") ||
+        $body(el).attr("data-src") ||
+        $body(el).attr("data-lazy-src");
       if (imgSrc) {
         try {
-          if (normalizeUrlForComparison(new URL(imgSrc, finalBaseUrl).toString()) === normalizedHeaderUrl) {
+          if (
+            normalizeUrlForComparison(
+              new URL(imgSrc, finalBaseUrl).toString(),
+            ) === normalizedHeaderUrl
+          ) {
             firstElement = $body(el);
           }
-        } catch { /* ignore */ }
+        } catch {
+          /* ignore */
+        }
       }
     });
     return { firstUrl, firstElement, isUsingHeaderImageUrl: true };
@@ -346,7 +436,10 @@ function extractCommentSections($body: cheerio.CheerioAPI): string[] {
     const $section = $body(el);
     const sectionText = $section.text().toLowerCase();
     const sectionHtml = $section.html() || "";
-    if (sectionText.includes("comment") || /<h[1-6][^>]*>.*comment/i.exec(sectionHtml)) {
+    if (
+      sectionText.includes("comment") ||
+      /<h[1-6][^>]*>.*comment/i.exec(sectionHtml)
+    ) {
       commentSections.push($section.toString());
     }
   });
@@ -365,7 +458,10 @@ export async function standardizeContentFormat(
   headerImageUrl?: string,
 ): Promise<string> {
   const finalBaseUrl = baseUrl || article.url;
-  logger.debug({ url: article.url, generateTitleImage }, "Standardizing content format");
+  logger.debug(
+    { url: article.url, generateTitleImage },
+    "Standardizing content format",
+  );
 
   try {
     const $ = cheerio.load(content);
@@ -375,9 +471,28 @@ export async function standardizeContentFormat(
     const contentParts: string[] = [];
 
     if (generateTitleImage && !hasExistingHeader) {
-      const { firstUrl, firstElement, isUsingHeaderImageUrl } = findFirstHeaderImageUrl($body, headerImageUrl, finalBaseUrl, article.url);
-      if (firstUrl && !firstUrl.includes("${") && !firstUrl.includes("%7B") && !firstUrl.includes("%24%7B")) {
-        await createHeaderPart(firstUrl, contentParts, article, $body, finalBaseUrl, firstElement, isUsingHeaderImageUrl);
+      const { firstUrl, firstElement, isUsingHeaderImageUrl } =
+        findFirstHeaderImageUrl(
+          $body,
+          headerImageUrl,
+          finalBaseUrl,
+          article.url,
+        );
+      if (
+        firstUrl &&
+        !firstUrl.includes("${") &&
+        !firstUrl.includes("%7B") &&
+        !firstUrl.includes("%24%7B")
+      ) {
+        await createHeaderPart(
+          firstUrl,
+          contentParts,
+          article,
+          $body,
+          finalBaseUrl,
+          firstElement,
+          isUsingHeaderImageUrl,
+        );
       }
     }
 
@@ -388,13 +503,23 @@ export async function standardizeContentFormat(
     const commentSections = extractCommentSections($body);
 
     $body("header, footer, section").remove();
-    return buildArticleStructure(existingHeaders, contentParts, $body.html() || "", commentSections, addSourceFooter, hasExistingFooter, article.url);
+    return buildArticleStructure(
+      existingHeaders,
+      contentParts,
+      $body.html() || "",
+      commentSections,
+      addSourceFooter,
+      hasExistingFooter,
+      article.url,
+    );
   } catch (error) {
     if (error instanceof ArticleSkipError) throw error;
     logger.error({ error }, "Error standardizing content format");
     const hasArticle = content.includes("<article");
     if (hasArticle) return content;
-    const footer = addSourceFooter ? `<footer style="margin-bottom: 16px;"><a href="${article.url}" style="float: right;">Source</a></footer>` : "";
+    const footer = addSourceFooter
+      ? `<footer style="margin-bottom: 16px;"><a href="${article.url}" style="float: right;">Source</a></footer>`
+      : "";
     return `<article>${content}${footer}</article>`;
   }
 }

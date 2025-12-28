@@ -79,12 +79,17 @@ class LabelStreamFilter implements StreamFilter {
     feedType: string,
     userId: number,
   ): StreamFilterResult {
+    const accessControl = or(eq(feeds.userId, userId), isNull(feeds.userId));
+    const conditions: SQL<unknown>[] = [
+      eq(feeds.enabled, true),
+      eq(
+        feeds.feedType,
+        feedType as "article" | "youtube" | "podcast" | "reddit",
+      ),
+    ];
+    if (accessControl) conditions.unshift(accessControl);
     return {
-      conditions: [
-        or(eq(feeds.userId, userId), isNull(feeds.userId)),
-        eq(feeds.enabled, true),
-        eq(feeds.feedType, feedType),
-      ],
+      conditions,
       needsFeedJoin: true,
     };
   }
@@ -131,7 +136,12 @@ class LabelStreamFilter implements StreamFilter {
 
     // Filter articles by feed IDs in this group
     return {
-      conditions: [inArray(articles.feedId, feedIds.map((f) => f.feedId))],
+      conditions: [
+        inArray(
+          articles.feedId,
+          feedIds.map((f) => f.feedId),
+        ),
+      ],
       needsFeedJoin: false,
     };
   }
@@ -149,11 +159,11 @@ class DefaultStreamFilter implements StreamFilter {
     _streamId: string | undefined,
     userId: number,
   ): Promise<StreamFilterResult> {
+    const accessControl = or(eq(feeds.userId, userId), isNull(feeds.userId));
+    const conditions: SQL<unknown>[] = [eq(feeds.enabled, true)];
+    if (accessControl) conditions.unshift(accessControl);
     return {
-      conditions: [
-        or(eq(feeds.userId, userId), isNull(feeds.userId)),
-        eq(feeds.enabled, true),
-      ],
+      conditions,
       needsFeedJoin: true,
     };
   }

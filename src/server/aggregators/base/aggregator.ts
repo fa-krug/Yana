@@ -159,7 +159,9 @@ export abstract class BaseAggregator {
    */
   protected async validate(): Promise<void> {
     const { validate } = await import("./mixins/validation");
-    return validate.call(this as unknown as import("./mixins/validation").ValidationMixin);
+    return validate.call(
+      this as unknown as import("./mixins/validation").ValidationMixin,
+    );
   }
 
   /**
@@ -174,7 +176,9 @@ export abstract class BaseAggregator {
    */
   protected async applyRateLimiting(): Promise<void> {
     const { applyRateLimiting } = await import("./mixins/rateLimiting");
-    return applyRateLimiting.call(this as unknown as import("./mixins/rateLimiting").RateLimitingMixin);
+    return applyRateLimiting.call(
+      this as unknown as import("./mixins/rateLimiting").RateLimitingMixin,
+    );
   }
 
   /**
@@ -209,7 +213,10 @@ export abstract class BaseAggregator {
     articles: RawArticle[],
   ): Promise<RawArticle[]> {
     const filtering = await import("./mixins/filtering");
-    return filtering.filterArticles.call(this as unknown as import("./mixins/filtering").FilteringMixin, articles);
+    return filtering.filterArticles.call(
+      this as unknown as import("./mixins/filtering").FilteringMixin,
+      articles,
+    );
   }
 
   /**
@@ -229,7 +236,10 @@ export abstract class BaseAggregator {
     articles: RawArticle[],
   ): Promise<RawArticle[]> {
     const filtering = await import("./mixins/filtering");
-    return filtering.applyArticleFilters.call(this as unknown as import("./mixins/filtering").FilteringMixin, articles);
+    return filtering.applyArticleFilters.call(
+      this as unknown as import("./mixins/filtering").FilteringMixin,
+      articles,
+    );
   }
 
   /**
@@ -299,7 +309,10 @@ export abstract class BaseAggregator {
     articles: RawArticle[],
   ): Promise<RawArticle[]> {
     const enrichment = await import("./mixins/enrichment");
-    return enrichment.enrichArticles.call(this as unknown as import("./mixins/enrichment").EnrichmentMixin, articles);
+    return enrichment.enrichArticles.call(
+      this as unknown as import("./mixins/enrichment").EnrichmentMixin,
+      articles,
+    );
   }
 
   /**
@@ -319,7 +332,10 @@ export abstract class BaseAggregator {
     article: RawArticle,
   ): Promise<string | null> {
     const caching = await import("./mixins/caching");
-    return caching.getCachedContent.call(this as unknown as import("./mixins/caching").CachingMixin, article);
+    return caching.getCachedContent.call(
+      this as unknown as import("./mixins/caching").CachingMixin,
+      article,
+    );
   }
 
   /**
@@ -477,7 +493,10 @@ export abstract class BaseAggregator {
    */
   async extractThumbnailFromUrl(url: string): Promise<string | null> {
     const utilities = await import("./mixins/utilities");
-    return utilities.extractThumbnailFromUrl.call(this as unknown as import("./mixins/utilities").UtilitiesMixin, url);
+    return utilities.extractThumbnailFromUrl.call(
+      this as unknown as import("./mixins/utilities").UtilitiesMixin,
+      url,
+    );
   }
 
   /**
@@ -506,7 +525,9 @@ export abstract class BaseAggregator {
    */
   async collectFeedIcon(): Promise<string | null> {
     const utilities = await import("./mixins/utilities");
-    return utilities.collectFeedIcon.call(this as unknown as import("./mixins/utilities").UtilitiesMixin);
+    return utilities.collectFeedIcon.call(
+      this as unknown as import("./mixins/utilities").UtilitiesMixin,
+    );
   }
 
   // ============================================================================
@@ -541,7 +562,9 @@ export abstract class BaseAggregator {
    */
   protected async getPostsAddedToday(): Promise<number> {
     const dailyLimit = await import("./mixins/dailyLimit");
-    return dailyLimit.getPostsAddedToday.call(this as unknown as import("./mixins/dailyLimit").DailyLimitMixin);
+    return dailyLimit.getPostsAddedToday.call(
+      this as unknown as import("./mixins/dailyLimit").DailyLimitMixin,
+    );
   }
 
   /**
@@ -556,7 +579,9 @@ export abstract class BaseAggregator {
    */
   protected async calculateRemainingRunsToday(): Promise<number> {
     const dailyLimit = await import("./mixins/dailyLimit");
-    return dailyLimit.calculateRemainingRunsToday.call(this as unknown as import("./mixins/dailyLimit").DailyLimitMixin);
+    return dailyLimit.calculateRemainingRunsToday.call(
+      this as unknown as import("./mixins/dailyLimit").DailyLimitMixin,
+    );
   }
 
   /**
@@ -566,7 +591,9 @@ export abstract class BaseAggregator {
    */
   protected async _getDailyPostLimit(): Promise<number> {
     const dailyLimit = await import("./mixins/dailyLimit");
-    return dailyLimit.getDailyPostLimit.call(this as unknown as import("./mixins/dailyLimit").DailyLimitMixin);
+    return dailyLimit.getDailyPostLimit.call(
+      this as unknown as import("./mixins/dailyLimit").DailyLimitMixin,
+    );
   }
 
   /**
@@ -576,7 +603,9 @@ export abstract class BaseAggregator {
    */
   protected async _getSourceName(): Promise<string> {
     const dailyLimit = await import("./mixins/dailyLimit");
-    return dailyLimit.getSourceName.call(this as unknown as import("./mixins/dailyLimit").DailyLimitMixin);
+    return dailyLimit.getSourceName.call(
+      this as unknown as import("./mixins/dailyLimit").DailyLimitMixin,
+    );
   }
 
   /**
@@ -586,6 +615,8 @@ export abstract class BaseAggregator {
    */
   protected async _getMostRecentPostTimeToday(): Promise<Date | null> {
     const dailyLimit = await import("./mixins/dailyLimit");
-    return dailyLimit.getMostRecentPostTimeToday.call(this as unknown as import("./mixins/dailyLimit").DailyLimitMixin);
+    return dailyLimit.getMostRecentPostTimeToday.call(
+      this as unknown as import("./mixins/dailyLimit").DailyLimitMixin,
+    );
   }
 }

@@ -11,8 +11,7 @@ import { AxiosError } from "axios";
  * Map YouTube API error reasons to user-friendly messages.
  */
 const ERROR_REASON_MAP: Record<string, string> = {
-  quotaExceeded:
-    "YouTube API quota exceeded. Please try again later.",
+  quotaExceeded: "YouTube API quota exceeded. Please try again later.",
   accessNotConfigured:
     "YouTube Data API v3 is not enabled. Enable it in Google Cloud Console.",
   ipRefererBlocked:
@@ -68,10 +67,7 @@ function handle403Error(error: AxiosError): string {
  * Map a 400 Bad Request error to a user-friendly message.
  */
 function handle400Error(error: AxiosError): string {
-  return (
-    extractErrorMessage(error) ||
-    "Invalid search query or API key."
-  );
+  return extractErrorMessage(error) || "Invalid search query or API key.";
 }
 
 /**

@@ -126,7 +126,10 @@ export class FullWebsiteAggregator extends BaseAggregator {
         url: item.link || "",
         published: item.pubDate ? new Date(item.pubDate) : new Date(),
         summary: item.contentSnippet || item.content || "",
-        author: item.creator || (item as Parser.Item & { author?: string }).author || undefined,
+        author:
+          item.creator ||
+          (item as Parser.Item & { author?: string }).author ||
+          undefined,
       };
 
       // Extract metadata
@@ -414,14 +417,23 @@ export class FullWebsiteAggregator extends BaseAggregator {
 
       const parts = this.parseRegexLine(line);
       if (parts.length < 2 || !parts[0].trim()) {
-        this.logger.warn({ step: "processContent", lineNum: i + 1 }, "Invalid regex format");
+        this.logger.warn(
+          { step: "processContent", lineNum: i + 1 },
+          "Invalid regex format",
+        );
         continue;
       }
 
       try {
-        result = result.replace(new RegExp(parts[0].trim(), "g"), parts.slice(1).join("|").trim());
+        result = result.replace(
+          new RegExp(parts[0].trim(), "g"),
+          parts.slice(1).join("|").trim(),
+        );
       } catch (error) {
-        this.logger.warn({ step: "processContent", error, lineNum: i + 1 }, "Invalid regex pattern");
+        this.logger.warn(
+          { step: "processContent", error, lineNum: i + 1 },
+          "Invalid regex pattern",
+        );
       }
     }
 

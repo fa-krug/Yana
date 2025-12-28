@@ -40,7 +40,9 @@ const createRedditMockComment = (i: number) => ({
   permalink: `/r/programming/comments/test123/test_post/comment${i}/`,
 });
 
-const mapRedditCommentToChild = (c: ReturnType<typeof createRedditMockComment>) => ({
+const mapRedditCommentToChild = (
+  c: ReturnType<typeof createRedditMockComment>,
+) => ({
   data: c,
 });
 
@@ -147,7 +149,7 @@ describe("Aggregator Options Integration Tests", () => {
     const user = await createUser(
       testUser.username,
       testUser.email,
-       
+
       "password",
     );
     testUserId = user.id;
@@ -745,6 +747,7 @@ describe("Aggregator Options Integration Tests", () => {
 
       // Mock YouTube API calls BEFORE initializing aggregator
       // validate() is called during aggregate(), but we need mocks ready
+      // eslint-disable-next-line sonarjs/cognitive-complexity
       vi.spyOn(axios, "get").mockImplementation((url: string, config?: any) => {
         // Debug: Log URLs and config
         console.log(
@@ -1279,13 +1282,15 @@ describe("Aggregator Options Integration Tests", () => {
       // Mock the base fetchArticleContentInternal that fetchAllPages will call
       // This needs to be on the prototype since fetchAllPages calls super.fetchArticleContentInternal
       const FullWebsiteAggregatorClass = await import("../full_website");
-      const baseSpy = vi.spyOn(
-        FullWebsiteAggregatorClass.FullWebsiteAggregator.prototype as any,
-        "fetchArticleContentInternal",
-      ).mockImplementation(async (url: string) => {
-        // First page - include pagination to trigger multipage detection
-        if (url.includes("/article") && !url.includes("/2")) {
-          return `<html><body>
+      const baseSpy = vi
+        .spyOn(
+          FullWebsiteAggregatorClass.FullWebsiteAggregator.prototype as any,
+          "fetchArticleContentInternal",
+        )
+        .mockImplementation(async (url: string) => {
+          // First page - include pagination to trigger multipage detection
+          if (url.includes("/article") && !url.includes("/2")) {
+            return `<html><body>
             <div class="gp-entry-content"><p>Page 1 content</p></div>
             <nav class="navigation pagination">
               <ul class="page-numbers">
@@ -1293,10 +1298,10 @@ describe("Aggregator Options Integration Tests", () => {
               </ul>
             </nav>
           </body></html>`;
-        }
-        // Second page
-        return "<html><body><div class='gp-entry-content'><p>Page 2 content</p></div></body></html>";
-      });
+          }
+          // Second page
+          return "<html><body><div class='gp-entry-content'><p>Page 2 content</p></div></body></html>";
+        });
 
       const articles = await aggregator.aggregate();
 
@@ -1356,7 +1361,10 @@ describe("Aggregator Options Integration Tests", () => {
         mockAggregatorInstance = aggregator;
 
         // Mock methods on the instance
-        vi.spyOn(aggregator as any, "fetchArticleContentInternal").mockResolvedValue(mockHtml);
+        vi.spyOn(
+          aggregator as any,
+          "fetchArticleContentInternal",
+        ).mockResolvedValue(mockHtml);
         vi.spyOn(aggregator as any, "fetchSourceData").mockResolvedValue({
           items: [
             {
@@ -1407,7 +1415,6 @@ describe("Aggregator Options Integration Tests", () => {
       [false, "should not add source footer when addSourceFooter=false"],
     ])("addSourceFooter=%s", (addSourceFooter, description) => {
       it(description, async () => {
-
         const feed = await createFeedWithOptions(
           testUserId,
           "full_website",
@@ -1438,9 +1445,10 @@ describe("Aggregator Options Integration Tests", () => {
         ]);
 
         // Mock fetchArticleContentInternal on the test instance
-        vi.spyOn(aggregator as any, "fetchArticleContentInternal").mockResolvedValue(
-          "<html><body><p>Content</p></body></html>",
-        );
+        vi.spyOn(
+          aggregator as any,
+          "fetchArticleContentInternal",
+        ).mockResolvedValue("<html><body><p>Content</p></body></html>");
 
         // Mock extractContent to return meaningful content
         // Without this, the real extractContent may strip all content
@@ -1754,12 +1762,15 @@ describe("Aggregator Options Integration Tests", () => {
       `;
 
       // Mock fetchArticleContentInternal on the test instance
-      vi.spyOn(aggregator as any, "fetchArticleContentInternal").mockResolvedValue(mockHtml);
+      vi.spyOn(
+        aggregator as any,
+        "fetchArticleContentInternal",
+      ).mockResolvedValue(mockHtml);
 
       // Mock extractContent to return meaningful content (after removing ads per aggregator options)
       // The exclude_selectors option removes .ad elements, but extractContent is where that happens
       vi.spyOn(aggregator as any, "extractContent").mockResolvedValue(
-        "<img src=\"https://example.com/image.jpg\" /><p>Content</p>",
+        '<img src="https://example.com/image.jpg" /><p>Content</p>',
       );
 
       // Use the mocked registry to return our test instance instead of creating a new one

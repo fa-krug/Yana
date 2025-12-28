@@ -13,13 +13,16 @@ const logLevel = process.env["LOG_LEVEL"] || (isDevelopment ? "debug" : "info");
 /**
  * Extract enumerable properties from error object.
  */
-function extractExtraProps(error: Error, serialized: Record<string, unknown>): void {
+function extractExtraProps(
+  error: Error,
+  serialized: Record<string, unknown>,
+): void {
   const seen = new WeakSet<object>();
   try {
     const errorRecord = error as unknown as Record<string, unknown>;
     for (const key in error) {
       if (key === "name" || key === "message" || key === "stack") continue;
-      
+
       const value = errorRecord[key];
       if (value && typeof value === "object") {
         if (seen.has(value as object)) continue;
@@ -27,7 +30,9 @@ function extractExtraProps(error: Error, serialized: Record<string, unknown>): v
       }
       serialized[key] = value;
     }
-  } catch { /* Ignore */ }
+  } catch {
+    /* Ignore */
+  }
 }
 
 /**
@@ -35,14 +40,25 @@ function extractExtraProps(error: Error, serialized: Record<string, unknown>): v
  */
 function serializeError(error: unknown): Record<string, unknown> {
   if (!(error instanceof Error)) {
-    try { return { value: String(error) }; } catch { return { value: "[Unable to serialize error]" }; }
+    try {
+      return { value: String(error) };
+    } catch {
+      return { value: "[Unable to serialize error]" };
+    }
   }
 
-  const serialized: Record<string, unknown> = { name: error.name, message: error.message };
+  const serialized: Record<string, unknown> = {
+    name: error.name,
+    message: error.message,
+  };
   if (error.stack) serialized["stack"] = error.stack;
 
   // Include known custom properties
-  const err = error as { statusCode?: number; feedId?: number; originalError?: unknown };
+  const err = error as {
+    statusCode?: number;
+    feedId?: number;
+    originalError?: unknown;
+  };
   if ("statusCode" in error) serialized["statusCode"] = err.statusCode;
   if ("feedId" in error) serialized["feedId"] = err.feedId;
   if ("originalError" in error && err.originalError) {

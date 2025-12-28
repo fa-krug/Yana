@@ -53,7 +53,10 @@ function buildOptionsDict(options?: OptionsSchema): Record<string, unknown> {
     if (def.min !== undefined) optionDef["min"] = def.min;
     if (def.max !== undefined) optionDef["max"] = def.max;
     if (def.choices) {
-      optionDef["choices"] = def.choices.map((c) => [String(c[0]), String(c[1])]);
+      optionDef["choices"] = def.choices.map((c) => [
+        String(c[0]),
+        String(c[1]),
+      ]);
     }
     if (def.widget) optionDef["widget"] = def.widget;
 
@@ -212,20 +215,12 @@ function validateOptionValue(
   }
 
   // Min validation
-  if (
-    def.min !== undefined &&
-    typeof value === "number" &&
-    value < def.min
-  ) {
+  if (def.min !== undefined && typeof value === "number" && value < def.min) {
     errors.push(`Option '${key}' must be at least ${def.min}`);
   }
 
   // Max validation
-  if (
-    def.max !== undefined &&
-    typeof value === "number" &&
-    value > def.max
-  ) {
+  if (def.max !== undefined && typeof value === "number" && value > def.max) {
     errors.push(`Option '${key}' must be at most ${def.max}`);
   }
 

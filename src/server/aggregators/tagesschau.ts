@@ -89,18 +89,27 @@ export class TagesschauAggregator extends FullWebsiteAggregator {
       try {
         const playerData = this.parsePlayerData(dataV);
         const streams = playerData.mc?.streams || [];
-        const isAudioOnly = streams.length > 0 && streams.every((s) => s.isAudioOnly === true);
+        const isAudioOnly =
+          streams.length > 0 && streams.every((s) => s.isAudioOnly === true);
         const imageUrl = this.getPlayerImage(playerDiv, playerData.mc || {});
 
         // Try to extract embed code from pluginData
         const embedCode = playerData.pluginData?.["sharing@web"]?.embedCode;
         if (embedCode) {
-          const result = await this.buildHeaderFromEmbedCode(embedCode, isAudioOnly, imageUrl);
+          const result = await this.buildHeaderFromEmbedCode(
+            embedCode,
+            isAudioOnly,
+            imageUrl,
+          );
           if (result) return result;
         }
 
         // Fallback: construct player from media URL if available
-        const result = await this.buildHeaderFromStreams(streams, isAudioOnly, imageUrl);
+        const result = await this.buildHeaderFromStreams(
+          streams,
+          isAudioOnly,
+          imageUrl,
+        );
         if (result) return result;
       } catch (error) {
         logger.debug({ error }, "Failed to parse Tagesschau media player data");
@@ -110,12 +119,20 @@ export class TagesschauAggregator extends FullWebsiteAggregator {
     return null;
   }
 
-  private getMediaPlayers(soup: cheerio.CheerioAPI): cheerio.Cheerio<cheerio.AnyNode> {
-    const mediaPlayers = soup('div[data-v-type="MediaPlayer"]').filter((_, el) => {
-      return (soup(el).attr("class") || "").toLowerCase().includes("mediaplayer");
-    });
+  private getMediaPlayers(
+    soup: cheerio.CheerioAPI,
+  ): cheerio.Cheerio<cheerio.AnyNode> {
+    const mediaPlayers = soup('div[data-v-type="MediaPlayer"]').filter(
+      (_, el) => {
+        return (soup(el).attr("class") || "")
+          .toLowerCase()
+          .includes("mediaplayer");
+      },
+    );
 
-    const teaserPlayers = mediaPlayers.filter((_, el) => (soup(el).attr("class") || "").includes("teaser-top"));
+    const teaserPlayers = mediaPlayers.filter((_, el) =>
+      (soup(el).attr("class") || "").includes("teaser-top"),
+    );
     return teaserPlayers.length > 0 ? teaserPlayers : mediaPlayers;
   }
 
@@ -129,7 +146,10 @@ export class TagesschauAggregator extends FullWebsiteAggregator {
     return JSON.parse(decoded) as TagesschauPlayerData;
   }
 
-  private getPlayerImage(playerDiv: cheerio.Cheerio<cheerio.AnyNode>, mc: TagesschauMC): string | null {
+  private getPlayerImage(
+    playerDiv: cheerio.Cheerio<cheerio.AnyNode>,
+    mc: TagesschauMC,
+  ): string | null {
     let imageUrl = this.getPlayerImageFromMetadata(mc);
 
     if (!imageUrl) {
@@ -138,13 +158,20 @@ export class TagesschauAggregator extends FullWebsiteAggregator {
 
     if (imageUrl) {
       if (imageUrl.startsWith("//")) return "https:" + imageUrl;
-      if (imageUrl.startsWith("/")) return "https://www.tagesschau.de" + imageUrl;
+      if (imageUrl.startsWith("/"))
+        return "https://www.tagesschau.de" + imageUrl;
     }
     return imageUrl;
   }
 
   private getPlayerImageFromMetadata(mc: TagesschauMC): string | null {
-    const fields = ["poster", "image", "thumbnail", "preview", "cover"] as const;
+    const fields = [
+      "poster",
+      "image",
+      "thumbnail",
+      "preview",
+      "cover",
+    ] as const;
 
     // Check main mc object
     for (const field of fields) {
@@ -163,7 +190,9 @@ export class TagesschauAggregator extends FullWebsiteAggregator {
     return null;
   }
 
-  private getPlayerImageFromDOM(playerDiv: cheerio.Cheerio<cheerio.AnyNode>): string | null {
+  private getPlayerImageFromDOM(
+    playerDiv: cheerio.Cheerio<cheerio.AnyNode>,
+  ): string | null {
     const parent = playerDiv.parent();
     if (parent && parent.length > 0) {
       const img = parent.find("img").first();
@@ -179,8 +208,17 @@ export class TagesschauAggregator extends FullWebsiteAggregator {
     return null;
   }
 
-  private async buildHeaderFromEmbedCode(embedCode: string, isAudioOnly: boolean, imageUrl: string | null): Promise<string | null> {
-    const decoded = embedCode.replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">");
+  private async buildHeaderFromEmbedCode(
+    embedCode: string,
+    isAudioOnly: boolean,
+    imageUrl: string | null,
+  ): Promise<string | null> {
+    const decoded = embedCode
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/&amp;/g, "&")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">");
     const $ = cheerio.load(decoded);
     const iframe = $("iframe").first();
     let src = iframe.attr("src");
@@ -200,7 +238,11 @@ export class TagesschauAggregator extends FullWebsiteAggregator {
     return `<header class="media-header">${playerHtml}</header>`;
   }
 
-  private async buildHeaderFromStreams(streams: TagesschauStream[], isAudioOnly: boolean, imageUrl: string | null): Promise<string | null> {
+  private async buildHeaderFromStreams(
+    streams: TagesschauStream[],
+    isAudioOnly: boolean,
+    imageUrl: string | null,
+  ): Promise<string | null> {
     if (isAudioOnly) {
       const audioMedia = this.findMediaByMimeType(streams, "audio");
       if (audioMedia) {
@@ -217,9 +259,12 @@ export class TagesschauAggregator extends FullWebsiteAggregator {
     return null;
   }
 
-  private findMediaByMimeType(streams: TagesschauStream[], type: string): { url: string; mimeType: string } | null {
+  private findMediaByMimeType(
+    streams: TagesschauStream[],
+    type: string,
+  ): { url: string; mimeType: string } | null {
     for (const stream of streams) {
-      for (const media of (stream.media || [])) {
+      for (const media of stream.media || []) {
         if (media.url && (media.mimeType || "").toLowerCase().includes(type)) {
           return { url: media.url, mimeType: media.mimeType };
         }
@@ -230,24 +275,35 @@ export class TagesschauAggregator extends FullWebsiteAggregator {
 
   private async buildBase64Image(imageUrl: string): Promise<string> {
     try {
-      const headerElement = await createHeaderElementFromUrl(imageUrl, "Article image");
+      const headerElement = await createHeaderElementFromUrl(
+        imageUrl,
+        "Article image",
+      );
       if (headerElement) {
         const srcMatch = /src=["']([^"']+)["']/.exec(headerElement);
         if (srcMatch) {
           return `<div class="media-image"><img src="${srcMatch[1]}" alt="Article image" style="max-width: 100%; height: auto; border-radius: 8px;"></div>`;
         }
       }
-    } catch { /* fallback */ }
+    } catch {
+      /* fallback */
+    }
     return `<div class="media-image"><img src="${imageUrl}" alt="Article image" style="max-width: 100%; height: auto; border-radius: 8px;"></div>`;
   }
 
-  protected override async fetchArticleContentInternal(url: string, article: RawArticle): Promise<string> {
+  protected override async fetchArticleContentInternal(
+    url: string,
+    article: RawArticle,
+  ): Promise<string> {
     const html = await super.fetchArticleContentInternal(url, article);
     this.originalHtmlCache.set(article.url, html);
     return html;
   }
 
-  protected override async processContent(html: string, article: RawArticle): Promise<string> {
+  protected override async processContent(
+    html: string,
+    article: RawArticle,
+  ): Promise<string> {
     let mediaHeader: string | null = null;
     const originalHtml = this.originalHtmlCache.get(article.url);
 
@@ -256,7 +312,10 @@ export class TagesschauAggregator extends FullWebsiteAggregator {
         mediaHeader = await this.extractMediaHeader(cheerio.load(originalHtml));
         this.originalHtmlCache.delete(article.url);
       } catch (error) {
-        logger.debug({ error, url: article.url }, "Failed to extract media header");
+        logger.debug(
+          { error, url: article.url },
+          "Failed to extract media header",
+        );
       }
     }
 
@@ -269,11 +328,20 @@ export class TagesschauAggregator extends FullWebsiteAggregator {
     let content = sanitizeHtml($.html() || "");
     if (mediaHeader) content = mediaHeader + content;
 
-    const { processContent: processContentUtil } = await import("./base/process");
-    return await processContentUtil(content, article, this.feed?.generateTitleImage ?? true, this.feed?.addSourceFooter ?? true);
+    const { processContent: processContentUtil } =
+      await import("./base/process");
+    return await processContentUtil(
+      content,
+      article,
+      this.feed?.generateTitleImage ?? true,
+      this.feed?.addSourceFooter ?? true,
+    );
   }
 
-  protected override async extractContent(html: string, article: RawArticle): Promise<string> {
+  protected override async extractContent(
+    html: string,
+    article: RawArticle,
+  ): Promise<string> {
     const extracted = this.extractContentFromTextabsatz(html);
     return await super.removeElementsBySelectors(extracted, article);
   }
@@ -287,9 +355,15 @@ export class TagesschauAggregator extends FullWebsiteAggregator {
         const $el = $(element);
         if (this.shouldSkipElement($el)) return;
 
-        if (element.tagName === "p" && ($el.attr("class") || "").includes("textabsatz")) {
+        if (
+          element.tagName === "p" &&
+          ($el.attr("class") || "").includes("textabsatz")
+        ) {
           content.append($el.clone().removeAttr("class"));
-        } else if (element.tagName === "h2" && ($el.attr("class") || "").includes("trenner")) {
+        } else if (
+          element.tagName === "h2" &&
+          ($el.attr("class") || "").includes("trenner")
+        ) {
           content.append($("<h2></h2>").text($el.text().trim()));
         }
       });
@@ -305,7 +379,9 @@ export class TagesschauAggregator extends FullWebsiteAggregator {
     const parent = $el.parent();
     if (parent.length === 0) return false;
     const classes = parent.attr("class") || "";
-    return ["teaser", "bigfive", "accordion", "related"].some(c => classes.includes(c));
+    return ["teaser", "bigfive", "accordion", "related"].some((c) =>
+      classes.includes(c),
+    );
   }
 }
 

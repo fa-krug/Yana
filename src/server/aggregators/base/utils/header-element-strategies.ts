@@ -9,8 +9,14 @@ import { logger } from "@server/utils/logger";
 import { extractPostInfoFromUrl } from "../../reddit/urls";
 import { ArticleSkipError } from "../exceptions";
 
-import { compressAndEncodeImage, createImageElement } from "./header-element-helpers";
-import type { HeaderElementContext, HeaderElementStrategy } from "./header-element-strategy";
+import {
+  compressAndEncodeImage,
+  createImageElement,
+} from "./header-element-helpers";
+import type {
+  HeaderElementContext,
+  HeaderElementStrategy,
+} from "./header-element-strategy";
 import { is4xxError } from "./http-errors";
 import { fetchSingleImage } from "./images";
 import { extractImageFromUrl } from "./images/extract";
@@ -142,7 +148,12 @@ export class RedditPostStrategy implements HeaderElementStrategy {
       const statusCode = is4xxError(error);
       if (statusCode !== null) {
         logger.warn(
-          { error, url: context.url, subreddit: postInfo.subreddit, statusCode },
+          {
+            error,
+            url: context.url,
+            subreddit: postInfo.subreddit,
+            statusCode,
+          },
           "4xx error fetching subreddit thumbnail, skipping article",
         );
         throw new ArticleSkipError(
@@ -180,7 +191,10 @@ export class YouTubeStrategy implements HeaderElementStrategy {
 
     const embedHtml = createYouTubeEmbedHtml(videoId);
 
-    logger.debug({ url: context.url, videoId }, "Created YouTube embed element");
+    logger.debug(
+      { url: context.url, videoId },
+      "Created YouTube embed element",
+    );
     return embedHtml;
   }
 }
@@ -206,7 +220,10 @@ export class GenericImageStrategy implements HeaderElementStrategy {
   }
 
   async create(context: HeaderElementContext): Promise<string | null> {
-    logger.debug({ url: context.url }, "Extracting image from URL for header element");
+    logger.debug(
+      { url: context.url },
+      "Extracting image from URL for header element",
+    );
 
     // Use extractImageFromUrl which handles:
     // - Direct image URLs

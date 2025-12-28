@@ -320,8 +320,14 @@ export function verifyArticleContent(
     if (checks.hasFooter) {
       // Log full content for debugging footer issues
       if (process.env["NODE_ENV"] === "test") {
-        console.log("[DEBUG] Checking for footer - Article content:", articleContent.substring(0, 500));
-        console.log("[DEBUG] Article has footer element:", $("footer").length > 0);
+        console.log(
+          "[DEBUG] Checking for footer - Article content:",
+          articleContent.substring(0, 500),
+        );
+        console.log(
+          "[DEBUG] Article has footer element:",
+          $("footer").length > 0,
+        );
       }
       expectFooterToExist($);
     } else {

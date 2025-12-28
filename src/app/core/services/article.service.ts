@@ -67,10 +67,13 @@ export class ArticleService {
    */
   private toIsoStringOrDefault(
     value: Date | string | null | undefined,
-    defaultValue: unknown,
-  ): unknown {
+    defaultValue: Date | string | null | undefined = undefined,
+  ): string | null | undefined {
     if (value == null) {
-      return defaultValue;
+      if (defaultValue == null) return undefined;
+      return defaultValue instanceof Date
+        ? defaultValue.toISOString()
+        : defaultValue;
     }
     if (value instanceof Date) {
       return value.toISOString();
@@ -127,8 +130,8 @@ export class ArticleService {
               isRead: isRead,
               isSaved: filters.saved,
               search: filters.search,
-              dateFrom: this.toIsoStringOrDefault(filters.dateFrom, undefined),
-              dateTo: this.toIsoStringOrDefault(filters.dateTo, undefined),
+              dateFrom: this.toIsoStringOrDefault(filters.dateFrom),
+              dateTo: this.toIsoStringOrDefault(filters.dateTo),
             }),
           ),
         // Cache for 2 minutes (shorter TTL for dynamic content)
@@ -769,8 +772,8 @@ export class ArticleService {
           isRead: isRead,
           isSaved: filters.saved,
           search: filters.search ?? undefined,
-          dateFrom: this.toIsoStringOrDefault(filters.dateFrom, undefined),
-          dateTo: this.toIsoStringOrDefault(filters.dateTo, undefined),
+          dateFrom: this.toIsoStringOrDefault(filters.dateFrom),
+          dateTo: this.toIsoStringOrDefault(filters.dateTo),
         }),
       ).pipe(
         map((response) => ({

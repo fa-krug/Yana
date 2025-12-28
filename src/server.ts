@@ -72,7 +72,7 @@ app.use((req, res, next) => {
         if (visitor.scheme === "https") {
           // Override req.protocol and req.secure by modifying the connection
           // This is needed because express-session checks req.secure before setting secure cookies
-           
+
           (req as { connection?: { encrypted?: boolean } }).connection = {
             // eslint-disable-next-line sonarjs/deprecation
             ...req.connection,

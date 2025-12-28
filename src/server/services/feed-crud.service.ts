@@ -21,7 +21,9 @@ type UserInfo = Pick<User, "id" | "isSuperuser">;
 /**
  * Filter out restricted aggregator options.
  */
-function filterAggregatorOptions(options: Record<string, unknown>): Record<string, unknown> {
+function filterAggregatorOptions(
+  options: Record<string, unknown>,
+): Record<string, unknown> {
   const restrictedOptions = [
     "exclude_selectors",
     "ignore_content_contains",
@@ -68,13 +70,21 @@ function filterManagedFeedData(
     };
 
     // Filter out restricted aggregator options
-    if (data.aggregatorOptions !== undefined && data.aggregatorOptions !== null) {
-      filtered.aggregatorOptions = filterAggregatorOptions(data.aggregatorOptions as Record<string, unknown>);
+    if (
+      data.aggregatorOptions !== undefined &&
+      data.aggregatorOptions !== null
+    ) {
+      filtered.aggregatorOptions = filterAggregatorOptions(
+        data.aggregatorOptions as Record<string, unknown>,
+      );
     }
 
     return filtered;
   } catch (error) {
-    logger.warn({ error, aggregator: aggregatorId }, "Failed to get aggregator metadata for filtering");
+    logger.warn(
+      { error, aggregator: aggregatorId },
+      "Failed to get aggregator metadata for filtering",
+    );
     return {};
   }
 }
@@ -93,7 +103,10 @@ function getDefaultDailyLimit(aggregatorId?: string): number {
 /**
  * Determine feed icon based on aggregator metadata.
  */
-function determineFeedIcon(aggregatorId?: string, currentIcon?: string | null): string | null {
+function determineFeedIcon(
+  aggregatorId?: string,
+  currentIcon?: string | null,
+): string | null {
   if (!aggregatorId) return currentIcon || null;
 
   try {
@@ -101,7 +114,10 @@ function determineFeedIcon(aggregatorId?: string, currentIcon?: string | null): 
     if (metadata.type === "managed" && metadata.icon) return metadata.icon;
     return currentIcon || metadata.icon || null;
   } catch (error) {
-    logger.warn({ error, aggregator: aggregatorId }, "Failed to get aggregator icon");
+    logger.warn(
+      { error, aggregator: aggregatorId },
+      "Failed to get aggregator icon",
+    );
     return currentIcon || null;
   }
 }
@@ -113,7 +129,11 @@ async function syncFeedIcon(feedId: number): Promise<Feed | null> {
   try {
     const { processIconFetch } = await import("./icon.service");
     await processIconFetch(feedId, false);
-    const [updatedFeed] = await db.select().from(feeds).where(eq(feeds.id, feedId)).limit(1);
+    const [updatedFeed] = await db
+      .select()
+      .from(feeds)
+      .where(eq(feeds.id, feedId))
+      .limit(1);
     return updatedFeed || null;
   } catch (error) {
     logger.warn({ error, feedId }, "Failed to fetch feed icon");
@@ -177,7 +197,11 @@ async function syncFeedIconOnUpdate(feedId: number): Promise<Feed | null> {
   try {
     const { processIconFetch } = await import("./icon.service");
     await processIconFetch(feedId, true);
-    const [reloadedFeed] = await db.select().from(feeds).where(eq(feeds.id, feedId)).limit(1);
+    const [reloadedFeed] = await db
+      .select()
+      .from(feeds)
+      .where(eq(feeds.id, feedId))
+      .limit(1);
     return reloadedFeed || null;
   } catch (error) {
     logger.warn({ error, feedId }, "Failed to fetch feed icon on update");

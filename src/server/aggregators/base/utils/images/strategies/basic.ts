@@ -212,7 +212,10 @@ function extractPhotosFromMediaAll(data: FxTwitterResponse): string[] {
  * Extract all photo URLs from tweet data.
  * Tries tweet.media.photos first, falls back to tweet.media.all.
  */
-function extractImageUrlsFromTweetData(data: FxTwitterResponse, tweetId: string): string[] {
+function extractImageUrlsFromTweetData(
+  data: FxTwitterResponse,
+  tweetId: string,
+): string[] {
   // Try primary location first
   let imageUrls = extractPhotosFromMediaPhotos(data);
 
@@ -320,12 +323,21 @@ export async function handleTwitterImage(
 /**
  * Convert SVG to PNG.
  */
-async function convertSvgToPng(imageData: Buffer, isHeaderImage: boolean): Promise<Buffer | null> {
+async function convertSvgToPng(
+  imageData: Buffer,
+  isHeaderImage: boolean,
+): Promise<Buffer | null> {
   try {
     const targetSize = isHeaderImage
       ? { width: MAX_HEADER_IMAGE_WIDTH, height: MAX_HEADER_IMAGE_HEIGHT }
       : { width: MAX_IMAGE_WIDTH, height: MAX_IMAGE_HEIGHT };
-    return await sharp(imageData).resize(targetSize.width, targetSize.height, { fit: "inside", withoutEnlargement: false }).png().toBuffer();
+    return await sharp(imageData)
+      .resize(targetSize.width, targetSize.height, {
+        fit: "inside",
+        withoutEnlargement: false,
+      })
+      .png()
+      .toBuffer();
   } catch {
     return null;
   }
@@ -343,17 +355,31 @@ export async function handleMetaTagImage(
   const result = await fetchSingleImage(fullImageUrl);
   if (!result.imageData || result.imageData.length <= 5000) return null;
 
-  if (result.contentType === "image/svg+xml" || fullImageUrl.toLowerCase().endsWith(".svg")) {
+  if (
+    result.contentType === "image/svg+xml" ||
+    fullImageUrl.toLowerCase().endsWith(".svg")
+  ) {
     const converted = await convertSvgToPng(result.imageData, isHeaderImage);
-    return converted ? { imageData: converted, contentType: "image/png" } : null;
+    return converted
+      ? { imageData: converted, contentType: "image/png" }
+      : null;
   }
 
   try {
     const metadata = await sharp(result.imageData).metadata();
-    if (metadata.width && metadata.height && (metadata.width < 100 || metadata.height < 100)) {
+    if (
+      metadata.width &&
+      metadata.height &&
+      (metadata.width < 100 || metadata.height < 100)
+    ) {
       return null;
     }
-  } catch { /* Use file size check only */ }
+  } catch {
+    /* Use file size check only */
+  }
 
-  return { imageData: result.imageData, contentType: result.contentType || "image/jpeg" };
+  return {
+    imageData: result.imageData,
+    contentType: result.contentType || "image/jpeg",
+  };
 }

@@ -16,7 +16,10 @@ import { enqueueTask } from "./taskQueue.service";
 /**
  * Extract favicon URL from HTML content.
  */
-function extractFaviconFromHtml($: cheerio.CheerioAPI, baseUrl: string): string | null {
+function extractFaviconFromHtml(
+  $: cheerio.CheerioAPI,
+  baseUrl: string,
+): string | null {
   const iconSelectors = [
     'link[rel="icon"]',
     'link[rel="shortcut icon"]',
@@ -40,10 +43,16 @@ function extractFaviconFromHtml($: cheerio.CheerioAPI, baseUrl: string): string 
 /**
  * Check if /favicon.ico exists.
  */
-async function checkFaviconIco(baseUrl: string, headers: Record<string, string>): Promise<string | null> {
+async function checkFaviconIco(
+  baseUrl: string,
+  headers: Record<string, string>,
+): Promise<string | null> {
   const faviconIcoUrl = `${baseUrl}/favicon.ico`;
   try {
-    const response = await axios.head(faviconIcoUrl, { headers, timeout: 5000 });
+    const response = await axios.head(faviconIcoUrl, {
+      headers,
+      timeout: 5000,
+    });
     if (response.status === 200) return faviconIcoUrl;
   } catch {
     // Ignore error
@@ -58,11 +67,17 @@ export async function fetchFavicon(feedUrl: string): Promise<string | null> {
   try {
     const parsed = new URL(feedUrl);
     const baseUrl = `${parsed.protocol}//${parsed.host}`;
-    const headers = { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36" };
+    const headers = {
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+    };
 
     try {
       const response = await axios.get(baseUrl, { headers, timeout: 10000 });
-      const faviconUrl = extractFaviconFromHtml(cheerio.load(response.data), baseUrl);
+      const faviconUrl = extractFaviconFromHtml(
+        cheerio.load(response.data),
+        baseUrl,
+      );
       if (faviconUrl) return faviconUrl;
     } catch (error) {
       logger.debug({ error, baseUrl }, "Could not fetch homepage for favicon");
@@ -147,7 +162,11 @@ export async function fetchRedditIcon(
 async function getYouTubeApiKey(userId: number): Promise<string | null> {
   const { getUserSettings } = await import("./userSettings.service");
   const settings = await getUserSettings(userId);
-  if (!settings.youtubeEnabled || !settings.youtubeApiKey || settings.youtubeApiKey.trim() === "") {
+  if (
+    !settings.youtubeEnabled ||
+    !settings.youtubeApiKey ||
+    settings.youtubeApiKey.trim() === ""
+  ) {
     return null;
   }
   return settings.youtubeApiKey;
@@ -156,7 +175,10 @@ async function getYouTubeApiKey(userId: number): Promise<string | null> {
 /**
  * Resolve YouTube channel identifier to ID.
  */
-async function resolveChannelIdHelper(identifier: string, apiKey: string): Promise<string | null> {
+async function resolveChannelIdHelper(
+  identifier: string,
+  apiKey: string,
+): Promise<string | null> {
   const { resolveChannelId } = await import("../aggregators/youtube");
   const { channelId, error } = await resolveChannelId(identifier, apiKey);
   if (error || !channelId) {
@@ -180,10 +202,13 @@ export async function fetchYouTubeIcon(feed: Feed): Promise<string | null> {
     const channelId = await resolveChannelIdHelper(feed.identifier, apiKey);
     if (!channelId) return defaultIcon;
 
-    const response = await axios.get("https://www.googleapis.com/youtube/v3/channels", {
-      params: { part: "snippet", id: channelId, key: apiKey },
-      timeout: 10000,
-    });
+    const response = await axios.get(
+      "https://www.googleapis.com/youtube/v3/channels",
+      {
+        params: { part: "snippet", id: channelId, key: apiKey },
+        timeout: 10000,
+      },
+    );
 
     const thumbnails = response.data?.items?.[0]?.snippet?.thumbnails;
     if (thumbnails) {

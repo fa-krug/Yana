@@ -87,7 +87,9 @@ async function callYouTubeTestAPI(apiKey: string): Promise<AxiosResponse> {
  * Validate API response for errors in response body.
  * Some YouTube API errors return 200 status with error in body.
  */
-function validateAPIResponse(response: AxiosResponse): YouTubeTestResult | null {
+function validateAPIResponse(
+  response: AxiosResponse,
+): YouTubeTestResult | null {
   if (response.status !== 200) {
     return {
       success: false,
@@ -117,7 +119,9 @@ interface YouTubeAPIError {
 /**
  * Classify error returned in API response body.
  */
-function classifyResponseBodyError(apiError: YouTubeAPIError): YouTubeTestResult {
+function classifyResponseBodyError(
+  apiError: YouTubeAPIError,
+): YouTubeTestResult {
   const errorCode = apiError.code;
 
   if (errorCode === 400) {
@@ -208,8 +212,7 @@ function handleAxiosError(error: AxiosError): YouTubeTestResult {
     return {
       success: false,
       errors: {
-        general:
-          "Connection timeout. Please check your internet connection.",
+        general: "Connection timeout. Please check your internet connection.",
       },
     };
   }

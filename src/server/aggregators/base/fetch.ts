@@ -132,11 +132,7 @@ export async function fetchFeed(
 /**
  * Handle fetch errors with proper 4xx detection and ArticleSkipError throwing.
  */
-function handleFetchError(
-  error: unknown,
-  url: string,
-  elapsed: number,
-): never {
+function handleFetchError(error: unknown, url: string, elapsed: number): never {
   const errorMessage =
     error instanceof Error ? error.message : String(error || "Unknown error");
 

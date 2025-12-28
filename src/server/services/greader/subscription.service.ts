@@ -204,10 +204,7 @@ async function removeLabelFromFeed(
     await db
       .delete(feedGroups)
       .where(
-        and(
-          eq(feedGroups.feedId, feedId),
-          eq(feedGroups.groupId, group.id),
-        ),
+        and(eq(feedGroups.feedId, feedId), eq(feedGroups.groupId, group.id)),
       );
   }
 }

@@ -12,6 +12,7 @@ export interface RawArticle {
   externalId?: string;
   score?: number;
   thumbnailUrl?: string;
+  headerImageUrl?: string;
   mediaUrl?: string;
   duration?: number;
   viewCount?: number;

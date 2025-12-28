@@ -141,7 +141,10 @@ function extractDuration(item: Record<string, unknown>): number | null {
  */
 function extractImage(item: Record<string, unknown>): string {
   const keys = ["itunes_image", "itunes:image", "image"];
-  const image = getAnyProperty<string | { href?: string; url?: string }>(item, keys);
+  const image = getAnyProperty<string | { href?: string; url?: string }>(
+    item,
+    keys,
+  );
 
   if (image != null) {
     if (typeof image === "object") {
@@ -279,7 +282,9 @@ export class PodcastAggregator extends BaseAggregator {
 
     for (const item of items) {
       try {
-        const article = await this.parseEpisode(item as Record<string, unknown>);
+        const article = await this.parseEpisode(
+          item as Record<string, unknown>,
+        );
         if (article) {
           articles.push(article);
         }
@@ -317,7 +322,9 @@ export class PodcastAggregator extends BaseAggregator {
   /**
    * Parse a single podcast episode.
    */
-  private async parseEpisode(item: Record<string, unknown>): Promise<RawArticle | null> {
+  private async parseEpisode(
+    item: Record<string, unknown>,
+  ): Promise<RawArticle | null> {
     // Extract podcast-specific data
     const { url: audioUrl, type: audioType } = extractEnclosure(item);
     const duration = extractDuration(item);

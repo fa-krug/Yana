@@ -28,9 +28,12 @@ export function handleGifMediaStrategy(
 ): boolean {
   if (urlLower.endsWith(".gif") || urlLower.endsWith(".gifv")) {
     if (!wouldUseGifAsHeader(post, url)) {
-      const gifUrl = extractAnimatedGifUrl(post) || (urlLower.endsWith(".gifv") ? url.slice(0, -1) : url);
+      const gifUrl =
+        extractAnimatedGifUrl(post) ||
+        (urlLower.endsWith(".gifv") ? url.slice(0, -1) : url);
       const fixedUrl = fixRedditMediaUrl(gifUrl);
-      if (fixedUrl) contentParts.push(`<p><img src="${fixedUrl}" alt="Animated GIF"></p>`);
+      if (fixedUrl)
+        contentParts.push(`<p><img src="${fixedUrl}" alt="Animated GIF"></p>`);
     }
     return true;
   }
@@ -53,7 +56,10 @@ export function handleImageMediaStrategy(
   if (isImage) {
     if (!wouldUseDirectImageAsHeader(post, url)) {
       const fixedUrl = fixRedditMediaUrl(url);
-      if (fixedUrl) contentParts.push(`<p><a href="${fixedUrl}">${escapeHtml(fixedUrl)}</a></p>`);
+      if (fixedUrl)
+        contentParts.push(
+          `<p><a href="${fixedUrl}">${escapeHtml(fixedUrl)}</a></p>`,
+        );
     }
     return true;
   }
@@ -72,7 +78,10 @@ export function handleVideoMediaStrategy(
   if (urlLower.includes("v.redd.it")) {
     if (!wouldUseVRedditAsHeader(post)) {
       const previewUrl = extractRedditVideoPreview(post);
-      if (previewUrl) contentParts.push(`<p><img src="${previewUrl}" alt="Video thumbnail"></p>`);
+      if (previewUrl)
+        contentParts.push(
+          `<p><img src="${previewUrl}" alt="Video thumbnail"></p>`,
+        );
       contentParts.push(`<p><a href="${url}">▶ View Video</a></p>`);
     }
     return true;

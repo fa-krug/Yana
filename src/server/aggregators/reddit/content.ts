@@ -15,7 +15,10 @@ import { decodeHtmlEntitiesInUrl } from "./urls";
 /**
  * Add selftext part to content.
  */
-async function addSelftextPart(post: RedditPostData, contentParts: string[]): Promise<void> {
+async function addSelftextPart(
+  post: RedditPostData,
+  contentParts: string[],
+): Promise<void> {
   if (post.selftext) {
     const selftextHtml = await convertRedditMarkdown(post.selftext);
     contentParts.push(`<div>${selftextHtml}</div>`);
@@ -25,7 +28,10 @@ async function addSelftextPart(post: RedditPostData, contentParts: string[]): Pr
 /**
  * Process a single gallery item.
  */
-function processGalleryItem(item: { media_id: string; caption?: string }, post: RedditPostData): string | null {
+function processGalleryItem(
+  item: { media_id: string; caption?: string },
+  post: RedditPostData,
+): string | null {
   const mediaInfo = post.media_metadata?.[item.media_id];
   if (!mediaInfo) return null;
 
@@ -39,7 +45,9 @@ function processGalleryItem(item: { media_id: string; caption?: string }, post: 
 
   if (!mediaUrl) return null;
 
-  const fixedUrl = fixRedditMediaUrl(decodeHtmlEntitiesInUrl(decodeURIComponent(mediaUrl)));
+  const fixedUrl = fixRedditMediaUrl(
+    decodeHtmlEntitiesInUrl(decodeURIComponent(mediaUrl)),
+  );
   const caption = item.caption || "";
   let alt = "Gallery image";
   if (caption) {
@@ -58,7 +66,8 @@ function processGalleryItem(item: { media_id: string; caption?: string }, post: 
  * Add gallery media to content.
  */
 function addGalleryMedia(post: RedditPostData, contentParts: string[]): void {
-  if (!post.is_gallery || !post.media_metadata || !post.gallery_data?.items) return;
+  if (!post.is_gallery || !post.media_metadata || !post.gallery_data?.items)
+    return;
 
   for (const item of post.gallery_data.items) {
     const html = processGalleryItem(item, post);
@@ -69,7 +78,11 @@ function addGalleryMedia(post: RedditPostData, contentParts: string[]): void {
 /**
  * Add link media to content.
  */
-function addLinkMedia(post: RedditPostData, contentParts: string[], isCrossPost: boolean): void {
+function addLinkMedia(
+  post: RedditPostData,
+  contentParts: string[],
+  isCrossPost: boolean,
+): void {
   if (!post.url || post.is_gallery) return;
 
   const url = decodeHtmlEntitiesInUrl(post.url);
@@ -95,11 +108,18 @@ async function addCommentsSection(
 ): Promise<void> {
   const decodedPermalink = decodeHtmlEntitiesInUrl(post.permalink);
   const permalink = `https://reddit.com${decodedPermalink}`;
-  const commentSectionParts: string[] = [`<h3><a href="${permalink}" target="_blank" rel="noopener">Comments</a></h3>`];
+  const commentSectionParts: string[] = [
+    `<h3><a href="${permalink}" target="_blank" rel="noopener">Comments</a></h3>`,
+  ];
 
   if (commentLimit > 0) {
     try {
-      const comments = await fetchPostComments(subreddit, post.id, commentLimit, userId);
+      const comments = await fetchPostComments(
+        subreddit,
+        post.id,
+        commentLimit,
+        userId,
+      );
       if (comments.length > 0) {
         const commentHtmls = await Promise.all(comments.map(formatCommentHtml));
         commentSectionParts.push(commentHtmls.join(""));
@@ -108,7 +128,10 @@ async function addCommentsSection(
       }
     } catch (error) {
       if (error instanceof ArticleSkipError) throw error;
-      logger.warn({ error, subreddit, postId: post.id }, "Failed to fetch comments");
+      logger.warn(
+        { error, subreddit, postId: post.id },
+        "Failed to fetch comments",
+      );
       commentSectionParts.push("<p><em>Comments unavailable.</em></p>");
     }
   } else {

@@ -2221,9 +2221,10 @@ export class FeedFormComponent implements OnInit, OnDestroy {
     }
 
     // Extract video ID from standard YouTube URLs
-    const videoIdMatch = /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&?/]+)/.exec(
-      article.link,
-    );
+    const videoIdMatch =
+      /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&?/]+)/.exec(
+        article.link,
+      );
     if (videoIdMatch && videoIdMatch[1]) {
       const videoId = videoIdMatch[1];
       // Safe: URL is constructed from trusted YouTube domain with extracted video ID

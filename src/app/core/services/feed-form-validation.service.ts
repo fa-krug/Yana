@@ -46,10 +46,13 @@ export class FeedFormValidationService {
     existingValues?: Record<string, unknown>,
   ): unknown {
     const rawValue = existingValues?.[option.key];
-    const existingValue = rawValue != undefined && rawValue != null ? rawValue : option.default;
+    const existingValue =
+      rawValue != undefined && rawValue != null ? rawValue : option.default;
 
     if (option.type === "boolean") {
-      return existingValue != undefined && existingValue != null ? Boolean(existingValue) : Boolean(option.default);
+      return existingValue != undefined && existingValue != null
+        ? Boolean(existingValue)
+        : Boolean(option.default);
     }
     if (option.type === "integer" || option.type === "float") {
       return (existingValue as number) ?? null;
@@ -77,16 +80,27 @@ export class FeedFormValidationService {
     Object.entries(options).forEach(([key, option]) => {
       const fieldName = `option_${key}`;
       const validators = option.required ? [Validators.required] : [];
-      
+
       if (option.widget === "json") {
         validators.push((control: AbstractControl) => {
           if (!control.value || control.value.trim() === "") return null;
-          try { JSON.parse(control.value); return null; } catch { return { jsonInvalid: true }; }
+          try {
+            JSON.parse(control.value);
+            return null;
+          } catch {
+            return { jsonInvalid: true };
+          }
         });
       }
 
-      const initialValue = this.getInitialValue({ ...option, key }, existingValues);
-      formGroup.addControl(fieldName, this.fb.control(initialValue, validators));
+      const initialValue = this.getInitialValue(
+        { ...option, key },
+        existingValues,
+      );
+      formGroup.addControl(
+        fieldName,
+        this.fb.control(initialValue, validators),
+      );
     });
   }
 
@@ -125,8 +139,10 @@ export class FeedFormValidationService {
    * Convert raw form value to boolean.
    */
   private convertToBoolean(value: unknown): boolean {
-    if (value === true || value === "true" || value === 1 || value === "1") return true;
-    if (value === false || value === "false" || value === 0 || value === "0") return false;
+    if (value === true || value === "true" || value === 1 || value === "1")
+      return true;
+    if (value === false || value === "false" || value === 0 || value === "0")
+      return false;
     return Boolean(value);
   }
 
@@ -135,7 +151,10 @@ export class FeedFormValidationService {
    */
   private convertToNumber(value: unknown, type: string): number | null {
     if (value == null || value === "") return null;
-    const num = type === "integer" ? parseInt(String(value), 10) : parseFloat(String(value));
+    const num =
+      type === "integer"
+        ? parseInt(String(value), 10)
+        : parseFloat(String(value));
     return isNaN(num) ? null : num;
   }
 
@@ -159,7 +178,11 @@ export class FeedFormValidationService {
       } else if (type === "integer" || type === "float") {
         const num = this.convertToNumber(rawValue, type);
         if (num !== null) aggregatorOptions[key] = num;
-      } else if (rawValue != null && rawValue !== undefined && rawValue !== "") {
+      } else if (
+        rawValue != null &&
+        rawValue !== undefined &&
+        rawValue !== ""
+      ) {
         aggregatorOptions[key] = rawValue;
       }
     });

@@ -62,9 +62,8 @@ export async function convertThumbnailToBase64(
   }
 
   // Convert URL to base64
-  const { convertThumbnailUrlToBase64 } = await import(
-    "@server/aggregators/base/utils"
-  );
+  const { convertThumbnailUrlToBase64 } =
+    await import("@server/aggregators/base/utils");
   return await convertThumbnailUrlToBase64(thumbnailUrl);
 }
 
@@ -91,9 +90,8 @@ export async function extractThumbnailWithFallback(
 
   // Fallback: Extract from content
   try {
-    const { extractBase64ImageFromContent } = await import(
-      "@server/aggregators/base/utils"
-    );
+    const { extractBase64ImageFromContent } =
+      await import("@server/aggregators/base/utils");
     const base64 = extractBase64ImageFromContent(processedContent);
     if (base64) {
       return base64;

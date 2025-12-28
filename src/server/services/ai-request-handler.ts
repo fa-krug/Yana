@@ -31,7 +31,10 @@ export class AIRequestRetryHandler {
    */
   calculateRetryDelay(attempt: number, retryAfter: number | null): number {
     if (retryAfter !== null) {
-      logger.info({ delay: retryAfter }, "Rate limit hit, waiting for Retry-After");
+      logger.info(
+        { delay: retryAfter },
+        "Rate limit hit, waiting for Retry-After",
+      );
       return retryAfter;
     }
     return this.config.retryDelay * Math.pow(2, attempt);

@@ -76,7 +76,10 @@ export function removeElementsBySelectors(
 /**
  * Rename element attributes to sanitize.
  */
-function renameAttributes($el: cheerio.Cheerio<cheerio.AnyNode>, el: cheerio.AnyNode): void {
+function renameAttributes(
+  $el: cheerio.Cheerio<cheerio.AnyNode>,
+  el: cheerio.AnyNode,
+): void {
   const classAttr = $el.attr("class");
   if (classAttr && !classAttr.includes("youtube-embed-container")) {
     $el.attr("data-sanitized-class", classAttr).removeAttr("class");
@@ -84,7 +87,11 @@ function renameAttributes($el: cheerio.Cheerio<cheerio.AnyNode>, el: cheerio.Any
 
   const styleAttr = $el.attr("style");
   if (styleAttr) {
-    const isYT = ($el.is("iframe") && ($el.attr("src")?.includes("/api/youtube-proxy") || $el.closest(".youtube-embed-container").length > 0)) || $el.closest(".youtube-embed-container").length > 0;
+    const isYT =
+      ($el.is("iframe") &&
+        ($el.attr("src")?.includes("/api/youtube-proxy") ||
+          $el.closest(".youtube-embed-container").length > 0)) ||
+      $el.closest(".youtube-embed-container").length > 0;
     if (!isYT) $el.attr("data-sanitized-style", styleAttr).removeAttr("style");
   }
 
@@ -93,7 +100,12 @@ function renameAttributes($el: cheerio.Cheerio<cheerio.AnyNode>, el: cheerio.Any
 
   if ("attribs" in el && el.attribs) {
     Object.keys(el.attribs).forEach((attr) => {
-      if (attr.startsWith("data-") && attr !== "data-src" && attr !== "data-srcset" && !attr.startsWith("data-sanitized-")) {
+      if (
+        attr.startsWith("data-") &&
+        attr !== "data-src" &&
+        attr !== "data-srcset" &&
+        !attr.startsWith("data-sanitized-")
+      ) {
         $el.attr(`data-sanitized-${attr}`, el.attribs[attr]).removeAttr(attr);
       }
     });
@@ -112,7 +124,10 @@ export function sanitizeHtml(html: string): string {
 
     $("style, iframe").each((_, el) => {
       const $el = $(el);
-      const isYT = $el.closest(".youtube-embed-container").length > 0 || ($el.is("iframe") && ($el.attr("src") || "").includes("/api/youtube-proxy"));
+      const isYT =
+        $el.closest(".youtube-embed-container").length > 0 ||
+        ($el.is("iframe") &&
+          ($el.attr("src") || "").includes("/api/youtube-proxy"));
       if (!isYT) $el.remove();
     });
 

@@ -5,14 +5,14 @@
  * Handles optional chaining and fallback values in a single-responsibility pattern.
  */
 
-import type { 
-  YouTubeSnippet, 
-  YouTubeThumbnails, 
-  YouTubeStatistics, 
-  YouTubeSearchItem, 
-  YouTubeChannelDetails 
+import type {
+  YouTubeSnippet,
+  YouTubeThumbnails,
+  YouTubeStatistics,
+  YouTubeSearchItem,
+  YouTubeChannelDetails,
 } from "./youtube-api-types";
-import type { YouTubeChannelSearchResult } from "./youtube.service";  
+import type { YouTubeChannelSearchResult } from "./youtube.service";
 
 /**
  * Extract channel handle from snippet data.
@@ -36,7 +36,9 @@ export function extractChannelHandle(snippet?: YouTubeSnippet): string | null {
  * Extract thumbnail URL from snippet thumbnails.
  * Prefers high quality, falls back to default.
  */
-export function extractThumbnailUrl(thumbnails?: YouTubeThumbnails): string | null {
+export function extractThumbnailUrl(
+  thumbnails?: YouTubeThumbnails,
+): string | null {
   const highUrl = thumbnails?.high?.url;
   if (highUrl) {
     return highUrl;

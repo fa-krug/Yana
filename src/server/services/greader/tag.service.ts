@@ -4,13 +4,7 @@
 
 import { eq, and, or, isNull, inArray, lt } from "drizzle-orm";
 
-import {
-  db,
-  articles,
-  feeds,
-  userArticleStates,
-  groups,
-} from "@server/db";
+import { db, articles, feeds, userArticleStates, groups } from "@server/db";
 import { cache } from "@server/utils/cache";
 
 import { StreamFilterOrchestrator } from "./stream-filter-builder";
@@ -47,13 +41,80 @@ export async function listTags(userId: number): Promise<Array<{ id: string }>> {
 /**
  * Determine state updates based on tags.
  */
-function getTagUpdates(addTag: string, removeTag: string): { isRead?: boolean; isSaved?: boolean } {
+function getTagUpdates(
+  addTag: string,
+  removeTag: string,
+): { isRead?: boolean; isSaved?: boolean } {
   const updates: { isRead?: boolean; isSaved?: boolean } = {};
   if (addTag === STATE_READ) updates.isRead = true;
   else if (addTag === STATE_STARRED) updates.isSaved = true;
   if (removeTag === STATE_READ) updates.isRead = false;
   else if (removeTag === STATE_STARRED) updates.isSaved = false;
   return updates;
+}
+
+/**
+ * Categorize articles for create/update/delete operations.
+ */
+function _categorizeArticleTagUpdates(
+  accessibleIds: number[],
+  stateMap: Map<number, typeof userArticleStates.$inferSelect>,
+  updates: { isRead?: boolean; isSaved?: boolean },
+  userId: number,
+): {
+  toCreate: (typeof userArticleStates.$inferInsert)[];
+  toUpdate: Array<{
+    id: number;
+    isRead: boolean;
+    isSaved: boolean;
+    updatedAt: Date;
+  }>;
+  toDelete: number[];
+} {
+  const toCreate: (typeof userArticleStates.$inferInsert)[] = [];
+  const toUpdate: Array<{
+    id: number;
+    isRead: boolean;
+    isSaved: boolean;
+    updatedAt: Date;
+  }> = [];
+  const toDelete: number[] = [];
+
+  for (const articleId of accessibleIds) {
+    const existing = stateMap.get(articleId);
+    const newRead =
+      updates.isRead !== undefined
+        ? updates.isRead
+        : (existing?.isRead ?? false);
+    const newSaved =
+      updates.isSaved !== undefined
+        ? updates.isSaved
+        : (existing?.isSaved ?? false);
+
+    if (existing) {
+      if (!newRead && !newSaved) {
+        toDelete.push(existing.id);
+      } else {
+        toUpdate.push({
+          id: existing.id,
+          isRead: newRead,
+          isSaved: newSaved,
+          updatedAt: new Date(),
+        });
+      }
+    } else if (newRead || newSaved) {
+      toCreate.push({
+        userId,
+        articleId,
+        isRead: newRead,
+        isSaved: newSaved,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+    }
+  }
+
+  return { toCreate, toUpdate, toDelete };
 }
 
 /**
@@ -67,11 +128,22 @@ export async function editTags(
 ): Promise<number> {
   if (!itemIds?.length) return 0;
 
-  const articleIds = itemIds.map((id) => parseItemId(id)).filter((id) => id > 0);
+  const articleIds = itemIds
+    .map((id) => parseItemId(id))
+    .filter((id) => id > 0);
   if (!articleIds.length) return 0;
 
-  const accessibleArticles = await db.select({ id: articles.id }).from(articles).innerJoin(feeds, eq(articles.feedId, feeds.id))
-    .where(and(inArray(articles.id, articleIds), or(eq(feeds.userId, userId), isNull(feeds.userId)), eq(feeds.enabled, true)));
+  const accessibleArticles = await db
+    .select({ id: articles.id })
+    .from(articles)
+    .innerJoin(feeds, eq(articles.feedId, feeds.id))
+    .where(
+      and(
+        inArray(articles.id, articleIds),
+        or(eq(feeds.userId, userId), isNull(feeds.userId)),
+        eq(feeds.enabled, true),
+      ),
+    );
 
   const accessibleIds = accessibleArticles.map((a) => a.id);
   if (!accessibleIds.length) return 0;
@@ -79,29 +151,35 @@ export async function editTags(
   const updates = getTagUpdates(addTag, removeTag);
   if (!Object.keys(updates).length) return 0;
 
-  const existingStates = await db.select().from(userArticleStates).where(and(eq(userArticleStates.userId, userId), inArray(userArticleStates.articleId, accessibleIds)));
+  const existingStates = await db
+    .select()
+    .from(userArticleStates)
+    .where(
+      and(
+        eq(userArticleStates.userId, userId),
+        inArray(userArticleStates.articleId, accessibleIds),
+      ),
+    );
   const stateMap = new Map(existingStates.map((s) => [s.articleId, s]));
 
-  const toCreate: (typeof userArticleStates.$inferInsert)[] = [];
-  const toUpdate: Array<{ id: number; isRead: boolean; isSaved: boolean; updatedAt: Date }> = [];
-  const toDelete: number[] = [];
+  const { toCreate, toUpdate, toDelete } = _categorizeArticleTagUpdates(
+    accessibleIds,
+    stateMap,
+    updates,
+    userId,
+  );
 
-  for (const articleId of accessibleIds) {
-    const existing = stateMap.get(articleId);
-    const newRead = updates.isRead !== undefined ? updates.isRead : (existing?.isRead ?? false);
-    const newSaved = updates.isSaved !== undefined ? updates.isSaved : (existing?.isSaved ?? false);
-
-    if (existing) {
-      if (!newRead && !newSaved) toDelete.push(existing.id);
-      else toUpdate.push({ id: existing.id, isRead: newRead, isSaved: newSaved, updatedAt: new Date() });
-    } else if (newRead || newSaved) {
-      toCreate.push({ userId, articleId, isRead: newRead, isSaved: newSaved, createdAt: new Date(), updatedAt: new Date() });
-    }
-  }
-
-  if (toCreate.length) await db.insert(userArticleStates).values(toCreate).onConflictDoNothing();
-  for (const u of toUpdate) await db.update(userArticleStates).set({ isRead: u.isRead, isSaved: u.isSaved, updatedAt: u.updatedAt }).where(eq(userArticleStates.id, u.id));
-  if (toDelete.length) await db.delete(userArticleStates).where(inArray(userArticleStates.id, toDelete));
+  if (toCreate.length)
+    await db.insert(userArticleStates).values(toCreate).onConflictDoNothing();
+  for (const u of toUpdate)
+    await db
+      .update(userArticleStates)
+      .set({ isRead: u.isRead, isSaved: u.isSaved, updatedAt: u.updatedAt })
+      .where(eq(userArticleStates.id, u.id));
+  if (toDelete.length)
+    await db
+      .delete(userArticleStates)
+      .where(inArray(userArticleStates.id, toDelete));
 
   cache.delete(`unread_counts_${userId}_false`);
   cache.delete(`unread_counts_${userId}_true`);
@@ -113,7 +191,7 @@ export async function editTags(
  */
 function categorizeBatchOperations(
   articleIds: number[],
-  existingStates: typeof userArticleStates.$inferSelect[],
+  existingStates: (typeof userArticleStates.$inferSelect)[],
   userId: number,
 ): {
   toCreate: (typeof userArticleStates.$inferInsert)[];

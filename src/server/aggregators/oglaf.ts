@@ -113,9 +113,8 @@ async function fetchOglafContent(
     if (confirmButton) {
       logger.debug("Found confirmation page, clicking confirm button");
       // Wait for navigation to complete after clicking
-       
       await Promise.all([
-        page.waitForNavigation({ waitUntil: "networkidle", timeout }),
+        page.waitForLoadState("networkidle").catch(() => {}),
         confirmButton.click(),
       ]).catch(() => {
         // If navigation doesn't happen (SPA), that's fine - page is already loaded
@@ -380,7 +379,10 @@ export class OglafAggregator extends BaseAggregator {
       url: item.link || "",
       published: item.pubDate ? new Date(item.pubDate) : new Date(),
       summary: item.contentSnippet || item.content || "",
-      author: item.creator || (item as Parser.Item & { author?: string }).author || undefined,
+      author:
+        item.creator ||
+        (item as Parser.Item & { author?: string }).author ||
+        undefined,
     }));
 
     const elapsed = Date.now() - startTime;
@@ -454,6 +456,51 @@ export class OglafAggregator extends BaseAggregator {
   }
 
   /**
+   * Get or create a page for fetching comic content.
+   */
+  private async _getOrCreatePage(
+    url: string,
+  ): Promise<{ page: Page; shouldClosePage: boolean }> {
+    let page = this.currentPage;
+    let shouldClosePage = false;
+
+    if (!page) {
+      const browserInstance = await getBrowser();
+      page = await browserInstance.newPage();
+      shouldClosePage = true;
+
+      try {
+        await page.goto(url, {
+          waitUntil: "networkidle",
+          timeout: this.fetchTimeout,
+        });
+
+        const confirmButton = await page
+          .waitForSelector("#confirm", { timeout: 5000 })
+          .catch(() => null);
+
+        if (confirmButton) {
+          await Promise.all([
+            // eslint-disable-next-line sonarjs/deprecation
+            page.waitForNavigation({
+              waitUntil: "networkidle",
+              timeout: this.fetchTimeout,
+            }),
+            confirmButton.click(),
+          ]).catch(() => {});
+        }
+      } catch (error) {
+        if (shouldClosePage) {
+          await page.close();
+        }
+        throw error;
+      }
+    }
+
+    return { page, shouldClosePage };
+  }
+
+  /**
    * Override processContent to extract only the comic image as base64.
    */
   protected override async processContent(
@@ -472,7 +519,6 @@ export class OglafAggregator extends BaseAggregator {
       "Processing Oglaf content - extracting comic image",
     );
 
-    // Extract the comic image URL
     const comicImageUrl = extractComicImageUrl(html, article.url);
 
     if (!comicImageUrl) {
@@ -489,51 +535,12 @@ export class OglafAggregator extends BaseAggregator {
       return `<p>Could not extract comic. <a href="${article.url}">View on Oglaf</a></p>`;
     }
 
-    // Use stored page if available, otherwise create new one
-    let page = this.currentPage;
-    let shouldClosePage = false;
-
-    if (!page) {
-      // Fallback: create new page
-      const browserInstance = await getBrowser();
-      page = await browserInstance.newPage();
-      shouldClosePage = true;
-
-      try {
-        await page.goto(article.url, {
-          waitUntil: "networkidle",
-          timeout: this.fetchTimeout,
-        });
-
-        // Handle age confirmation if needed
-        const confirmButton = await page
-          .waitForSelector("#confirm", { timeout: 5000 })
-          .catch(() => null);
-
-        if (confirmButton) {
-          await Promise.all([
-            // eslint-disable-next-line sonarjs/deprecation
-            page.waitForNavigation({
-              waitUntil: "networkidle",
-              timeout: this.fetchTimeout,
-            }),
-            confirmButton.click(),
-          ]).catch(() => {});
-        }
-      } catch (error) {
-        if (shouldClosePage && page) {
-          await page.close();
-        }
-        throw error;
-      }
-    }
+    const { page, shouldClosePage } = await this._getOrCreatePage(article.url);
 
     try {
-      // Fetch image as base64 using page context
       const comicImageBase64 = await fetchImageAsBase64(comicImageUrl, page);
 
       if (comicImageBase64) {
-        // Store as thumbnail URL (will be converted by service)
         article.thumbnailUrl = comicImageBase64;
         const altText = extractComicImageAlt(html, article.url);
         const elapsed = Date.now() - startTime;
@@ -550,7 +557,6 @@ export class OglafAggregator extends BaseAggregator {
         );
         return `<img src="${comicImageBase64}" alt="${altText}">`;
       } else {
-        // Fallback to URL if base64 conversion fails
         article.thumbnailUrl = comicImageUrl;
         const altText = extractComicImageAlt(html, article.url);
         const elapsed = Date.now() - startTime;
@@ -568,7 +574,6 @@ export class OglafAggregator extends BaseAggregator {
         return `<img src="${comicImageUrl}" alt="${altText}">`;
       }
     } finally {
-      // Close page if we created it
       if (shouldClosePage && page) {
         try {
           await page.close();
@@ -585,7 +590,6 @@ export class OglafAggregator extends BaseAggregator {
           );
         }
       }
-      // Clear stored page
       this.currentPage = null;
     }
   }

@@ -110,15 +110,9 @@ export class MimeTypeDetector {
    * Detect MIME type from content-type header or URL.
    * Returns null if unable to determine.
    */
-  detect(
-    url: string,
-    contentTypeHeader: string | undefined,
-  ): string | null {
+  detect(url: string, contentTypeHeader: string | undefined): string | null {
     // Try header first
-    if (
-      contentTypeHeader &&
-      contentTypeHeader !== "application/octet-stream"
-    ) {
+    if (contentTypeHeader && contentTypeHeader !== "application/octet-stream") {
       return contentTypeHeader.split(";")[0].trim();
     }
 

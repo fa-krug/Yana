@@ -22,9 +22,12 @@ export class YouTubeAPIError extends Error {
  */
 function getReasonMessage(reason: string): string | null {
   const reasonMap: Record<string, string> = {
-    quotaExceeded: "YouTube API quota exceeded. Please try again later or check your quota in Google Cloud Console.",
-    accessNotConfigured: "YouTube Data API v3 is not enabled. Enable it in Google Cloud Console.",
-    forbidden: "API key is restricted or invalid. Check API key restrictions in Google Cloud Console.",
+    quotaExceeded:
+      "YouTube API quota exceeded. Please try again later or check your quota in Google Cloud Console.",
+    accessNotConfigured:
+      "YouTube Data API v3 is not enabled. Enable it in Google Cloud Console.",
+    forbidden:
+      "API key is restricted or invalid. Check API key restrictions in Google Cloud Console.",
   };
   return reasonMap[reason] || null;
 }
@@ -39,7 +42,7 @@ function getStatusMessage(status?: number): string | null {
     429: "YouTube API rate limit exceeded. Please try again later.",
     400: "Invalid YouTube API request. Check your channel identifier format.",
   };
-  return status ? (statusMap[status] || null) : null;
+  return status ? statusMap[status] || null : null;
 }
 
 /**
@@ -48,7 +51,9 @@ function getStatusMessage(status?: number): string | null {
 export function getYouTubeErrorMessage(error: unknown): string {
   if (axios.isAxiosError(error)) {
     const axiosError = error as AxiosError;
-    const errorData = axiosError.response?.data as { error?: { errors?: Array<{ reason?: string }> } } | undefined;
+    const errorData = axiosError.response?.data as
+      | { error?: { errors?: Array<{ reason?: string }> } }
+      | undefined;
 
     if (errorData?.error?.errors?.[0]?.reason) {
       const msg = getReasonMessage(errorData.error.errors[0].reason);

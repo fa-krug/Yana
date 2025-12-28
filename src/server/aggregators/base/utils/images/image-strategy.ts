@@ -43,7 +43,9 @@ export interface ImageStrategy {
    * Throws ArticleSkipError for 4xx errors that should skip the article.
    * Throws other errors for unexpected failures.
    */
-  extract(context: ImageExtractionContext): Promise<ImageExtractionResult | null>;
+  extract(
+    context: ImageExtractionContext,
+  ): Promise<ImageExtractionResult | null>;
 }
 
 /**
@@ -56,7 +58,9 @@ export class ImageExtractionOrchestrator {
   /**
    * Extract image using the configured strategies.
    */
-  async extract(context: ImageExtractionContext): Promise<ImageExtractionResult | null> {
+  async extract(
+    context: ImageExtractionContext,
+  ): Promise<ImageExtractionResult | null> {
     for (const strategy of this.strategies) {
       if (!strategy.canHandle(context.url)) {
         continue;

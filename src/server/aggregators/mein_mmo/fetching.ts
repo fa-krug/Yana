@@ -23,12 +23,32 @@ async function fetchPageContent(
 /**
  * Log page fetch error based on type.
  */
-function logPageFetchError(error: unknown, pageNum: number, maxPage: number, logger: pino.Logger, aggregatorId: string, feedId: number | null | undefined): void {
-  const logCtx = { step: "enrichArticles", subStep: "fetchAllPages", aggregator: aggregatorId, feedId, pageNum, maxPage };
+function logPageFetchError(
+  error: unknown,
+  pageNum: number,
+  maxPage: number,
+  logger: pino.Logger,
+  aggregatorId: string,
+  feedId: number | null | undefined,
+): void {
+  const logCtx = {
+    step: "enrichArticles",
+    subStep: "fetchAllPages",
+    aggregator: aggregatorId,
+    feedId,
+    pageNum,
+    maxPage,
+  };
   if (error instanceof ContentFetchError) {
     logger.warn({ ...logCtx, error }, "Failed to fetch page");
   } else {
-    logger.error({ ...logCtx, error: error instanceof Error ? error : new Error(String(error)) }, "Unexpected error fetching page");
+    logger.error(
+      {
+        ...logCtx,
+        error: error instanceof Error ? error : new Error(String(error)),
+      },
+      "Unexpected error fetching page",
+    );
   }
 }
 
@@ -43,7 +63,12 @@ export async function fetchAllPages(
   baseFetch: (url: string) => Promise<string>,
 ): Promise<string> {
   const firstPageHtml = await baseFetch(baseUrl);
-  const pageNumbers = extractPageNumbers(firstPageHtml, logger, aggregatorId, feedId);
+  const pageNumbers = extractPageNumbers(
+    firstPageHtml,
+    logger,
+    aggregatorId,
+    feedId,
+  );
 
   if (pageNumbers.size <= 1) {
     const $ = cheerio.load(firstPageHtml);
@@ -60,13 +85,25 @@ export async function fetchAllPages(
       if (pageNum === 1) {
         pageUrl = baseUrl;
       } else {
-        pageUrl = baseUrl.endsWith("/") ? `${baseUrl}${pageNum}/` : `${baseUrl}/${pageNum}/`;
+        pageUrl = baseUrl.endsWith("/")
+          ? `${baseUrl}${pageNum}/`
+          : `${baseUrl}/${pageNum}/`;
       }
       const content = await fetchPageContent(pageUrl, baseFetch);
       if (content) {
         allContentParts.push(content);
       } else {
-        logger.warn({ step: "enrichArticles", subStep: "fetchAllPages", aggregator: aggregatorId, feedId, pageNum, maxPage }, "Could not find content div on page");
+        logger.warn(
+          {
+            step: "enrichArticles",
+            subStep: "fetchAllPages",
+            aggregator: aggregatorId,
+            feedId,
+            pageNum,
+            maxPage,
+          },
+          "Could not find content div on page",
+        );
       }
     } catch (error) {
       logPageFetchError(error, pageNum, maxPage, logger, aggregatorId, feedId);

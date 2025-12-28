@@ -9,9 +9,7 @@ import type pino from "pino";
 import { extractContent } from "../base/extract";
 import type { RawArticle } from "../base/types";
 
-import {
-  FigureProcessingOrchestrator,
-} from "./figure-processing-strategy";
+import { FigureProcessingOrchestrator } from "./figure-processing-strategy";
 import {
   YouTubeEmbedStrategy,
   YouTubeFallbackStrategy,

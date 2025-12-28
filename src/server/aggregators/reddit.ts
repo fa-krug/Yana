@@ -436,7 +436,10 @@ export class RedditAggregator extends BaseAggregator {
     let effectiveSubreddit = subreddit;
 
     // Handle cross-posts: use original post data if this is a cross-post
-    if (postData.crosspost_parent_list && postData.crosspost_parent_list.length > 0) {
+    if (
+      postData.crosspost_parent_list &&
+      postData.crosspost_parent_list.length > 0
+    ) {
       const originalPost = postData.crosspost_parent_list[0];
       isCrossPost = true;
       effectiveSubreddit = originalPost.subreddit || subreddit;

@@ -297,11 +297,7 @@ export class RedditSettingsComponent {
       }
     }
 
-    if (
-      fieldErrors &&
-      typeof fieldErrors === "object" &&
-      fieldErrors != null
-    ) {
+    if (fieldErrors && typeof fieldErrors === "object" && fieldErrors != null) {
       const err = fieldErrors as Record<string, unknown>;
       return {
         clientId:

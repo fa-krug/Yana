@@ -108,10 +108,7 @@ export class EnrichmentPipeline {
       }
 
       // Step 5: Process content
-      const processed = await this.processContent(
-        extracted,
-        errorContext,
-      );
+      const processed = await this.processContent(extracted, errorContext);
       if (!processed) {
         return null;
       }
@@ -134,11 +131,11 @@ export class EnrichmentPipeline {
   /**
    * Get HTML content from cache or fetch it.
    */
-  private async getContentHtml(errorContext: ErrorContext): Promise<string | null> {
+  private async getContentHtml(
+    errorContext: ErrorContext,
+  ): Promise<string | null> {
     // Try cache first
-    let html: string | null = await this.mixin.getCachedContent(
-      this.article,
-    );
+    let html: string | null = await this.mixin.getCachedContent(this.article);
     if (html) {
       this.logger.debug(
         {

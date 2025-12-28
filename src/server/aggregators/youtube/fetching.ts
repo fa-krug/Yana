@@ -37,7 +37,12 @@ interface YouTubeChannel {
  */
 function extractChannelIconUrl(channel: YouTubeChannel): string | null {
   if (!channel.snippet?.thumbnails) return null;
-  return channel.snippet.thumbnails.high?.url || channel.snippet.thumbnails.medium?.url || channel.snippet.thumbnails.default?.url || null;
+  return (
+    channel.snippet.thumbnails.high?.url ||
+    channel.snippet.thumbnails.medium?.url ||
+    channel.snippet.thumbnails.default?.url ||
+    null
+  );
 }
 
 /**
@@ -53,15 +58,38 @@ async function fetchVideosWithFallback(
   feedId: number | undefined,
 ): Promise<YouTubeVideo[]> {
   if (!playlistId) {
-    logger.warn({ step: "fetchSourceData", subStep: "fetchVideos", aggregator: aggregatorId, feedId, channelId }, "No uploads playlist. Trying fallback search.");
+    logger.warn(
+      {
+        step: "fetchSourceData",
+        subStep: "fetchVideos",
+        aggregator: aggregatorId,
+        feedId,
+        channelId,
+      },
+      "No uploads playlist. Trying fallback search.",
+    );
     return await fetchVideosViaSearch(channelId, maxResults, apiKey);
   }
 
   try {
     return await fetchVideosFromPlaylist(playlistId, maxResults, apiKey);
   } catch (error) {
-    if (axios.isAxiosError(error) && (error.message.includes("playlistNotFound") || error.response?.status === 404)) {
-      logger.warn({ step: "fetchSourceData", subStep: "fetchVideos", aggregator: aggregatorId, feedId, channelId, playlistId }, "Playlist inaccessible. Trying fallback search.");
+    if (
+      axios.isAxiosError(error) &&
+      (error.message.includes("playlistNotFound") ||
+        error.response?.status === 404)
+    ) {
+      logger.warn(
+        {
+          step: "fetchSourceData",
+          subStep: "fetchVideos",
+          aggregator: aggregatorId,
+          feedId,
+          channelId,
+          playlistId,
+        },
+        "Playlist inaccessible. Trying fallback search.",
+      );
       return await fetchVideosViaSearch(channelId, maxResults, apiKey);
     }
     throw error;
@@ -83,16 +111,28 @@ export async function fetchYouTubeChannelData(
 }> {
   const startTime = Date.now();
   try {
-    const response = await axios.get("https://www.googleapis.com/youtube/v3/channels", {
-      params: { part: "contentDetails,snippet", id: channelId, key: apiKey },
-    });
+    const response = await axios.get(
+      "https://www.googleapis.com/youtube/v3/channels",
+      {
+        params: { part: "contentDetails,snippet", id: channelId, key: apiKey },
+      },
+    );
 
     const channels: YouTubeChannel[] = response.data.items || [];
-    if (channels.length === 0) throw new YouTubeAPIError(`Channel not found: ${channelId}`);
+    if (channels.length === 0)
+      throw new YouTubeAPIError(`Channel not found: ${channelId}`);
 
     const channel = channels[0];
     const channelIconUrl = extractChannelIconUrl(channel);
-    const videos = await fetchVideosWithFallback(channelId, channel.contentDetails?.relatedPlaylists?.uploads, maxResults, apiKey, logger, aggregatorId, feedId);
+    const videos = await fetchVideosWithFallback(
+      channelId,
+      channel.contentDetails?.relatedPlaylists?.uploads,
+      maxResults,
+      apiKey,
+      logger,
+      aggregatorId,
+      feedId,
+    );
 
     return { videos, channelIconUrl };
   } catch (error) {
@@ -104,7 +144,18 @@ export async function fetchYouTubeChannelData(
       const message = error instanceof Error ? error.message : String(error);
       errorMsg = `Error fetching YouTube videos: ${message}`;
     }
-    logger.error({ step: "fetchSourceData", subStep: "error", aggregator: aggregatorId, feedId, channelId, error, elapsed }, errorMsg);
+    logger.error(
+      {
+        step: "fetchSourceData",
+        subStep: "error",
+        aggregator: aggregatorId,
+        feedId,
+        channelId,
+        error,
+        elapsed,
+      },
+      errorMsg,
+    );
     throw new YouTubeAPIError(errorMsg, error);
   }
 }

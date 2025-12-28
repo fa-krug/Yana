@@ -93,7 +93,10 @@ export class DarkLegacyAggregator extends BaseAggregator {
       url: item.link || "",
       published: item.pubDate ? new Date(item.pubDate) : new Date(),
       summary: item.contentSnippet || item.content || "",
-      author: item.creator || (item as Parser.Item & { author?: string }).author || undefined,
+      author:
+        item.creator ||
+        (item as Parser.Item & { author?: string }).author ||
+        undefined,
     }));
 
     const elapsed = Date.now() - startTime;

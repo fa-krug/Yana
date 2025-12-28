@@ -20,7 +20,9 @@ export function buildPermalink(postData: RedditPostData): string {
 /**
  * Determine the media URL for a Reddit video post.
  */
-export function extractVideoMediaUrl(postData: RedditPostData): string | undefined {
+export function extractVideoMediaUrl(
+  postData: RedditPostData,
+): string | undefined {
   if (!postData.is_video || !postData.url) {
     return undefined;
   }

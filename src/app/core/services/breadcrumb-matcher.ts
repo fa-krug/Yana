@@ -46,8 +46,7 @@ export class FeedEditPatternMatcher {
       // Check if we're in feeds context
       const isFeedsContext = this.isFeedsContext(route);
       if (isFeedsContext) {
-        const paramValue =
-          route.params["id"] || route.paramMap.get("id");
+        const paramValue = route.params["id"] || route.paramMap.get("id");
         const labelKey = `id:${paramValue}`;
         const dynamicLabel = context.dynamicLabels.get(labelKey);
 
@@ -149,11 +148,7 @@ export class ParameterizedRouteMatcher {
     }
 
     // For numeric IDs without labels, skip breadcrumb
-    if (
-      paramName === "id" &&
-      paramValue &&
-      /^\d+$/.test(String(paramValue))
-    ) {
+    if (paramName === "id" && paramValue && /^\d+$/.test(String(paramValue))) {
       return { handled: false, shouldRecurse: true };
     }
 
@@ -182,7 +177,10 @@ export class RegularRouteMatcher {
     }
 
     // Skip "articles" segment if there's an article detail child
-    if (routePath === "articles" && this.hasArticleDetailChild(route, context)) {
+    if (
+      routePath === "articles" &&
+      this.hasArticleDetailChild(route, context)
+    ) {
       return { handled: false, shouldRecurse: true };
     }
 

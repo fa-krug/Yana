@@ -106,7 +106,12 @@ export class SSEService {
           const reader = response.body.getReader();
           const decoder = new TextDecoder();
 
-          const streamReader = new SSEStreamReader(reader, decoder, subject, signal);
+          const streamReader = new SSEStreamReader(
+            reader,
+            decoder,
+            subject,
+            signal,
+          );
 
           streamReader.readStream().catch((error) => {
             if (!signal.aborted) {

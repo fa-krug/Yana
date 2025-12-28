@@ -35,7 +35,10 @@ function createInMemoryDatabase(): Database.Database {
     return db;
   } catch (error) {
     logger.error({ error }, "Failed to create in-memory database during build");
-    throw new DatabaseError("Failed to create database during build", error as Error);
+    throw new DatabaseError(
+      "Failed to create database during build",
+      error as Error,
+    );
   }
 }
 
@@ -58,8 +61,10 @@ function getDatabase(): Database.Database {
 
   const databasePath = getDatabasePath();
   // Safe: /tmp is intentionally used for temporary build-context database
-  // eslint-disable-next-line sonarjs/publicly-writable-directories
-  const isBuildContext = databasePath.includes("/tmp/build-db") ||
+
+  const isBuildContext =
+    // eslint-disable-next-line sonarjs/publicly-writable-directories
+    databasePath.includes("/tmp/build-db") ||
     process.env["NG_BUILD"] === "true" ||
     process.argv.some((arg) => arg.includes("ng") && arg.includes("build"));
 
@@ -70,13 +75,17 @@ function getDatabase(): Database.Database {
 
   try {
     const dir = dirname(databasePath);
-    if (dir && dir !== "." && !existsSync(dir)) mkdirSync(dir, { recursive: true });
+    if (dir && dir !== "." && !existsSync(dir))
+      mkdirSync(dir, { recursive: true });
 
     sqlite = new Database(databasePath);
     optimizeDatabase(sqlite);
     logger.info({ path: databasePath }, "Database connection established");
   } catch (error) {
-    logger.error({ error, path: databasePath }, "Failed to connect to database");
+    logger.error(
+      { error, path: databasePath },
+      "Failed to connect to database",
+    );
     throw new DatabaseError("Failed to connect to database", error as Error);
   }
 

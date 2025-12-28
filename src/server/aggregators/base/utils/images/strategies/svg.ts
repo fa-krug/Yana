@@ -39,12 +39,14 @@ async function extractSvgDataFromPage(page: Page): Promise<SvgData | null> {
 
     const getBgColor = (style: CSSStyleDeclaration | null) => {
       const bg = style?.backgroundColor;
-      return (bg && bg !== "rgba(0, 0, 0, 0)" && bg !== "transparent") ? bg : null;
+      return bg && bg !== "rgba(0, 0, 0, 0)" && bg !== "transparent"
+        ? bg
+        : null;
     };
 
     const getTextColor = (style: CSSStyleDeclaration | null) => {
       const color = style?.color;
-      return (color && color !== "rgba(0, 0, 0, 0)") ? color : null;
+      return color && color !== "rgba(0, 0, 0, 0)" ? color : null;
     };
 
     let textColor = getTextColor(parentStyle) || getTextColor(svgStyle);
@@ -52,7 +54,8 @@ async function extractSvgDataFromPage(page: Page): Promise<SvgData | null> {
       const firstElem = svg.querySelector("path, circle, rect, polygon, text");
       if (firstElem) {
         const fill = window.getComputedStyle(firstElem).fill;
-        if (fill && fill !== "none" && fill !== "rgba(0, 0, 0, 0)") textColor = fill;
+        if (fill && fill !== "none" && fill !== "rgba(0, 0, 0, 0)")
+          textColor = fill;
       }
     }
 
@@ -70,7 +73,9 @@ async function extractSvgDataFromPage(page: Page): Promise<SvgData | null> {
  * Apply text and background colors to SVG content and wrap it.
  */
 function applyColorsToSvg(data: SvgData): string {
-  let innerContent = data.svgHtml.replace(/^<svg[^>]*>/, "").replace(/<\/svg>$/, "");
+  let innerContent = data.svgHtml
+    .replace(/^<svg[^>]*>/, "")
+    .replace(/<\/svg>$/, "");
 
   if (data.textColor) {
     const fillValue = `fill="${data.textColor}"`;
@@ -96,13 +101,19 @@ function applyColorsToSvg(data: SvgData): string {
 /**
  * Convert SVG HTML to PNG buffer.
  */
-async function convertSvgToPng(svgHtml: string, isHeaderImage: boolean): Promise<Buffer> {
+async function convertSvgToPng(
+  svgHtml: string,
+  isHeaderImage: boolean,
+): Promise<Buffer> {
   const targetSize = isHeaderImage
     ? { width: MAX_HEADER_IMAGE_WIDTH, height: MAX_HEADER_IMAGE_HEIGHT }
     : { width: MAX_IMAGE_WIDTH, height: MAX_IMAGE_HEIGHT };
 
   return await sharp(Buffer.from(svgHtml, "utf-8"))
-    .resize(targetSize.width, targetSize.height, { fit: "inside", withoutEnlargement: false })
+    .resize(targetSize.width, targetSize.height, {
+      fit: "inside",
+      withoutEnlargement: false,
+    })
     .png()
     .toBuffer();
 }
@@ -110,7 +121,10 @@ async function convertSvgToPng(svgHtml: string, isHeaderImage: boolean): Promise
 /**
  * Extract SVG from HTML using Cheerio or Regex fallback.
  */
-function extractSvgFromHtml($: cheerio.CheerioAPI, html: string): string | null {
+function extractSvgFromHtml(
+  $: cheerio.CheerioAPI,
+  html: string,
+): string | null {
   const firstSvg = $("svg").first();
   if (firstSvg.length > 0) return $("<div>").append(firstSvg.clone()).html();
 
@@ -135,21 +149,33 @@ export async function handleInlineSvg(
   try {
     const svgData = await extractSvgDataFromPage(page);
     if (svgData?.svgHtml) {
-      const finalSvgHtml = (svgData.backgroundColor || svgData.textColor) ? applyColorsToSvg(svgData) : svgData.svgHtml;
+      const finalSvgHtml =
+        svgData.backgroundColor || svgData.textColor
+          ? applyColorsToSvg(svgData)
+          : svgData.svgHtml;
       const converted = await convertSvgToPng(finalSvgHtml, isHeaderImage);
       return { imageData: converted, contentType: "image/png" };
     }
   } catch (error) {
-    logger.debug({ error }, "Failed to process SVG from page, falling back to HTML extraction");
+    logger.debug(
+      { error },
+      "Failed to process SVG from page, falling back to HTML extraction",
+    );
   }
 
   const fallbackSvgHtml = extractSvgFromHtml($, html);
-  if (fallbackSvgHtml && (fallbackSvgHtml.includes("<path") || fallbackSvgHtml.length > 500)) {
+  if (
+    fallbackSvgHtml &&
+    (fallbackSvgHtml.includes("<path") || fallbackSvgHtml.length > 500)
+  ) {
     try {
       const converted = await convertSvgToPng(fallbackSvgHtml, isHeaderImage);
       return { imageData: converted, contentType: "image/png" };
     } catch (error) {
-      logger.warn({ error, svgLength: fallbackSvgHtml.length }, "Failed to convert fallback SVG");
+      logger.warn(
+        { error, svgLength: fallbackSvgHtml.length },
+        "Failed to convert fallback SVG",
+      );
     }
   }
 
