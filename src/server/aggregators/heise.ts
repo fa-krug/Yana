@@ -5,6 +5,7 @@
  */
 
 import * as cheerio from "cheerio";
+import type { AnyNode } from "domhandler";
 
 import { ContentFetchError } from "./base/exceptions";
 import { extractContent } from "./base/extract";
@@ -432,7 +433,7 @@ export class HeiseAggregator extends FullWebsiteAggregator {
         try {
           const commentHtml = this.processCommentElement(
             $,
-            element,
+            element as AnyNode,
             i,
             articleUrl,
           );
@@ -506,7 +507,7 @@ export class HeiseAggregator extends FullWebsiteAggregator {
    */
   private findCommentElements(
     $: cheerio.CheerioAPI,
-  ): cheerio.Cheerio<cheerio.Element> | null {
+  ): cheerio.Cheerio<unknown> | null {
     const commentSelectors = [
       "li.posting_element",
       '[id^="posting_"]',
@@ -539,12 +540,12 @@ export class HeiseAggregator extends FullWebsiteAggregator {
    */
   private processCommentElement(
     $: cheerio.CheerioAPI,
-    element: cheerio.Element,
+    element: AnyNode,
     i: number,
     articleUrl: string,
   ): string | null {
     const $el = $(element);
-    const isListItem = element.tagName === "li";
+    const isListItem = element.type === "tag" && (element as any).name === "li";
 
     if (isListItem) {
       return this.processListItemComment($el);
@@ -556,9 +557,7 @@ export class HeiseAggregator extends FullWebsiteAggregator {
   /**
    * Process a comment in list item view.
    */
-  private processListItemComment(
-    $el: cheerio.Cheerio<cheerio.Element>,
-  ): string | null {
+  private processListItemComment($el: cheerio.Cheerio<AnyNode>): string | null {
     let author = "Unknown";
     const authorElem = $el
       .find(".tree_thread_list--written_by_user, .pseudonym")
@@ -583,7 +582,7 @@ export class HeiseAggregator extends FullWebsiteAggregator {
    * Process a comment in full view.
    */
   private processFullViewComment(
-    $el: cheerio.Cheerio<cheerio.Element>,
+    $el: cheerio.Cheerio<AnyNode>,
     i: number,
     articleUrl: string,
   ): string | null {

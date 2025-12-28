@@ -126,11 +126,12 @@ export class AIResponseParser {
    * Check if error is a JSON parse error that should trigger retry.
    */
   isJsonParseError(error: unknown): boolean {
-    return (
-      error &&
-      typeof error === "object" &&
-      "isJsonParseError" in error &&
-      (error as Record<string, unknown>)["isJsonParseError"] === true
-    );
+    if (!error || typeof error !== "object") {
+      return false;
+    }
+    if (!("isJsonParseError" in error)) {
+      return false;
+    }
+    return (error as Record<string, unknown>)["isJsonParseError"] === true;
   }
 }

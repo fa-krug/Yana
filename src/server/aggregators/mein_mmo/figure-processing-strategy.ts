@@ -2,7 +2,8 @@
  * Figure element processing strategy pattern for Mein-MMO content extraction.
  */
 
-import type { Cheerio, AnyNode, CheerioAPI } from "cheerio";
+import type { Cheerio, CheerioAPI } from "cheerio";
+import type { AnyNode } from "domhandler";
 import type pino from "pino";
 
 /**

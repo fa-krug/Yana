@@ -83,7 +83,8 @@ export class TagesschauAggregator extends FullWebsiteAggregator {
 
     for (let i = 0; i < playersToCheck.length; i++) {
       const playerDiv = playersToCheck.eq(i);
-      const dataV = playerDiv.attr("data-v");
+
+      const dataV = (playerDiv as any).attr("data-v");
       if (!dataV) continue;
 
       try {
@@ -119,9 +120,7 @@ export class TagesschauAggregator extends FullWebsiteAggregator {
     return null;
   }
 
-  private getMediaPlayers(
-    soup: cheerio.CheerioAPI,
-  ): cheerio.Cheerio<cheerio.AnyNode> {
+  private getMediaPlayers(soup: cheerio.CheerioAPI): cheerio.Cheerio<unknown> {
     const mediaPlayers = soup('div[data-v-type="MediaPlayer"]').filter(
       (_, el) => {
         return (soup(el).attr("class") || "")
@@ -147,7 +146,7 @@ export class TagesschauAggregator extends FullWebsiteAggregator {
   }
 
   private getPlayerImage(
-    playerDiv: cheerio.Cheerio<cheerio.AnyNode>,
+    playerDiv: cheerio.Cheerio<unknown>,
     mc: TagesschauMC,
   ): string | null {
     let imageUrl = this.getPlayerImageFromMetadata(mc);
@@ -191,18 +190,18 @@ export class TagesschauAggregator extends FullWebsiteAggregator {
   }
 
   private getPlayerImageFromDOM(
-    playerDiv: cheerio.Cheerio<cheerio.AnyNode>,
+    playerDiv: cheerio.Cheerio<unknown>,
   ): string | null {
-    const parent = playerDiv.parent();
+    const parent = (playerDiv as any).parent();
     if (parent && parent.length > 0) {
-      const img = parent.find("img").first();
-      if (img.length > 0) return img.attr("src") || null;
+      const img = (parent as any).find("img").first();
+      if (img.length > 0) return (img as any).attr("src") || null;
     }
 
-    const prev = playerDiv.prev();
+    const prev = (playerDiv as any).prev();
     if (prev && prev.length > 0) {
-      const img = prev.find("img").first();
-      if (img.length > 0) return img.attr("src") || null;
+      const img = (prev as any).find("img").first();
+      if (img.length > 0) return (img as any).attr("src") || null;
     }
 
     return null;
@@ -375,10 +374,11 @@ export class TagesschauAggregator extends FullWebsiteAggregator {
     }
   }
 
-  private shouldSkipElement($el: cheerio.Cheerio<cheerio.AnyNode>): boolean {
-    const parent = $el.parent();
+  private shouldSkipElement($el: cheerio.Cheerio<unknown>): boolean {
+    const parent = ($el as any).parent();
     if (parent.length === 0) return false;
-    const classes = parent.attr("class") || "";
+
+    const classes = (parent as any).attr("class") || "";
     return ["teaser", "bigfive", "accordion", "related"].some((c) =>
       classes.includes(c),
     );

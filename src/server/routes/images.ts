@@ -63,67 +63,68 @@ function handleProxyError(
 /**
  * GET /api/image-proxy
  */
-router.get("/image-proxy", async (req: Request, res: Response): Promise<void> => {
-  try {
-    const imageUrl = req.query["url"];
-    if (!imageUrl || typeof imageUrl !== "string") {
-      return res
-        .status(400)
-        .json({ error: "Missing or invalid 'url' parameter" });
-    }
-
-    const parsedUrl = new URL(imageUrl);
-    if (!["http:", "https:"].includes(parsedUrl.protocol)) {
-      return res
-        .status(400)
-        .json({ error: "Only http and https URLs are allowed" });
-    }
-
-    const maxAge =
-      parseInt((req.query["maxAge"] as string) || "86400", 10) || 86400;
-    logger.debug({ imageUrl, maxAge }, "Proxying image request");
-
+router.get(
+  "/image-proxy",
+  async (req: Request, res: Response): Promise<void> => {
     try {
-      const response = await axios.get(imageUrl, {
-        responseType: "stream",
-        timeout: 30000,
-        maxRedirects: 5,
-        headers: {
-          "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-          Accept:
-            "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
-          Referer: parsedUrl.origin,
-        },
-        validateStatus: (status) => status >= 200 && status < 400,
-      });
-
-      let contentType = response.headers["content-type"] || "";
-      if (!contentType || contentType === "application/octet-stream") {
-        contentType = guessContentType(imageUrl);
+      const imageUrl = req.query["url"];
+      if (!imageUrl || typeof imageUrl !== "string") {
+        res.status(400).json({ error: "Missing or invalid 'url' parameter" });
+        return;
       }
 
-      res.setHeader("Content-Type", contentType);
-      res.setHeader("Cache-Control", `public, max-age=${maxAge}, immutable`);
-      res.setHeader("X-Content-Type-Options", "nosniff");
-      if (response.headers["content-length"])
-        res.setHeader("Content-Length", response.headers["content-length"]);
+      const parsedUrl = new URL(imageUrl);
+      if (!["http:", "https:"].includes(parsedUrl.protocol)) {
+        res.status(400).json({ error: "Only http and https URLs are allowed" });
+        return;
+      }
 
-      response.data.pipe(res);
+      const maxAge =
+        parseInt((req.query["maxAge"] as string) || "86400", 10) || 86400;
+      logger.debug({ imageUrl, maxAge }, "Proxying image request");
+
+      try {
+        const response = await axios.get(imageUrl, {
+          responseType: "stream",
+          timeout: 30000,
+          maxRedirects: 5,
+          headers: {
+            "User-Agent":
+              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+            Accept:
+              "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+            Referer: parsedUrl.origin,
+          },
+          validateStatus: (status) => status >= 200 && status < 400,
+        });
+
+        let contentType = response.headers["content-type"] || "";
+        if (!contentType || contentType === "application/octet-stream") {
+          contentType = guessContentType(imageUrl);
+        }
+
+        res.setHeader("Content-Type", contentType);
+        res.setHeader("Cache-Control", `public, max-age=${maxAge}, immutable`);
+        res.setHeader("X-Content-Type-Options", "nosniff");
+        if (response.headers["content-length"])
+          res.setHeader("Content-Length", response.headers["content-length"]);
+
+        response.data.pipe(res);
+      } catch (error) {
+        handleProxyError(res, error, imageUrl);
+      }
     } catch (error) {
-      handleProxyError(res, error, imageUrl);
+      logger.error(
+        { error: error instanceof Error ? error : new Error(String(error)) },
+        "Error in image proxy handler",
+      );
+      res.status(500).json({
+        error: "Internal server error",
+        message: "An unexpected error occurred",
+      });
     }
-  } catch (error) {
-    logger.error(
-      { error: error instanceof Error ? error : new Error(String(error)) },
-      "Error in image proxy handler",
-    );
-    res.status(500).json({
-      error: "Internal server error",
-      message: "An unexpected error occurred",
-    });
-  }
-});
+  },
+);
 
 export function imageProxyRoutes(): Router {
   return router;

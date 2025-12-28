@@ -27,11 +27,8 @@ function isSvgImage(src: string): boolean {
 /**
  * Check if element should be processed based on size.
  */
-function shouldProcessImage(
-  el: cheerio.Element,
-  $: cheerio.CheerioAPI,
-): boolean {
-  const dimensions = extractImageDimensions($, el);
+function shouldProcessImage(el: unknown, $: cheerio.CheerioAPI): boolean {
+  const dimensions = extractImageDimensions($, el as any);
   // Process if no dimensions available or if dimensions are large enough
   return !dimensions || (dimensions.width >= 100 && dimensions.height >= 100);
 }
@@ -39,14 +36,11 @@ function shouldProcessImage(
 /**
  * Extract image source from element attributes.
  */
-function extractImageSrc(
-  el: cheerio.Element,
-  $: cheerio.CheerioAPI,
-): string | null {
+function extractImageSrc(el: unknown, $: cheerio.CheerioAPI): string | null {
   return (
-    $(el).attr("src") ||
-    $(el).attr("data-src") ||
-    $(el).attr("data-lazy-src") ||
+    $(el as any).attr("src") ||
+    $(el as any).attr("data-src") ||
+    $(el as any).attr("data-lazy-src") ||
     null
   );
 }

@@ -355,14 +355,14 @@ const streamContentsHandler = asyncHandler(
     }
 
     const streamId = (req.params["streamId"] as string) || "";
-    // Ensure itemIds is always an array
+    // Ensure itemIds is always an array of strings
     // For form-urlencoded POST, req.body["i"] might be a string if single value
     const itemIdsRaw = req.query["i"] || req.body["i"] || [];
-    let itemIds: (string | string[])[];
+    let itemIds: string[];
     if (Array.isArray(itemIdsRaw)) {
-      itemIds = itemIdsRaw;
+      itemIds = itemIdsRaw.flat().filter((id) => typeof id === "string");
     } else if (itemIdsRaw) {
-      itemIds = [itemIdsRaw];
+      itemIds = [String(itemIdsRaw)];
     } else {
       itemIds = [];
     }

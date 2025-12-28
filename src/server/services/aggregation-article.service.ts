@@ -17,7 +17,7 @@ import { logger } from "@server/utils/logger";
 interface ProcessingDecision {
   action: "skip" | "update" | "create";
   existingArticle?: Article;
-  reason?: string;
+  reason?: string | null;
 }
 
 /**
@@ -40,7 +40,7 @@ function isArticleTooOld(
 async function determineProcessingAction(
   rawArticle: RawArticle,
   feedId: number,
-  userId: number,
+  userId: number | null,
   forceRefresh: boolean,
 ): Promise<ProcessingDecision> {
   const { shouldSkip, shouldUpdate, reason, existingArticle } =
@@ -188,7 +188,7 @@ async function processAndSaveArticle(
 
   const decision = await determineProcessingAction(
     rawArticle,
-    String(feed.id),
+    feed.id,
     feed.userId,
     forceRefresh,
   );

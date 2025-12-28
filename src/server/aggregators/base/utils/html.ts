@@ -3,6 +3,7 @@
  */
 
 import * as cheerio from "cheerio";
+import type { AnyNode } from "domhandler";
 
 import { logger } from "@server/utils/logger";
 
@@ -76,10 +77,7 @@ export function removeElementsBySelectors(
 /**
  * Rename element attributes to sanitize.
  */
-function renameAttributes(
-  $el: cheerio.Cheerio<cheerio.AnyNode>,
-  el: cheerio.AnyNode,
-): void {
+function renameAttributes($el: cheerio.Cheerio<AnyNode>, el: AnyNode): void {
   const classAttr = $el.attr("class");
   if (classAttr && !classAttr.includes("youtube-embed-container")) {
     $el.attr("data-sanitized-class", classAttr).removeAttr("class");

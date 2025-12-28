@@ -102,6 +102,7 @@ export async function extractMeinMmoContent(
   ]);
 
   orchestrator.processAllFigures($, content, {
+    $,
     logger,
     aggregatorId,
     feedId,

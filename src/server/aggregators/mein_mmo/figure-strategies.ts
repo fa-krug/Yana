@@ -3,6 +3,7 @@
  */
 
 import * as cheerio from "cheerio";
+import type { AnyNode } from "domhandler";
 
 import { isTwitterUrl } from "../base/utils";
 import {
@@ -20,7 +21,7 @@ import type {
  * Extract video ID from embed content attribute.
  */
 function extractVideoIdFromEmbedContent(
-  figure: cheerio.Cheerio<cheerio.AnyNode>,
+  figure: cheerio.Cheerio<AnyNode>,
 ): string | null {
   const embedContentDiv = figure.find("[data-sanitized-data-embed-content]");
   if (embedContentDiv.length === 0) return null;
@@ -50,7 +51,7 @@ function extractVideoIdFromEmbedContent(
  * Extract video ID from any YouTube link in the figure.
  */
 function extractVideoIdFromLinks(
-  figure: cheerio.Cheerio<cheerio.AnyNode>,
+  figure: cheerio.Cheerio<AnyNode>,
 ): string | null {
   const youtubeLinks = figure.find("a[href]").filter((_, linkEl) => {
     const href = cheerio.load("")(linkEl).attr("href") || "";
