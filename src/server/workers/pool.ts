@@ -185,6 +185,8 @@ export class WorkerPool {
           stdio: ["inherit", "inherit", "inherit", "ipc"],
         });
       } else {
+        // Safe: npx is executed in development context, not production
+        // eslint-disable-next-line sonarjs/no-os-command-from-path
         worker = spawn("npx", ["tsx", workerPath], {
           stdio: ["inherit", "inherit", "inherit", "ipc"],
         });

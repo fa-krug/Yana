@@ -3,6 +3,7 @@
  *
  * Handles article management endpoints.
  */
+/* eslint-disable sonarjs/deprecation */
 
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";

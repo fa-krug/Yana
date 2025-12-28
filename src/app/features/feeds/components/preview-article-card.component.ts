@@ -161,6 +161,7 @@ export class PreviewArticleCardComponent {
 
     const videoId = videoIdMatch[1];
     // Safe: YouTube embed URLs are trusted sources from parsed HTML content
+    // eslint-disable-next-line sonarjs/no-angular-bypass-sanitization
     return this.sanitizer.bypassSecurityTrustResourceUrl(
       `https://www.youtube.com/embed/${videoId}`,
     );

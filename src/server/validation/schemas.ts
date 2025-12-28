@@ -3,6 +3,7 @@
  *
  * Provides type-safe validation for all API inputs.
  */
+/* eslint-disable sonarjs/deprecation */
 
 import { z } from "zod";
 

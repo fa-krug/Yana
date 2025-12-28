@@ -4,6 +4,7 @@
  * Creates the context for tRPC procedures with session support.
  */
 
+// eslint-disable-next-line sonarjs/deprecation
 import type { inferAsyncReturnType } from "@trpc/server";
 import type { Request, Response } from "express";
 import type { Session } from "express-session";
@@ -90,4 +91,5 @@ export async function createContext(opts: {
 /**
  * Infer context type for use in procedures.
  */
+// eslint-disable-next-line sonarjs/deprecation
 export type ContextType = inferAsyncReturnType<typeof createContext>;

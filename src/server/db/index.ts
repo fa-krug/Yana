@@ -58,6 +58,7 @@ function getDatabase(): Database.Database {
 
   const databasePath = getDatabasePath();
   // Safe: /tmp is intentionally used for temporary build-context database
+  // eslint-disable-next-line sonarjs/publicly-writable-directories
   const isBuildContext = databasePath.includes("/tmp/build-db") ||
     process.env["NG_BUILD"] === "true" ||
     process.argv.some((arg) => arg.includes("ng") && arg.includes("build"));

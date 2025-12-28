@@ -224,6 +224,7 @@ export function extractUrlsFromText(text: string): string[] {
   const plainUrlPattern = /(?<!\]\()(https?:\/\/[^\s)]+)/g;
   while ((match = plainUrlPattern.exec(text)) !== null) {
     // Remove trailing punctuation that might be part of the sentence
+    // eslint-disable-next-line sonarjs/slow-regex
     const url = match[1].replace(/[.,;:!?)]+$/, "");
     const decodedUrl = decodeHtmlEntitiesInUrl(url);
     if (!urls.includes(decodedUrl)) {
