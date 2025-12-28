@@ -57,8 +57,9 @@ function getDatabase(): Database.Database {
   if (sqlite) return sqlite;
 
   const databasePath = getDatabasePath();
-  const isBuildContext = databasePath.includes("/tmp/build-db") || 
-    process.env["NG_BUILD"] === "true" || 
+  // Safe: /tmp is intentionally used for temporary build-context database
+  const isBuildContext = databasePath.includes("/tmp/build-db") ||
+    process.env["NG_BUILD"] === "true" ||
     process.argv.some((arg) => arg.includes("ng") && arg.includes("build"));
 
   if (isBuildContext) {
@@ -121,7 +122,7 @@ export function reconnectDatabase(): void {
 
 // Export db as a proxy that always uses the current drizzle instance
 export const db = new Proxy({} as ReturnType<typeof drizzle>, {
-  get(_target, prop) {
+  get(_target, prop): unknown {
     return getDb()[prop as keyof ReturnType<typeof drizzle>];
   },
 });

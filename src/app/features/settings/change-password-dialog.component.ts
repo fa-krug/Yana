@@ -407,35 +407,21 @@ export class ChangePasswordDialogComponent {
   private extractErrorMessage(error: unknown): string {
     if (typeof error !== "object" || error == null) return String(error);
 
-    const errorBody = (error as { error?: { 
+    const errorBody = (error as { error?: {
       detail?: Array<{ loc?: unknown[]; msg?: string }> | string;
       message?: string;
       non_field_errors?: unknown;
     } }).error;
 
     if (errorBody && typeof errorBody === "object") {
-      // API validation errors (422)
-      const detail = errorBody.detail;
-      if (Array.isArray(detail)) {
-        return detail.map((item) => {
-          if (typeof item === "string") return item;
-          const loc = item.loc;
-          const field = loc && Array.isArray(loc) && loc.length > 1 ? String(loc[loc.length - 1]) : "";
-          const msg = item.msg || "";
-          return field ? `${field}: ${msg}` : msg;
-        }).join("; ");
-      }
-      if (typeof detail === "string") return detail;
-      
-      // Standard message format
-      const message = errorBody.message;
-      if (typeof message === "string") return message;
+      const arrayErrorMessage = this._extractArrayErrorMessage(errorBody);
+      if (arrayErrorMessage) return arrayErrorMessage;
 
-      // Non-field errors
-      const nonFieldErrors = errorBody.non_field_errors;
-      if (nonFieldErrors) {
-        return Array.isArray(nonFieldErrors) ? nonFieldErrors.map(String).join(" ") : String(nonFieldErrors);
-      }
+      const messageObj = errorBody as { message?: unknown };
+      if (typeof messageObj.message === "string") return messageObj.message;
+
+      const nonFieldMessage = this._extractNonFieldErrorMessage(errorBody);
+      if (nonFieldMessage) return nonFieldMessage;
     }
 
     if (errorBody && typeof errorBody === "string") return errorBody;
@@ -443,6 +429,32 @@ export class ChangePasswordDialogComponent {
     if (typeof topMessage === "string") return topMessage;
 
     return "Failed to change password. Please check your input and try again.";
+  }
+
+  private _extractArrayErrorMessage(
+    errorBody: { detail?: Array<{ loc?: unknown[]; msg?: string }> | string; message?: string; non_field_errors?: unknown },
+  ): string | null {
+    const detail = errorBody.detail;
+    if (!Array.isArray(detail)) return null;
+
+    return detail.map((item) => {
+      if (typeof item === "string") return item;
+      const loc = item.loc;
+      const field = loc && Array.isArray(loc) && loc.length > 1 ? String(loc[loc.length - 1]) : "";
+      const msg = item.msg || "";
+      return field ? `${field}: ${msg}` : msg;
+    }).join("; ");
+  }
+
+  private _extractNonFieldErrorMessage(
+    errorBody: { detail?: Array<{ loc?: unknown[]; msg?: string }> | string; message?: string; non_field_errors?: unknown },
+  ): string | null {
+    if (typeof errorBody.detail === "string") return errorBody.detail;
+
+    const nonFieldErrors = errorBody.non_field_errors;
+    if (!nonFieldErrors) return null;
+
+    return Array.isArray(nonFieldErrors) ? nonFieldErrors.map(String).join(" ") : String(nonFieldErrors);
   }
 
   /**

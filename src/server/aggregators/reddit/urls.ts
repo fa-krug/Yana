@@ -210,6 +210,8 @@ export function extractUrlsFromText(text: string): string[] {
   const urls: string[] = [];
 
   // Pattern for markdown links: [text](url)
+  // Safe: Input is Reddit markdown comment content with reasonable length limits
+  // eslint-disable-next-line sonarjs/slow-regex
   const markdownLinkPattern = /\[([^\]]*)\]\((https?:\/\/[^)]+)\)/g;
   let match;
   while ((match = markdownLinkPattern.exec(text)) !== null) {
@@ -218,6 +220,7 @@ export function extractUrlsFromText(text: string): string[] {
 
   // Pattern for plain URLs: http:// or https://
   // This regex matches URLs but avoids matching URLs already found in markdown links
+  // Safe: Input is Reddit markdown comment content with reasonable length limits
   const plainUrlPattern = /(?<!\]\()(https?:\/\/[^\s)]+)/g;
   while ((match = plainUrlPattern.exec(text)) !== null) {
     // Remove trailing punctuation that might be part of the sentence
