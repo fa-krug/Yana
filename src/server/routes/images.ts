@@ -63,7 +63,7 @@ function handleProxyError(
 /**
  * GET /api/image-proxy
  */
-router.get("/image-proxy", async (req: Request, res: Response) => {
+router.get("/image-proxy", async (req: Request, res: Response): Promise<void> => {
   try {
     const imageUrl = req.query["url"];
     if (!imageUrl || typeof imageUrl !== "string") {

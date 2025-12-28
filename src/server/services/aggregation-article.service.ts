@@ -39,7 +39,7 @@ function isArticleTooOld(
  */
 async function determineProcessingAction(
   rawArticle: RawArticle,
-  feedId: string,
+  feedId: number,
   userId: number,
   forceRefresh: boolean,
 ): Promise<ProcessingDecision> {
