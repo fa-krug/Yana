@@ -97,6 +97,16 @@ export function getCache(
 }
 
 /**
+ * Clear all aggregator caches.
+ */
+export function clearAllCaches(): void {
+  for (const cache of aggregatorCaches.values()) {
+    cache.clear();
+  }
+  aggregatorCaches.clear();
+}
+
+/**
  * Generate cache key from URL and aggregator ID.
  */
 export function generateCacheKey(aggregatorId: string, url: string): string {

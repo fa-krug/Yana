@@ -106,10 +106,18 @@ function validateAPIResponse(response: AxiosResponse): YouTubeTestResult | null 
   return classifyResponseBodyError(apiError);
 }
 
+interface YouTubeAPIError {
+  code?: number;
+  message?: string;
+  errors?: Array<{
+    reason?: string;
+  }>;
+}
+
 /**
  * Classify error returned in API response body.
  */
-function classifyResponseBodyError(apiError: any): YouTubeTestResult {
+function classifyResponseBodyError(apiError: YouTubeAPIError): YouTubeTestResult {
   const errorCode = apiError.code;
 
   if (errorCode === 400) {
@@ -165,7 +173,7 @@ function handleTestAPIError(error: unknown): YouTubeTestResult {
 function handleAxiosError(error: AxiosError): YouTubeTestResult {
   const status = error.response?.status;
   const code = error.code;
-  const errorData = error.response?.data as any;
+  const errorData = error.response?.data as { error?: YouTubeAPIError };
 
   // 400 Bad Request
   if (status === 400) {

@@ -38,12 +38,14 @@ describe("tRPC Auth Integration", () => {
     app.use(express.json());
     app.use(cookieParser());
     app.use(
+      // eslint-disable sonarjs/insecure-cookie
       session({
         secret: "test-secret",
         resave: false,
         saveUninitialized: false,
         cookie: { secure: false },
       }),
+      // eslint-enable sonarjs/insecure-cookie
     );
 
     // Setup tRPC routes

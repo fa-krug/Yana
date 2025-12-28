@@ -10,7 +10,6 @@ import {
   feeds,
   userArticleStates,
   groups,
-  feedGroups,
 } from "@server/db";
 import { cache } from "@server/utils/cache";
 
@@ -46,6 +45,18 @@ export async function listTags(userId: number): Promise<Array<{ id: string }>> {
 }
 
 /**
+ * Determine state updates based on tags.
+ */
+function getTagUpdates(addTag: string, removeTag: string): { isRead?: boolean; isSaved?: boolean } {
+  const updates: { isRead?: boolean; isSaved?: boolean } = {};
+  if (addTag === STATE_READ) updates.isRead = true;
+  else if (addTag === STATE_STARRED) updates.isSaved = true;
+  if (removeTag === STATE_READ) updates.isRead = false;
+  else if (removeTag === STATE_STARRED) updates.isSaved = false;
+  return updates;
+}
+
+/**
  * Edit tags (mark as read/starred).
  */
 export async function editTags(
@@ -54,150 +65,47 @@ export async function editTags(
   addTag: string,
   removeTag: string,
 ): Promise<number> {
-  if (!itemIds || itemIds.length === 0) {
-    return 0;
-  }
+  if (!itemIds?.length) return 0;
 
-  // Parse item IDs
-  const articleIds = itemIds
-    .map((id) => parseItemId(id))
-    .filter((id) => id > 0);
+  const articleIds = itemIds.map((id) => parseItemId(id)).filter((id) => id > 0);
+  if (!articleIds.length) return 0;
 
-  if (articleIds.length === 0) {
-    return 0;
-  }
-
-  // Get accessible articles
-  const accessibleArticles = await db
-    .select({ id: articles.id })
-    .from(articles)
-    .innerJoin(feeds, eq(articles.feedId, feeds.id))
-    .where(
-      and(
-        inArray(articles.id, articleIds),
-        or(eq(feeds.userId, userId), isNull(feeds.userId)),
-        eq(feeds.enabled, true),
-      ),
-    );
+  const accessibleArticles = await db.select({ id: articles.id }).from(articles).innerJoin(feeds, eq(articles.feedId, feeds.id))
+    .where(and(inArray(articles.id, articleIds), or(eq(feeds.userId, userId), isNull(feeds.userId)), eq(feeds.enabled, true)));
 
   const accessibleIds = accessibleArticles.map((a) => a.id);
-  if (accessibleIds.length === 0) {
-    return 0;
-  }
+  if (!accessibleIds.length) return 0;
 
-  // Determine updates
-  const updates: { isRead?: boolean; isSaved?: boolean } = {};
-  if (addTag === STATE_READ) {
-    updates.isRead = true;
-  } else if (addTag === STATE_STARRED) {
-    updates.isSaved = true;
-  }
-  if (removeTag === STATE_READ) {
-    updates.isRead = false;
-  } else if (removeTag === STATE_STARRED) {
-    updates.isSaved = false;
-  }
+  const updates = getTagUpdates(addTag, removeTag);
+  if (!Object.keys(updates).length) return 0;
 
-  if (Object.keys(updates).length === 0) {
-    return 0;
-  }
-
-  // Get existing states
-  const existingStates = await db
-    .select()
-    .from(userArticleStates)
-    .where(
-      and(
-        eq(userArticleStates.userId, userId),
-        inArray(userArticleStates.articleId, accessibleIds),
-      ),
-    );
-
+  const existingStates = await db.select().from(userArticleStates).where(and(eq(userArticleStates.userId, userId), inArray(userArticleStates.articleId, accessibleIds)));
   const stateMap = new Map(existingStates.map((s) => [s.articleId, s]));
 
-  // Prepare updates
-  const toCreate: Array<{
-    userId: number;
-    articleId: number;
-    isRead: boolean;
-    isSaved: boolean;
-    createdAt: Date;
-    updatedAt: Date;
-  }> = [];
-  const toUpdate: Array<{
-    id: number;
-    isRead: boolean;
-    isSaved: boolean;
-    updatedAt: Date;
-  }> = [];
+  const toCreate: (typeof userArticleStates.$inferInsert)[] = [];
+  const toUpdate: Array<{ id: number; isRead: boolean; isSaved: boolean; updatedAt: Date }> = [];
   const toDelete: number[] = [];
 
   for (const articleId of accessibleIds) {
     const existing = stateMap.get(articleId);
-    const newIsRead =
-      updates.isRead !== undefined
-        ? updates.isRead
-        : (existing?.isRead ?? false);
-    const newIsSaved =
-      updates.isSaved !== undefined
-        ? updates.isSaved
-        : (existing?.isSaved ?? false);
+    const newRead = updates.isRead !== undefined ? updates.isRead : (existing?.isRead ?? false);
+    const newSaved = updates.isSaved !== undefined ? updates.isSaved : (existing?.isSaved ?? false);
 
     if (existing) {
-      if (!newIsRead && !newIsSaved) {
-        toDelete.push(existing.id);
-      } else {
-        toUpdate.push({
-          id: existing.id,
-          isRead: newIsRead,
-          isSaved: newIsSaved,
-          updatedAt: new Date(),
-        });
-      }
-    } else if (newIsRead || newIsSaved) {
-      toCreate.push({
-        userId,
-        articleId,
-        isRead: newIsRead,
-        isSaved: newIsSaved,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      });
+      if (!newRead && !newSaved) toDelete.push(existing.id);
+      else toUpdate.push({ id: existing.id, isRead: newRead, isSaved: newSaved, updatedAt: new Date() });
+    } else if (newRead || newSaved) {
+      toCreate.push({ userId, articleId, isRead: newRead, isSaved: newSaved, createdAt: new Date(), updatedAt: new Date() });
     }
   }
 
-  // Execute updates
-  let count = 0;
+  if (toCreate.length) await db.insert(userArticleStates).values(toCreate).onConflictDoNothing();
+  for (const u of toUpdate) await db.update(userArticleStates).set({ isRead: u.isRead, isSaved: u.isSaved, updatedAt: u.updatedAt }).where(eq(userArticleStates.id, u.id));
+  if (toDelete.length) await db.delete(userArticleStates).where(inArray(userArticleStates.id, toDelete));
 
-  if (toCreate.length > 0) {
-    await db.insert(userArticleStates).values(toCreate).onConflictDoNothing();
-    count += toCreate.length;
-  }
-
-  for (const update of toUpdate) {
-    await db
-      .update(userArticleStates)
-      .set({
-        isRead: update.isRead,
-        isSaved: update.isSaved,
-        updatedAt: update.updatedAt,
-      })
-      .where(eq(userArticleStates.id, update.id));
-    count += 1;
-  }
-
-  if (toDelete.length > 0) {
-    await db
-      .delete(userArticleStates)
-      .where(inArray(userArticleStates.id, toDelete));
-    count += toDelete.length;
-  }
-
-  // Invalidate cache
   cache.delete(`unread_counts_${userId}_false`);
   cache.delete(`unread_counts_${userId}_true`);
-
-  return count;
+  return toCreate.length + toUpdate.length + toDelete.length;
 }
 
 /**

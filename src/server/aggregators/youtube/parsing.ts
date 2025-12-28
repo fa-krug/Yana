@@ -60,7 +60,7 @@ function parsePublishedDate(
  * Extract thumbnail URL with quality fallback.
  */
 function extractThumbnailUrl(
-  thumbnails: any,
+  thumbnails: YouTubeVideo["snippet"]["thumbnails"],
   videoId: string,
 ): string {
   for (const quality of [

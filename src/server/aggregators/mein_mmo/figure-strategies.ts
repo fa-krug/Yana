@@ -17,6 +17,38 @@ import type {
 } from "./figure-processing-strategy";
 
 /**
+ * Extract video ID from embed content attribute.
+ */
+function extractVideoIdFromEmbedContent(figure: cheerio.Cheerio<cheerio.AnyNode>): string | null {
+  const embedContentDiv = figure.find("[data-sanitized-data-embed-content]");
+  if (embedContentDiv.length === 0) return null;
+
+  const embedContent = embedContentDiv.attr("data-sanitized-data-embed-content");
+  if (!embedContent) return null;
+
+  try {
+    const $temp = cheerio.load(`<div>${embedContent}</div>`);
+    const iframe = $temp("iframe[src]");
+    if (iframe.length > 0) return extractYouTubeVideoId(iframe.attr("src") || "");
+  } catch { /* Fallback to regex */ }
+
+  const match = /(?:youtube-nocookie\.com\/embed\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/.exec(embedContent);
+  return match ? match[1] : null;
+}
+
+/**
+ * Extract video ID from any YouTube link in the figure.
+ */
+function extractVideoIdFromLinks(figure: cheerio.Cheerio<cheerio.AnyNode>): string | null {
+  const youtubeLinks = figure.find("a[href]").filter((_, linkEl) => {
+    const href = cheerio.load("")(linkEl).attr("href") || "";
+    return href.includes("youtube.com") || href.includes("youtu.be");
+  });
+  if (youtubeLinks.length === 0) return null;
+  return extractYouTubeVideoId(cheerio.load("")(youtubeLinks[0]).attr("href") || "");
+}
+
+/**
  * Processes YouTube embed figures with embed content attribute.
  */
 export class YouTubeEmbedStrategy implements FigureProcessingStrategy {
@@ -32,66 +64,14 @@ export class YouTubeEmbedStrategy implements FigureProcessingStrategy {
   process(context: FigureProcessingContext): FigureProcessingResult {
     const { figure: $figure, $, logger, aggregatorId, feedId } = context;
 
-    let videoId: string | null = null;
-
-    // Try to extract video ID from embed content attribute
-    const embedContentDiv = $figure.find("[data-sanitized-data-embed-content]");
-    if (embedContentDiv.length > 0) {
-      const embedContent = embedContentDiv.attr(
-        "data-sanitized-data-embed-content",
-      );
-      if (embedContent) {
-        try {
-          // Create a temporary element to decode HTML entities
-          const $temp = cheerio.load(`<div>${embedContent}</div>`);
-          const iframe = $temp("iframe[src]");
-          if (iframe.length > 0) {
-            const iframeSrc = iframe.attr("src") || "";
-            videoId = extractYouTubeVideoId(iframeSrc);
-          }
-        } catch {
-          // If parsing fails, try regex extraction from the raw string
-          const embedMatch =
-            /(?:youtube-nocookie\.com\/embed\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/.exec(
-              embedContent,
-            );
-          if (embedMatch && embedMatch[1]) {
-            videoId = embedMatch[1];
-          }
-        }
-      }
-    }
-
-    // If not found in embed content, try to extract from link
-    if (!videoId) {
-      const youtubeLinks = $figure.find("a[href]").filter((_, linkEl) => {
-        const href = $(linkEl).attr("href") || "";
-        return href.includes("youtube.com") || href.includes("youtu.be");
-      });
-      if (youtubeLinks.length > 0) {
-        const youtubeLink = $(youtubeLinks[0]).attr("href") || "";
-        videoId = extractYouTubeVideoId(youtubeLink);
-      }
-    }
+    const videoId = extractVideoIdFromEmbedContent($figure) || extractVideoIdFromLinks($figure);
 
     if (videoId) {
-      // Create standard YouTube iframe embed
       const figcaption = $figure.find("figcaption");
-      const captionHtml =
-        figcaption.length > 0 ? $.html(figcaption) || "" : "";
+      const captionHtml = figcaption.length > 0 ? $.html(figcaption) || "" : "";
       const embedHtml = createYouTubeEmbedHtml(videoId, captionHtml);
 
-      logger.debug(
-        {
-          step: "extractContent",
-          subStep: "extractMeinMmo",
-          aggregator: aggregatorId,
-          feedId,
-          videoId,
-        },
-        "Converted YouTube embed to iframe",
-      );
-
+      logger.debug({ step: "extractContent", subStep: "extractMeinMmo", aggregator: aggregatorId, feedId, videoId }, "Converted YouTube embed to iframe");
       return { replacementHtml: embedHtml, success: true };
     }
 

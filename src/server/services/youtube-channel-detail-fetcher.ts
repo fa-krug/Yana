@@ -9,6 +9,11 @@ import axios from "axios";
 
 import { logger } from "../utils/logger";
 
+import type { 
+  YouTubeChannelDetails, 
+  YouTubeSearchItem, 
+  YouTubeSnippet 
+} from "./youtube-api-types";
 import { transformChannelDetails } from "./youtube-channel-transformer";
 import type { YouTubeChannelSearchResult } from "./youtube.service";
 
@@ -19,7 +24,7 @@ import type { YouTubeChannelSearchResult } from "./youtube.service";
 async function fetchChannelDetailsFromAPI(
   channelId: string,
   apiKey: string,
-): Promise<any> {
+): Promise<YouTubeChannelDetails | undefined> {
   const response = await axios.get(
     "https://www.googleapis.com/youtube/v3/channels",
     {
@@ -43,8 +48,8 @@ async function fetchChannelDetailsFromAPI(
  * information from the search result.
  */
 export async function fetchChannelDetailsWithFallback(
-  searchItem: any,
-  searchSnippet: any,
+  searchItem: YouTubeSearchItem,
+  searchSnippet: YouTubeSnippet,
   apiKey: string,
 ): Promise<YouTubeChannelSearchResult> {
   const channelId = searchItem.id?.channelId;
@@ -60,6 +65,6 @@ export async function fetchChannelDetailsWithFallback(
     );
 
     // Fall back to basic information from search result
-    return transformChannelDetails(searchItem, searchSnippet, undefined);
+    return transformChannelDetails(searchItem, searchSnippet);
   }
 }

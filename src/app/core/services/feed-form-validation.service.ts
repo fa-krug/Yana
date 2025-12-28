@@ -39,6 +39,28 @@ export class FeedFormValidationService {
   }
 
   /**
+   * Determine initial value for a form control.
+   */
+  private getInitialValue(
+    option: AggregatorDetail["options"][string] & { key: string },
+    existingValues?: Record<string, unknown>,
+  ): unknown {
+    const rawValue = existingValues?.[option.key];
+    const existingValue = rawValue != undefined && rawValue != null ? rawValue : option.default;
+
+    if (option.type === "boolean") {
+      return existingValue != undefined && existingValue != null ? Boolean(existingValue) : Boolean(option.default);
+    }
+    if (option.type === "integer" || option.type === "float") {
+      return (existingValue as number) ?? null;
+    }
+    if (option.type === "choice") {
+      return (existingValue as string) ?? (option.default as string) ?? null;
+    }
+    return (existingValue as string) ?? "";
+  }
+
+  /**
    * Add aggregator option fields to form group.
    */
   addAggregatorOptions(
@@ -48,69 +70,23 @@ export class FeedFormValidationService {
   ): void {
     // Clear existing option fields
     Object.keys(formGroup.controls).forEach((key) => {
-      if (key.startsWith("option_")) {
-        formGroup.removeControl(key);
-      }
+      if (key.startsWith("option_")) formGroup.removeControl(key);
     });
 
     // Add option fields dynamically
     Object.entries(options).forEach(([key, option]) => {
       const fieldName = `option_${key}`;
       const validators = option.required ? [Validators.required] : [];
-      // Handle null/undefined: if existingValues[key] is null or undefined, use default
-      const rawValue = existingValues?.[key];
-      const existingValue =
-        rawValue != undefined && rawValue != null ? rawValue : option.default;
-
-      // Add JSON validation for json widget type
+      
       if (option.widget === "json") {
         validators.push((control: AbstractControl) => {
-          if (!control.value || control.value.trim() === "") {
-            return null; // Empty is valid (will use default)
-          }
-          try {
-            JSON.parse(control.value);
-            return null;
-          } catch {
-            return { jsonInvalid: true };
-          }
+          if (!control.value || control.value.trim() === "") return null;
+          try { JSON.parse(control.value); return null; } catch { return { jsonInvalid: true }; }
         });
       }
 
-      if (option.type === "boolean") {
-        // For boolean options, use existing value if provided, otherwise use default
-        // Important: if existingValue is explicitly false, use it (don't fall back to default)
-        let initialValue = false;
-        if (existingValue != undefined && existingValue != null) {
-          initialValue = Boolean(existingValue);
-        } else if (option.default != undefined) {
-          initialValue = Boolean(option.default);
-        }
-        formGroup.addControl(fieldName, this.fb.control(initialValue));
-      } else if (option.type === "integer" || option.type === "float") {
-        formGroup.addControl(
-          fieldName,
-          this.fb.control(existingValue ?? null, validators),
-        );
-      } else if (option.type === "choice") {
-        // For choice types, use null if no value (Material Select handles null better than empty string)
-        // But prefer the default if available
-        let initialValue = null;
-        if (existingValue != undefined && existingValue != null) {
-          initialValue = existingValue;
-        } else if (option.default != undefined && option.default != null) {
-          initialValue = option.default;
-        }
-        formGroup.addControl(
-          fieldName,
-          this.fb.control(initialValue, validators),
-        );
-      } else {
-        formGroup.addControl(
-          fieldName,
-          this.fb.control(existingValue ?? "", validators),
-        );
-      }
+      const initialValue = this.getInitialValue({ ...option, key }, existingValues);
+      formGroup.addControl(fieldName, this.fb.control(initialValue, validators));
     });
   }
 
@@ -146,6 +122,24 @@ export class FeedFormValidationService {
   }
 
   /**
+   * Convert raw form value to boolean.
+   */
+  private convertToBoolean(value: unknown): boolean {
+    if (value === true || value === "true" || value === 1 || value === "1") return true;
+    if (value === false || value === "false" || value === 0 || value === "0") return false;
+    return Boolean(value);
+  }
+
+  /**
+   * Convert raw form value to number.
+   */
+  private convertToNumber(value: unknown, type: string): number | null {
+    if (value == null || value === "") return null;
+    const num = type === "integer" ? parseInt(String(value), 10) : parseFloat(String(value));
+    return isNaN(num) ? null : num;
+  }
+
+  /**
    * Collect aggregator options from form.
    */
   collectAggregatorOptions(
@@ -154,69 +148,18 @@ export class FeedFormValidationService {
   ): Record<string, unknown> {
     const aggregatorOptions: Record<string, unknown> = {};
     Object.keys(filteredOptions).forEach((key) => {
-      const fieldName = `option_${key}`;
-      const control = formGroup.get(fieldName);
-      if (!control) {
-        return;
-      }
-      // Get the raw value from the form control
+      const control = formGroup.get(`option_${key}`);
+      if (!control) return;
+
       const rawValue = control.value;
-      const optionType = filteredOptions[key]?.type;
+      const type = filteredOptions[key]?.type;
 
-      // For boolean options, always include the value (even if false)
-      // Ensure it's a proper boolean value
-      if (optionType === "boolean") {
-        // Angular Material checkbox should return boolean, but handle edge cases
-        // Convert to boolean: explicitly handle true/false values
-        let boolValue: boolean;
-        if (
-          rawValue === true ||
-          rawValue === "true" ||
-          rawValue === 1 ||
-          rawValue === "1"
-        ) {
-          boolValue = true;
-        } else if (
-          rawValue === false ||
-          rawValue === "false" ||
-          rawValue === 0 ||
-          rawValue === "0"
-        ) {
-          boolValue = false;
-        } else if (typeof rawValue === "boolean") {
-          boolValue = rawValue;
-        } else {
-          // Fallback: convert to boolean using Boolean() constructor
-          boolValue = Boolean(rawValue);
-        }
-        // Always include boolean values (both true and false)
-        aggregatorOptions[key] = boolValue;
-        return;
-      }
-
-      // For integer and float types, convert string values to numbers
-      // HTML number inputs return strings, so we need to convert them
-      if (optionType === "integer" || optionType === "float") {
-        // Include 0 and negative numbers (like -1 for min_comments)
-        if (rawValue != null && rawValue != undefined && rawValue != "") {
-          let numValue: number;
-          if (typeof rawValue === "number") {
-            numValue = rawValue;
-          } else if (optionType === "integer") {
-            numValue = parseInt(String(rawValue), 10);
-          } else {
-            numValue = parseFloat(String(rawValue));
-          }
-          // Only include if conversion was successful (not NaN)
-          if (!isNaN(numValue)) {
-            aggregatorOptions[key] = numValue;
-          }
-        }
-        return;
-      }
-
-      // For other types, exclude null, undefined, and empty strings
-      if (rawValue != null && rawValue != undefined && rawValue != "") {
+      if (type === "boolean") {
+        aggregatorOptions[key] = this.convertToBoolean(rawValue);
+      } else if (type === "integer" || type === "float") {
+        const num = this.convertToNumber(rawValue, type);
+        if (num !== null) aggregatorOptions[key] = num;
+      } else if (rawValue != null && rawValue !== undefined && rawValue !== "") {
         aggregatorOptions[key] = rawValue;
       }
     });

@@ -5,6 +5,7 @@
  * Handles thumbnail extraction and base64 conversion with fallback.
  */
 
+import type { BaseAggregator } from "../aggregators/base/aggregator";
 import type { RawArticle } from "../aggregators/base/types";
 import type { Feed } from "../db/types";
 import { logger } from "../utils/logger";
@@ -26,7 +27,7 @@ export interface PreviewArticle {
  */
 export async function processArticlesForPreview(
   rawArticles: RawArticle[],
-  aggregator: any, // BaseAggregator
+  aggregator: BaseAggregator,
   feed: Feed,
 ): Promise<PreviewArticle[]> {
   const previewArticles: PreviewArticle[] = [];
@@ -49,7 +50,7 @@ export async function processArticlesForPreview(
  */
 async function processArticle(
   article: RawArticle,
-  aggregator: any,
+  aggregator: BaseAggregator,
   feed: Feed,
 ): Promise<PreviewArticle> {
   const thumbnailUrl = await getThumbnailForArticle(article, aggregator);
@@ -71,7 +72,7 @@ async function processArticle(
  */
 async function getThumbnailForArticle(
   article: RawArticle,
-  aggregator: any,
+  aggregator: BaseAggregator,
 ): Promise<string | undefined> {
   // Try article's thumbnail URL first
   if (article.thumbnailUrl) {

@@ -38,6 +38,36 @@ import { logger } from "../utils/logger";
 export type UserInfo = Pick<User, "id" | "isSuperuser">;
 
 /**
+ * Get accessible feed IDs for a user based on filters.
+ */
+async function getAccessibleFeedIds(
+  user: UserInfo,
+  filters: { feedId?: number; feedType?: string; groupId?: number }
+): Promise<number[]> {
+  const feedConditions = [or(eq(feeds.userId, user.id), isNull(feeds.userId))];
+  if (filters.feedId) feedConditions.push(eq(feeds.id, filters.feedId));
+  if (filters.feedType) {
+    feedConditions.push(eq(feeds.feedType, filters.feedType as "article" | "youtube" | "podcast" | "reddit"));
+  }
+
+  let accessibleFeeds = await db
+    .select({ id: feeds.id })
+    .from(feeds)
+    .where(and(...feedConditions));
+
+  if (filters.groupId) {
+    const [group] = await db.select().from(groups).where(and(eq(groups.id, filters.groupId), or(eq(groups.userId, user.id), isNull(groups.userId)))).limit(1);
+    if (!group) throw new NotFoundError(`Group with id ${filters.groupId} not found`);
+
+    const feedIdsInGroup = await db.select({ feedId: feedGroups.feedId }).from(feedGroups).where(eq(feedGroups.groupId, filters.groupId));
+    const groupFeedIds = new Set(feedIdsInGroup.map((f) => f.feedId));
+    accessibleFeeds = accessibleFeeds.filter((f) => groupFeedIds.has(f.id));
+  }
+
+  return accessibleFeeds.map((f) => f.id);
+}
+
+/**
  * List articles for a user.
  */
 export async function listArticles(
@@ -55,185 +85,43 @@ export async function listArticles(
     pageSize?: number;
   } = {},
 ): Promise<{ articles: Article[]; total: number }> {
-  const {
-    feedId,
-    feedType,
-    groupId,
-    isRead,
-    isSaved,
-    search,
-    dateFrom,
-    dateTo,
-    page = 1,
-    pageSize = 20,
-  } = filters;
+  const { isRead, isSaved, page = 1, pageSize = 20 } = filters;
   const offset = (page - 1) * pageSize;
 
-  // Build where conditions for feeds (user access)
-  const feedConditions = [or(eq(feeds.userId, user.id), isNull(feeds.userId))];
+  const feedIds = await getAccessibleFeedIds(user, filters);
+  if (feedIds.length === 0) return { articles: [], total: 0 };
 
-  if (feedId) {
-    feedConditions.push(eq(feeds.id, feedId));
-  }
-
-  if (feedType) {
-    feedConditions.push(
-      eq(
-        feeds.feedType,
-        feedType as "article" | "youtube" | "podcast" | "reddit",
-      ),
-    );
-  }
-
-  // Get accessible feed IDs
-  let accessibleFeeds = await db
-    .select({ id: feeds.id })
-    .from(feeds)
-    .where(and(...feedConditions));
-
-  // If filtering by group, filter feeds by group membership
-  if (groupId) {
-    // Verify group access
-    const [group] = await db
-      .select()
-      .from(groups)
-      .where(
-        and(
-          eq(groups.id, groupId),
-          or(eq(groups.userId, user.id), isNull(groups.userId)),
-        ),
-      )
-      .limit(1);
-
-    if (!group) {
-      throw new NotFoundError(`Group with id ${groupId} not found`);
-    }
-
-    // Get feed IDs in this group
-    const feedIdsInGroup = await db
-      .select({ feedId: feedGroups.feedId })
-      .from(feedGroups)
-      .where(eq(feedGroups.groupId, groupId));
-
-    const groupFeedIds = new Set(feedIdsInGroup.map((f) => f.feedId));
-
-    // Filter accessible feeds to only those in the group
-    accessibleFeeds = accessibleFeeds.filter((f) => groupFeedIds.has(f.id));
-  }
-
-  const feedIds = accessibleFeeds.map((f) => f.id);
-
-  if (feedIds.length === 0) {
-    return { articles: [], total: 0 };
-  }
-
-  // Build article conditions
   const articleConditions = [inArray(articles.feedId, feedIds)];
-
-  if (search) {
-    articleConditions.push(like(articles.name, `%${search}%`));
-  }
-
-  // Date range filtering
-  if (dateFrom) {
-    const fromDate = dateFrom instanceof Date ? dateFrom : new Date(dateFrom);
-    articleConditions.push(gte(articles.date, fromDate));
-  }
-
-  if (dateTo) {
-    const toDate = dateTo instanceof Date ? dateTo : new Date(dateTo);
-    // Set to end of day for inclusive filtering
+  if (filters.search) articleConditions.push(like(articles.name, `%${filters.search}%`));
+  if (filters.dateFrom) articleConditions.push(gte(articles.date, filters.dateFrom instanceof Date ? filters.dateFrom : new Date(filters.dateFrom)));
+  if (filters.dateTo) {
+    const toDate = filters.dateTo instanceof Date ? filters.dateTo : new Date(filters.dateTo);
     toDate.setHours(23, 59, 59, 999);
     articleConditions.push(lte(articles.date, toDate));
   }
 
-  // Build read/saved state conditions using LEFT JOIN
-  // We need to handle NULL states (articles that haven't been marked read/saved yet)
-  const stateConditions: ReturnType<typeof and>[] = [];
-
-  if (isRead !== undefined) {
-    if (isRead) {
-      // Read: must have a state entry with isRead = true
-      stateConditions.push(eq(userArticleStates.isRead, true));
-    } else {
-      // Unread: either no state entry (NULL) or isRead = false
-      stateConditions.push(
-        or(isNull(userArticleStates.id), eq(userArticleStates.isRead, false)),
-      );
-    }
-  }
-
-  if (isSaved !== undefined) {
-    if (isSaved) {
-      // Saved: must have a state entry with isSaved = true
-      stateConditions.push(eq(userArticleStates.isSaved, true));
-    } else {
-      // Unsaved: either no state entry (NULL) or isSaved = false
-      stateConditions.push(
-        or(isNull(userArticleStates.id), eq(userArticleStates.isSaved, false)),
-      );
-    }
-  }
-
-  // If filtering by read/saved state, use LEFT JOIN
   if (isRead !== undefined || isSaved !== undefined) {
-    // Get total count with LEFT JOIN
-    const totalResult = await db
-      .select({ count: sql<number>`count(DISTINCT ${articles.id})` })
-      .from(articles)
-      .leftJoin(
-        userArticleStates,
-        and(
-          eq(userArticleStates.articleId, articles.id),
-          eq(userArticleStates.userId, user.id),
-        ),
-      )
+    const stateConditions: (import("drizzle-orm").SQL<unknown> | undefined)[] = [];
+    if (isRead !== undefined) stateConditions.push(isRead ? eq(userArticleStates.isRead, true) : or(isNull(userArticleStates.id), eq(userArticleStates.isRead, false)));
+    if (isSaved !== undefined) stateConditions.push(isSaved ? eq(userArticleStates.isSaved, true) : or(isNull(userArticleStates.id), eq(userArticleStates.isSaved, false)));
+
+    const totalResult = await db.select({ count: sql<number>`count(DISTINCT ${articles.id})` }).from(articles)
+      .leftJoin(userArticleStates, and(eq(userArticleStates.articleId, articles.id), eq(userArticleStates.userId, user.id)))
       .where(and(...articleConditions, ...stateConditions));
 
-    const total = totalResult[0]?.count || 0;
-
-    // Get articles with LEFT JOIN
-    const articleResults = await db
-      .select()
-      .from(articles)
-      .leftJoin(
-        userArticleStates,
-        and(
-          eq(userArticleStates.articleId, articles.id),
-          eq(userArticleStates.userId, user.id),
-        ),
-      )
+    const articleResults = await db.select().from(articles)
+      .leftJoin(userArticleStates, and(eq(userArticleStates.articleId, articles.id), eq(userArticleStates.userId, user.id)))
       .where(and(...articleConditions, ...stateConditions))
-      .groupBy(articles.id)
-      .orderBy(desc(articles.date), desc(articles.id))
-      .limit(pageSize)
-      .offset(offset);
+      .groupBy(articles.id).orderBy(desc(articles.date), desc(articles.id)).limit(pageSize).offset(offset);
 
-    // Extract articles from join results
-    const articleList = articleResults.map((row) => row.articles);
-
-    return { articles: articleList, total };
+    return { articles: articleResults.map((row) => row.articles), total: totalResult[0]?.count || 0 };
   }
 
-  // No read/saved filtering - use simple query
-  // Get total count
-  const totalResult = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(articles)
-    .where(and(...articleConditions));
+  const totalResult = await db.select({ count: sql<number>`count(*)` }).from(articles).where(and(...articleConditions));
+  const articleList = await db.select().from(articles).where(and(...articleConditions))
+    .orderBy(desc(articles.date), desc(articles.id)).limit(pageSize).offset(offset);
 
-  const total = totalResult[0]?.count || 0;
-
-  // Get articles
-  const articleList = await db
-    .select()
-    .from(articles)
-    .where(and(...articleConditions))
-    .orderBy(desc(articles.date), desc(articles.id))
-    .limit(pageSize)
-    .offset(offset);
-
-  return { articles: articleList, total };
+  return { articles: articleList, total: totalResult[0]?.count || 0 };
 }
 
 /**
@@ -365,6 +253,20 @@ export async function createArticle(
 }
 
 /**
+ * Fetch accessible article IDs for bulk operations.
+ */
+async function getAccessibleIdsForUser(user: UserInfo, articleIds: number[]): Promise<number[]> {
+  const accessibleArticles = await db.select({ id: articles.id }).from(articles).innerJoin(feeds, eq(articles.feedId, feeds.id))
+    .where(and(inArray(articles.id, articleIds), or(eq(feeds.userId, user.id), isNull(feeds.userId)), eq(feeds.enabled, true)));
+
+  const accessibleIds = accessibleArticles.map((a) => a.id);
+  const invalidCount = articleIds.length - accessibleIds.length;
+  if (invalidCount > 0) throw new PermissionDeniedError(`Access denied to ${invalidCount} article(s)`);
+
+  return accessibleIds;
+}
+
+/**
  * Mark articles as read/unread.
  * Optimized with bulk database operations.
  */
@@ -373,104 +275,36 @@ export async function markArticlesRead(
   articleIds: number[],
   isRead: boolean,
 ): Promise<void> {
-  if (articleIds.length === 0) {
-    return;
-  }
+  if (articleIds.length === 0) return;
 
-  // Batch verify user has access to all articles
-  const accessibleArticles = await db
-    .select({ id: articles.id })
-    .from(articles)
-    .innerJoin(feeds, eq(articles.feedId, feeds.id))
-    .where(
-      and(
-        inArray(articles.id, articleIds),
-        or(eq(feeds.userId, user.id), isNull(feeds.userId)),
-        eq(feeds.enabled, true),
-      ),
-    );
+  const accessibleIds = await getAccessibleIdsForUser(user, articleIds);
+  if (accessibleIds.length === 0) return;
 
-  const accessibleIds = new Set(accessibleArticles.map((a) => a.id));
-  const invalidIds = articleIds.filter((id) => !accessibleIds.has(id));
-
-  if (invalidIds.length > 0) {
-    throw new PermissionDeniedError(
-      `Access denied to ${invalidIds.length} article(s)`,
-    );
-  }
-
-  if (accessibleIds.size === 0) {
-    return;
-  }
-
-  const now = new Date();
-  const accessibleIdsArray = Array.from(accessibleIds);
-
-  // Get all existing states in one query
-  const existingStates = await db
-    .select()
-    .from(userArticleStates)
-    .where(
-      and(
-        eq(userArticleStates.userId, user.id),
-        inArray(userArticleStates.articleId, accessibleIdsArray),
-      ),
-    );
+  const existingStates = await db.select().from(userArticleStates)
+    .where(and(eq(userArticleStates.userId, user.id), inArray(userArticleStates.articleId, accessibleIds)));
 
   const existingStateMap = new Map(existingStates.map((s) => [s.articleId, s]));
-
-  // Prepare bulk operations
-  const toCreate: Array<{
-    userId: number;
-    articleId: number;
-    isRead: boolean;
-    isSaved: boolean;
-    createdAt: Date;
-    updatedAt: Date;
-  }> = [];
+  const now = new Date();
+  const toCreate: (typeof userArticleStates.$inferInsert)[] = [];
   const toUpdate: number[] = [];
 
-  for (const articleId of accessibleIdsArray) {
+  for (const articleId of accessibleIds) {
     const existing = existingStateMap.get(articleId);
     if (existing) {
-      // Only update if the read state is different
-      if (existing.isRead !== isRead) {
-        toUpdate.push(existing.id);
-      }
+      if (existing.isRead !== isRead) toUpdate.push(existing.id);
     } else {
-      // Create new state
-      toCreate.push({
-        userId: user.id,
-        articleId,
-        isRead,
-        isSaved: false,
-        createdAt: now,
-        updatedAt: now,
-      });
+      toCreate.push({ userId: user.id, articleId, isRead, isSaved: false, createdAt: now, updatedAt: now });
     }
   }
 
-  // Execute bulk operations
-  if (toCreate.length > 0) {
-    await db.insert(userArticleStates).values(toCreate).onConflictDoNothing();
-  }
+  if (toCreate.length > 0) await db.insert(userArticleStates).values(toCreate).onConflictDoNothing();
+  if (toUpdate.length > 0) await db.update(userArticleStates).set({ isRead, updatedAt: now }).where(inArray(userArticleStates.id, toUpdate));
 
-  if (toUpdate.length > 0) {
-    await db
-      .update(userArticleStates)
-      .set({ isRead, updatedAt: now })
-      .where(inArray(userArticleStates.id, toUpdate));
-  }
-
-  // Invalidate cache
   const { cache } = await import("../utils/cache");
   cache.delete(`unread_counts_${user.id}_false`);
   cache.delete(`unread_counts_${user.id}_true`);
 
-  logger.info(
-    { userId: user.id, articleIds: accessibleIdsArray, isRead },
-    "Articles marked as read/unread",
-  );
+  logger.info({ userId: user.id, articleIds: accessibleIds, isRead }, "Articles marked as read/unread");
 }
 
 /**
@@ -804,14 +638,6 @@ export async function getArticleReadState(
 
 /**
  * Get accessible article IDs based on filters (reusable helper).
- * Optimized for performance with proper index usage.
- *
- * Indexes used:
- * - articles_feed_date_idx: (feed_id, date) - for feed and date filtering
- * - articles_feed_id_idx: (feed_id) - for feed filtering
- * - articles_date_idx: (date) - for date range filtering
- * - user_article_states_user_read_idx: (user_id, is_read) - for read state filtering
- * - user_article_states_user_saved_idx: (user_id, is_saved) - for saved state filtering
  */
 async function getAccessibleArticleIds(
   user: UserInfo,
@@ -825,128 +651,33 @@ async function getAccessibleArticleIds(
     dateTo?: Date | string;
   },
 ): Promise<number[]> {
-  // Build feed conditions (same logic as listArticles)
-  // Uses feeds_user_id_idx index
-  const feedConditions = [or(eq(feeds.userId, user.id), isNull(feeds.userId))];
+  const feedIds = await getAccessibleFeedIds(user, filters);
+  if (feedIds.length === 0) return [];
 
-  if (filters.feedId) {
-    feedConditions.push(eq(feeds.id, filters.feedId));
-  }
-
-  let accessibleFeeds = await db
-    .select({ id: feeds.id })
-    .from(feeds)
-    .where(and(...feedConditions));
-
-  // Filter by group if specified
-  // Uses feed_groups_group_id_idx index
-  if (filters.groupId) {
-    const [group] = await db
-      .select()
-      .from(groups)
-      .where(
-        and(
-          eq(groups.id, filters.groupId),
-          or(eq(groups.userId, user.id), isNull(groups.userId)),
-        ),
-      )
-      .limit(1);
-
-    if (!group) {
-      return [];
-    }
-
-    const feedIdsInGroup = await db
-      .select({ feedId: feedGroups.feedId })
-      .from(feedGroups)
-      .where(eq(feedGroups.groupId, filters.groupId));
-
-    const groupFeedIds = new Set(feedIdsInGroup.map((f) => f.feedId));
-    accessibleFeeds = accessibleFeeds.filter((f) => groupFeedIds.has(f.id));
-  }
-
-  const feedIds = accessibleFeeds.map((f) => f.id);
-  if (feedIds.length === 0) {
-    return [];
-  }
-
-  // Build article conditions
-  // Use inArray for feed filtering - leverages articles_feed_id_idx
   const articleConditions = [inArray(articles.feedId, feedIds)];
-
-  // Search uses LIKE which can't use index efficiently, but it's necessary
-  if (filters.search) {
-    articleConditions.push(like(articles.name, `%${filters.search}%`));
-  }
-
-  // Date filtering uses articles_feed_date_idx or articles_date_idx
-  if (filters.dateFrom) {
-    const fromDate =
-      filters.dateFrom instanceof Date
-        ? filters.dateFrom
-        : new Date(filters.dateFrom);
-    articleConditions.push(gte(articles.date, fromDate));
-  }
-
+  if (filters.search) articleConditions.push(like(articles.name, `%${filters.search}%`));
+  if (filters.dateFrom) articleConditions.push(gte(articles.date, filters.dateFrom instanceof Date ? filters.dateFrom : new Date(filters.dateFrom)));
   if (filters.dateTo) {
-    const toDate =
-      filters.dateTo instanceof Date
-        ? filters.dateTo
-        : new Date(filters.dateTo);
+    const toDate = filters.dateTo instanceof Date ? filters.dateTo : new Date(filters.dateTo);
     toDate.setHours(23, 59, 59, 999);
     articleConditions.push(lte(articles.date, toDate));
   }
 
-  // Handle read/saved state filtering
-  if (filters.isRead !== undefined || filters.isSaved !== undefined) {
-    const stateConditions: ReturnType<typeof and>[] = [];
+  const { isRead, isSaved } = filters;
+  if (isRead !== undefined || isSaved !== undefined) {
+    const stateConditions: (import("drizzle-orm").SQL<unknown> | undefined)[] = [];
+    if (isRead !== undefined) stateConditions.push(isRead ? eq(userArticleStates.isRead, true) : or(isNull(userArticleStates.id), eq(userArticleStates.isRead, false)));
+    if (isSaved !== undefined) stateConditions.push(isSaved ? eq(userArticleStates.isSaved, true) : or(isNull(userArticleStates.id), eq(userArticleStates.isSaved, false)));
 
-    if (filters.isRead !== undefined) {
-      if (filters.isRead) {
-        stateConditions.push(eq(userArticleStates.isRead, true));
-      } else {
-        stateConditions.push(
-          or(isNull(userArticleStates.id), eq(userArticleStates.isRead, false)),
-        );
-      }
-    }
-
-    if (filters.isSaved !== undefined) {
-      if (filters.isSaved) {
-        stateConditions.push(eq(userArticleStates.isSaved, true));
-      } else {
-        stateConditions.push(
-          or(
-            isNull(userArticleStates.id),
-            eq(userArticleStates.isSaved, false),
-          ),
-        );
-      }
-    }
-
-    // Get article IDs with LEFT JOIN
-    const articleResults = await db
-      .select({ id: articles.id })
-      .from(articles)
-      .leftJoin(
-        userArticleStates,
-        and(
-          eq(userArticleStates.articleId, articles.id),
-          eq(userArticleStates.userId, user.id),
-        ),
-      )
+    const articleResults = await db.select({ id: articles.id }).from(articles)
+      .leftJoin(userArticleStates, and(eq(userArticleStates.articleId, articles.id), eq(userArticleStates.userId, user.id)))
       .where(and(...articleConditions, ...stateConditions))
       .groupBy(articles.id);
 
     return articleResults.map((row) => row.id);
   }
 
-  // No read/saved filtering - simple query
-  const articleResults = await db
-    .select({ id: articles.id })
-    .from(articles)
-    .where(and(...articleConditions));
-
+  const articleResults = await db.select({ id: articles.id }).from(articles).where(and(...articleConditions));
   return articleResults.map((row) => row.id);
 }
 

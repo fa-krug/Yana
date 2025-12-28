@@ -11,7 +11,6 @@ import type { RawArticle } from "../base/types";
 
 import {
   FigureProcessingOrchestrator,
-  type FigureProcessingContext,
 } from "./figure-processing-strategy";
 import {
   YouTubeEmbedStrategy,

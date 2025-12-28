@@ -27,6 +27,12 @@ interface TestResult {
   processedLength?: number;
 }
 
+interface TestableAggregator {
+  fetchArticleContentInternal(url: string, article: RawArticle): Promise<string>;
+  extractContent(html: string, article: RawArticle): Promise<string>;
+  processContent(html: string, article: RawArticle): Promise<string>;
+}
+
 /**
  * Test a single aggregator against a URL.
  */
@@ -51,6 +57,8 @@ async function testAggregator(
     aggregatorName: aggregator.name,
     success: false,
   };
+
+  const testableAggregator = aggregator as unknown as TestableAggregator;
 
   try {
     // Create a mock feed for testing
@@ -91,7 +99,7 @@ async function testAggregator(
     // Test fetchArticleContentInternal (protected method)
     let html: string | null = null;
     try {
-      html = await (aggregator as any).fetchArticleContentInternal(
+      html = await testableAggregator.fetchArticleContentInternal(
         url,
         mockArticle,
       );
@@ -112,13 +120,13 @@ async function testAggregator(
     // Test extractContent and processContent (template method flow)
     let processed: string | null = null;
     try {
-      const extracted = await (aggregator as any).extractContent(
+      const extracted = await testableAggregator.extractContent(
         html,
         mockArticle,
       );
       result.canExtract = true;
       result.extractedLength = extracted.length;
-      processed = await (aggregator as any).processContent(
+      processed = await testableAggregator.processContent(
         extracted,
         mockArticle,
       );

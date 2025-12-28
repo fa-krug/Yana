@@ -64,14 +64,10 @@ function registerShutdownHandlers(): void {
   process.on("exit", () => {
     // Synchronous cleanup on exit
     if (browser) {
-      try {
-        // Force close on exit (synchronous)
-        browser.close().catch(() => {
-          // Ignore errors during forced shutdown
-        });
-      } catch {
+      // Force close on exit (synchronous)
+      browser.close().catch(() => {
         // Ignore errors during forced shutdown
-      }
+      });
     }
   });
 
@@ -384,7 +380,7 @@ export class OglafAggregator extends BaseAggregator {
       url: item.link || "",
       published: item.pubDate ? new Date(item.pubDate) : new Date(),
       summary: item.contentSnippet || item.content || "",
-      author: item.creator || (item as any).author || undefined,
+      author: item.creator || (item as Parser.Item & { author?: string }).author || undefined,
     }));
 
     const elapsed = Date.now() - startTime;

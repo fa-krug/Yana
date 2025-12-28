@@ -42,7 +42,7 @@ import {
 } from "rxjs";
 
 // Application
-import { Feed } from "@app/core/models";
+import { Feed, FeedType } from "@app/core/models";
 import { ArticleService } from "@app/core/services/article.service";
 import { ConfirmationService } from "@app/core/services/confirmation.service";
 import { FeedService, FeedFilters } from "@app/core/services/feed.service";
@@ -331,13 +331,7 @@ export class FeedListComponent implements OnInit, OnDestroy {
   loadFeeds(silent: boolean = false) {
     const filters: FeedFilters = {
       search: this.searchControl.value || undefined,
-      feedType:
-        (this.typeControl.value as
-          | "article"
-          | "youtube"
-          | "podcast"
-          | "reddit"
-          | null) || undefined,
+      feedType: (this.typeControl.value as FeedType | null) || undefined,
       enabled: this.enabledControl.value ?? undefined,
       groupId: this.groupControl.value ?? undefined,
       page: this.feedService.currentPage(),
@@ -354,13 +348,7 @@ export class FeedListComponent implements OnInit, OnDestroy {
   onPageChange(event: PageEvent) {
     const filters: FeedFilters = {
       search: this.searchControl.value || undefined,
-      feedType:
-        (this.typeControl.value as
-          | "article"
-          | "youtube"
-          | "podcast"
-          | "reddit"
-          | null) || undefined,
+      feedType: (this.typeControl.value as FeedType | null) || undefined,
       enabled: this.enabledControl.value ?? undefined,
       groupId: this.groupControl.value ?? undefined,
       page: event.pageIndex + 1,
@@ -396,13 +384,7 @@ export class FeedListComponent implements OnInit, OnDestroy {
           // Refresh feeds to get updated disabled state
           const filters: FeedFilters = {
             search: this.searchControl.value || undefined,
-            feedType:
-              (this.typeControl.value as
-                | "article"
-                | "youtube"
-                | "podcast"
-                | "reddit"
-                | null) || undefined,
+            feedType: (this.typeControl.value as FeedType | null) || undefined,
             enabled: this.enabledControl.value ?? undefined,
             groupId: this.groupControl.value ?? undefined,
             page: this.feedService.currentPage(),

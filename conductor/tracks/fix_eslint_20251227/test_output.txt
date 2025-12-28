@@ -1,0 +1,367 @@
+
+> yana@0.0.0 test
+> vitest run
+
+
+[1m[46m RUN [49m[22m [36mv4.0.15 [39m[90m/Users/skrug/PycharmProjects/Yana[39m
+
+{"level":"info","time":"2025-12-27T22:42:38.230Z","pid":10731,"hostname":"WKA-JVNVCFHH25","path":":memory:","msg":"Database connection established"}
+{"level":"info","time":"2025-12-27T22:42:38.336Z","pid":10731,"hostname":"WKA-JVNVCFHH25","userId":1,"username":"testuser","msg":"User created"}
+{"level":"info","time":"2025-12-27T22:42:38.338Z","pid":10731,"hostname":"WKA-JVNVCFHH25","path":":memory:","msg":"Database connection established"}
+{"level":"info","time":"2025-12-27T22:42:38.431Z","pid":10731,"hostname":"WKA-JVNVCFHH25","userId":1,"username":"testuser","msg":"User created"}
+{"level":"info","time":"2025-12-27T22:42:38.433Z","pid":10731,"hostname":"WKA-JVNVCFHH25","path":":memory:","msg":"Database connection established"}
+{"level":"info","time":"2025-12-27T22:42:38.520Z","pid":10731,"hostname":"WKA-JVNVCFHH25","userId":1,"username":"testuser","msg":"User created"}
+{"level":"info","time":"2025-12-27T22:42:38.522Z","pid":10731,"hostname":"WKA-JVNVCFHH25","path":":memory:","msg":"Database connection established"}
+{"level":"info","time":"2025-12-27T22:42:38.607Z","pid":10731,"hostname":"WKA-JVNVCFHH25","userId":1,"username":"testuser","msg":"User created"}
+{"level":"info","time":"2025-12-27T22:42:38.682Z","pid":10731,"hostname":"WKA-JVNVCFHH25","userId":1,"username":"testuser","msg":"User authenticated successfully"}
+{"level":"info","time":"2025-12-27T22:42:38.683Z","pid":10731,"hostname":"WKA-JVNVCFHH25","path":":memory:","msg":"Database connection established"}
+{"level":"info","time":"2025-12-27T22:42:38.766Z","pid":10731,"hostname":"WKA-JVNVCFHH25","userId":1,"username":"testuser","msg":"User created"}
+Sourcemap for "/Users/skrug/PycharmProjects/Yana/node_modules/node-cron/dist/esm/node-cron.js" points to missing source files
+{"level":"warn","time":"2025-12-27T22:42:38.850Z","pid":10731,"hostname":"WKA-JVNVCFHH25","userId":1,"username":"testuser","msg":"Authentication failed: invalid password"}
+{"level":"info","time":"2025-12-27T22:42:38.851Z","pid":10731,"hostname":"WKA-JVNVCFHH25","path":":memory:","msg":"Database connection established"}
+{"level":"warn","time":"2025-12-27T22:42:38.854Z","pid":10731,"hostname":"WKA-JVNVCFHH25","username":"nonexistent","msg":"Authentication failed: user not found"}
+{"level":"info","time":"2025-12-27T22:42:38.855Z","pid":10731,"hostname":"WKA-JVNVCFHH25","path":":memory:","msg":"Database connection established"}
+ [32m✓[39m src/server/aggregators/__tests__/aggregator.test.ts [2m([22m[2m21 tests[22m[2m)[22m[33m 618[2mms[22m[39m
+{"level":"info","time":"2025-12-27T22:42:38.986Z","pid":10731,"hostname":"WKA-JVNVCFHH25","userId":1,"username":"testuser","msg":"User created"}
+{"level":"info","time":"2025-12-27T22:42:38.988Z","pid":10731,"hostname":"WKA-JVNVCFHH25","path":":memory:","msg":"Database connection established"}
+{"level":"info","time":"2025-12-27T22:42:38.992Z","pid":10731,"hostname":"WKA-JVNVCFHH25","path":":memory:","msg":"Database connection established"}
+{"level":"info","time":"2025-12-27T22:42:39.138Z","pid":10731,"hostname":"WKA-JVNVCFHH25","userId":1,"username":"testuser","msg":"User created"}
+{"level":"info","time":"2025-12-27T22:42:39.139Z","pid":10731,"hostname":"WKA-JVNVCFHH25","path":":memory:","msg":"Database connection established"}
+ [32m✓[39m src/server/services/user.service.test.ts [2m([22m[2m10 tests[22m[2m)[22m[33m 922[2mms[22m[39m
+{"level":"info","time":"2025-12-27T22:42:39.746Z","pid":10731,"hostname":"WKA-JVNVCFHH25","path":"./db.sqlite3","msg":"Database connection established"}
+ [32m✓[39m src/server/trpc/__tests__/setup.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+{"level":"info","time":"2025-12-27T22:42:39.929Z","pid":10731,"hostname":"WKA-JVNVCFHH25","path":":memory:","msg":"Database connection established"}
+{"level":"info","time":"2025-12-27T22:42:39.931Z","pid":10731,"hostname":"WKA-JVNVCFHH25","path":":memory:","msg":"Database connection established"}
+{"level":"info","time":"2025-12-27T22:42:39.931Z","pid":10731,"hostname":"WKA-JVNVCFHH25","path":":memory:","msg":"Database connection established"}
+{"level":"info","time":"2025-12-27T22:42:40.021Z","pid":10731,"hostname":"WKA-JVNVCFHH25","username":"testuser","sessionId":"test-session-id","msg":"Login attempt started"}
+{"level":"info","time":"2025-12-27T22:42:40.021Z","pid":10731,"hostname":"WKA-JVNVCFHH25","userId":1,"username":"testuser","msg":"User created"}
+{"level":"info","time":"2025-12-27T22:42:40.032Z","pid":10731,"hostname":"WKA-JVNVCFHH25","userId":1,"username":"testuser","msg":"User created"}
+{"level":"info","time":"2025-12-27T22:42:40.047Z","pid":10731,"hostname":"WKA-JVNVCFHH25","username":"testuser","sessionId":"sBM-Ac6f23QEoXYp35K6JDGtnVQBUorj","protocol":"http","secure":false,"msg":"Login attempt started"}
+{"level":"info","time":"2025-12-27T22:42:40.050Z","pid":10731,"hostname":"WKA-JVNVCFHH25","username":"testuser","sessionId":"eHJtYBy9txdG824nfNfeojCG1F8J3sE7","protocol":"http","secure":false,"msg":"Login attempt started"}
+ [32m✓[39m src/server/aggregators/__tests__/daily-limit.test.ts [2m([22m[2m5 tests[22m[2m)[22m[33m 471[2mms[22m[39m
+{"level":"info","time":"2025-12-27T22:42:40.111Z","pid":10731,"hostname":"WKA-JVNVCFHH25","userId":1,"username":"testuser","msg":"User authenticated successfully"}
+{"level":"info","time":"2025-12-27T22:42:40.112Z","pid":10731,"hostname":"WKA-JVNVCFHH25","userId":1,"username":"testuser","msg":"User authenticated"}
+{"level":"info","time":"2025-12-27T22:42:40.112Z","pid":10731,"hostname":"WKA-JVNVCFHH25","userId":1,"username":"testuser","msg":"Login successful"}
+{"level":"info","time":"2025-12-27T22:42:40.114Z","pid":10731,"hostname":"WKA-JVNVCFHH25","path":":memory:","msg":"Database connection established"}
+{"level":"info","time":"2025-12-27T22:42:40.134Z","pid":10731,"hostname":"WKA-JVNVCFHH25","userId":1,"username":"testuser","msg":"User authenticated successfully"}
+{"level":"info","time":"2025-12-27T22:42:40.143Z","pid":10731,"hostname":"WKA-JVNVCFHH25","userId":1,"username":"testuser","msg":"User authenticated successfully"}
+{"level":"info","time":"2025-12-27T22:42:40.134Z","pid":10731,"hostname":"WKA-JVNVCFHH25","userId":1,"username":"testuser","msg":"User authenticated"}
+{"level":"info","time":"2025-12-27T22:42:40.135Z","pid":10731,"hostname":"WKA-JVNVCFHH25","userId":1,"username":"testuser","msg":"Login successful"}
+{"level":"info","time":"2025-12-27T22:42:40.143Z","pid":10731,"hostname":"WKA-JVNVCFHH25","userId":1,"username":"testuser","msg":"User authenticated"}
+{"level":"info","time":"2025-12-27T22:42:40.144Z","pid":10731,"hostname":"WKA-JVNVCFHH25","userId":1,"username":"testuser","msg":"Login successful"}
+{"level":"info","time":"2025-12-27T22:42:40.147Z","pid":10731,"hostname":"WKA-JVNVCFHH25","path":":memory:","msg":"Database connection established"}
+{"level":"info","time":"2025-12-27T22:42:40.152Z","pid":10731,"hostname":"WKA-JVNVCFHH25","path":":memory:","msg":"Database connection established"}
+{"level":"info","time":"2025-12-27T22:42:40.201Z","pid":10731,"hostname":"WKA-JVNVCFHH25","username":"testuser","sessionId":"test-session-id","msg":"Login attempt started"}
+{"level":"info","time":"2025-12-27T22:42:40.226Z","pid":10731,"hostname":"WKA-JVNVCFHH25","userId":1,"username":"testuser","msg":"User created"}
+{"level":"info","time":"2025-12-27T22:42:40.231Z","pid":10731,"hostname":"WKA-JVNVCFHH25","username":"testuser","sessionId":"hC9huxVr4JmUnR-diKVTKZhUa-bRqjDE","protocol":"http","secure":false,"msg":"Login attempt started"}
+{"level":"info","time":"2025-12-27T22:42:40.241Z","pid":10731,"hostname":"WKA-JVNVCFHH25","userId":1,"username":"testuser","msg":"User created"}
+{"level":"info","time":"2025-12-27T22:42:40.243Z","pid":10731,"hostname":"WKA-JVNVCFHH25","username":"testuser","sessionId":"zEvQ-RAfvG2Yd7Krbe_6uuV8lg50L7WZ","protocol":"http","secure":false,"msg":"Login attempt started"}
+{"level":"warn","time":"2025-12-27T22:42:40.284Z","pid":10731,"hostname":"WKA-JVNVCFHH25","userId":1,"username":"testuser","msg":"Authentication failed: invalid password"}
+{"level":"warn","time":"2025-12-27T22:42:40.285Z","pid":10731,"hostname":"WKA-JVNVCFHH25","error":{"value":"Invalid username or password"},"name":"AuthenticationError","stack":"AuthenticationError: Invalid username or password\n    at authenticateUser (/Users/skrug/PycharmProjects/Yana/src/server/services/user.service.ts:97:11)\n    at /Users/skrug/PycharmProjects/Yana/src/server/trpc/routers/auth.router.ts:79:22\n    at resolveMiddleware (file:///Users/skrug/PycharmProjects/Yana/node_modules/@trpc/server/dist/initTRPC-DGaJyg8t.mjs:221:17)\n    at callRecursive (file:///Users/skrug/PycharmProjects/Yana/node_modules/@trpc/server/dist/initTRPC-DGaJyg8t.mjs:256:18)\n    at outputValidatorMiddleware (file:///Users/skrug/PycharmProjects/Yana/node_modules/@trpc/server/dist/initTRPC-DGaJyg8t.mjs:60:18)\n    at callRecursive (file:///Users/skrug/PycharmProjects/Yana/node_modules/@trpc/server/dist/initTRPC-DGaJyg8t.mjs:256:18)\n    at callRecursive (file:///Users/skrug/PycharmProjects/Yana/node_modules/@trpc/server/dist/initTRPC-DGaJyg8t.mjs:256:18)\n    at procedure (file:///Users/skrug/PycharmProjects/Yana/node_modules/@trpc/server/dist/initTRPC-DGaJyg8t.mjs:281:18)\n    at file:///Users/skrug/PycharmProjects/Yana/node_modules/@trpc/server/dist/tracked-DBSMdVzR.mjs:298:13\n    at /Users/skrug/PycharmProjects/Yana/src/server/trpc/routers/__tests__/auth.router.test.ts:126:5","errorString":"AuthenticationError: Invalid username or password","errorType":"AuthenticationError","sessionId":"test-session-id","msg":"Login failed: authentication error"}
+{"level":"info","time":"2025-12-27T22:42:40.286Z","pid":10731,"hostname":"WKA-JVNVCFHH25","path":":memory:","msg":"Database connection established"}
+{"level":"warn","time":"2025-12-27T22:42:40.305Z","pid":10731,"hostname":"WKA-JVNVCFHH25","userId":1,"username":"testuser","msg":"Authentication failed: invalid password"}
+{"level":"warn","time":"2025-12-27T22:42:40.307Z","pid":10731,"hostname":"WKA-JVNVCFHH25","error":{"value":"Invalid username or password"},"name":"AuthenticationError","stack":"AuthenticationError: Invalid username or password\n    at authenticateUser (/Users/skrug/PycharmProjects/Yana/src/server/services/user.service.ts:97:11)\n    at /Users/skrug/PycharmProjects/Yana/src/server/trpc/routers/auth.router.ts:79:22\n    at resolveMiddleware (file:///Users/skrug/PycharmProjects/Yana/node_modules/@trpc/server/dist/initTRPC-DGaJyg8t.mjs:221:17)\n    at callRecursive (file:///Users/skrug/PycharmProjects/Yana/node_modules/@trpc/server/dist/initTRPC-DGaJyg8t.mjs:256:18)\n    at outputValidatorMiddleware (file:///Users/skrug/PycharmProjects/Yana/node_modules/@trpc/server/dist/initTRPC-DGaJyg8t.mjs:60:18)\n    at callRecursive (file:///Users/skrug/PycharmProjects/Yana/node_modules/@trpc/server/dist/initTRPC-DGaJyg8t.mjs:256:18)\n    at callRecursive (file:///Users/skrug/PycharmProjects/Yana/node_modules/@trpc/server/dist/initTRPC-DGaJyg8t.mjs:256:18)\n    at procedure (file:///Users/skrug/PycharmProjects/Yana/node_modules/@trpc/server/dist/initTRPC-DGaJyg8t.mjs:281:18)\n    at file:///Users/skrug/PycharmProjects/Yana/node_modules/@trpc/server/dist/resolveResponse-D7zvnoIM.mjs:1948:18\n    at resolveResponse (file:///Users/skrug/PycharmProjects/Yana/node_modules/@trpc/server/dist/resolveResponse-D7zvnoIM.mjs:1973:28)","errorString":"AuthenticationError: Invalid username or password","errorType":"AuthenticationError","sessionId":"hC9huxVr4JmUnR-diKVTKZhUa-bRqjDE","msg":"Login failed: authentication error"}
+{"level":"warn","time":"2025-12-27T22:42:40.307Z","pid":10731,"hostname":"WKA-JVNVCFHH25","path":"auth.login","type":"mutation","code":"UNAUTHORIZED","message":"Invalid username or password","stack":"TRPCError: Invalid username or password\n    at /Users/skrug/PycharmProjects/Yana/src/server/trpc/routers/auth.router.ts:164:17\n    at resolveMiddleware (file:///Users/skrug/PycharmProjects/Yana/node_modules/@trpc/server/dist/initTRPC-DGaJyg8t.mjs:221:17)\n    at callRecursive (file:///Users/skrug/PycharmProjects/Yana/node_modules/@trpc/server/dist/initTRPC-DGaJyg8t.mjs:256:18)\n    at outputValidatorMiddleware (file:///Users/skrug/PycharmProjects/Yana/node_modules/@trpc/server/dist/initTRPC-DGaJyg8t.mjs:60:18)\n    at callRecursive (file:///Users/skrug/PycharmProjects/Yana/node_modules/@trpc/server/dist/initTRPC-DGaJyg8t.mjs:256:18)\n    at callRecursive (file:///Users/skrug/PycharmProjects/Yana/node_modules/@trpc/server/dist/initTRPC-DGaJyg8t.mjs:256:18)\n    at procedure (file:///Users/skrug/PycharmProjects/Yana/node_modules/@trpc/server/dist/initTRPC-DGaJyg8t.mjs:281:18)\n    at file:///Users/skrug/PycharmProjects/Yana/node_modules/@trpc/server/dist/resolveResponse-D7zvnoIM.mjs:1948:18\n    at resolveResponse (file:///Users/skrug/PycharmProjects/Yana/node_modules/@trpc/server/dist/resolveResponse-D7zvnoIM.mjs:1973:28)\n    at file:///Users/skrug/PycharmProjects/Yana/node_modules/@trpc/server/dist/node-http-Cd7-CwtL.mjs:201:22","input":"{\"username\":\"testuser\",\"password\":\"wrongpassword\"}","sessionId":"hC9huxVr4JmUnR-diKVTKZhUa-bRqjDE","msg":"tRPC unauthorized error"}
+{"level":"info","time":"2025-12-27T22:42:40.311Z","pid":10731,"hostname":"WKA-JVNVCFHH25","path":":memory:","msg":"Database connection established"}
+{"level":"warn","time":"2025-12-27T22:42:40.315Z","pid":10731,"hostname":"WKA-JVNVCFHH25","userId":1,"username":"testuser","msg":"Authentication failed: invalid password"}
+{"level":"info","time":"2025-12-27T22:42:40.318Z","pid":10731,"hostname":"WKA-JVNVCFHH25","path":":memory:","msg":"Database connection established"}
+{"level":"warn","time":"2025-12-27T22:42:40.317Z","pid":10731,"hostname":"WKA-JVNVCFHH25","error":{"value":"Invalid username or password"},"name":"AuthenticationError","stack":"AuthenticationError: Invalid username or password\n    at authenticateUser (/Users/skrug/PycharmProjects/Yana/src/server/services/user.service.ts:97:11)\n    at /Users/skrug/PycharmProjects/Yana/src/server/trpc/routers/auth.router.ts:79:22\n    at resolveMiddleware (file:///Users/skrug/PycharmProjects/Yana/node_modules/@trpc/server/dist/initTRPC-DGaJyg8t.mjs:221:17)\n    at callRecursive (file:///Users/skrug/PycharmProjects/Yana/node_modules/@trpc/server/dist/initTRPC-DGaJyg8t.mjs:256:18)\n    at outputValidatorMiddleware (file:///Users/skrug/PycharmProjects/Yana/node_modules/@trpc/server/dist/initTRPC-DGaJyg8t.mjs:60:18)\n    at callRecursive (file:///Users/skrug/PycharmProjects/Yana/node_modules/@trpc/server/dist/initTRPC-DGaJyg8t.mjs:256:18)\n    at callRecursive (file:///Users/skrug/PycharmProjects/Yana/node_modules/@trpc/server/dist/initTRPC-DGaJyg8t.mjs:256:18)\n    at procedure (file:///Users/skrug/PycharmProjects/Yana/node_modules/@trpc/server/dist/initTRPC-DGaJyg8t.mjs:281:18)\n    at file:///Users/skrug/PycharmProjects/Yana/node_modules/@trpc/server/dist/resolveResponse-D7zvnoIM.mjs:1948:18\n    at resolveResponse (file:///Users/skrug/PycharmProjects/Yana/node_modules/@trpc/server/dist/resolveResponse-D7zvnoIM.mjs:1973:28)","errorString":"AuthenticationError: Invalid username or password","errorType":"AuthenticationError","sessionId":"zEvQ-RAfvG2Yd7Krbe_6uuV8lg50L7WZ","msg":"Login failed: authentication error"}
+{"level":"warn","time":"2025-12-27T22:42:40.317Z","pid":10731,"hostname":"WKA-JVNVCFHH25","path":"auth.login","type":"mutation","code":"UNAUTHORIZED","message":"Invalid username or password","stack":"TRPCError: Invalid username or password\n    at /Users/skrug/PycharmProjects/Yana/src/server/trpc/routers/auth.router.ts:164:17\n    at resolveMiddleware (file:///Users/skrug/PycharmProjects/Yana/node_modules/@trpc/server/dist/initTRPC-DGaJyg8t.mjs:221:17)\n    at callRecursive (file:///Users/skrug/PycharmProjects/Yana/node_modules/@trpc/server/dist/initTRPC-DGaJyg8t.mjs:256:18)\n    at outputValidatorMiddleware (file:///Users/skrug/PycharmProjects/Yana/node_modules/@trpc/server/dist/initTRPC-DGaJyg8t.mjs:60:18)\n    at callRecursive (file:///Users/skrug/PycharmProjects/Yana/node_modules/@trpc/server/dist/initTRPC-DGaJyg8t.mjs:256:18)\n    at callRecursive (file:///Users/skrug/PycharmProjects/Yana/node_modules/@trpc/server/dist/initTRPC-DGaJyg8t.mjs:256:18)\n    at procedure (file:///Users/skrug/PycharmProjects/Yana/node_modules/@trpc/server/dist/initTRPC-DGaJyg8t.mjs:281:18)\n    at file:///Users/skrug/PycharmProjects/Yana/node_modules/@trpc/server/dist/resolveResponse-D7zvnoIM.mjs:1948:18\n    at resolveResponse (file:///Users/skrug/PycharmProjects/Yana/node_modules/@trpc/server/dist/resolveResponse-D7zvnoIM.mjs:1973:28)\n    at file:///Users/skrug/PycharmProjects/Yana/node_modules/@trpc/server/dist/node-http-Cd7-CwtL.mjs:201:22","input":"{\"username\":\"testuser\",\"password\":\"wrongpassword\"}","sessionId":"zEvQ-RAfvG2Yd7Krbe_6uuV8lg50L7WZ","msg":"tRPC unauthorized error"}
+{"level":"info","time":"2025-12-27T22:42:40.322Z","pid":10731,"hostname":"WKA-JVNVCFHH25","path":":memory:","msg":"Database connection established"}
+{"level":"info","time":"2025-12-27T22:42:40.327Z","pid":10731,"hostname":"WKA-JVNVCFHH25","path":":memory:","msg":"Database connection established"}
+{"level":"info","time":"2025-12-27T22:42:40.369Z","pid":10731,"hostname":"WKA-JVNVCFHH25","path":":memory:","msg":"Database connection established"}
+{"level":"info","time":"2025-12-27T22:42:40.400Z","pid":10731,"hostname":"WKA-JVNVCFHH25","userId":1,"username":"testuser","msg":"User created"}
+{"level":"info","time":"2025-12-27T22:42:40.403Z","pid":10731,"hostname":"WKA-JVNVCFHH25","username":"testuser","sessionId":"o9_s10WoM2sba-UEWlsWd2ORTAOFeth7","protocol":"http","secure":false,"msg":"Login attempt started"}
+{"level":"info","time":"2025-12-27T22:42:40.409Z","pid":10731,"hostname":"WKA-JVNVCFHH25","userId":1,"username":"testuser","msg":"User created"}
+{"level":"info","time":"2025-12-27T22:42:40.410Z","pid":10731,"hostname":"WKA-JVNVCFHH25","username":"testuser","sessionId":"ttJJIX76ngIyBxBcAyfa30XQg6jsweRA","protocol":"http","secure":false,"msg":"Login attempt started"}
+{"level":"info","time":"2025-12-27T22:42:40.457Z","pid":10731,"hostname":"WKA-JVNVCFHH25","path":":memory:","msg":"Database connection established"}
+{"level":"info","time":"2025-12-27T22:42:40.494Z","pid":10731,"hostname":"WKA-JVNVCFHH25","userId":1,"username":"testuser","msg":"User authenticated successfully"}
+{"level":"info","time":"2025-12-27T22:42:40.494Z","pid":10731,"hostname":"WKA-JVNVCFHH25","userId":1,"username":"testuser","msg":"User authenticated"}
+{"level":"info","time":"2025-12-27T22:42:40.494Z","pid":10731,"hostname":"WKA-JVNVCFHH25","userId":1,"username":"testuser","msg":"Login successful"}
+{"level":"info","time":"2025-12-27T22:42:40.497Z","pid":10731,"hostname":"WKA-JVNVCFHH25","userId":1,"username":"testuser","msg":"User authenticated successfully"}
+{"level":"info","time":"2025-12-27T22:42:40.497Z","pid":10731,"hostname":"WKA-JVNVCFHH25","userId":1,"username":"testuser","msg":"User authenticated"}
+{"level":"info","time":"2025-12-27T22:42:40.497Z","pid":10731,"hostname":"WKA-JVNVCFHH25","userId":1,"username":"testuser","msg":"Login successful"}
+ [32m✓[39m tests/integration/api/trpc-auth.test.ts [2m([22m[2m4 tests[22m[2m)[22m[33m 574[2mms[22m[39m
+ [32m✓[39m tests/integration/api/auth.test.ts [2m([22m[2m4 tests[22m[2m)[22m[33m 577[2mms[22m[39m
+ [32m✓[39m src/server/trpc/routers/__tests__/auth.router.test.ts [2m([22m[2m5 tests[22m[2m)[22m[33m 614[2mms[22m[39m
+ [32m✓[39m src/server/aggregators/__tests__/aggregator-integration.test.ts [2m([22m[2m31 tests[22m[2m | [22m[33m2 skipped[39m[2m)[22m[33m 2008[2mms[22m[39m
+       [33m[2m✓[22m[39m should extract and process content from fixture [33m 1513[2mms[22m[39m
+ [32m✓[39m src/server/trpc/routers/__tests__/aggregator.router.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+[90mstdout[2m | src/server/aggregators/__tests__/aggregator-options.test.ts[2m > [22m[2mAggregator Options Integration Tests[2m > [22m[2mYouTubeAggregator Options[2m > [22m[2mshould fetch specified number of comments per video
+[22m[39m[DEBUG:youtube] axios.get called: https://www.googleapis.com/youtube/v3/search params: {"part":"snippet","q":"@testchannel","type":"channel","maxResults":10,"key":"test_api_key"}
+
+[90mstdout[2m | src/server/aggregators/__tests__/aggregator-options.test.ts[2m > [22m[2mAggregator Options Integration Tests[2m > [22m[2mYouTubeAggregator Options[2m > [22m[2mshould fetch specified number of comments per video
+[22m[39m[DEBUG:youtube] axios.get called: https://www.googleapis.com/youtube/v3/channels params: {"part":"contentDetails,snippet","id":"UCtest123","key":"test_api_key"}
+
+[90mstdout[2m | src/server/aggregators/__tests__/aggregator-options.test.ts[2m > [22m[2mAggregator Options Integration Tests[2m > [22m[2mYouTubeAggregator Options[2m > [22m[2mshould fetch specified number of comments per video
+[22m[39m[DEBUG:youtube] axios.get called: https://www.googleapis.com/youtube/v3/search params: {"part":"id","channelId":"UCtest123","type":"video","order":"date","maxResults":50,"key":"test_api_key"}
+
+[90mstdout[2m | src/server/aggregators/__tests__/aggregator-options.test.ts[2m > [22m[2mAggregator Options Integration Tests[2m > [22m[2mYouTubeAggregator Options[2m > [22m[2mshould fetch specified number of comments per video
+[22m[39m[DEBUG:youtube] axios.get called: https://www.googleapis.com/youtube/v3/videos params: {"part":"snippet,statistics,contentDetails","id":"dQw4w9WgXcQ","key":"test_api_key"}
+[DEBUG:youtube] Mocking videos
+
+[90mstdout[2m | src/server/aggregators/__tests__/aggregator-options.test.ts[2m > [22m[2mAggregator Options Integration Tests[2m > [22m[2mYouTubeAggregator Options[2m > [22m[2mshould fetch specified number of comments per video
+[22m[39m[PARSE_TRACE:youtube] parseToRawArticles called with 1 videos
+
+[90mstdout[2m | src/server/aggregators/__tests__/aggregator-options.test.ts[2m > [22m[2mAggregator Options Integration Tests[2m > [22m[2mFeed-Level Options[2m > [22m[2maddSourceFooter=true[2m > [22m[2mshould add source footer when addSourceFooter=true
+[22m[39m[DEBUG] Checking for footer - Article content: <article><section><html><head></head><body><p>Test article content</p></body></html></section><footer style="margin-bottom: 16px;"><a href="https://example.com/article" style="float: right;">Source</a></footer></article>
+[DEBUG] Article has footer element: [33mtrue[39m
+
+[90mstdout[2m | src/server/aggregators/__tests__/aggregator-options.test.ts[2m > [22m[2mAggregator Options Integration Tests[2m > [22m[2mFeed-Level Options[2m > [22m[2museCurrentTimestamp=true[2m > [22m[2mshould use current timestamp when useCurrentTimestamp=true
+[22m[39m[TRACE:should use current timestamp when useCurrentTimestamp=true] aggregate() returned 1 articles
+[TRACE:should use current timestamp when useCurrentTimestamp=true] First article: {
+  title: [32m'Test Article'[39m,
+  url: [32m'https://example.com/article'[39m,
+  contentLength: [33m193[39m,
+  contentPreview: [32m'<article><section><html><head></head><body></body></html></section><footer style="margin-bottom: 16px;"><a href="https://example.com/article" style="f'[39m,
+  thumbnailUrl: [90mundefined[39m,
+  published: [35m2025-12-26T22:42:49.554Z[39m
+}
+
+[90mstdout[2m | src/server/aggregators/__tests__/aggregator-options.test.ts[2m > [22m[2mAggregator Options Integration Tests[2m > [22m[2mFeed-Level Options[2m > [22m[2museCurrentTimestamp=true[2m > [22m[2mshould use current timestamp when useCurrentTimestamp=true
+[22m[39m[TRACE:should use current timestamp when useCurrentTimestamp=true] saveAggregatedArticles called with 1 articles
+[TRACE:should use current timestamp when useCurrentTimestamp=true] First article in save: {
+  title: [32m'Test Article'[39m,
+  url: [32m'https://example.com/article'[39m,
+  contentLength: [33m193[39m,
+  thumbnailUrl: [90mundefined[39m,
+  published: [35m2025-12-26T22:42:49.554Z[39m,
+  feedUseCurrentTimestamp: [33mtrue[39m,
+  feedSkipDuplicates: [33mtrue[39m,
+  forceRefresh: [33mfalse[39m
+}
+
+[90mstdout[2m | src/server/aggregators/__tests__/aggregator-options.test.ts[2m > [22m[2mAggregator Options Integration Tests[2m > [22m[2mFeed-Level Options[2m > [22m[2museCurrentTimestamp=true[2m > [22m[2mshould use current timestamp when useCurrentTimestamp=true
+[22m[39m[SAVE_TRACE] Article https://example.com/article: shouldSkip=false, shouldUpdate=false, reason=none
+
+[90mstdout[2m | src/server/aggregators/__tests__/aggregator-options.test.ts[2m > [22m[2mAggregator Options Integration Tests[2m > [22m[2mFeed-Level Options[2m > [22m[2museCurrentTimestamp=true[2m > [22m[2mshould use current timestamp when useCurrentTimestamp=true
+[22m[39m[TRACE:should use current timestamp when useCurrentTimestamp=true] saveAggregatedArticles result: { articlesCreated: [33m1[39m, articlesUpdated: [33m0[39m }
+
+[90mstdout[2m | src/server/aggregators/__tests__/aggregator-options.test.ts[2m > [22m[2mAggregator Options Integration Tests[2m > [22m[2mFeed-Level Options[2m > [22m[2museCurrentTimestamp=true[2m > [22m[2mshould use current timestamp when useCurrentTimestamp=true
+[22m[39m[TRACE:should use current timestamp when useCurrentTimestamp=true] Final saved articles: 1
+[TRACE:should use current timestamp when useCurrentTimestamp=true] First saved article: {
+  name: [32m'Test Article'[39m,
+  contentLength: [33m193[39m,
+  thumbnailUrl: [1mnull[22m,
+  date: [35m2025-12-27T22:42:49.000Z[39m,
+  contentPreview: [32m'<article><section><html><head></head><body></body></html></section><footer style="margin-bottom: 16px;"><a href="https://example.com/article" style="float: right;">Source</a></footer></article>'[39m
+}
+
+[90mstdout[2m | src/server/aggregators/__tests__/aggregator-options.test.ts[2m > [22m[2mAggregator Options Integration Tests[2m > [22m[2mFeed-Level Options[2m > [22m[2museCurrentTimestamp=false[2m > [22m[2mshould use published date when useCurrentTimestamp=false
+[22m[39m[TRACE:should use published date when useCurrentTimestamp=false] aggregate() returned 1 articles
+[TRACE:should use published date when useCurrentTimestamp=false] First article: {
+  title: [32m'Test Article'[39m,
+  url: [32m'https://example.com/article'[39m,
+  contentLength: [33m77[39m,
+  contentPreview: [32m'<article><section><html><head></head><body></body></html></section></article>'[39m,
+  thumbnailUrl: [90mundefined[39m,
+  published: [35m2025-12-26T22:42:49.792Z[39m
+}
+
+[90mstdout[2m | src/server/aggregators/__tests__/aggregator-options.test.ts[2m > [22m[2mAggregator Options Integration Tests[2m > [22m[2mFeed-Level Options[2m > [22m[2museCurrentTimestamp=false[2m > [22m[2mshould use published date when useCurrentTimestamp=false
+[22m[39m[TRACE:should use published date when useCurrentTimestamp=false] saveAggregatedArticles called with 1 articles
+[TRACE:should use published date when useCurrentTimestamp=false] First article in save: {
+  title: [32m'Test Article'[39m,
+  url: [32m'https://example.com/article'[39m,
+  contentLength: [33m77[39m,
+  thumbnailUrl: [90mundefined[39m,
+  published: [35m2025-12-26T22:42:49.792Z[39m,
+  feedUseCurrentTimestamp: [33mfalse[39m,
+  feedSkipDuplicates: [33mtrue[39m,
+  forceRefresh: [33mfalse[39m
+}
+
+[90mstdout[2m | src/server/aggregators/__tests__/aggregator-options.test.ts[2m > [22m[2mAggregator Options Integration Tests[2m > [22m[2mFeed-Level Options[2m > [22m[2museCurrentTimestamp=false[2m > [22m[2mshould use published date when useCurrentTimestamp=false
+[22m[39m[SAVE_TRACE] Article https://example.com/article: shouldSkip=false, shouldUpdate=false, reason=none
+
+[90mstdout[2m | src/server/aggregators/__tests__/aggregator-options.test.ts[2m > [22m[2mAggregator Options Integration Tests[2m > [22m[2mFeed-Level Options[2m > [22m[2museCurrentTimestamp=false[2m > [22m[2mshould use published date when useCurrentTimestamp=false
+[22m[39m[TRACE:should use published date when useCurrentTimestamp=false] saveAggregatedArticles result: { articlesCreated: [33m1[39m, articlesUpdated: [33m0[39m }
+
+[90mstdout[2m | src/server/aggregators/__tests__/aggregator-options.test.ts[2m > [22m[2mAggregator Options Integration Tests[2m > [22m[2mFeed-Level Options[2m > [22m[2museCurrentTimestamp=false[2m > [22m[2mshould use published date when useCurrentTimestamp=false
+[22m[39m[TRACE:should use published date when useCurrentTimestamp=false] Final saved articles: 1
+[TRACE:should use published date when useCurrentTimestamp=false] First saved article: {
+  name: [32m'Test Article'[39m,
+  contentLength: [33m77[39m,
+  thumbnailUrl: [1mnull[22m,
+  date: [35m2025-12-26T22:42:49.000Z[39m,
+  contentPreview: [32m'<article><section><html><head></head><body></body></html></section></article>'[39m
+}
+
+[90mstdout[2m | src/server/aggregators/__tests__/aggregator-options.test.ts[2m > [22m[2mAggregator Options Integration Tests[2m > [22m[2mFeed-Level Options[2m > [22m[2mshould skip duplicate articles when skipDuplicates=true
+[22m[39m[TRACE:skipDuplicates-first] aggregate() returned 1 articles
+[TRACE:skipDuplicates-first] First article: {
+  title: [32m'Test Article'[39m,
+  url: [32m'https://example.com/article'[39m,
+  contentLength: [33m193[39m,
+  contentPreview: [32m'<article><section><html><head></head><body></body></html></section><footer style="margin-bottom: 16px;"><a href="https://example.com/article" style="f'[39m,
+  thumbnailUrl: [90mundefined[39m,
+  published: [35m2025-12-27T22:42:50.063Z[39m
+}
+
+[90mstdout[2m | src/server/aggregators/__tests__/aggregator-options.test.ts[2m > [22m[2mAggregator Options Integration Tests[2m > [22m[2mFeed-Level Options[2m > [22m[2mshould skip duplicate articles when skipDuplicates=true
+[22m[39m[TRACE:skipDuplicates-first] saveAggregatedArticles called with 1 articles
+[TRACE:skipDuplicates-first] First article in save: {
+  title: [32m'Test Article'[39m,
+  url: [32m'https://example.com/article'[39m,
+  contentLength: [33m193[39m,
+  thumbnailUrl: [90mundefined[39m,
+  published: [35m2025-12-27T22:42:50.063Z[39m,
+  feedUseCurrentTimestamp: [33mfalse[39m,
+  feedSkipDuplicates: [33mtrue[39m,
+  forceRefresh: [33mfalse[39m
+}
+
+[90mstdout[2m | src/server/aggregators/__tests__/aggregator-options.test.ts[2m > [22m[2mAggregator Options Integration Tests[2m > [22m[2mFeed-Level Options[2m > [22m[2mshould skip duplicate articles when skipDuplicates=true
+[22m[39m[SAVE_TRACE] Article https://example.com/article: shouldSkip=false, shouldUpdate=false, reason=none
+
+[90mstdout[2m | src/server/aggregators/__tests__/aggregator-options.test.ts[2m > [22m[2mAggregator Options Integration Tests[2m > [22m[2mFeed-Level Options[2m > [22m[2mshould skip duplicate articles when skipDuplicates=true
+[22m[39m[TRACE:skipDuplicates-first] saveAggregatedArticles result: { articlesCreated: [33m1[39m, articlesUpdated: [33m0[39m }
+
+[90mstdout[2m | src/server/aggregators/__tests__/aggregator-options.test.ts[2m > [22m[2mAggregator Options Integration Tests[2m > [22m[2mFeed-Level Options[2m > [22m[2mshould skip duplicate articles when skipDuplicates=true
+[22m[39m[TRACE:skipDuplicates-first] Final saved articles: 1
+[TRACE:skipDuplicates-first] First saved article: {
+  name: [32m'Test Article'[39m,
+  contentLength: [33m193[39m,
+  thumbnailUrl: [1mnull[22m,
+  date: [35m2025-12-27T22:42:50.000Z[39m,
+  contentPreview: [32m'<article><section><html><head></head><body></body></html></section><footer style="margin-bottom: 16px;"><a href="https://example.com/article" style="float: right;">Source</a></footer></article>'[39m
+}
+
+[90mstdout[2m | src/server/aggregators/__tests__/aggregator-options.test.ts[2m > [22m[2mAggregator Options Integration Tests[2m > [22m[2mFeed-Level Options[2m > [22m[2mshould skip duplicate articles when skipDuplicates=true
+[22m[39m[TRACE:skipDuplicates-second] aggregate() returned 0 articles
+[TRACE:skipDuplicates-second] WARNING: aggregate() returned 0 articles
+
+[90mstdout[2m | src/server/aggregators/__tests__/aggregator-options.test.ts[2m > [22m[2mAggregator Options Integration Tests[2m > [22m[2mFeed-Level Options[2m > [22m[2mshould skip duplicate articles when skipDuplicates=true
+[22m[39m[TRACE:skipDuplicates-second] saveAggregatedArticles called with 0 articles
+
+[90mstdout[2m | src/server/aggregators/__tests__/aggregator-options.test.ts[2m > [22m[2mAggregator Options Integration Tests[2m > [22m[2mFeed-Level Options[2m > [22m[2mshould skip duplicate articles when skipDuplicates=true
+[22m[39m[TRACE:skipDuplicates-second] saveAggregatedArticles result: { articlesCreated: [33m0[39m, articlesUpdated: [33m0[39m }
+
+[90mstdout[2m | src/server/aggregators/__tests__/aggregator-options.test.ts[2m > [22m[2mAggregator Options Integration Tests[2m > [22m[2mFeed-Level Options[2m > [22m[2mshould skip duplicate articles when skipDuplicates=true
+[22m[39m[TRACE:skipDuplicates-second] Final saved articles: 1
+[TRACE:skipDuplicates-second] First saved article: {
+  name: [32m'Test Article'[39m,
+  contentLength: [33m193[39m,
+  thumbnailUrl: [1mnull[22m,
+  date: [35m2025-12-27T22:42:50.000Z[39m,
+  contentPreview: [32m'<article><section><html><head></head><body></body></html></section><footer style="margin-bottom: 16px;"><a href="https://example.com/article" style="float: right;">Source</a></footer></article>'[39m
+}
+
+[90mstdout[2m | src/server/aggregators/__tests__/aggregator-options.test.ts[2m > [22m[2mAggregator Options Integration Tests[2m > [22m[2mOption Interactions[2m > [22m[2mshould apply aggregator options and feed options together
+[22m[39m[TRACE:aggregator+feed-options] aggregate() returned 1 articles
+[TRACE:aggregator+feed-options] First article: {
+  title: [32m'Test Article'[39m,
+  url: [32m'https://example.com/article'[39m,
+  contentLength: [33m324[39m,
+  contentPreview: [32m'<article><header><img src="https://example.com/image.jpg" alt="Article image" style="max-width: 100%; height: auto;"></header><section><html><head></h'[39m,
+  thumbnailUrl: [32m'https://example.com/image.jpg'[39m,
+  published: [35m2025-12-26T22:42:50.520Z[39m
+}
+
+[90mstdout[2m | src/server/aggregators/__tests__/aggregator-options.test.ts[2m > [22m[2mAggregator Options Integration Tests[2m > [22m[2mOption Interactions[2m > [22m[2mshould apply aggregator options and feed options together
+[22m[39m[TRACE:aggregator+feed-options] saveAggregatedArticles called with 1 articles
+[TRACE:aggregator+feed-options] First article in save: {
+  title: [32m'Test Article'[39m,
+  url: [32m'https://example.com/article'[39m,
+  contentLength: [33m324[39m,
+  thumbnailUrl: [32m'https://example.com/image.jpg'[39m,
+  published: [35m2025-12-26T22:42:50.520Z[39m,
+  feedUseCurrentTimestamp: [33mfalse[39m,
+  feedSkipDuplicates: [33mtrue[39m,
+  forceRefresh: [33mfalse[39m
+}
+
+[90mstdout[2m | src/server/aggregators/__tests__/aggregator-options.test.ts[2m > [22m[2mAggregator Options Integration Tests[2m > [22m[2mOption Interactions[2m > [22m[2mshould apply aggregator options and feed options together
+[22m[39m[SAVE_TRACE] Article https://example.com/article: shouldSkip=false, shouldUpdate=false, reason=none
+
+[90mstdout[2m | src/server/aggregators/__tests__/aggregator-options.test.ts[2m > [22m[2mAggregator Options Integration Tests[2m > [22m[2mOption Interactions[2m > [22m[2mshould apply aggregator options and feed options together
+[22m[39m[TRACE:aggregator+feed-options] saveAggregatedArticles result: { articlesCreated: [33m1[39m, articlesUpdated: [33m0[39m }
+
+[90mstdout[2m | src/server/aggregators/__tests__/aggregator-options.test.ts[2m > [22m[2mAggregator Options Integration Tests[2m > [22m[2mOption Interactions[2m > [22m[2mshould apply aggregator options and feed options together
+[22m[39m[TRACE:aggregator+feed-options] Final saved articles: 1
+[TRACE:aggregator+feed-options] First saved article: {
+  name: [32m'Test Article'[39m,
+  contentLength: [33m324[39m,
+  thumbnailUrl: [32m'data:image/jpeg;base64,/9j/4AAQSkZJRg=='[39m,
+  date: [35m2025-12-26T22:42:50.000Z[39m,
+  contentPreview: [32m'<article><header><img src="https://example.com/image.jpg" alt="Article image" style="max-width: 100%; height: auto;"></header><section><html><head></head><body><p>Content</p></body></html></section><f'[39m
+}
+
+[90mstdout[2m | src/server/aggregators/__tests__/aggregator-options.test.ts[2m > [22m[2mAggregator Options Integration Tests[2m > [22m[2mOption Interactions[2m > [22m[2mshould apply aggregator options and feed options together
+[22m[39m[DEBUG] Checking for footer - Article content: <article><header><img src="https://example.com/image.jpg" alt="Article image" style="max-width: 100%; height: auto;"></header><section><html><head></head><body><p>Content</p></body></html></section><footer style="margin-bottom: 16px;"><a href="https://example.com/article" style="float: right;">Source</a></footer></article>
+[DEBUG] Article has footer element: [33mtrue[39m
+
+ [31m❯[39m src/server/aggregators/__tests__/aggregator-options.test.ts [2m([22m[2m24 tests[22m[2m | [22m[31m2 failed[39m[2m)[22m[33m 11961[2mms[22m[39m
+       [33m[2m✓[22m[39m should remove elements matching exclude_selectors [33m 1030[2mms[22m[39m
+       [32m✓[39m should skip articles with titles matching ignore_title_contains[32m 234[2mms[22m[39m
+       [32m✓[39m should skip articles with content matching ignore_content_contains[32m 239[2mms[22m[39m
+       [32m✓[39m should apply regex_replacements to content[32m 248[2mms[22m[39m
+       [33m[2m✓[22m[39m should fetch posts sorted by sort_by option [33m 1081[2mms[22m[39m
+       [33m[2m✓[22m[39m should fetch specified number of comments per post [33m 1090[2mms[22m[39m
+[31m       [31m×[31m should skip posts with fewer than min_comments[39m[33m 1081[2mms[22m[39m
+       [33m[2m✓[22m[39m should fetch specified number of comments per video [33m 1097[2mms[22m[39m
+       [33m[2m✓[22m[39m should extract specified number of comments when max_comments is set [33m 787[2mms[22m[39m
+       [33m[2m✓[22m[39m should extract specified number of comments when max_comments is set [33m 715[2mms[22m[39m
+       [33m[2m✓[22m[39m should traverse multipage articles when traverse_multipage is enabled [33m 2338[2mms[22m[39m
+         [32m✓[39m should extract header image when generateTitleImage=true[32m 74[2mms[22m[39m
+[31m         [31m×[31m should not extract header image when generateTitleImage=false[39m[32m 156[2mms[22m[39m
+         [32m✓[39m should add source footer when addSourceFooter=true[32m 248[2mms[22m[39m
+         [32m✓[39m should not add source footer when addSourceFooter=false[32m 244[2mms[22m[39m
+         [32m✓[39m should use current timestamp when useCurrentTimestamp=true[32m 241[2mms[22m[39m
+         [32m✓[39m should use published date when useCurrentTimestamp=false[32m 266[2mms[22m[39m
+       [32m✓[39m should skip duplicate articles when skipDuplicates=true[32m 254[2mms[22m[39m
+       [32m✓[39m should apply multiple aggregator options together[32m 212[2mms[22m[39m
+       [32m✓[39m should apply aggregator options and feed options together[32m 71[2mms[22m[39m
+       [32m✓[39m should use default values when options are missing[32m 63[2mms[22m[39m
+       [32m✓[39m should handle invalid option values gracefully[32m 64[2mms[22m[39m
+       [32m✓[39m should preserve options through error recovery[32m 65[2mms[22m[39m
+       [32m✓[39m should not overwrite options when feed is updated[32m 64[2mms[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 2 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m src/server/aggregators/__tests__/aggregator-options.test.ts[2m > [22mAggregator Options Integration Tests[2m > [22mRedditAggregator Options[2m > [22mshould skip posts with fewer than min_comments
+[31m[1mAssertionError[22m: expected +0 to be 1 // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 1[39m
+[31m+ 0[39m
+
+[36m [2m❯[22m src/server/aggregators/__tests__/aggregator-options.test.ts:[2m715:31[22m[39m
+    [90m713| [39m
+    [90m714| [39m      [90m// Only high comments post should be included[39m
+    [90m715| [39m      [34mexpect[39m(articles[33m.[39mlength)[33m.[39m[34mtoBe[39m([34m1[39m)[33m;[39m
+    [90m   | [39m                              [31m^[39m
+    [90m716| [39m      [34mexpect[39m(articles[[34m0[39m][33m.[39mtitle)[33m.[39m[34mtoBe[39m([32m"High Comments Post"[39m)[33m;[39m
+    [90m717| [39m    })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/server/aggregators/__tests__/aggregator-options.test.ts[2m > [22mAggregator Options Integration Tests[2m > [22mFeed-Level Options[2m > [22mgenerateTitleImage=false[2m > [22mshould not extract header image when generateTitleImage=false
+[31m[1mAssertionError[22m: expected 1 to be +0 // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 0[39m
+[31m+ 1[39m
+
+[36m [2m❯[22m expectHeaderToNotExist src/server/aggregators/__tests__/options-helpers.ts:[2m267:30[22m[39m
+    [90m265| [39m
+    [90m266| [39m[35mfunction[39m [34mexpectHeaderToNotExist[39m($[33m:[39m cheerio[33m.[39m[33mCheerioAPI[39m)[33m:[39m [35mvoid[39m {
+    [90m267| [39m  [34mexpect[39m([34m$[39m([32m"header"[39m)[33m.[39mlength)[33m.[39m[34mtoBe[39m([34m0[39m)[33m;[39m
+    [90m   | [39m                             [31m^[39m
+    [90m268| [39m}
+    [90m269| [39m
+[90m [2m❯[22m Module.verifyArticleContent src/server/aggregators/__tests__/options-helpers.ts:[2m315:7[22m[39m
+[90m [2m❯[22m src/server/aggregators/__tests__/aggregator-options.test.ts:[2m1409:11[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m9 passed[39m[22m[90m (10)[39m
+[2m      Tests [22m [1m[31m2 failed[39m[22m[2m | [22m[1m[32m106 passed[39m[22m[2m | [22m[33m2 skipped[39m[90m (110)[39m
+[2m   Start at [22m 23:42:37
+[2m   Duration [22m 13.11s[2m (transform 1.54s, setup 81ms, import 11.95s, tests 17.77s, environment 1ms)[22m
+

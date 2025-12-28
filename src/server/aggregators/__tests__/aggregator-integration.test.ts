@@ -130,7 +130,7 @@ const AGGREGATOR_TESTS: AggregatorTestConfig[] = [
   },
   {
     aggregator: DarkLegacyAggregator,
-    testUrl: "http://www.darklegacycomics.com/971",
+    testUrl: "https://www.darklegacycomics.com/971",
     identifier: "https://darklegacycomics.com/feed.xml",
     expectedFields: ["title", "url", "published"],
   },

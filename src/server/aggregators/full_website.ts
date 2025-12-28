@@ -126,7 +126,7 @@ export class FullWebsiteAggregator extends BaseAggregator {
         url: item.link || "",
         published: item.pubDate ? new Date(item.pubDate) : new Date(),
         summary: item.contentSnippet || item.content || "",
-        author: item.creator || (item as any).author || undefined,
+        author: item.creator || (item as Parser.Item & { author?: string }).author || undefined,
       };
 
       // Extract metadata
@@ -372,115 +372,56 @@ export class FullWebsiteAggregator extends BaseAggregator {
   }
 
   /**
+   * Split a regex replacement line into pattern and replacement.
+   */
+  private parseRegexLine(line: string): string[] {
+    const parts: string[] = [];
+    let currentPart: string[] = [];
+    let i = 0;
+
+    while (i < line.length) {
+      if (line[i] === "\\" && i + 1 < line.length) {
+        currentPart.push(line[i + 1] === "|" ? "|" : line[i] + line[i + 1]);
+        i += 2;
+      } else if (line[i] === "|") {
+        parts.push(currentPart.join(""));
+        currentPart = [];
+        i++;
+      } else {
+        currentPart.push(line[i]);
+        i++;
+      }
+    }
+    parts.push(currentPart.join(""));
+    return parts;
+  }
+
+  /**
    * Apply regex replacements to content.
    */
   private applyRegexReplacements(
     content: string,
     regexReplacementsText: string,
   ): string {
-    if (!regexReplacementsText || !regexReplacementsText.trim()) {
-      return content;
-    }
+    if (!regexReplacementsText?.trim()) return content;
 
     const lines = regexReplacementsText.trim().split("\n");
     let result = content;
 
-    for (let lineNum = 0; lineNum < lines.length; lineNum++) {
-      const line = lines[lineNum].trim();
-      if (!line || line.startsWith("#")) {
-        // Skip empty lines and comments
-        continue;
-      }
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line || line.startsWith("#")) continue;
 
-      // Split on | (but allow escaped \|)
-      const parts: string[] = [];
-      let currentPart: string[] = [];
-      let i = 0;
-
-      while (i < line.length) {
-        if (line[i] === "\\" && i + 1 < line.length) {
-          // Escape sequence
-          if (line[i + 1] === "|") {
-            currentPart.push("|");
-            i += 2;
-          } else {
-            currentPart.push(line[i]);
-            currentPart.push(line[i + 1]);
-            i += 2;
-          }
-        } else if (line[i] === "|") {
-          // Found delimiter
-          parts.push(currentPart.join(""));
-          currentPart = [];
-          i++;
-        } else {
-          currentPart.push(line[i]);
-          i++;
-        }
-      }
-
-      parts.push(currentPart.join(""));
-
-      if (parts.length < 2) {
-        this.logger.warn(
-          {
-            step: "enrichArticles",
-            subStep: "processContent",
-            aggregator: this.id,
-            feedId: this.feed?.id,
-            lineNum: lineNum + 1,
-            line,
-          },
-          "Invalid regex replacement format, expected pattern|replacement",
-        );
-        continue;
-      }
-
-      const pattern = parts[0].trim();
-      const replacement = parts.slice(1).join("|").trim(); // Join back in case | was in replacement
-
-      if (!pattern) {
-        this.logger.warn(
-          {
-            step: "enrichArticles",
-            subStep: "processContent",
-            aggregator: this.id,
-            feedId: this.feed?.id,
-            lineNum: lineNum + 1,
-          },
-          "Empty pattern, skipping",
-        );
+      const parts = this.parseRegexLine(line);
+      if (parts.length < 2 || !parts[0].trim()) {
+        this.logger.warn({ step: "processContent", lineNum: i + 1 }, "Invalid regex format");
         continue;
       }
 
       try {
-        // Apply regex replacement
-        result = result.replace(new RegExp(pattern, "g"), replacement);
-        this.logger.debug(
-          {
-            step: "enrichArticles",
-            subStep: "processContent",
-            aggregator: this.id,
-            feedId: this.feed?.id,
-            pattern,
-            replacement,
-          },
-          "Applied regex replacement",
-        );
+        result = result.replace(new RegExp(parts[0].trim(), "g"), parts.slice(1).join("|").trim());
       } catch (error) {
-        this.logger.warn(
-          {
-            step: "enrichArticles",
-            subStep: "processContent",
-            aggregator: this.id,
-            feedId: this.feed?.id,
-            error: error instanceof Error ? error : new Error(String(error)),
-            pattern,
-            lineNum: lineNum + 1,
-          },
-          "Invalid regex pattern, skipping",
-        );
-        continue;
+        this.logger.warn({ step: "processContent", error, lineNum: i + 1 }, "Invalid regex pattern");
       }
     }
 

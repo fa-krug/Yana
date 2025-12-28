@@ -2,7 +2,7 @@
  * Figure element processing strategy pattern for Mein-MMO content extraction.
  */
 
-import type { Cheerio, AnyNode } from "cheerio";
+import type { Cheerio, AnyNode, CheerioAPI } from "cheerio";
 import type pino from "pino";
 
 /**
@@ -10,7 +10,7 @@ import type pino from "pino";
  */
 export interface FigureProcessingContext {
   figure: Cheerio<AnyNode>;
-  $: any; // Cheerio instance
+  $: CheerioAPI; // Cheerio instance
   logger: pino.Logger;
   aggregatorId: string;
   feedId: number | null | undefined;
@@ -51,7 +51,7 @@ export class FigureProcessingOrchestrator {
    * Strategies are tried in order - first match wins.
    */
   processAllFigures(
-    $: any,
+    $: CheerioAPI,
     content: Cheerio<AnyNode>,
     context: Omit<FigureProcessingContext, "figure">,
   ): void {

@@ -8,6 +8,7 @@ import axios from "axios";
 
 import { logger } from "../utils/logger";
 
+import type { YouTubeSearchResponse } from "./youtube-api-types";
 import { fetchChannelDetailsWithFallback } from "./youtube-channel-detail-fetcher";
 import {
   testYouTubeCredentials,
@@ -57,7 +58,7 @@ export async function searchYouTubeChannels(
       searchResults.items
         .filter((item) => item.snippet && item.id?.channelId)
         .map((item) =>
-          fetchChannelDetailsWithFallback(item, item.snippet, apiKey),
+          fetchChannelDetailsWithFallback(item, item.snippet ?? {}, apiKey),
         ),
     );
 
@@ -84,7 +85,7 @@ async function fetchSearchResults(
   query: string,
   apiKey: string,
   limit: number,
-): Promise<any> {
+): Promise<YouTubeSearchResponse> {
   const url = "https://www.googleapis.com/youtube/v3/search";
   const response = await axios.get(url, {
     params: {

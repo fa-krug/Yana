@@ -279,14 +279,10 @@ function registerShutdownHandlers(): void {
   process.on("exit", () => {
     // Synchronous cleanup on exit
     if (browser) {
-      try {
-        // Force close on exit (synchronous)
-        browser.close().catch(() => {
-          // Ignore errors during forced shutdown
-        });
-      } catch {
+      // Force close on exit (synchronous)
+      browser.close().catch(() => {
         // Ignore errors during forced shutdown
-      }
+      });
     }
   });
 

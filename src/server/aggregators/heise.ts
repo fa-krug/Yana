@@ -504,7 +504,7 @@ export class HeiseAggregator extends FullWebsiteAggregator {
   /**
    * Find comment elements using various selectors.
    */
-  private findCommentElements($: cheerio.CheerioAPI): cheerio.Cheerio<any> | null {
+  private findCommentElements($: cheerio.CheerioAPI): cheerio.Cheerio<cheerio.Element> | null {
     const commentSelectors = [
       "li.posting_element",
       '[id^="posting_"]',
@@ -537,7 +537,7 @@ export class HeiseAggregator extends FullWebsiteAggregator {
    */
   private processCommentElement(
     $: cheerio.CheerioAPI,
-    element: any,
+    element: cheerio.Element,
     i: number,
     articleUrl: string,
   ): string | null {
@@ -554,7 +554,7 @@ export class HeiseAggregator extends FullWebsiteAggregator {
   /**
    * Process a comment in list item view.
    */
-  private processListItemComment($el: cheerio.Cheerio<any>): string | null {
+  private processListItemComment($el: cheerio.Cheerio<cheerio.Element>): string | null {
     let author = "Unknown";
     const authorElem = $el
       .find(".tree_thread_list--written_by_user, .pseudonym")
@@ -579,7 +579,7 @@ export class HeiseAggregator extends FullWebsiteAggregator {
    * Process a comment in full view.
    */
   private processFullViewComment(
-    $el: cheerio.Cheerio<any>,
+    $el: cheerio.Cheerio<cheerio.Element>,
     i: number,
     articleUrl: string,
   ): string | null {

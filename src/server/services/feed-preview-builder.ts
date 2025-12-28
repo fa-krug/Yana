@@ -4,6 +4,7 @@
  * Constructs a temporary Feed object for preview testing.
  */
 
+import type { BaseAggregator } from "../aggregators/base/aggregator";
 import type { Feed, FeedInsert, User } from "../db/types";
 
 type UserInfo = Pick<User, "id" | "isSuperuser">;
@@ -15,19 +16,19 @@ type UserInfo = Pick<User, "id" | "isSuperuser">;
 export function buildPreviewFeed(
   user: UserInfo,
   data: Partial<FeedInsert>,
-  aggregator: any, // BaseAggregator
+  aggregator: BaseAggregator,
 ): Feed {
   return {
     id: -1,
     userId: user.id,
     name: data.name || "Preview Feed",
-    identifier: data.identifier!,
+    identifier: data.identifier ?? "",
     feedType:
       (data.feedType as "article" | "youtube" | "podcast" | "reddit") ||
       "article",
     icon: data.icon || null,
     example: data.example || "",
-    aggregator: data.aggregator!,
+    aggregator: data.aggregator ?? "",
     enabled: true,
     generateTitleImage: data.generateTitleImage ?? true,
     addSourceFooter: data.addSourceFooter ?? true,

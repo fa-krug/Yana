@@ -37,6 +37,7 @@ import {
   FeedPreviewResponse,
   PreviewArticle,
   Group,
+  Feed,
 } from "@app/core/models";
 import { AggregatorService } from "@app/core/services/aggregator.service";
 import { BreadcrumbService } from "@app/core/services/breadcrumb.service";
@@ -1562,95 +1563,8 @@ export class FeedFormComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (feed) => {
           this.loadingFeed.set(false);
-          // Update breadcrumb with feed name
           this.breadcrumbService.setLabel(`id:${feed.id}`, feed.name);
-          // Load aggregators first, then populate form
-          this.aggregatorService
-            .loadAggregators()
-            .pipe(takeUntil(this.destroy$))
-            .subscribe(() => {
-              // Set aggregator type
-              this.aggregatorFormGroup.patchValue({
-                aggregatorType: feed.aggregator,
-              });
-
-              // Load aggregator detail and populate form
-              this.aggregatorService
-                .getAggregatorDetail(feed.aggregator)
-                .pipe(takeUntil(this.destroy$))
-                .subscribe((detail) => {
-                  this.aggregatorDetail.set(detail);
-                  const agg = this.aggregatorService.getAggregator(
-                    feed.aggregator,
-                  );
-                  this.selectedAggregator.set(agg);
-
-                  // Load feed groups
-                  this.groupService
-                    .getFeedGroups(feed.id)
-                    .pipe(takeUntil(this.destroy$))
-                    .subscribe({
-                      next: (groups) => {
-                        const groupIds = groups.map((g) => g.id);
-                        this.selectedGroupIds.set(groupIds);
-                      },
-                    });
-
-                  // Populate feed form with existing values
-                  this.feedFormGroup.patchValue({
-                    name: feed.name,
-                    identifier: feed.identifier,
-                    enabled: feed.enabled,
-                    generate_title_image: feed.generateTitleImage,
-                    add_source_footer: feed.addSourceFooter,
-                    skip_duplicates: feed.skipDuplicates,
-                    use_current_timestamp: feed.useCurrentTimestamp,
-                    daily_post_limit: feed.dailyPostLimit,
-                    // Only populate AI features for non-managed aggregators
-                    ai_translate_to: this.isManagedAggregator()
-                      ? ""
-                      : feed.aiTranslateTo || "",
-                    ai_summarize: this.isManagedAggregator()
-                      ? false
-                      : feed.aiSummarize || false,
-                    ai_custom_prompt: this.isManagedAggregator()
-                      ? ""
-                      : feed.aiCustomPrompt || "",
-                  });
-
-                  // Disable identifier field if not editable
-                  const identifierControl =
-                    this.feedFormGroup.get("identifier");
-                  if (identifierControl) {
-                    if (
-                      !detail.identifierEditable &&
-                      !detail.identifierChoices
-                    ) {
-                      identifierControl.disable();
-                    } else {
-                      identifierControl.enable();
-                    }
-                  }
-
-                  // Add option fields dynamically and populate with existing values (filtered for managed aggregators)
-                  const filteredOptions = this.getFilteredOptions();
-                  if (filteredOptions) {
-                    this.validationService.addAggregatorOptions(
-                      this.feedFormGroup,
-                      filteredOptions,
-                      feed.aggregatorOptions,
-                    );
-                  }
-
-                  // Skip to step 2 (index 0 when Step 1 is hidden) after a short delay to ensure stepper is initialized
-                  setTimeout(() => {
-                    if (this.stepper) {
-                      // When Step 1 is hidden, Step 2 becomes index 0
-                      this.stepper.selectedIndex = 0;
-                    }
-                  }, 100);
-                });
-            });
+          this._loadAggregatorDataAndPopulateForm(feed);
         },
         error: (error) => {
           this.loadingFeed.set(false);
@@ -1660,6 +1574,99 @@ export class FeedFormComponent implements OnInit, OnDestroy {
           this.router.navigate(["/feeds"]);
         },
       });
+  }
+
+  private _loadAggregatorDataAndPopulateForm(feed: Feed) {
+    this.aggregatorService
+      .loadAggregators()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => {
+        this.aggregatorFormGroup.patchValue({
+          aggregatorType: feed.aggregator,
+        });
+        this._loadAggregatorDetailAndForm(feed);
+      });
+  }
+
+  private _loadAggregatorDetailAndForm(feed: Feed) {
+    this.aggregatorService
+      .getAggregatorDetail(feed.aggregator)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((detail) => {
+        this._handleAggregatorDetailLoaded(feed, detail);
+      });
+  }
+
+  private _handleAggregatorDetailLoaded(feed: Feed, detail: AggregatorDetail) {
+    this.aggregatorDetail.set(detail);
+    const agg = this.aggregatorService.getAggregator(feed.aggregator);
+    this.selectedAggregator.set(agg);
+
+    this.groupService
+      .getFeedGroups(feed.id)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (groups) => {
+          this._handleGroupsLoaded(groups);
+        },
+      });
+
+    this._populateFeedForm(feed, detail);
+  }
+
+  private _handleGroupsLoaded(groups: Group[]) {
+    const groupIds = groups.map((g) => g.id);
+    this.selectedGroupIds.set(groupIds);
+  }
+
+  private _populateFeedForm(feed: Feed, detail: AggregatorDetail) {
+    this.feedFormGroup.patchValue({
+      name: feed.name,
+      identifier: feed.identifier,
+      enabled: feed.enabled,
+      generate_title_image: feed.generateTitleImage,
+      add_source_footer: feed.addSourceFooter,
+      skip_duplicates: feed.skipDuplicates,
+      use_current_timestamp: feed.useCurrentTimestamp,
+      daily_post_limit: feed.dailyPostLimit,
+      ai_translate_to: this.isManagedAggregator()
+        ? ""
+        : feed.aiTranslateTo || "",
+      ai_summarize: this.isManagedAggregator()
+        ? false
+        : feed.aiSummarize || false,
+      ai_custom_prompt: this.isManagedAggregator()
+        ? ""
+        : feed.aiCustomPrompt || "",
+    });
+
+    const identifierControl = this.feedFormGroup.get("identifier");
+    if (identifierControl) {
+      if (!detail.identifierEditable && !detail.identifierChoices) {
+        identifierControl.disable();
+      } else {
+        identifierControl.enable();
+      }
+    }
+
+    const filteredOptions = this.getFilteredOptions();
+    if (filteredOptions) {
+      this.validationService.addAggregatorOptions(
+        this.feedFormGroup,
+        filteredOptions,
+        feed.aggregatorOptions,
+      );
+    }
+
+    this._skipToStep2();
+  }
+
+  private _skipToStep2() {
+    setTimeout(() => {
+      if (this.stepper) {
+        this.stepper.selectedIndex = 0;
+      }
+    }, 100);
   }
 
   selectAggregator(aggregatorId: string) {
@@ -1690,11 +1697,9 @@ export class FeedFormComponent implements OnInit, OnDestroy {
       if (
         currentDailyLimit === 50 ||
         currentDailyLimit === undefined ||
-        currentDailyLimit === null
+        currentDailyLimit === null ||
+        (currentDailyLimit === 20 && defaultLimit !== 20)
       ) {
-        patchValue.daily_post_limit = defaultLimit;
-      } else if (currentDailyLimit === 20 && defaultLimit !== 20) {
-        // If switching from Reddit (20) to another aggregator, use new default
         patchValue.daily_post_limit = defaultLimit;
       }
 

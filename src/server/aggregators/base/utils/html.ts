@@ -74,97 +74,49 @@ export function removeElementsBySelectors(
 }
 
 /**
+ * Rename element attributes to sanitize.
+ */
+function renameAttributes($el: cheerio.Cheerio<cheerio.AnyNode>, el: cheerio.AnyNode): void {
+  const classAttr = $el.attr("class");
+  if (classAttr && !classAttr.includes("youtube-embed-container")) {
+    $el.attr("data-sanitized-class", classAttr).removeAttr("class");
+  }
+
+  const styleAttr = $el.attr("style");
+  if (styleAttr) {
+    const isYT = ($el.is("iframe") && ($el.attr("src")?.includes("/api/youtube-proxy") || $el.closest(".youtube-embed-container").length > 0)) || $el.closest(".youtube-embed-container").length > 0;
+    if (!isYT) $el.attr("data-sanitized-style", styleAttr).removeAttr("style");
+  }
+
+  const idAttr = $el.attr("id");
+  if (idAttr) $el.attr("data-sanitized-id", idAttr).removeAttr("id");
+
+  if ("attribs" in el && el.attribs) {
+    Object.keys(el.attribs).forEach((attr) => {
+      if (attr.startsWith("data-") && attr !== "data-src" && attr !== "data-srcset" && !attr.startsWith("data-sanitized-")) {
+        $el.attr(`data-sanitized-${attr}`, el.attribs[attr]).removeAttr(attr);
+      }
+    });
+  }
+}
+
+/**
  * Sanitize HTML content, removing scripts and renaming attributes.
  * This matches the Python version's behavior.
  */
 export function sanitizeHtml(html: string): string {
   logger.debug("Sanitizing HTML content");
-
   try {
     const $ = cheerio.load(html);
+    $("script, object, embed").remove();
 
-    // Preserve style tags and iframes inside youtube-embed-container divs
-    // Remove other script and style elements, but keep YouTube embeds
-    $("script").remove();
-
-    // Remove style tags, but preserve those inside youtube-embed-container
-    $("style").each((_, el) => {
+    $("style, iframe").each((_, el) => {
       const $el = $(el);
-      const isInYouTubeContainer =
-        $el.closest(".youtube-embed-container").length > 0;
-      if (!isInYouTubeContainer) {
-        $el.remove();
-      }
+      const isYT = $el.closest(".youtube-embed-container").length > 0 || ($el.is("iframe") && ($el.attr("src") || "").includes("/api/youtube-proxy"));
+      if (!isYT) $el.remove();
     });
 
-    // Remove iframes, but preserve YouTube embeds (our proxy or inside youtube-embed-container)
-    $("iframe").each((_, el) => {
-      const $el = $(el);
-      const src = $el.attr("src") || "";
-      const isYouTubeProxy = src.includes("/api/youtube-proxy");
-      const isInYouTubeContainer =
-        $el.closest(".youtube-embed-container").length > 0;
-      if (!isYouTubeProxy && !isInYouTubeContainer) {
-        $el.remove();
-      }
-    });
-
-    $("object, embed").remove();
-
-    // Rename class, style, id, and data attributes to disable original styling/behavior
-    $("*").each((_, el) => {
-      const $el = $(el);
-
-      // Rename class attribute, but preserve youtube-embed-container class
-      const classAttr = $el.attr("class");
-      if (classAttr) {
-        const isYouTubeContainer = classAttr.includes(
-          "youtube-embed-container",
-        );
-        if (!isYouTubeContainer) {
-          $el.attr("data-sanitized-class", classAttr);
-          $el.removeAttr("class");
-        }
-      }
-
-      // Rename inline styles, but preserve styles on YouTube embeds
-      const styleAttr = $el.attr("style");
-      if (styleAttr) {
-        const isYouTubeIframe =
-          ($el.is("iframe") &&
-            ($el.attr("src")?.includes("/api/youtube-proxy") ||
-              $el.closest(".youtube-embed-container").length > 0)) ||
-          $el.closest(".youtube-embed-container").length > 0;
-        if (!isYouTubeIframe) {
-          $el.attr("data-sanitized-style", styleAttr);
-          $el.removeAttr("style");
-        }
-      }
-
-      // Rename id attribute
-      const idAttr = $el.attr("id");
-      if (idAttr) {
-        $el.attr("data-sanitized-id", idAttr);
-        $el.removeAttr("id");
-      }
-
-      // Rename data-* attributes (except data-src and data-srcset which are needed for images)
-      // Check if element is an Element type (has attribs property)
-      if ("attribs" in el && el.attribs) {
-        const attrs = el.attribs;
-        for (const attr of Object.keys(attrs)) {
-          if (
-            attr.startsWith("data-") &&
-            attr !== "data-src" &&
-            attr !== "data-srcset" &&
-            !attr.startsWith("data-sanitized-")
-          ) {
-            $el.attr(`data-sanitized-${attr}`, attrs[attr]);
-            $el.removeAttr(attr);
-          }
-        }
-      }
-    });
+    $("*").each((_, el) => renameAttributes($(el), el));
 
     const sanitized = $.html();
     logger.debug({ length: sanitized.length }, "HTML sanitized");

@@ -35,6 +35,34 @@ export function getAggregatorMetadataById(id: string): AggregatorMetadata {
 export { getAggregatorMetadata };
 
 /**
+ * Build option dictionary from aggregator options schema.
+ */
+function buildOptionsDict(options?: OptionsSchema): Record<string, unknown> {
+  const optionsDict: Record<string, unknown> = {};
+  if (!options) return optionsDict;
+
+  for (const [key, def] of Object.entries(options)) {
+    const optionDef: Record<string, unknown> = {
+      type: def.type,
+      label: def.label,
+      help_text: def.helpText || "",
+      default: def.default ?? null,
+      required: def.required || false,
+    };
+
+    if (def.min !== undefined) optionDef["min"] = def.min;
+    if (def.max !== undefined) optionDef["max"] = def.max;
+    if (def.choices) {
+      optionDef["choices"] = def.choices.map((c) => [String(c[0]), String(c[1])]);
+    }
+    if (def.widget) optionDef["widget"] = def.widget;
+
+    optionsDict[key] = optionDef;
+  }
+  return optionsDict;
+}
+
+/**
  * Get aggregator detail including identifier config and options.
  */
 export function getAggregatorDetail(id: string): {
@@ -65,39 +93,7 @@ export function getAggregatorDetail(id: string): {
   }
 
   const metadata = getAggregatorMetadata(id);
-
-  // Convert options to format (list of lists for choices)
-  const optionsDict: Record<string, unknown> = {};
-  if (aggregator.options) {
-    for (const [key, def] of Object.entries(aggregator.options)) {
-      const optionDef: Record<string, unknown> = {
-        type: def.type,
-        label: def.label,
-        help_text: def.helpText || "",
-        default: def.default ?? null,
-        required: def.required || false,
-      };
-
-      if (def.min !== undefined) {
-        optionDef["min"] = def.min;
-      }
-      if (def.max !== undefined) {
-        optionDef["max"] = def.max;
-      }
-      if (def.choices) {
-        // Convert to list of lists format
-        optionDef["choices"] = def.choices.map((c) => [
-          String(c[0]),
-          String(c[1]),
-        ]);
-      }
-      if (def.widget) {
-        optionDef["widget"] = def.widget;
-      }
-
-      optionsDict[key] = optionDef;
-    }
-  }
+  const optionsDict = buildOptionsDict(aggregator.options);
 
   return {
     id,
@@ -136,14 +132,6 @@ export async function getAllAggregatorMetadata(
       if (agg.id === "youtube") {
         return settings.youtubeEnabled && settings.youtubeApiKey.trim() !== "";
       }
-
-      // Filter Reddit aggregator based on user settings
-      if (agg.id === "reddit") {
-        // Reddit can work with public API, but if user has credentials configured, require them to be enabled
-        // For now, always show Reddit if user is authenticated (it uses public API)
-        return true;
-      }
-
       // All other aggregators are always available
       return true;
     });
@@ -245,6 +233,25 @@ function validateOptionValue(
 }
 
 /**
+ * Validate all options against schema.
+ */
+function validateOptions(
+  schema: OptionsSchema,
+  options: Record<string, unknown>,
+): string[] {
+  const errors: string[] = [];
+  for (const [key, def] of Object.entries(schema)) {
+    const requiredError = validateOptionRequired(key, def, options);
+    if (requiredError) errors.push(requiredError);
+
+    if (options[key] !== undefined) {
+      errors.push(...validateOptionValue(key, def, options[key]));
+    }
+  }
+  return errors;
+}
+
+/**
  * Validate aggregator configuration.
  */
 export function validateAggregatorConfig(
@@ -266,18 +273,7 @@ export function validateAggregatorConfig(
 
   // Validate options
   if (aggregator.options) {
-    for (const [key, def] of Object.entries(aggregator.options)) {
-      // Check required
-      const requiredError = validateOptionRequired(key, def, options);
-      if (requiredError) {
-        errors.push(requiredError);
-      }
-
-      // Validate value if present
-      if (options[key] !== undefined) {
-        errors.push(...validateOptionValue(key, def, options[key]));
-      }
-    }
+    errors.push(...validateOptions(aggregator.options, options));
   }
 
   return { valid: errors.length === 0, errors };

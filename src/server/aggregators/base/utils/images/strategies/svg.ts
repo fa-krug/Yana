@@ -3,6 +3,7 @@
  */
 
 import * as cheerio from "cheerio";
+import { type Page } from "playwright";
 import sharp from "sharp";
 
 import {
@@ -25,7 +26,7 @@ interface SvgData {
 /**
  * Extract SVG data from the page using Playwright evaluation.
  */
-async function extractSvgDataFromPage(page: any): Promise<SvgData | null> {
+async function extractSvgDataFromPage(page: Page): Promise<SvgData | null> {
   if (!page?.locator) return null;
 
   const svgLocator = page.locator("svg").first();
@@ -123,7 +124,7 @@ function extractSvgFromHtml($: cheerio.CheerioAPI, html: string): string | null 
  * Handle inline SVG extraction from page.
  */
 export async function handleInlineSvg(
-  page: any,
+  page: Page,
   $: cheerio.CheerioAPI,
   html: string,
   _url: string,

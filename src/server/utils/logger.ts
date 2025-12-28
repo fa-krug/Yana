@@ -11,69 +11,46 @@ const isDevelopment = process.env["NODE_ENV"] === "development";
 const logLevel = process.env["LOG_LEVEL"] || (isDevelopment ? "debug" : "info");
 
 /**
+ * Extract enumerable properties from error object.
+ */
+function extractExtraProps(error: Error, serialized: Record<string, unknown>): void {
+  const seen = new WeakSet<object>();
+  try {
+    const errorRecord = error as unknown as Record<string, unknown>;
+    for (const key in error) {
+      if (key === "name" || key === "message" || key === "stack") continue;
+      
+      const value = errorRecord[key];
+      if (value && typeof value === "object") {
+        if (seen.has(value as object)) continue;
+        seen.add(value as object);
+      }
+      serialized[key] = value;
+    }
+  } catch { /* Ignore */ }
+}
+
+/**
  * Serialize error objects for logging.
- * Extracts message, stack, and other properties from Error objects.
- * This ensures Error objects are properly serialized in JSON logs.
  */
 function serializeError(error: unknown): Record<string, unknown> {
-  if (error instanceof Error) {
-    const serialized: Record<string, unknown> = {
-      name: error.name,
-      message: error.message,
-    };
-
-    if (error.stack) {
-      serialized["stack"] = error.stack;
-    }
-
-    // Include any additional properties from custom error classes
-    if ("statusCode" in error) {
-      serialized["statusCode"] = (error as { statusCode?: number }).statusCode;
-    }
-
-    if ("feedId" in error) {
-      serialized["feedId"] = (error as { feedId?: number }).feedId;
-    }
-
-    if ("originalError" in error) {
-      const originalError = (error as { originalError?: Error | unknown })
-        .originalError;
-      if (originalError) {
-        serialized["originalError"] = serializeError(originalError);
-      }
-    }
-
-    // Include any other enumerable properties (but avoid circular references)
-    const seen = new WeakSet<object>();
-    try {
-      const errorRecord = error as unknown as Record<string, unknown>;
-      for (const key in error) {
-        if (
-          key !== "name" &&
-          key !== "message" &&
-          key !== "stack" &&
-          !seen.has(errorRecord[key] as object)
-        ) {
-          const value = errorRecord[key];
-          if (value && typeof value === "object") {
-            seen.add(value as object);
-          }
-          serialized[key] = value;
-        }
-      }
-    } catch {
-      // Ignore properties that can't be serialized
-    }
-
-    return serialized;
+  if (!(error instanceof Error)) {
+    try { return { value: String(error) }; } catch { return { value: "[Unable to serialize error]" }; }
   }
 
-  // For non-Error values, convert to string
-  try {
-    return { value: String(error) };
-  } catch {
-    return { value: "[Unable to serialize error]" };
+  const serialized: Record<string, unknown> = { name: error.name, message: error.message };
+  if (error.stack) serialized["stack"] = error.stack;
+
+  // Include known custom properties
+  const err = error as { statusCode?: number; feedId?: number; originalError?: unknown };
+  if ("statusCode" in error) serialized["statusCode"] = err.statusCode;
+  if ("feedId" in error) serialized["feedId"] = err.feedId;
+  if ("originalError" in error && err.originalError) {
+    serialized["originalError"] = serializeError(err.originalError);
   }
+
+  extractExtraProps(error, serialized);
+  return serialized;
 }
 
 /**

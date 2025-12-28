@@ -25,67 +25,57 @@ function getDatabasePath(): string {
 }
 
 /**
+ * Create in-memory database for build context.
+ */
+function createInMemoryDatabase(): Database.Database {
+  try {
+    const db = new Database(":memory:");
+    db.pragma("foreign_keys = ON");
+    logger.warn("Using in-memory database for build context");
+    return db;
+  } catch (error) {
+    logger.error({ error }, "Failed to create in-memory database during build");
+    throw new DatabaseError("Failed to create database during build", error as Error);
+  }
+}
+
+/**
+ * Optimize SQLite settings.
+ */
+function optimizeDatabase(db: Database.Database): void {
+  db.pragma("foreign_keys = ON");
+  db.pragma("journal_mode = WAL");
+  db.pragma("synchronous = NORMAL");
+  db.pragma("cache_size = -64000");
+  db.pragma("temp_store = MEMORY");
+}
+
+/**
  * Get or create database connection.
- * Implements reconnection logic on errors.
  */
 function getDatabase(): Database.Database {
-  if (!sqlite) {
-    const databasePath = getDatabasePath();
+  if (sqlite) return sqlite;
 
-    // During build time (Angular route extraction), use in-memory database
-    // to avoid native module loading issues
-    const isBuildContext =
-      databasePath.includes("/tmp/build-db") ||
-      process.env["NG_BUILD"] === "true" ||
-      process.argv.some((arg) => arg.includes("ng") && arg.includes("build"));
+  const databasePath = getDatabasePath();
+  const isBuildContext = databasePath.includes("/tmp/build-db") || 
+    process.env["NG_BUILD"] === "true" || 
+    process.argv.some((arg) => arg.includes("ng") && arg.includes("build"));
 
-    if (isBuildContext) {
-      // Use in-memory database during build to avoid native module issues
-      try {
-        sqlite = new Database(":memory:");
-        sqlite.pragma("foreign_keys = ON");
-        logger.warn("Using in-memory database for build context");
-      } catch (error) {
-        // If even in-memory fails, we're in a problematic state
-        // This shouldn't happen, but handle it gracefully
-        logger.error(
-          { error },
-          "Failed to create in-memory database during build",
-        );
-        throw new DatabaseError(
-          "Failed to create database during build",
-          error as Error,
-        );
-      }
-      return sqlite;
-    }
+  if (isBuildContext) {
+    sqlite = createInMemoryDatabase();
+    return sqlite;
+  }
 
-    try {
-      // Create parent directory if it doesn't exist (for build-time scenarios)
-      const dir = dirname(databasePath);
-      if (dir && dir !== "." && !existsSync(dir)) {
-        mkdirSync(dir, { recursive: true });
-      }
+  try {
+    const dir = dirname(databasePath);
+    if (dir && dir !== "." && !existsSync(dir)) mkdirSync(dir, { recursive: true });
 
-      sqlite = new Database(databasePath);
-
-      // Enable foreign keys
-      sqlite.pragma("foreign_keys = ON");
-
-      // Optimize SQLite settings
-      sqlite.pragma("journal_mode = WAL"); // Write-Ahead Logging
-      sqlite.pragma("synchronous = NORMAL");
-      sqlite.pragma("cache_size = -64000"); // 64MB cache
-      sqlite.pragma("temp_store = MEMORY");
-
-      logger.info({ path: databasePath }, "Database connection established");
-    } catch (error) {
-      logger.error(
-        { error, path: databasePath },
-        "Failed to connect to database",
-      );
-      throw new DatabaseError("Failed to connect to database", error as Error);
-    }
+    sqlite = new Database(databasePath);
+    optimizeDatabase(sqlite);
+    logger.info({ path: databasePath }, "Database connection established");
+  } catch (error) {
+    logger.error({ error, path: databasePath }, "Failed to connect to database");
+    throw new DatabaseError("Failed to connect to database", error as Error);
   }
 
   return sqlite;

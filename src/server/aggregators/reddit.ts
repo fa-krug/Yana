@@ -432,20 +432,14 @@ export class RedditAggregator extends BaseAggregator {
       );
     }
 
+    let isCrossPost = false;
+    let effectiveSubreddit = subreddit;
+
     // Handle cross-posts: use original post data if this is a cross-post
-    if (
-      postData.crosspost_parent_list &&
-      postData.crosspost_parent_list.length > 0
-    ) {
+    if (postData.crosspost_parent_list && postData.crosspost_parent_list.length > 0) {
       const originalPost = postData.crosspost_parent_list[0];
-      logger.debug(
-        {
-          crosspostId: postData.id,
-          originalPostId: originalPost.id,
-          originalSubreddit: originalPost.subreddit,
-        },
-        "Detected cross-post in fetchArticleContentInternal, using original post data",
-      );
+      isCrossPost = true;
+      effectiveSubreddit = originalPost.subreddit || subreddit;
       postData = {
         ...originalPost,
         id: originalPost.id,
@@ -467,36 +461,17 @@ export class RedditAggregator extends BaseAggregator {
         is_video: originalPost.is_video,
         media: originalPost.media,
       };
-      // Use original subreddit for fetching comments
-      const originalSubreddit = originalPost.subreddit || subreddit;
-      const content = await buildPostContent(
-        postData,
-        this.getOption("comment_limit", 10) as number,
-        originalSubreddit,
-        this.feed.userId,
-        true, // isCrossPost
-      );
-
-      // Extract header image URL and store it in the article for processContent
-      const headerImageUrl = await extractHeaderImageUrl(postData);
-      if (headerImageUrl) {
-        (article as RawArticle & { headerImageUrl?: string }).headerImageUrl =
-          headerImageUrl;
-      }
-
-      return content;
     }
 
-    // Build content with comments (not a cross-post)
     const content = await buildPostContent(
       postData,
       this.getOption("comment_limit", 10) as number,
-      subreddit,
+      effectiveSubreddit,
       this.feed.userId,
+      isCrossPost,
     );
 
     // Extract header image URL and store it in the article for processContent
-    // This will be used by processContent to add the header image
     const headerImageUrl = await extractHeaderImageUrl(postData);
     if (headerImageUrl) {
       (article as RawArticle & { headerImageUrl?: string }).headerImageUrl =

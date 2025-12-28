@@ -141,7 +141,7 @@ function extractDuration(item: Record<string, unknown>): number | null {
  */
 function extractImage(item: Record<string, unknown>): string {
   const keys = ["itunes_image", "itunes:image", "image"];
-  const image = getAnyProperty<any>(item, keys);
+  const image = getAnyProperty<string | { href?: string; url?: string }>(item, keys);
 
   if (image != null) {
     if (typeof image === "object") {
@@ -279,7 +279,7 @@ export class PodcastAggregator extends BaseAggregator {
 
     for (const item of items) {
       try {
-        const article = await this.parseEpisode(item as any);
+        const article = await this.parseEpisode(item as Record<string, unknown>);
         if (article) {
           articles.push(article);
         }
@@ -317,14 +317,12 @@ export class PodcastAggregator extends BaseAggregator {
   /**
    * Parse a single podcast episode.
    */
-  private async parseEpisode(item: any): Promise<RawArticle | null> {
+  private async parseEpisode(item: Record<string, unknown>): Promise<RawArticle | null> {
     // Extract podcast-specific data
-    const { url: audioUrl, type: audioType } = extractEnclosure(
-      item as Record<string, unknown>,
-    );
-    const duration = extractDuration(item as Record<string, unknown>);
-    const imageUrl = extractImage(item as Record<string, unknown>);
-    const description = extractDescription(item as Record<string, unknown>);
+    const { url: audioUrl, type: audioType } = extractEnclosure(item);
+    const duration = extractDuration(item);
+    const imageUrl = extractImage(item);
+    const description = extractDescription(item);
 
     if (!audioUrl) {
       this.logger.warn(
@@ -333,7 +331,7 @@ export class PodcastAggregator extends BaseAggregator {
           subStep: "parseEpisode",
           aggregator: this.id,
           feedId: this.feed?.id,
-          title: item.title,
+          title: String(item.title || "Unknown"),
         },
         "Podcast episode has no audio enclosure, skipping",
       );
@@ -379,9 +377,9 @@ export class PodcastAggregator extends BaseAggregator {
     const content = htmlParts.join("\n");
 
     return {
-      title: item.title || "Untitled",
-      url: item.link || "",
-      published: item.pubDate ? new Date(item.pubDate) : new Date(),
+      title: String(item.title || "Untitled"),
+      url: String(item.link || ""),
+      published: item.pubDate ? new Date(String(item.pubDate)) : new Date(),
       content,
       summary: description,
       thumbnailUrl: imageUrl || undefined,

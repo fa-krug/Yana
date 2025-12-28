@@ -5,13 +5,20 @@
  * Handles optional chaining and fallback values in a single-responsibility pattern.
  */
 
+import type { 
+  YouTubeSnippet, 
+  YouTubeThumbnails, 
+  YouTubeStatistics, 
+  YouTubeSearchItem, 
+  YouTubeChannelDetails 
+} from "./youtube-api-types";
 import type { YouTubeChannelSearchResult } from "./youtube.service";  
 
 /**
  * Extract channel handle from snippet data.
  * Tries customUrl first, then handle, with "@" prefix removal.
  */
-export function extractChannelHandle(snippet: any): string | null {
+export function extractChannelHandle(snippet?: YouTubeSnippet): string | null {
   const customUrl = snippet?.customUrl;
   if (customUrl) {
     return customUrl.replace("@", "");
@@ -29,7 +36,7 @@ export function extractChannelHandle(snippet: any): string | null {
  * Extract thumbnail URL from snippet thumbnails.
  * Prefers high quality, falls back to default.
  */
-export function extractThumbnailUrl(thumbnails: any): string | null {
+export function extractThumbnailUrl(thumbnails?: YouTubeThumbnails): string | null {
   const highUrl = thumbnails?.high?.url;
   if (highUrl) {
     return highUrl;
@@ -47,7 +54,7 @@ export function extractThumbnailUrl(thumbnails: any): string | null {
  * Extract subscriber count from statistics data.
  * Returns 0 if not available or if parsing fails.
  */
-export function extractSubscriberCount(statistics: any): number {
+export function extractSubscriberCount(statistics?: YouTubeStatistics): number {
   const count = statistics?.subscriberCount;
   if (count) {
     return parseInt(String(count), 10);
@@ -60,9 +67,9 @@ export function extractSubscriberCount(statistics: any): number {
  * Handles cases where detail fetch may have failed (channelDetails undefined).
  */
 export function transformChannelDetails(
-  searchItem: any,
-  searchSnippet: any,
-  channelDetails?: any,
+  searchItem: YouTubeSearchItem,
+  searchSnippet: YouTubeSnippet,
+  channelDetails?: YouTubeChannelDetails,
 ): YouTubeChannelSearchResult {
   const channelSnippet = channelDetails?.snippet;
   const statistics = channelDetails?.statistics;

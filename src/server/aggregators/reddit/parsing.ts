@@ -72,7 +72,7 @@ export async function parseRedditPosts(
   userId: number,
   aggregatorId: string,
   feedId: number | undefined,
-): Promise<RawArticle[]> {
+): Promise<Array<RawArticle & { num_comments?: number }>> {
   const startTime = Date.now();
   logger.info(
     {

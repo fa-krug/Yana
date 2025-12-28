@@ -405,151 +405,78 @@ export class ChangePasswordDialogComponent {
   }
 
   private extractErrorMessage(error: unknown): string {
-    // Try to extract detailed error message from various error response formats
+    if (typeof error !== "object" || error == null) return String(error);
 
-    // API validation errors (422) - format: { "detail": [...] }
-    if (
-      typeof error === "object" &&
-      error != null &&
-      "error" in error &&
-      typeof (error as { error?: unknown }).error === "object" &&
-      (error as { error?: { detail?: unknown } }).error != null &&
-      "detail" in (error as { error: { detail?: unknown } }).error
-    ) {
-      const detail = (error as { error: { detail: unknown } }).error.detail;
+    const errorBody = (error as { error?: { 
+      detail?: Array<{ loc?: unknown[]; msg?: string }> | string;
+      message?: string;
+      non_field_errors?: unknown;
+    } }).error;
+
+    if (errorBody && typeof errorBody === "object") {
+      // API validation errors (422)
+      const detail = errorBody.detail;
       if (Array.isArray(detail)) {
-        // Format: [{"loc": ["body", "field"], "msg": "message", "type": "type"}]
-        const messages = detail.map((item: unknown) => {
-          if (typeof item === "string") {
-            return item;
-          }
-          if (
-            typeof item === "object" &&
-            item != null &&
-            "msg" in item &&
-            typeof (item as { msg?: unknown }).msg === "string"
-          ) {
-            const itemObj = item as { msg: string; loc?: unknown[] };
-            const field =
-              itemObj.loc &&
-              Array.isArray(itemObj.loc) &&
-              itemObj.loc.length > 1
-                ? String(itemObj.loc[itemObj.loc.length - 1])
-                : "";
-            return field ? `${field}: ${itemObj.msg}` : itemObj.msg;
-          }
-          return JSON.stringify(item);
-        });
-        return messages.join("; ");
+        return detail.map((item) => {
+          if (typeof item === "string") return item;
+          const loc = item.loc;
+          const field = loc && Array.isArray(loc) && loc.length > 1 ? String(loc[loc.length - 1]) : "";
+          const msg = item.msg || "";
+          return field ? `${field}: ${msg}` : msg;
+        }).join("; ");
       }
-      if (typeof detail === "string") {
-        return detail;
+      if (typeof detail === "string") return detail;
+      
+      // Standard message format
+      const message = errorBody.message;
+      if (typeof message === "string") return message;
+
+      // Non-field errors
+      const nonFieldErrors = errorBody.non_field_errors;
+      if (nonFieldErrors) {
+        return Array.isArray(nonFieldErrors) ? nonFieldErrors.map(String).join(" ") : String(nonFieldErrors);
       }
     }
 
-    // Standard message format
-    if (
-      typeof error === "object" &&
-      error != null &&
-      "error" in error &&
-      typeof (error as { error?: unknown }).error === "object" &&
-      (error as { error?: { message?: unknown } }).error != null &&
-      "message" in (error as { error: { message?: unknown } }).error &&
-      typeof (error as { error: { message: unknown } }).error.message ===
-        "string"
-    ) {
-      return (error as { error: { message: string } }).error.message;
-    }
+    if (errorBody && typeof errorBody === "string") return errorBody;
+    const topMessage = (error as { message?: string }).message;
+    if (typeof topMessage === "string") return topMessage;
 
-    // Non-field errors
-    if (
-      typeof error === "object" &&
-      error != null &&
-      "error" in error &&
-      typeof (error as { error?: unknown }).error === "object" &&
-      (error as { error?: { non_field_errors?: unknown } }).error != null &&
-      "non_field_errors" in
-        (error as { error: { non_field_errors?: unknown } }).error
-    ) {
-      const nonFieldErrors = (error as { error: { non_field_errors: unknown } })
-        .error.non_field_errors;
-      if (Array.isArray(nonFieldErrors)) {
-        return nonFieldErrors.map(String).join(" ");
-      }
-      if (typeof nonFieldErrors === "string") {
-        return nonFieldErrors;
-      }
-    }
-
-    // String error
-    if (
-      typeof error === "object" &&
-      error != null &&
-      "error" in error &&
-      typeof (error as { error?: unknown }).error === "string"
-    ) {
-      return (error as { error: string }).error;
-    }
-
-    // Top-level message
-    if (
-      typeof error === "object" &&
-      error != null &&
-      "message" in error &&
-      typeof (error as { message: unknown }).message === "string"
-    ) {
-      return (error as { message: string }).message;
-    }
-
-    // Default fallback
     return "Failed to change password. Please check your input and try again.";
   }
 
-  private handleError(message: string): void {
-    if (!message) {
-      return;
-    }
+  /**
+   * Check if error message refers to current password.
+   */
+  private isCurrentPwdError(lowerMsg: string): boolean {
+    return lowerMsg.includes("current password") || lowerMsg.includes("current_password") || (lowerMsg.includes("current") && lowerMsg.includes("password"));
+  }
 
-    // Map error messages to specific fields
+  /**
+   * Check if error message refers to new password.
+   */
+  private isNewPwdError(lowerMsg: string): boolean {
+    return lowerMsg.includes("new password") || lowerMsg.includes("new_password") || lowerMsg.includes("password do not match") || (lowerMsg.includes("password") && lowerMsg.includes("match"));
+  }
+
+  private handleError(message: string): void {
+    if (!message) return;
     const lowerMessage = message.toLowerCase();
 
-    // Check for current password errors
-    // Match: "Current password is incorrect", "current_password", etc.
-    const isCurrentPasswordError =
-      lowerMessage.includes("current password") ||
-      lowerMessage.includes("current_password") ||
-      (lowerMessage.includes("current") && lowerMessage.includes("password"));
-
-    if (isCurrentPasswordError) {
-      // Set the error message
+    if (this.isCurrentPwdError(lowerMessage)) {
       this.currentPasswordError = message;
-
-      // Mark the form control as invalid
-      const currentPasswordControl = this.passwordForm.get("currentPassword");
-      if (currentPasswordControl) {
-        // Set error to make control invalid - preserve required error if needed
-        const existingErrors = currentPasswordControl.errors || {};
-        currentPasswordControl.setErrors({
-          ...existingErrors,
-          serverError: message,
-        });
-        currentPasswordControl.markAsTouched();
-        currentPasswordControl.markAsDirty();
+      const control = this.passwordForm.get("currentPassword");
+      if (control) {
+        const errors = control.errors || {};
+        control.setErrors({ ...errors, serverError: message });
+        control.markAsTouched();
+        control.markAsDirty();
       }
-
-      // Also show in snackbar as backup to ensure user sees it
       this.snackBar.open(message, "Close", { duration: 5000 });
-    } else if (
-      lowerMessage.includes("new password") ||
-      lowerMessage.includes("new_password") ||
-      lowerMessage.includes("password do not match") ||
-      (lowerMessage.includes("password") && lowerMessage.includes("match"))
-    ) {
+    } else if (this.isNewPwdError(lowerMessage)) {
       if (lowerMessage.includes("confirm") || lowerMessage.includes("match")) {
         this.confirmPasswordError = message;
-        this.passwordForm
-          .get("confirmPassword")
-          ?.setErrors({ serverError: true });
+        this.passwordForm.get("confirmPassword")?.setErrors({ serverError: true });
         this.passwordForm.get("confirmPassword")?.markAsTouched();
       } else {
         this.newPasswordError = message;
@@ -557,8 +484,6 @@ export class ChangePasswordDialogComponent {
         this.passwordForm.get("newPassword")?.markAsTouched();
       }
     } else {
-      // Show error in snackbar for unmatched errors (fallback)
-      // This ensures we always show the error even if field mapping fails
       this.snackBar.open(message, "Close", { duration: 5000 });
     }
   }

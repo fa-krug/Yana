@@ -204,7 +204,7 @@ export class ArticleMediaComponent {
     const currentArticle = this.article();
     if (!currentArticle) return false;
     const feedType =
-      currentArticle.feed?.feedType || (currentArticle.feedId ? "" : "");
+      currentArticle.feed?.feedType || "";
     return feedType === "youtube" && !!currentArticle.mediaUrl;
   }
 
@@ -212,7 +212,7 @@ export class ArticleMediaComponent {
     const currentArticle = this.article();
     if (!currentArticle) return false;
     const feedType =
-      currentArticle.feed?.feedType || (currentArticle.feedId ? "" : "");
+      currentArticle.feed?.feedType || "";
     return feedType === "podcast" && !!currentArticle.mediaUrl;
   }
 
@@ -220,7 +220,7 @@ export class ArticleMediaComponent {
     const currentArticle = this.article();
     if (!currentArticle) return false;
     const feedType =
-      currentArticle.feed?.feedType || (currentArticle.feedId ? "" : "");
+      currentArticle.feed?.feedType || "";
     return (
       feedType === "reddit" &&
       !!currentArticle.mediaUrl &&

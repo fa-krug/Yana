@@ -184,9 +184,23 @@ export class EnrichmentPipeline {
       }
 
       // Fallback to summary
-      this.article.content = this.article.summary || "";
+      if (this.article.summary) {
+        this.logger.debug(
+          {
+            step: "enrichArticles",
+            subStep: "fetchArticleContent",
+            aggregator: this.mixin.id,
+            feedId: this.mixin.feed?.id,
+            url: this.article.url,
+            fallback: "summary",
+          },
+          "Failed to fetch content, using summary fallback",
+        );
+        return this.article.summary;
+      }
+
       throw new ArticleSkipError(
-        "Failed to fetch content, using summary fallback",
+        "Failed to fetch content and no summary fallback available",
         this.mixin.feed?.id,
       );
     }

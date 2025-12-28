@@ -153,11 +153,14 @@ export class PreviewArticleCardComponent {
     const article = this.article();
     if (!article?.link) return "";
 
-    const videoIdMatch = article./(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/.exec(link)([^&?/]+)/,
-    );
+    const videoIdMatch =
+      /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&?/]+)/.exec(
+        article.link,
+      );
     if (!videoIdMatch) return "";
 
     const videoId = videoIdMatch[1];
+    // Safe: YouTube embed URLs are trusted sources from parsed HTML content
     return this.sanitizer.bypassSecurityTrustResourceUrl(
       `https://www.youtube.com/embed/${videoId}`,
     );

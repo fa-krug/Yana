@@ -154,7 +154,7 @@ export async function finalizeArticles(
   );
 
   // Default: sort by published date (newest first)
-  const finalized = articles.sort((a, b) => {
+  articles.sort((a, b) => {
     return b.published.getTime() - a.published.getTime();
   });
 
@@ -165,11 +165,11 @@ export async function finalizeArticles(
       subStep: "complete",
       aggregator: this.id,
       feedId: this.feed?.id,
-      articleCount: finalized.length,
+      articleCount: articles.length,
       elapsed,
     },
-    "Article finalization complete",
+    "Finalization complete",
   );
 
-  return finalized;
+  return articles;
 }

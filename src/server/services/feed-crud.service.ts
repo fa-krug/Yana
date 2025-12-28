@@ -19,6 +19,25 @@ import { setFeedGroups } from "./group.service";
 type UserInfo = Pick<User, "id" | "isSuperuser">;
 
 /**
+ * Filter out restricted aggregator options.
+ */
+function filterAggregatorOptions(options: Record<string, unknown>): Record<string, unknown> {
+  const restrictedOptions = [
+    "exclude_selectors",
+    "ignore_content_contains",
+    "ignore_title_contains",
+    "regex_replacements",
+  ];
+  const filteredOptions: Record<string, unknown> = {};
+  Object.entries(options).forEach(([key, value]) => {
+    if (!restrictedOptions.includes(key)) {
+      filteredOptions[key] = value;
+    }
+  });
+  return filteredOptions;
+}
+
+/**
  * Filter out restricted options and AI features for managed aggregators.
  * Returns only the fields that should be filtered, not the entire data object.
  */
@@ -31,60 +50,75 @@ function filterManagedFeedData(
   aiSummarize?: boolean;
   aiCustomPrompt?: string;
 } {
-  if (!aggregatorId) {
-    return {};
-  }
+  if (!aggregatorId) return {};
 
   try {
     const aggregatorMetadata = getAggregatorMetadataById(aggregatorId);
+    if (aggregatorMetadata.type !== "managed") return {};
 
-    if (aggregatorMetadata.type === "managed") {
-      const filtered: {
-        aggregatorOptions?: Record<string, unknown>;
-        aiTranslateTo?: string;
-        aiSummarize?: boolean;
-        aiCustomPrompt?: string;
-      } = {};
+    const filtered: {
+      aggregatorOptions?: Record<string, unknown>;
+      aiTranslateTo?: string;
+      aiSummarize?: boolean;
+      aiCustomPrompt?: string;
+    } = {
+      aiTranslateTo: "",
+      aiSummarize: false,
+      aiCustomPrompt: "",
+    };
 
-      // Filter out restricted aggregator options
-      // Only process if aggregatorOptions is explicitly provided (not null or undefined)
-      if (
-        data.aggregatorOptions !== undefined &&
-        data.aggregatorOptions !== null
-      ) {
-        const restrictedOptions = [
-          "exclude_selectors",
-          "ignore_content_contains",
-          "ignore_title_contains",
-          "regex_replacements",
-        ];
-        const filteredOptions: Record<string, unknown> = {};
-        Object.entries(data.aggregatorOptions).forEach(([key, value]) => {
-          if (!restrictedOptions.includes(key)) {
-            filteredOptions[key] = value;
-          }
-        });
-        filtered.aggregatorOptions = filteredOptions;
-      }
-      // If aggregatorOptions is undefined or null, don't set it in filtered
-      // This allows existing options to be preserved during update
-
-      // Filter out AI features
-      filtered.aiTranslateTo = "";
-      filtered.aiSummarize = false;
-      filtered.aiCustomPrompt = "";
-
-      return filtered;
+    // Filter out restricted aggregator options
+    if (data.aggregatorOptions !== undefined && data.aggregatorOptions !== null) {
+      filtered.aggregatorOptions = filterAggregatorOptions(data.aggregatorOptions as Record<string, unknown>);
     }
-  } catch (error) {
-    // If we can't get aggregator metadata, continue without filtering
-    logger.warn(
-      { error, aggregator: aggregatorId },
-      "Failed to get aggregator metadata for filtering",
-    );
-  }
 
-  return {};
+    return filtered;
+  } catch (error) {
+    logger.warn({ error, aggregator: aggregatorId }, "Failed to get aggregator metadata for filtering");
+    return {};
+  }
+}
+
+/**
+ * Get aggregator-specific default for dailyPostLimit.
+ */
+function getDefaultDailyLimit(aggregatorId?: string): number {
+  if (aggregatorId) {
+    const aggregator = getAggregatorById(aggregatorId);
+    if (aggregator) return aggregator.defaultDailyLimit;
+  }
+  return 50;
+}
+
+/**
+ * Determine feed icon based on aggregator metadata.
+ */
+function determineFeedIcon(aggregatorId?: string, currentIcon?: string | null): string | null {
+  if (!aggregatorId) return currentIcon || null;
+
+  try {
+    const metadata = getAggregatorMetadataById(aggregatorId);
+    if (metadata.type === "managed" && metadata.icon) return metadata.icon;
+    return currentIcon || metadata.icon || null;
+  } catch (error) {
+    logger.warn({ error, aggregator: aggregatorId }, "Failed to get aggregator icon");
+    return currentIcon || null;
+  }
+}
+
+/**
+ * Sync feed icon from web.
+ */
+async function syncFeedIcon(feedId: number): Promise<Feed | null> {
+  try {
+    const { processIconFetch } = await import("./icon.service");
+    await processIconFetch(feedId, false);
+    const [updatedFeed] = await db.select().from(feeds).where(eq(feeds.id, feedId)).limit(1);
+    return updatedFeed || null;
+  } catch (error) {
+    logger.warn({ error, feedId }, "Failed to fetch feed icon");
+    return null;
+  }
 }
 
 /**
@@ -97,41 +131,16 @@ export async function createFeed(
   // Extract groupIds from data
   const { groupIds, ...feedData } = data;
 
-  // Set aggregator-specific default for dailyPostLimit if not provided
-  if (feedData.dailyPostLimit === undefined && feedData.aggregator) {
-    const aggregator = getAggregatorById(feedData.aggregator);
-    if (aggregator) {
-      feedData.dailyPostLimit = aggregator.defaultDailyLimit;
-    } else {
-      feedData.dailyPostLimit = 50; // Fallback if aggregator not found
-    }
-  } else if (feedData.dailyPostLimit === undefined) {
-    feedData.dailyPostLimit = 50; // Fallback if no aggregator specified
+  // Set aggregator-specific default for dailyPostLimit
+  if (feedData.dailyPostLimit === undefined) {
+    feedData.dailyPostLimit = getDefaultDailyLimit(feedData.aggregator);
   }
 
   // Filter out restricted options and AI features for managed aggregators
   const filteredFields = filterManagedFeedData(feedData, feedData.aggregator);
 
   // For managed aggregators, always use the aggregator's icon
-  let icon = feedData.icon;
-  if (feedData.aggregator) {
-    try {
-      const aggregatorMetadata = getAggregatorMetadataById(feedData.aggregator);
-      // If aggregator is managed, always use its icon
-      if (aggregatorMetadata.type === "managed" && aggregatorMetadata.icon) {
-        icon = aggregatorMetadata.icon;
-      } else if (!icon && aggregatorMetadata.icon) {
-        // For non-managed aggregators, use icon if not provided
-        icon = aggregatorMetadata.icon;
-      }
-    } catch (error) {
-      // If we can't get aggregator metadata, continue without icon
-      logger.warn(
-        { error, aggregator: feedData.aggregator },
-        "Failed to get aggregator icon",
-      );
-    }
-  }
+  const icon = determineFeedIcon(feedData.aggregator, feedData.icon);
 
   const [feed] = await db
     .insert(feeds)
@@ -152,30 +161,28 @@ export async function createFeed(
 
   // Fetch icon synchronously if icon is not set
   if (!feed.icon) {
-    try {
-      const { processIconFetch } = await import("./icon.service");
-      await processIconFetch(feed.id, false);
-      // Reload feed to get updated icon
-      const [updatedFeed] = await db
-        .select()
-        .from(feeds)
-        .where(eq(feeds.id, feed.id))
-        .limit(1);
-      if (updatedFeed) {
-        Object.assign(feed, updatedFeed);
-      }
-    } catch (error) {
-      logger.warn(
-        { error, feedId: feed.id },
-        "Failed to fetch feed icon on create",
-      );
-      // Continue without icon - not critical
-    }
+    const updatedFeed = await syncFeedIcon(feed.id);
+    if (updatedFeed) Object.assign(feed, updatedFeed);
   }
 
   logger.info({ feedId: feed.id, userId: user.id, groupIds }, "Feed created");
 
   return feed;
+}
+
+/**
+ * Sync feed icon from web on update.
+ */
+async function syncFeedIconOnUpdate(feedId: number): Promise<Feed | null> {
+  try {
+    const { processIconFetch } = await import("./icon.service");
+    await processIconFetch(feedId, true);
+    const [reloadedFeed] = await db.select().from(feeds).where(eq(feeds.id, feedId)).limit(1);
+    return reloadedFeed || null;
+  } catch (error) {
+    logger.warn({ error, feedId }, "Failed to fetch feed icon on update");
+    return null;
+  }
 }
 
 /**
@@ -211,22 +218,10 @@ export async function updateFeed(
     await setFeedGroups(id, user.id, groupIds);
   }
 
-  // Always fetch icon synchronously when updating a feed to ensure it's up-to-date
-  try {
-    const { processIconFetch } = await import("./icon.service");
-    await processIconFetch(id, true);
-    // Reload feed to get updated icon
-    const [reloadedFeed] = await db
-      .select()
-      .from(feeds)
-      .where(eq(feeds.id, id))
-      .limit(1);
-    if (reloadedFeed) {
-      Object.assign(updated, reloadedFeed);
-    }
-  } catch (error) {
-    logger.warn({ error, feedId: id }, "Failed to fetch feed icon on update");
-    // Continue without icon update - not critical
+  // Always fetch icon synchronously when updating a feed
+  const reloadedFeed = await syncFeedIconOnUpdate(id);
+  if (reloadedFeed) {
+    Object.assign(updated, reloadedFeed);
   }
 
   logger.info({ feedId: id, userId: user.id, groupIds }, "Feed updated");

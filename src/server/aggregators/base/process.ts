@@ -72,7 +72,7 @@ const normalizeUrlForComparison = (url: string) =>
 /**
  * Remove empty parent containers recursively.
  */
-function removeEmptyParents(element: cheerio.Cheerio<any>): void {
+function removeEmptyParents(element: cheerio.Cheerio<Element>): void {
   let currentParent = element.parent();
   while (currentParent.length > 0) {
     const tagName = currentParent.get(0)?.tagName?.toLowerCase();
@@ -365,7 +365,7 @@ export async function standardizeContentFormat(
   headerImageUrl?: string,
 ): Promise<string> {
   const finalBaseUrl = baseUrl || article.url;
-  logger.debug({ url: article.url }, "Standardizing content format");
+  logger.debug({ url: article.url, generateTitleImage }, "Standardizing content format");
 
   try {
     const $ = cheerio.load(content);

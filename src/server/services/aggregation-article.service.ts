@@ -165,6 +165,41 @@ async function createNewArticle(
 }
 
 /**
+ * Process a single raw article and save it to the database.
+ * Returns true if created, false if updated, null if skipped.
+ */
+async function processAndSaveArticle(
+  rawArticle: RawArticle,
+  feed: Feed,
+  aggregator: BaseAggregator,
+  forceRefresh: boolean,
+  cutoffDate: Date,
+): Promise<"created" | "updated" | "skipped"> {
+  const publishedDate = rawArticle.published ? new Date(rawArticle.published) : null;
+  if (isArticleTooOld(publishedDate, cutoffDate)) {
+    if (process.env["NODE_ENV"] === "test" && (global as { __TEST_TRACE?: boolean }).__TEST_TRACE) {
+      console.log(`[SAVE_TRACE] Article ${rawArticle.url} filtered: too old`);
+    }
+    return "skipped";
+  }
+
+  const decision = await determineProcessingAction(rawArticle, String(feed.id), feed.userId, forceRefresh);
+  if (decision.action === "skip") return "skipped";
+
+  if (decision.action === "update" && decision.existingArticle) {
+    await updateExistingArticle(rawArticle, feed, aggregator, decision.existingArticle);
+    return "updated";
+  }
+
+  if (forceRefresh) {
+    if (await handleForceRefresh(rawArticle, feed, aggregator)) return "updated";
+  }
+
+  await createNewArticle(rawArticle, feed, aggregator);
+  return "created";
+}
+
+/**
  * Process and save articles from aggregation.
  */
 export async function saveAggregatedArticles(
@@ -181,85 +216,11 @@ export async function saveAggregatedArticles(
 
   for (const rawArticle of rawArticles) {
     try {
-      // Check if article is too old
-      const publishedDate = rawArticle.published
-        ? new Date(rawArticle.published)
-        : null;
-
-      if (isArticleTooOld(publishedDate, publishedCutoffDate)) {
-        logger.debug(
-          {
-            url: rawArticle.url,
-            published: publishedDate?.toISOString(),
-            feedId: feed.id,
-          },
-          "Skipping article older than two months",
-        );
-        // INSTRUMENTATION: Log when articles are filtered by date
-        if (
-          process.env["NODE_ENV"] === "test" &&
-          (global as { __TEST_TRACE?: boolean }).__TEST_TRACE
-        ) {
-          console.log(
-            `[SAVE_TRACE] Article ${rawArticle.url} filtered: too old (${publishedDate?.toISOString()} < ${publishedCutoffDate.toISOString()})`,
-          );
-        }
-        continue;
-      }
-
-      // Determine processing action
-      const decision = await determineProcessingAction(
-        rawArticle,
-        feed.id,
-        feed.userId,
-        forceRefresh,
-      );
-
-      if (decision.action === "skip") {
-        if (decision.reason) {
-          logger.debug(
-            {
-              url: rawArticle.url,
-              name: rawArticle.title,
-              feedId: feed.id,
-              reason: decision.reason,
-            },
-            "Skipping duplicate article",
-          );
-        }
-        continue;
-      }
-
-      if (decision.action === "update" && decision.existingArticle) {
-        await updateExistingArticle(
-          rawArticle,
-          feed,
-          aggregator,
-          decision.existingArticle,
-        );
-        articlesUpdated++;
-        continue;
-      }
-
-      // Handle force refresh scenario
-      if (forceRefresh) {
-        const wasUpdated = await handleForceRefresh(
-          rawArticle,
-          feed,
-          aggregator,
-        );
-        if (wasUpdated) {
-          articlesUpdated++;
-          continue;
-        }
-      }
-
-      // Create new article
-      await createNewArticle(rawArticle, feed, aggregator);
-      articlesCreated++;
+      const result = await processAndSaveArticle(rawArticle, feed, aggregator, forceRefresh, publishedCutoffDate);
+      if (result === "created") articlesCreated++;
+      else if (result === "updated") articlesUpdated++;
     } catch (error: unknown) {
       logger.error({ error, url: rawArticle.url }, "Failed to save article");
-      continue;
     }
   }
 

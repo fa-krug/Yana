@@ -8,6 +8,31 @@ import type pino from "pino";
 import { ContentFetchError } from "../base/exceptions";
 
 /**
+ * Fetch a single page and extract its content.
+ */
+async function fetchPageContent(
+  url: string,
+  baseFetch: (url: string) => Promise<string>,
+): Promise<string | null> {
+  const pageHtml = await baseFetch(url);
+  const $ = cheerio.load(pageHtml);
+  const content = $("div.gp-entry-content").first();
+  return content.length > 0 ? content.html() : null;
+}
+
+/**
+ * Log page fetch error based on type.
+ */
+function logPageFetchError(error: unknown, pageNum: number, maxPage: number, logger: pino.Logger, aggregatorId: string, feedId: number | null | undefined): void {
+  const logCtx = { step: "enrichArticles", subStep: "fetchAllPages", aggregator: aggregatorId, feedId, pageNum, maxPage };
+  if (error instanceof ContentFetchError) {
+    logger.warn({ ...logCtx, error }, "Failed to fetch page");
+  } else {
+    logger.error({ ...logCtx, error: error instanceof Error ? error : new Error(String(error)) }, "Unexpected error fetching page");
+  }
+}
+
+/**
  * Fetch all pages of a multi-page article and combine the content.
  */
 export async function fetchAllPages(
@@ -17,165 +42,38 @@ export async function fetchAllPages(
   feedId: number | null | undefined,
   baseFetch: (url: string) => Promise<string>,
 ): Promise<string> {
-  logger.info(
-    {
-      step: "enrichArticles",
-      subStep: "fetchAllPages",
-      aggregator: aggregatorId,
-      feedId,
-      url: baseUrl,
-    },
-    "Fetching all pages of multi-page article",
-  );
-
-  // Fetch first page to get pagination info
   const firstPageHtml = await baseFetch(baseUrl);
-  const pageNumbers = extractPageNumbers(
-    firstPageHtml,
-    logger,
-    aggregatorId,
-    feedId,
-  );
+  const pageNumbers = extractPageNumbers(firstPageHtml, logger, aggregatorId, feedId);
 
   if (pageNumbers.size <= 1) {
-    // Single page article, return first page content
-    logger.debug(
-      {
-        step: "enrichArticles",
-        subStep: "fetchAllPages",
-        aggregator: aggregatorId,
-        feedId,
-        url: baseUrl,
-      },
-      "Single page article, returning first page",
-    );
     const $ = cheerio.load(firstPageHtml);
-    const content = $("div.gp-entry-content").first();
-    return content.html() || "";
+    return $("div.gp-entry-content").first().html() || "";
   }
 
   const sortedPages = Array.from(pageNumbers).sort((a, b) => a - b);
   const maxPage = sortedPages[sortedPages.length - 1];
-  logger.info(
-    {
-      step: "enrichArticles",
-      subStep: "fetchAllPages",
-      aggregator: aggregatorId,
-      feedId,
-      url: baseUrl,
-      pageCount: pageNumbers.size,
-      maxPage,
-    },
-    "Found multiple pages, fetching all",
-  );
-
   const allContentParts: string[] = [];
 
-  // Fetch all pages
   for (const pageNum of sortedPages) {
     try {
       let pageUrl: string;
       if (pageNum === 1) {
         pageUrl = baseUrl;
       } else {
-        // Append page number to URL
-        // Handle URLs ending with / or not
-        pageUrl = baseUrl.endsWith("/")
-          ? `${baseUrl}${pageNum}/`
-          : `${baseUrl}/${pageNum}/`;
+        pageUrl = baseUrl.endsWith("/") ? `${baseUrl}${pageNum}/` : `${baseUrl}/${pageNum}/`;
       }
-
-      logger.debug(
-        {
-          step: "enrichArticles",
-          subStep: "fetchAllPages",
-          aggregator: aggregatorId,
-          feedId,
-          pageNum,
-          maxPage,
-          url: pageUrl,
-        },
-        "Fetching page",
-      );
-
-      const pageHtml = await baseFetch(pageUrl);
-      const $ = cheerio.load(pageHtml);
-      const content = $("div.gp-entry-content").first();
-
-      if (content.length > 0) {
-        allContentParts.push(content.html() || "");
-        logger.debug(
-          {
-            step: "enrichArticles",
-            subStep: "fetchAllPages",
-            aggregator: aggregatorId,
-            feedId,
-            pageNum,
-            maxPage,
-          },
-          "Page fetched successfully",
-        );
+      const content = await fetchPageContent(pageUrl, baseFetch);
+      if (content) {
+        allContentParts.push(content);
       } else {
-        logger.warn(
-          {
-            step: "enrichArticles",
-            subStep: "fetchAllPages",
-            aggregator: aggregatorId,
-            feedId,
-            pageNum,
-            maxPage,
-          },
-          "Could not find content div on page",
-        );
+        logger.warn({ step: "enrichArticles", subStep: "fetchAllPages", aggregator: aggregatorId, feedId, pageNum, maxPage }, "Could not find content div on page");
       }
     } catch (error) {
-      if (error instanceof ContentFetchError) {
-        logger.warn(
-          {
-            step: "enrichArticles",
-            subStep: "fetchAllPages",
-            aggregator: aggregatorId,
-            feedId,
-            error: error instanceof Error ? error : new Error(String(error)),
-            pageNum,
-            maxPage,
-          },
-          "Failed to fetch page",
-        );
-      } else {
-        logger.error(
-          {
-            step: "enrichArticles",
-            subStep: "fetchAllPages",
-            aggregator: aggregatorId,
-            feedId,
-            error: error instanceof Error ? error : new Error(String(error)),
-            pageNum,
-            maxPage,
-          },
-          "Unexpected error fetching page",
-        );
-      }
-      // Continue with other pages even if one fails
+      logPageFetchError(error, pageNum, maxPage, logger, aggregatorId, feedId);
     }
   }
 
-  // Combine all content
-  const combinedContent = allContentParts.join("\n\n");
-  logger.info(
-    {
-      step: "enrichArticles",
-      subStep: "fetchAllPages",
-      aggregator: aggregatorId,
-      feedId,
-      url: baseUrl,
-      pageCount: allContentParts.length,
-      contentLength: combinedContent.length,
-    },
-    "Combined pages",
-  );
-
-  return combinedContent;
+  return allContentParts.join("\n\n");
 }
 
 /**

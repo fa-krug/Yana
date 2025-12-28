@@ -5,6 +5,7 @@
  * Tries with increasing article limits to gracefully degrade quality vs speed.
  */
 
+import type { BaseAggregator } from "../aggregators/base/aggregator";
 import type { RawArticle } from "../aggregators/base/types";
 
 /**
@@ -14,7 +15,7 @@ import type { RawArticle } from "../aggregators/base/types";
  * Throws on timeout.
  */
 export async function aggregateFeedWithRetry(
-  aggregator: any, // BaseAggregator type
+  aggregator: BaseAggregator,
   timeoutMs: number = 120000,
 ): Promise<RawArticle[]> {
   const articleLimits = [1, 5, 10, 25, 50];

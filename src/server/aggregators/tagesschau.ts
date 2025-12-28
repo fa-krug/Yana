@@ -89,7 +89,7 @@ export class TagesschauAggregator extends FullWebsiteAggregator {
       try {
         const playerData = this.parsePlayerData(dataV);
         const streams = playerData.mc?.streams || [];
-        const isAudioOnly = streams.length > 0 && streams.every((s: any) => s.isAudioOnly === true);
+        const isAudioOnly = streams.length > 0 && streams.every((s) => s.isAudioOnly === true);
         const imageUrl = this.getPlayerImage(playerDiv, playerData.mc || {});
 
         // Try to extract embed code from pluginData
@@ -110,7 +110,7 @@ export class TagesschauAggregator extends FullWebsiteAggregator {
     return null;
   }
 
-  private getMediaPlayers(soup: cheerio.CheerioAPI): cheerio.Cheerio<any> {
+  private getMediaPlayers(soup: cheerio.CheerioAPI): cheerio.Cheerio<cheerio.AnyNode> {
     const mediaPlayers = soup('div[data-v-type="MediaPlayer"]').filter((_, el) => {
       return (soup(el).attr("class") || "").toLowerCase().includes("mediaplayer");
     });
@@ -119,17 +119,17 @@ export class TagesschauAggregator extends FullWebsiteAggregator {
     return teaserPlayers.length > 0 ? teaserPlayers : mediaPlayers;
   }
 
-  private parsePlayerData(dataV: string): any {
+  private parsePlayerData(dataV: string): TagesschauPlayerData {
     const decoded = dataV
       .replace(/&quot;/g, '"')
       .replace(/&#39;/g, "'")
       .replace(/&amp;/g, "&")
       .replace(/&lt;/g, "<")
       .replace(/&gt;/g, ">");
-    return JSON.parse(decoded);
+    return JSON.parse(decoded) as TagesschauPlayerData;
   }
 
-  private getPlayerImage(playerDiv: cheerio.Cheerio<any>, mc: any): string | null {
+  private getPlayerImage(playerDiv: cheerio.Cheerio<cheerio.AnyNode>, mc: TagesschauMC): string | null {
     let imageUrl = this.getPlayerImageFromMetadata(mc);
 
     if (!imageUrl) {
@@ -143,8 +143,8 @@ export class TagesschauAggregator extends FullWebsiteAggregator {
     return imageUrl;
   }
 
-  private getPlayerImageFromMetadata(mc: any): string | null {
-    const fields = ["poster", "image", "thumbnail", "preview", "cover"];
+  private getPlayerImageFromMetadata(mc: TagesschauMC): string | null {
+    const fields = ["poster", "image", "thumbnail", "preview", "cover"] as const;
 
     // Check main mc object
     for (const field of fields) {
@@ -163,7 +163,7 @@ export class TagesschauAggregator extends FullWebsiteAggregator {
     return null;
   }
 
-  private getPlayerImageFromDOM(playerDiv: cheerio.Cheerio<any>): string | null {
+  private getPlayerImageFromDOM(playerDiv: cheerio.Cheerio<cheerio.AnyNode>): string | null {
     const parent = playerDiv.parent();
     if (parent && parent.length > 0) {
       const img = parent.find("img").first();
@@ -200,7 +200,7 @@ export class TagesschauAggregator extends FullWebsiteAggregator {
     return `<header class="media-header">${playerHtml}</header>`;
   }
 
-  private async buildHeaderFromStreams(streams: any[], isAudioOnly: boolean, imageUrl: string | null): Promise<string | null> {
+  private async buildHeaderFromStreams(streams: TagesschauStream[], isAudioOnly: boolean, imageUrl: string | null): Promise<string | null> {
     if (isAudioOnly) {
       const audioMedia = this.findMediaByMimeType(streams, "audio");
       if (audioMedia) {
@@ -217,7 +217,7 @@ export class TagesschauAggregator extends FullWebsiteAggregator {
     return null;
   }
 
-  private findMediaByMimeType(streams: any[], type: string): { url: string; mimeType: string } | null {
+  private findMediaByMimeType(streams: TagesschauStream[], type: string): { url: string; mimeType: string } | null {
     for (const stream of streams) {
       for (const media of (stream.media || [])) {
         if (media.url && (media.mimeType || "").toLowerCase().includes(type)) {
@@ -301,10 +301,40 @@ export class TagesschauAggregator extends FullWebsiteAggregator {
     }
   }
 
-  private shouldSkipElement($el: cheerio.Cheerio<any>): boolean {
+  private shouldSkipElement($el: cheerio.Cheerio<cheerio.AnyNode>): boolean {
     const parent = $el.parent();
     if (parent.length === 0) return false;
     const classes = parent.attr("class") || "";
     return ["teaser", "bigfive", "accordion", "related"].some(c => classes.includes(c));
   }
+}
+
+interface TagesschauStream {
+  isAudioOnly?: boolean;
+  url?: string;
+  mimeType?: string;
+  media?: Array<{ url: string; mimeType: string }>;
+  poster?: string;
+  image?: string;
+  thumbnail?: string;
+  preview?: string;
+  cover?: string;
+}
+
+interface TagesschauMC {
+  streams?: TagesschauStream[];
+  poster?: string;
+  image?: string;
+  thumbnail?: string;
+  preview?: string;
+  cover?: string;
+}
+
+interface TagesschauPlayerData {
+  mc?: TagesschauMC;
+  pluginData?: {
+    "sharing@web"?: {
+      embedCode?: string;
+    };
+  };
 }

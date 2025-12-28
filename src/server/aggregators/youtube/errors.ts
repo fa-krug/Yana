@@ -18,53 +18,48 @@ export class YouTubeAPIError extends Error {
 }
 
 /**
+ * Get message for specific YouTube API error reason.
+ */
+function getReasonMessage(reason: string): string | null {
+  const reasonMap: Record<string, string> = {
+    quotaExceeded: "YouTube API quota exceeded. Please try again later or check your quota in Google Cloud Console.",
+    accessNotConfigured: "YouTube Data API v3 is not enabled. Enable it in Google Cloud Console.",
+    forbidden: "API key is restricted or invalid. Check API key restrictions in Google Cloud Console.",
+  };
+  return reasonMap[reason] || null;
+}
+
+/**
+ * Get message for specific HTTP status code.
+ */
+function getStatusMessage(status?: number): string | null {
+  const statusMap: Record<number, string> = {
+    403: "YouTube API access forbidden. Check your API key permissions and restrictions.",
+    404: "YouTube resource not found. Check the channel identifier or video ID.",
+    429: "YouTube API rate limit exceeded. Please try again later.",
+    400: "Invalid YouTube API request. Check your channel identifier format.",
+  };
+  return status ? (statusMap[status] || null) : null;
+}
+
+/**
  * Extract a user-friendly error message from a YouTube API error.
  */
 export function getYouTubeErrorMessage(error: unknown): string {
   if (axios.isAxiosError(error)) {
     const axiosError = error as AxiosError;
-    const status = axiosError.response?.status;
-    const errorData = axiosError.response?.data as
-      | {
-          error?: { errors?: Array<{ reason?: string }> };
-        }
-      | undefined;
+    const errorData = axiosError.response?.data as { error?: { errors?: Array<{ reason?: string }> } } | undefined;
 
-    // Check for specific error reasons in the response
     if (errorData?.error?.errors?.[0]?.reason) {
-      const reason = errorData.error.errors[0].reason;
-      if (reason === "quotaExceeded") {
-        return "YouTube API quota exceeded. Please try again later or check your quota in Google Cloud Console.";
-      }
-      if (reason === "accessNotConfigured") {
-        return "YouTube Data API v3 is not enabled. Enable it in Google Cloud Console.";
-      }
-      if (reason === "forbidden") {
-        return "API key is restricted or invalid. Check API key restrictions in Google Cloud Console.";
-      }
+      const msg = getReasonMessage(errorData.error.errors[0].reason);
+      if (msg) return msg;
     }
 
-    // Handle specific status codes
-    if (status === 403) {
-      return "YouTube API access forbidden. Check your API key permissions and restrictions.";
-    }
-    if (status === 404) {
-      return "YouTube resource not found. Check the channel identifier or video ID.";
-    }
-    if (status === 429) {
-      return "YouTube API rate limit exceeded. Please try again later.";
-    }
-    if (status === 400) {
-      return "Invalid YouTube API request. Check your channel identifier format.";
-    }
+    const statusMsg = getStatusMessage(axiosError.response?.status);
+    if (statusMsg) return statusMsg;
 
-    // Return generic error message
     return `YouTube API error: ${axiosError.message || "Unknown error"}`;
   }
 
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  return "Unknown YouTube API error";
+  return error instanceof Error ? error.message : "Unknown YouTube API error";
 }

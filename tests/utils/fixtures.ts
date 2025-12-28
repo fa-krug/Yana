@@ -4,7 +4,9 @@
 
 import type { User, Feed, Article } from "../../src/server/db/types";
 
-export const testUser: Omit<User, "id" | "createdAt" | "updatedAt"> = {
+type TestUser = Omit<User, "id" | "createdAt" | "updatedAt">;
+
+export const testUser: TestUser = {
   username: "testuser",
   email: "test@example.com",
   // eslint-disable-next-line sonarjs/no-hardcoded-passwords

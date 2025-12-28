@@ -163,6 +163,19 @@ describe("Aggregator Options Integration Tests", () => {
     if (vi.isMockFunction(axios.post)) {
       vi.mocked(axios.post).mockReset();
     }
+
+    const fetchModule = await import("../base/fetch");
+    if (vi.isMockFunction(fetchModule.fetchFeed)) {
+      vi.mocked(fetchModule.fetchFeed).mockReset();
+    }
+    if (vi.isMockFunction(fetchModule.fetchArticleContent)) {
+      vi.mocked(fetchModule.fetchArticleContent).mockReset();
+    }
+
+    const { clearAllCaches } = await import("../base/cache");
+    clearAllCaches();
+    const { cache } = await import("@server/utils/cache");
+    cache.clear();
   });
 
   afterEach(async () => {
@@ -697,6 +710,8 @@ describe("Aggregator Options Integration Tests", () => {
                         id: url.includes("low") ? "low" : "high",
                         title: "Test Post",
                         selftext: "Post content",
+                        permalink: `/r/programming/comments/${url.includes("low") ? "low" : "high"}/test_post/`,
+                        url: `https://reddit.com/r/programming/comments/${url.includes("low") ? "low" : "high"}/test_post/`,
                       },
                     },
                   ],
@@ -1264,7 +1279,7 @@ describe("Aggregator Options Integration Tests", () => {
       // Mock the base fetchArticleContentInternal that fetchAllPages will call
       // This needs to be on the prototype since fetchAllPages calls super.fetchArticleContentInternal
       const FullWebsiteAggregatorClass = await import("../full_website");
-      vi.spyOn(
+      const baseSpy = vi.spyOn(
         FullWebsiteAggregatorClass.FullWebsiteAggregator.prototype as any,
         "fetchArticleContentInternal",
       ).mockImplementation(async (url: string) => {
@@ -1291,6 +1306,8 @@ describe("Aggregator Options Integration Tests", () => {
       // Should have content from multiple pages
       expect(content).toContain("Page 1");
       expect(content).toContain("Page 2");
+
+      baseSpy.mockRestore();
     });
   });
 
@@ -1336,36 +1353,11 @@ describe("Aggregator Options Integration Tests", () => {
           </article>
         `;
 
-        vi.spyOn(
-          aggregator as any,
-          "fetchArticleContentInternal",
-        ).mockResolvedValue(mockHtml);
+        mockAggregatorInstance = aggregator;
 
-        // Use runFullAggregation to test the full flow including saving articles
-        const mockFetchFeed = await getMockedFetchFeed();
-        mockFetchFeed.mockResolvedValue({
-          items: [
-            {
-              title: "Test Article",
-              link: "https://example.com/article",
-              pubDate: new Date().toISOString(),
-              contentSnippet: "Summary",
-            },
-          ],
-        } as any);
-
-        // Mock fetchArticleContentInternal on prototype for service
-        const FullWebsiteAggregatorClass = await import("../full_website");
-        vi.spyOn(
-          FullWebsiteAggregatorClass.FullWebsiteAggregator.prototype as any,
-          "fetchArticleContentInternal",
-        ).mockResolvedValue(mockHtml);
-
-        // Also need to mock fetchSourceData to return the feed items
-        vi.spyOn(
-          FullWebsiteAggregatorClass.FullWebsiteAggregator.prototype as any,
-          "fetchSourceData",
-        ).mockResolvedValue({
+        // Mock methods on the instance
+        vi.spyOn(aggregator as any, "fetchArticleContentInternal").mockResolvedValue(mockHtml);
+        vi.spyOn(aggregator as any, "fetchSourceData").mockResolvedValue({
           items: [
             {
               title: "Test Article",
@@ -1377,8 +1369,6 @@ describe("Aggregator Options Integration Tests", () => {
         });
 
         // FIX: Mock createHeaderElementFromUrl to return header element without fetching
-        // Root cause: createHeaderElementFromUrl tries to fetch/process images, which fails in tests
-        // This prevents thumbnailUrl from being set (line 318 in process.ts only runs if headerElement is truthy)
         const headerElementUtils = await import("../base/utils/header-element");
         vi.spyOn(
           headerElementUtils,
@@ -1388,16 +1378,15 @@ describe("Aggregator Options Integration Tests", () => {
         );
 
         // FIX: Mock convertThumbnailUrlToBase64 to return base64 data URI without fetching
-        // Root cause: processThumbnail calls convertThumbnailUrlToBase64 which tries to fetch images in tests
-        // This causes thumbnailUrl to become null even though it was set correctly in the raw article
         const baseUtils = await import("../base/utils");
         vi.spyOn(baseUtils, "convertThumbnailUrlToBase64").mockResolvedValue(
           "data:image/jpeg;base64,/9j/4AAQSkZJRg==", // Minimal valid base64 image
         );
 
         await runFullAggregation(feed.id);
-        const savedArticles = await getFeedArticles(feed.id);
+        mockAggregatorInstance = null;
 
+        const savedArticles = await getFeedArticles(feed.id);
         expect(savedArticles.length).toBeGreaterThan(0);
         const article = savedArticles[0];
 

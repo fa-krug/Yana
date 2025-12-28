@@ -10,92 +10,45 @@ import type { Feed } from "@server/db/types";
 import { logger } from "@server/utils/logger";
 
 /**
+ * Update feed icon in database.
+ */
+async function updateFeedIconInDb(feedId: number, iconUrl: string, source: string): Promise<boolean> {
+  try {
+    const { convertThumbnailUrlToBase64 } = await import("@server/aggregators/base/utils");
+    const iconBase64 = await convertThumbnailUrlToBase64(iconUrl);
+    if (iconBase64) {
+      await db.update(feeds).set({ icon: iconBase64 }).where(eq(feeds.id, feedId));
+      logger.info({ feedId, source }, `Updated feed icon from ${source}`);
+      return true;
+    }
+  } catch (error) {
+    logger.warn({ error, feedId, source }, `Failed to update feed icon from ${source}`);
+  }
+  return false;
+}
+
+/**
  * Collect and update feed icon from aggregator.
  */
 export async function collectFeedIcon(
   aggregator: BaseAggregator,
   feed: Feed,
 ): Promise<void> {
-  // First, try the new collectFeedIcon() method
+  // Try the new collectFeedIcon() method
   try {
     const feedIconUrl = await aggregator.collectFeedIcon();
-    if (feedIconUrl) {
-      const { convertThumbnailUrlToBase64 } =
-        await import("@server/aggregators/base/utils");
-      const iconBase64 = await convertThumbnailUrlToBase64(feedIconUrl);
-      if (iconBase64) {
-        await db
-          .update(feeds)
-          .set({ icon: iconBase64 })
-          .where(eq(feeds.id, feed.id));
-        logger.info(
-          { feedId: feed.id, aggregator: aggregator.id },
-          "Updated feed icon from aggregator",
-        );
-        return;
-      }
-    }
+    if (feedIconUrl && await updateFeedIconInDb(feed.id, feedIconUrl, "aggregator")) return;
   } catch (error) {
-    logger.warn(
-      { error, feedId: feed.id, aggregator: aggregator.id },
-      "Failed to collect feed icon from aggregator",
-    );
+    logger.warn({ error, feedId: feed.id, aggregator: aggregator.id }, "Failed to collect feed icon");
   }
 
-  // Legacy support: Update feed icon if aggregator provides one via private properties
-  // (for backwards compatibility with Reddit and YouTube)
+  // Legacy support: Reddit and YouTube
   const aggregatorAny = aggregator as unknown as Record<string, unknown>;
   if (aggregatorAny["__subredditIconUrl"]) {
-    try {
-      const subredditIconUrl = aggregatorAny["__subredditIconUrl"] as string;
-      if (subredditIconUrl) {
-        const { convertThumbnailUrlToBase64 } =
-          await import("@server/aggregators/base/utils");
-        const iconBase64 = await convertThumbnailUrlToBase64(subredditIconUrl);
-        if (iconBase64) {
-          await db
-            .update(feeds)
-            .set({ icon: iconBase64 })
-            .where(eq(feeds.id, feed.id));
-          logger.info(
-            { feedId: feed.id },
-            "Updated feed icon from subreddit thumbnail (legacy)",
-          );
-          return;
-        }
-      }
-    } catch (error) {
-      logger.warn(
-        { error, feedId: feed.id },
-        "Failed to update feed icon from subreddit (legacy)",
-      );
-    }
+    if (await updateFeedIconInDb(feed.id, aggregatorAny["__subredditIconUrl"] as string, "subreddit (legacy)")) return;
   }
 
-  // Legacy support: Update feed icon for YouTube channels
   if (aggregatorAny["__channelIconUrl"]) {
-    try {
-      const channelIconUrl = aggregatorAny["__channelIconUrl"] as string;
-      if (channelIconUrl) {
-        const { convertThumbnailUrlToBase64 } =
-          await import("@server/aggregators/base/utils");
-        const iconBase64 = await convertThumbnailUrlToBase64(channelIconUrl);
-        if (iconBase64) {
-          await db
-            .update(feeds)
-            .set({ icon: iconBase64 })
-            .where(eq(feeds.id, feed.id));
-          logger.info(
-            { feedId: feed.id },
-            "Updated feed icon from YouTube channel thumbnail (legacy)",
-          );
-        }
-      }
-    } catch (error) {
-      logger.warn(
-        { error, feedId: feed.id },
-        "Failed to update feed icon from YouTube channel (legacy)",
-      );
-    }
+    await updateFeedIconInDb(feed.id, aggregatorAny["__channelIconUrl"] as string, "YouTube channel (legacy)");
   }
 }

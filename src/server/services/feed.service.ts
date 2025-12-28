@@ -90,7 +90,8 @@ export async function previewFeed(
     }
 
     // 2. Build temporary feed
-    const aggregator = getValidatedAggregator(data.aggregator!);
+    const aggregatorId = data.aggregator ?? "";
+    const aggregator = getValidatedAggregator(aggregatorId);
     const tempFeed = buildPreviewFeed(user, data, aggregator);
 
     // 3. Initialize and aggregate articles

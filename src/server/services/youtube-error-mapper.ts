@@ -21,11 +21,20 @@ const ERROR_REASON_MAP: Record<string, string> = {
     "API key is restricted or invalid. Check API key restrictions in Google Cloud Console.",
 };
 
+interface YouTubeAPIError {
+  error?: {
+    message?: string;
+    errors?: Array<{
+      reason?: string;
+    }>;
+  };
+}
+
 /**
  * Extract error message from YouTube API error response.
  */
 function extractErrorReason(error: AxiosError): string | undefined {
-  const errorData = error.response?.data as any;
+  const errorData = error.response?.data as YouTubeAPIError;
   return errorData?.error?.errors?.[0]?.reason;
 }
 
@@ -33,7 +42,7 @@ function extractErrorReason(error: AxiosError): string | undefined {
  * Extract error message from YouTube API error response.
  */
 function extractErrorMessage(error: AxiosError): string | undefined {
-  const errorData = error.response?.data as any;
+  const errorData = error.response?.data as YouTubeAPIError;
   return errorData?.error?.message;
 }
 
@@ -90,7 +99,7 @@ function handleNetworkError(): string {
  * Map an unhandled Axios error to a user-friendly message.
  */
 function handleGenericAxiosError(error: AxiosError): string {
-  const errorData = error.response?.data as any;
+  const errorData = error.response?.data as YouTubeAPIError;
   const errorMessage = errorData?.error?.message;
 
   return (

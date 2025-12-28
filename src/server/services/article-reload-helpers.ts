@@ -4,6 +4,7 @@
  * Extracted functions for processing article reload to reduce complexity.
  */
 
+import type { BaseAggregator } from "../aggregators/base/aggregator";
 import type { RawArticle } from "../aggregators/base/types";
 import type { Article, Feed } from "../db/types";
 
@@ -72,7 +73,7 @@ export async function convertThumbnailToBase64(
  */
 export async function extractThumbnailWithFallback(
   article: Article,
-  aggregator: any,
+  aggregator: BaseAggregator,
   processedContent: string,
 ): Promise<string | null> {
   // Try aggregator's extraction method
@@ -84,7 +85,7 @@ export async function extractThumbnailWithFallback(
         return base64;
       }
     }
-  } catch (error) {
+  } catch {
     // Continue to next fallback
   }
 
@@ -97,7 +98,7 @@ export async function extractThumbnailWithFallback(
     if (base64) {
       return base64;
     }
-  } catch (error) {
+  } catch {
     // Continue
   }
 
@@ -110,7 +111,7 @@ export async function extractThumbnailWithFallback(
 export async function processThumbnailBase64(
   rawArticle: RawArticle,
   article: Article,
-  aggregator: any,
+  aggregator: BaseAggregator,
   processedContent: string,
 ): Promise<string | null> {
   // Try direct URL to base64 conversion

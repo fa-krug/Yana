@@ -23,6 +23,17 @@ import { fetchSingleImage } from "../fetch";
 const MAX_IMAGE_WIDTH = 600;
 const MAX_IMAGE_HEIGHT = 600;
 
+interface FxTwitterMedia {
+  photos?: Array<{ url: string }>;
+  all?: Array<{ type: string; url: string }>;
+}
+
+interface FxTwitterResponse {
+  tweet?: {
+    media?: FxTwitterMedia;
+  };
+}
+
 /**
  * Handle direct image URL extraction.
  */
@@ -152,7 +163,7 @@ function validateTwitterUrl(url: string): string | null {
 /**
  * Extract photo URLs from tweet.media.photos array.
  */
-function extractPhotosFromMediaPhotos(data: any): string[] {
+function extractPhotosFromMediaPhotos(data: FxTwitterResponse): string[] {
   const photos = data?.tweet?.media?.photos;
 
   if (!photos || !Array.isArray(photos)) {
@@ -176,7 +187,7 @@ function extractPhotosFromMediaPhotos(data: any): string[] {
 /**
  * Extract photo URLs from tweet.media.all array (fallback).
  */
-function extractPhotosFromMediaAll(data: any): string[] {
+function extractPhotosFromMediaAll(data: FxTwitterResponse): string[] {
   const allMedia = data?.tweet?.media?.all;
 
   if (!allMedia || !Array.isArray(allMedia)) {
@@ -201,7 +212,7 @@ function extractPhotosFromMediaAll(data: any): string[] {
  * Extract all photo URLs from tweet data.
  * Tries tweet.media.photos first, falls back to tweet.media.all.
  */
-function extractImageUrlsFromTweetData(data: any, tweetId: string): string[] {
+function extractImageUrlsFromTweetData(data: FxTwitterResponse, tweetId: string): string[] {
   // Try primary location first
   let imageUrls = extractPhotosFromMediaPhotos(data);
 
@@ -221,7 +232,7 @@ function extractImageUrlsFromTweetData(data: any, tweetId: string): string[] {
  * Fetch tweet data from fxtwitter API.
  * Throws ArticleSkipError on 4xx errors.
  */
-async function fetchTweetData(tweetId: string): Promise<any> {
+async function fetchTweetData(tweetId: string): Promise<FxTwitterResponse> {
   const apiUrl = `https://api.fxtwitter.com/status/${tweetId}`;
   logger.debug({ apiUrl }, "Fetching tweet data from fxtwitter API");
 
@@ -307,6 +318,20 @@ export async function handleTwitterImage(
 }
 
 /**
+ * Convert SVG to PNG.
+ */
+async function convertSvgToPng(imageData: Buffer, isHeaderImage: boolean): Promise<Buffer | null> {
+  try {
+    const targetSize = isHeaderImage
+      ? { width: MAX_HEADER_IMAGE_WIDTH, height: MAX_HEADER_IMAGE_HEIGHT }
+      : { width: MAX_IMAGE_WIDTH, height: MAX_IMAGE_HEIGHT };
+    return await sharp(imageData).resize(targetSize.width, targetSize.height, { fit: "inside", withoutEnlargement: false }).png().toBuffer();
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Handle meta tag image extraction (og:image, twitter:image).
  */
 export async function handleMetaTagImage(
@@ -315,75 +340,20 @@ export async function handleMetaTagImage(
   isHeaderImage: boolean,
 ): Promise<{ imageData: Buffer; contentType: string } | null> {
   const fullImageUrl = new URL(imageUrl, baseUrl).toString();
-  logger.debug({ imageUrl: fullImageUrl }, "Found meta tag image");
   const result = await fetchSingleImage(fullImageUrl);
-  // Check if image is large enough (skip small images)
-  if (result.imageData && result.imageData.length > 5000) {
-    const isSvg =
-      result.contentType === "image/svg+xml" ||
-      fullImageUrl.toLowerCase().endsWith(".svg");
+  if (!result.imageData || result.imageData.length <= 5000) return null;
 
-    // For SVGs, convert to larger raster format (skip dimension checks)
-    if (isSvg) {
-      try {
-        const targetSize = isHeaderImage
-          ? {
-              width: MAX_HEADER_IMAGE_WIDTH,
-              height: MAX_HEADER_IMAGE_HEIGHT,
-            }
-          : { width: MAX_IMAGE_WIDTH, height: MAX_IMAGE_HEIGHT };
-        const converted = await sharp(result.imageData)
-          .resize(targetSize.width, targetSize.height, {
-            fit: "inside",
-            withoutEnlargement: false,
-          })
-          .png()
-          .toBuffer();
-        logger.debug({ url: fullImageUrl }, "Converted meta tag SVG to PNG");
-        return {
-          imageData: converted,
-          contentType: "image/png",
-        };
-      } catch (error) {
-        logger.warn(
-          { error, url: fullImageUrl },
-          "Failed to convert meta tag SVG",
-        );
-        return null;
-      }
-    }
-
-    // Also check dimensions if we can get them
-    try {
-      const img = sharp(result.imageData);
-      const metadata = await img.metadata();
-      if (
-        metadata.width &&
-        metadata.height &&
-        (metadata.width < 100 || metadata.height < 100)
-      ) {
-        logger.debug(
-          {
-            width: metadata.width,
-            height: metadata.height,
-            url: fullImageUrl,
-          },
-          "Meta tag image too small, skipping",
-        );
-        return null;
-      } else {
-        return {
-          imageData: result.imageData,
-          contentType: result.contentType || "image/jpeg",
-        };
-      }
-    } catch {
-      // If we can't check dimensions, use file size check only
-      return {
-        imageData: result.imageData,
-        contentType: result.contentType || "image/jpeg",
-      };
-    }
+  if (result.contentType === "image/svg+xml" || fullImageUrl.toLowerCase().endsWith(".svg")) {
+    const converted = await convertSvgToPng(result.imageData, isHeaderImage);
+    return converted ? { imageData: converted, contentType: "image/png" } : null;
   }
-  return null;
+
+  try {
+    const metadata = await sharp(result.imageData).metadata();
+    if (metadata.width && metadata.height && (metadata.width < 100 || metadata.height < 100)) {
+      return null;
+    }
+  } catch { /* Use file size check only */ }
+
+  return { imageData: result.imageData, contentType: result.contentType || "image/jpeg" };
 }
