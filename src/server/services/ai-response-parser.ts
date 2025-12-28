@@ -130,7 +130,7 @@ export class AIResponseParser {
       error &&
       typeof error === "object" &&
       "isJsonParseError" in error &&
-      (error as Record<string, unknown>).isJsonParseError === true
+      (error as Record<string, unknown>)["isJsonParseError"] === true
     );
   }
 }

@@ -174,9 +174,9 @@ export class AIService {
     responseFormat: Record<string, unknown> | undefined,
     responseParser: AIResponseParser,
   ): Record<string, unknown> {
-    const choices = data.choices as Array<Record<string, unknown>>;
-    const message = choices[0].message as Record<string, unknown>;
-    const contentStr = String(message.content);
+    const choices = data["choices"] as Array<Record<string, unknown>>;
+    const message = choices[0]["message"] as Record<string, unknown>;
+    const contentStr = String(message["content"]);
     const finishReason = String(choices[0]["finish_reason"] || "");
 
     if (responseParser.isTruncated(finishReason)) {
