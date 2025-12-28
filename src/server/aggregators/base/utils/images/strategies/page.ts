@@ -164,7 +164,7 @@ async function processStandardImage(
  */
 function buildImageResult(
   imageData: Buffer,
-  contentType: string | undefined,
+  contentType: string | null | undefined,
 ): { imageData: Buffer; contentType: string } {
   return {
     imageData,

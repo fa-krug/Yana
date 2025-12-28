@@ -132,7 +132,7 @@ export async function parseRedditPosts(
         rawContent,
         articleThumbnailUrl,
         mediaUrl,
-        headerImageUrl,
+        headerImageUrl || undefined,
         postData.num_comments,
       ),
     );

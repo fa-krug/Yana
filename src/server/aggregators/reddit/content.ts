@@ -10,7 +10,7 @@ import { fetchPostComments, formatCommentHtml } from "./comments";
 import { convertRedditMarkdown, escapeHtml } from "./markdown";
 import { processLinkMedia } from "./media-handlers";
 import type { RedditPostData } from "./types";
-import { decodeHtmlEntitiesInUrl } from "./urls";
+import { decodeHtmlEntitiesInUrl, fixRedditMediaUrl } from "./urls";
 
 /**
  * Add selftext part to content.

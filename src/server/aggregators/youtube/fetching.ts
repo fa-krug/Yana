@@ -3,6 +3,7 @@
  */
 
 import axios from "axios";
+import type pino from "pino";
 
 import { logger } from "@server/utils/logger";
 

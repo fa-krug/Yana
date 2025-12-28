@@ -498,7 +498,7 @@ export async function standardizeContentFormat(
 
     const hasExistingFooter = $body("footer").length > 0;
     const existingHeaders: string[] = [];
-    $body("header").each((_, el) => existingHeaders.push($body(el).toString()));
+    $body("header").each((_index, el) => existingHeaders.push($body(el).toString()));
 
     const commentSections = extractCommentSections($body);
 

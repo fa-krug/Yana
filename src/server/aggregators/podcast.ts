@@ -338,7 +338,7 @@ export class PodcastAggregator extends BaseAggregator {
           subStep: "parseEpisode",
           aggregator: this.id,
           feedId: this.feed?.id,
-          title: String(item.title || "Unknown"),
+          title: String(item["title"] || "Unknown"),
         },
         "Podcast episode has no audio enclosure, skipping",
       );
@@ -384,9 +384,11 @@ export class PodcastAggregator extends BaseAggregator {
     const content = htmlParts.join("\n");
 
     return {
-      title: String(item.title || "Untitled"),
-      url: String(item.link || ""),
-      published: item.pubDate ? new Date(String(item.pubDate)) : new Date(),
+      title: String(item["title"] || "Untitled"),
+      url: String(item["link"] || ""),
+      published: item["pubDate"]
+        ? new Date(String(item["pubDate"]))
+        : new Date(),
       content,
       summary: description,
       thumbnailUrl: imageUrl || undefined,

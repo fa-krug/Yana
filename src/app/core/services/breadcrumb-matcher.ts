@@ -89,6 +89,7 @@ export class ArticleDetailPatternMatcher {
     }
 
     const parts = routePath.split("/");
+    const basePath = parts[0] || "";
     const paramPart = parts.find((p) => p.startsWith(":"));
 
     // Handle "articles/:articleId" pattern

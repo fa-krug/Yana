@@ -41,8 +41,8 @@ export function extractVideoMediaUrl(
  * Select the best thumbnail URL for an article.
  */
 export function selectArticleThumbnail(
-  headerImageUrl: string | undefined,
-  thumbnailUrl: string | undefined,
+  headerImageUrl: string | null | undefined,
+  thumbnailUrl: string | null | undefined,
 ): string | undefined {
   return headerImageUrl || thumbnailUrl || undefined;
 }
