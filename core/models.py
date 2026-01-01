@@ -29,7 +29,6 @@ class Feed(models.Model):
     aggregator = models.CharField(max_length=50, choices=AGGREGATOR_CHOICES, default="full_website")
     identifier = models.TextField(
         blank=True,
-        null=True,
         help_text="Required for Reddit and YouTube aggregators. For others, optional URL or identifier.",
     )
     daily_limit = models.IntegerField(default=50)
@@ -40,7 +39,6 @@ class Feed(models.Model):
     group = models.ForeignKey(
         FeedGroup, on_delete=models.SET_NULL, null=True, blank=True, related_name="feeds"
     )
-    icon = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -68,7 +66,7 @@ class Article(models.Model):
     read = models.BooleanField(default=False)
     starred = models.BooleanField(default=False)
     author = models.CharField(max_length=255, blank=True, default="")
-    icon = models.TextField(blank=True, null=True)
+    icon = models.ImageField(upload_to="article_icons/", blank=True, null=True)
     feed = models.ForeignKey(Feed, on_delete=models.CASCADE, related_name="articles")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -92,11 +90,7 @@ class Article(models.Model):
 class GReaderAuthToken(models.Model):
     """Google Reader API authentication token."""
 
-    user = models.ForeignKey(
-        "auth.User",
-        on_delete=models.CASCADE,
-        related_name="greader_tokens"
-    )
+    user = models.ForeignKey("auth.User", on_delete=models.CASCADE, related_name="greader_tokens")
     token = models.CharField(max_length=64, unique=True, db_index=True)
     expires_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)

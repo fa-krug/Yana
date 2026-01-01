@@ -1,6 +1,5 @@
 """Google Reader API authentication decorators."""
 
-import json
 import logging
 from functools import wraps
 
@@ -31,9 +30,8 @@ def greader_auth_required(view_func):
         user = authenticate_request(auth_header, session_user_id)
 
         if not user:
-            logger.warning(
-                f"Unauthorized access attempt to {request.path} from {request.remote_addr}"
-            )
+            remote_addr = request.META.get("REMOTE_ADDR", "unknown")
+            logger.warning(f"Unauthorized access attempt to {request.path} from {remote_addr}")
 
             # Return 401 in appropriate format
             if _expects_json(request):
@@ -82,8 +80,4 @@ def _expects_json(request) -> bool:
         "/stream/items/contents",
     ]
 
-    for endpoint in json_endpoints:
-        if endpoint in path:
-            return True
-
-    return False
+    return any(endpoint in path for endpoint in json_endpoints)

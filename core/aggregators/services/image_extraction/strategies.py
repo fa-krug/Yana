@@ -9,18 +9,18 @@ Provides strategies for extracting images from different sources:
 5. PageImagesStrategy - First large image on page
 """
 
+import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
 from urllib.parse import urlparse
-import logging
 
 from bs4 import BeautifulSoup
 
-from .fetcher import fetch_single_image
-from ...utils.youtube import extract_youtube_video_id, get_youtube_thumbnail_url
-from ...utils.twitter import extract_tweet_id, fetch_tweet_data, get_first_tweet_image
 from ...exceptions import ArticleSkipError
+from ...utils.twitter import extract_tweet_id, fetch_tweet_data, get_first_tweet_image
+from ...utils.youtube import extract_youtube_video_id, get_youtube_thumbnail_url
+from .fetcher import fetch_single_image
 
 logger = logging.getLogger(__name__)
 
@@ -43,9 +43,7 @@ class ImageStrategy(ABC):
         pass
 
     @abstractmethod
-    async def extract(
-        self, context: ImageExtractionContext
-    ) -> Optional[Dict[str, Any]]:
+    async def extract(self, context: ImageExtractionContext) -> Optional[Dict[str, Any]]:
         """
         Extract image from context.
 
@@ -71,9 +69,7 @@ class DirectImageStrategy(ImageStrategy):
         except Exception:
             return False
 
-    async def extract(
-        self, context: ImageExtractionContext
-    ) -> Optional[Dict[str, Any]]:
+    async def extract(self, context: ImageExtractionContext) -> Optional[Dict[str, Any]]:
         """Fetch direct image URL."""
         logger.debug(f"DirectImageStrategy: Attempting to fetch {context.url}")
 
@@ -81,6 +77,7 @@ class DirectImageStrategy(ImageStrategy):
             result = fetch_single_image(context.url)
             if result:
                 logger.debug("DirectImageStrategy: Successfully extracted image")
+                result["imageUrl"] = context.url
             return result
         except ArticleSkipError:
             raise  # Re-raise 4xx errors
@@ -96,9 +93,7 @@ class YouTubeThumbnailStrategy(ImageStrategy):
         """Check if URL is a YouTube URL."""
         return extract_youtube_video_id(context.url) is not None
 
-    async def extract(
-        self, context: ImageExtractionContext
-    ) -> Optional[Dict[str, Any]]:
+    async def extract(self, context: ImageExtractionContext) -> Optional[Dict[str, Any]]:
         """Fetch YouTube thumbnail."""
         logger.debug(f"YouTubeThumbnailStrategy: Attempting to extract from {context.url}")
 
@@ -116,6 +111,7 @@ class YouTubeThumbnailStrategy(ImageStrategy):
                     logger.debug(
                         f"YouTubeThumbnailStrategy: Found thumbnail with quality {quality}"
                     )
+                    result["imageUrl"] = thumbnail_url
                     return result
 
             logger.debug("YouTubeThumbnailStrategy: No thumbnail found")
@@ -139,9 +135,7 @@ class TwitterImageStrategy(ImageStrategy):
         twitter_domains = ["twitter.com", "x.com", "mobile.twitter.com"]
         return any(domain in context.url for domain in twitter_domains)
 
-    async def extract(
-        self, context: ImageExtractionContext
-    ) -> Optional[Dict[str, Any]]:
+    async def extract(self, context: ImageExtractionContext) -> Optional[Dict[str, Any]]:
         """Fetch image from Twitter post via fxtwitter API."""
         logger.debug(f"TwitterImageStrategy: Attempting to extract from {context.url}")
 
@@ -167,6 +161,7 @@ class TwitterImageStrategy(ImageStrategy):
             result = fetch_single_image(image_url)
             if result:
                 logger.debug("TwitterImageStrategy: Successfully extracted image")
+                result["imageUrl"] = image_url
                 return result
 
             logger.debug("TwitterImageStrategy: Failed to fetch image from URL")
@@ -186,9 +181,7 @@ class MetaTagImageStrategy(ImageStrategy):
         """Check if we have parsed HTML (soup)."""
         return context.soup is not None
 
-    async def extract(
-        self, context: ImageExtractionContext
-    ) -> Optional[Dict[str, Any]]:
+    async def extract(self, context: ImageExtractionContext) -> Optional[Dict[str, Any]]:
         """Extract image from meta tags."""
         logger.debug(f"MetaTagImageStrategy: Extracting from {context.url}")
 
@@ -202,14 +195,14 @@ class MetaTagImageStrategy(ImageStrategy):
             og_image = context.soup.select_one('meta[property="og:image"]')
             if og_image and og_image.get("content"):
                 image_url = og_image.get("content")
-                logger.debug(f"MetaTagImageStrategy: Found og:image")
+                logger.debug("MetaTagImageStrategy: Found og:image")
 
             # Fallback to twitter:image
             if not image_url:
                 twitter_image = context.soup.select_one('meta[name="twitter:image"]')
                 if twitter_image and twitter_image.get("content"):
                     image_url = twitter_image.get("content")
-                    logger.debug(f"MetaTagImageStrategy: Found twitter:image")
+                    logger.debug("MetaTagImageStrategy: Found twitter:image")
 
             if not image_url:
                 logger.debug("MetaTagImageStrategy: No meta tag images found")
@@ -222,6 +215,7 @@ class MetaTagImageStrategy(ImageStrategy):
             result = fetch_single_image(image_url)
             if result:
                 logger.debug("MetaTagImageStrategy: Successfully extracted image")
+                result["imageUrl"] = image_url
                 return result
 
             logger.debug("MetaTagImageStrategy: Failed to fetch image")
@@ -262,9 +256,7 @@ class PageImagesStrategy(ImageStrategy):
         """Check if we have parsed HTML."""
         return context.soup is not None
 
-    async def extract(
-        self, context: ImageExtractionContext
-    ) -> Optional[Dict[str, Any]]:
+    async def extract(self, context: ImageExtractionContext) -> Optional[Dict[str, Any]]:
         """Find and extract first large image from page."""
         logger.debug(f"PageImagesStrategy: Extracting from {context.url}")
 
@@ -298,9 +290,7 @@ class PageImagesStrategy(ImageStrategy):
 
                 # Skip if dimensions too small
                 if width and height and (width < min_size or height < min_size):
-                    logger.debug(
-                        f"PageImagesStrategy: Skipping image {width}x{height} (too small)"
-                    )
+                    logger.debug(f"PageImagesStrategy: Skipping image {width}x{height} (too small)")
                     continue
 
                 # Fetch the image
@@ -308,6 +298,7 @@ class PageImagesStrategy(ImageStrategy):
                     result = fetch_single_image(img_url)
                     if result:
                         logger.debug(f"PageImagesStrategy: Found image {img_url}")
+                        result["imageUrl"] = img_url
                         return result
                 except ArticleSkipError:
                     raise

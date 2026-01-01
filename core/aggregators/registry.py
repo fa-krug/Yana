@@ -5,8 +5,6 @@ Aggregator registry to map feed types to aggregator classes.
 from typing import Dict, Type
 
 from .base import BaseAggregator
-from .website import FullWebsiteAggregator
-from .mein_mmo import MeinMmoAggregator
 from .implementations import (
     CaschysBlogAggregator,
     DarkLegacyAggregator,
@@ -21,6 +19,8 @@ from .implementations import (
     TagesschauAggregator,
     YoutubeAggregator,
 )
+from .mein_mmo import MeinMmoAggregator
+from .website import FullWebsiteAggregator
 
 
 class AggregatorRegistry:

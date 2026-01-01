@@ -8,10 +8,11 @@ Provides functions for:
 - Fetching subreddit icons
 """
 
-import re
-from typing import Optional, Dict, Any
-import requests
 import logging
+import re
+from typing import Dict, Optional
+
+import requests
 
 logger = logging.getLogger(__name__)
 
@@ -37,9 +38,8 @@ def is_reddit_embed_url(url: str) -> bool:
     if not url:
         return False
 
-    return (
-        "vxreddit.com" in url
-        or ("/embed" in url and ("reddit.com" in url or "v.redd.it" in url))
+    return "vxreddit.com" in url or (
+        "/embed" in url and ("reddit.com" in url or "v.redd.it" in url)
     )
 
 
@@ -84,7 +84,7 @@ def create_reddit_embed_html(embed_url: str, caption: str = "") -> str:
     """
     html = (
         f'<div class="reddit-embed-container">'
-        f'<style>'
+        f"<style>"
         f".reddit-embed-container iframe {{ "
         f"width: 100%; "
         f"height: calc((100% / 16) * 9); "
@@ -100,7 +100,7 @@ def create_reddit_embed_html(embed_url: str, caption: str = "") -> str:
         f'title="Reddit video player" '
         f'frameborder="0" '
         f'scrolling="no" '
-        f'allowfullscreen></iframe>'
+        f"allowfullscreen></iframe>"
     )
 
     if caption:
@@ -159,9 +159,7 @@ def fetch_subreddit_icon(subreddit: str, timeout: int = 10) -> Optional[str]:
         if e.response.status_code == 404:
             logger.debug(f"Subreddit r/{subreddit} not found")
         else:
-            logger.warning(
-                f"HTTP error fetching subreddit r/{subreddit}: {e.response.status_code}"
-            )
+            logger.warning(f"HTTP error fetching subreddit r/{subreddit}: {e.response.status_code}")
     except requests.exceptions.RequestException as e:
         logger.warning(f"Error fetching subreddit icon for r/{subreddit}: {e}")
     except Exception as e:

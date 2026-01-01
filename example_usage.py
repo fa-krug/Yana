@@ -13,8 +13,8 @@ import django
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "yana.settings")
 django.setup()
 
-from core.models import Feed
-from core.services import AggregatorService
+from core.models import Feed  # noqa: E402
+from core.services import AggregatorService  # noqa: E402
 
 
 def example_1_trigger_by_id():
@@ -72,7 +72,7 @@ def example_4_error_handling():
 
     try:
         # Try to trigger a non-existent feed
-        result = AggregatorService.trigger_by_feed_id(99999)
+        AggregatorService.trigger_by_feed_id(99999)
     except Exception as e:
         print(f"\n✗ Caught exception: {e}")
 

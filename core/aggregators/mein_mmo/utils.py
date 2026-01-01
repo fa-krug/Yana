@@ -1,8 +1,9 @@
 """Mein-MMO utility functions."""
 
 import logging
-from bs4 import BeautifulSoup
 from typing import Optional
+
+from bs4 import BeautifulSoup
 
 
 def extract_header_image_url(html: str, logger: logging.Logger) -> Optional[str]:

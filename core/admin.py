@@ -1,11 +1,13 @@
 from django.contrib import admin, messages
 
+from djangoql.admin import DjangoQLSearchMixin
+
 from .models import Article, Feed, FeedGroup, GReaderAuthToken
 from .services import AggregatorService, ArticleService
 
 
 @admin.register(FeedGroup)
-class FeedGroupAdmin(admin.ModelAdmin):
+class FeedGroupAdmin(DjangoQLSearchMixin, admin.ModelAdmin):
     """Admin configuration for FeedGroup model."""
 
     list_display = ["name", "user", "created_at"]
@@ -22,7 +24,7 @@ class FeedGroupAdmin(admin.ModelAdmin):
 
 
 @admin.register(Feed)
-class FeedAdmin(admin.ModelAdmin):
+class FeedAdmin(DjangoQLSearchMixin, admin.ModelAdmin):
     """Admin configuration for Feed model."""
 
     list_display = ["name", "aggregator", "enabled", "user", "group", "created_at"]
@@ -96,7 +98,7 @@ class FeedAdmin(admin.ModelAdmin):
 
 
 @admin.register(Article)
-class ArticleAdmin(admin.ModelAdmin):
+class ArticleAdmin(DjangoQLSearchMixin, admin.ModelAdmin):
     """Admin configuration for Article model."""
 
     list_display = ["name", "feed", "author", "date", "read", "starred", "created_at"]
@@ -166,7 +168,7 @@ class ArticleAdmin(admin.ModelAdmin):
 
 
 @admin.register(GReaderAuthToken)
-class GReaderAuthTokenAdmin(admin.ModelAdmin):
+class GReaderAuthTokenAdmin(DjangoQLSearchMixin, admin.ModelAdmin):
     """Admin configuration for GReaderAuthToken model."""
 
     list_display = ["user", "token", "expires_at", "created_at"]

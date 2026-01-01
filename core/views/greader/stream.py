@@ -1,12 +1,18 @@
 """Google Reader API stream views."""
 
+import contextlib
 import logging
 
-from django.http import HttpResponse, JsonResponse
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
-from core.services.greader.stream_format import format_item_id_list
-from core.services.greader.stream_service import StreamError, get_stream_contents, get_stream_item_ids, get_unread_count
+from core.services.greader.stream_service import (
+    StreamError,
+    get_stream_contents,
+    get_stream_item_ids,
+    get_unread_count,
+)
 
 from .decorators import greader_auth_required
 
@@ -38,7 +44,7 @@ def unread_count(request):
 
         return JsonResponse(result, status=200)
 
-    except Exception as e:
+    except Exception:
         logger.exception("Error in unread_count view")
         return JsonResponse(
             {"error": "Internal server error"},
@@ -79,10 +85,8 @@ def stream_items_ids(request):
         # Parse timestamp
         older_than = None
         if older_than_str:
-            try:
+            with contextlib.suppress(ValueError):
                 older_than = int(older_than_str)
-            except ValueError:
-                pass
 
         # Get IDs
         result = get_stream_item_ids(
@@ -101,7 +105,7 @@ def stream_items_ids(request):
         logger.warning(f"Stream error: {e}")
         return JsonResponse({"error": str(e)}, status=400)
 
-    except Exception as e:
+    except Exception:
         logger.exception("Error in stream_items_ids view")
         return JsonResponse(
             {"error": "Internal server error"},
@@ -109,6 +113,9 @@ def stream_items_ids(request):
         )
 
 
+@csrf_exempt
+@require_http_methods(["GET", "POST"])
+@greader_auth_required
 def stream_contents(request, stream_id=None):
     """Get full article contents from a stream.
 
@@ -130,29 +137,11 @@ def stream_contents(request, stream_id=None):
     Response (on failure):
         401 Unauthorized
     """
-    # Only allow GET and POST
-    if request.method not in ["GET", "POST"]:
-        return HttpResponse("Method not allowed", status=405)
-
-    # Require authentication
-    auth_header = request.headers.get("Authorization")
-    session_user_id = request.session.get("_auth_user_id")
-
-    from core.services.greader.auth_service import authenticate_request
-    user = authenticate_request(auth_header, session_user_id)
-
-    if not user:
-        logger.warning(f"Unauthorized access attempt to stream/contents from {request.remote_addr}")
-        return JsonResponse({"error": "Unauthorized"}, status=401)
-
     try:
-        user_id = user["id"]
+        user_id = request.greader_user["id"]
 
         # Get parameters from GET or POST
-        if request.method == "GET":
-            params = request.GET
-        else:
-            params = request.POST
+        params = request.GET if request.method == "GET" else request.POST
 
         # Get stream ID from URL path or parameters
         if stream_id:
@@ -176,14 +165,13 @@ def stream_contents(request, stream_id=None):
         # Parse timestamp
         older_than = None
         if older_than_str:
-            try:
+            with contextlib.suppress(ValueError):
                 older_than = int(older_than_str)
-            except ValueError:
-                pass
 
         # Get contents
         result = get_stream_contents(
             user_id,
+            request,
             stream_id=query_stream_id,
             item_ids=item_ids,
             limit=limit,
@@ -199,15 +187,9 @@ def stream_contents(request, stream_id=None):
         logger.warning(f"Stream error: {e}")
         return JsonResponse({"error": str(e)}, status=400)
 
-    except Exception as e:
+    except Exception:
         logger.exception("Error in stream_contents view")
         return JsonResponse(
             {"error": "Internal server error"},
             status=500,
         )
-
-
-# Apply authentication decorator manually for stream_contents since we handle it explicitly
-from .decorators import greader_auth_required
-
-stream_contents = require_http_methods(["GET", "POST"])(stream_contents)

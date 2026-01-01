@@ -39,3 +39,4 @@ typing_extensions==4.15.0
 urllib3==2.6.2
 virtualenv==20.35.4
 wheel==0.45.1
+djangoql==0.18.1

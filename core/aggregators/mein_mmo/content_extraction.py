@@ -1,11 +1,12 @@
 """Mein-MMO content extraction logic."""
 
 import logging
-from bs4 import BeautifulSoup
-from typing import Dict, Any, List
+from typing import Any, Dict, List
 
+from bs4 import BeautifulSoup
+
+from ..utils import clean_data_attributes, remove_empty_elements, sanitize_class_names
 from .embed_processors import process_embeds
-from ..utils import sanitize_class_names, remove_empty_elements, clean_data_attributes
 
 
 def extract_mein_mmo_content(
@@ -58,7 +59,7 @@ def extract_mein_mmo_content(
         logger.debug(f"Combined content div created, size: {len(str(content))} bytes")
     else:
         content = content_divs[0]
-        logger.debug(f"Single page article, using first content div")
+        logger.debug("Single page article, using first content div")
 
     # Remove unwanted elements
     logger.debug(f"Removing unwanted elements using {len(selectors_to_remove)} selectors")
@@ -69,6 +70,18 @@ def extract_mein_mmo_content(
             elem.decompose()
             removed_count += 1
     logger.debug(f"Removed {removed_count} unwanted elements")
+
+    # Remove pagination markers like "Weiter geht es auf Seite 2."
+    for em in content.find_all("em"):
+        text = em.get_text()
+        if text and "Weiter geht es auf Seite" in text:
+            p_parent = em.find_parent("p")
+            if p_parent:
+                p_parent.decompose()
+            else:
+                em.decompose()
+            removed_count += 1
+    logger.debug(f"Removed pagination markers, total removed: {removed_count}")
 
     # Process embeds
     logger.debug("Processing embeds (YouTube, Twitter, Reddit)")

@@ -1,9 +1,11 @@
 """Management command to test aggregators."""
 
 import traceback
+
 from django.core.management.base import BaseCommand
-from core.models import Feed, Article
+
 from core.aggregators import get_aggregator
+from core.models import Article, Feed
 
 
 class Command(BaseCommand):
@@ -11,9 +13,15 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument("feed_id", type=int, help="Feed ID to test")
-        parser.add_argument("--dry-run", action="store_true", help="Don't save articles to database")
-        parser.add_argument("--verbose", action="store_true", help="Show full content and tracebacks on errors")
-        parser.add_argument("--first", type=int, default=1, help="Number of first articles to show details for")
+        parser.add_argument(
+            "--dry-run", action="store_true", help="Don't save articles to database"
+        )
+        parser.add_argument(
+            "--verbose", action="store_true", help="Show full content and tracebacks on errors"
+        )
+        parser.add_argument(
+            "--first", type=int, default=1, help="Number of first articles to show details for"
+        )
 
     def handle(self, *args, **options):
         feed_id = options["feed_id"]
@@ -37,11 +45,14 @@ class Command(BaseCommand):
 
             # Set up logging to capture errors
             import logging
+
             logging.basicConfig(level=logging.DEBUG if verbose else logging.WARNING)
 
             articles_data = aggregator.aggregate()
 
-            self.stdout.write(self.style.SUCCESS(f"✓ Aggregator returned {len(articles_data)} articles"))
+            self.stdout.write(
+                self.style.SUCCESS(f"✓ Aggregator returned {len(articles_data)} articles")
+            )
 
             # Show details for first N articles
             for idx, article_data in enumerate(articles_data[:num_first], 1):
@@ -49,15 +60,17 @@ class Command(BaseCommand):
                 self.stdout.write(f"  Name: {article_data.get('name')[:80]}")
                 self.stdout.write(f"  URL: {article_data.get('identifier')}")
                 self.stdout.write(f"  Content length: {len(article_data.get('content', ''))} chars")
-                self.stdout.write(f"  Raw content length: {len(article_data.get('raw_content', ''))} chars")
+                self.stdout.write(
+                    f"  Raw content length: {len(article_data.get('raw_content', ''))} chars"
+                )
 
                 if verbose:
-                    self.stdout.write(f"\n  >>> RAW CONTENT (first 500 chars):")
-                    raw = article_data.get('raw_content', '')[:500]
+                    self.stdout.write("\n  >>> RAW CONTENT (first 500 chars):")
+                    raw = article_data.get("raw_content", "")[:500]
                     self.stdout.write(f"  {raw}...")
 
-                    self.stdout.write(f"\n  >>> PROCESSED CONTENT (first 500 chars):")
-                    content = article_data.get('content', '')[:500]
+                    self.stdout.write("\n  >>> PROCESSED CONTENT (first 500 chars):")
+                    content = article_data.get("content", "")[:500]
                     self.stdout.write(f"  {content}...")
 
             if not dry_run:
@@ -80,7 +93,9 @@ class Command(BaseCommand):
                         if created:
                             created_count += 1
                     except Exception as e:
-                        self.stdout.write(self.style.WARNING(f"Warning: Failed to save article: {e}"))
+                        self.stdout.write(
+                            self.style.WARNING(f"Warning: Failed to save article: {e}")
+                        )
 
                 self.stdout.write(f"\nCreated {created_count} new articles in database")
 

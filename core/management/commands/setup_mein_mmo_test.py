@@ -1,8 +1,9 @@
 """Management command to set up test Mein-MMO feed."""
 
-from django.core.management.base import BaseCommand
 from django.contrib.auth.models import User
-from core.models import FeedGroup, Feed
+from django.core.management.base import BaseCommand
+
+from core.models import Feed, FeedGroup
 
 
 class Command(BaseCommand):
@@ -22,9 +23,7 @@ class Command(BaseCommand):
             self.stdout.write(f"✓ Using existing test user: {test_user.username}")
 
         # Create or get feed group
-        feed_group, created = FeedGroup.objects.get_or_create(
-            name="Mein-MMO Test", user=test_user
-        )
+        feed_group, created = FeedGroup.objects.get_or_create(name="Mein-MMO Test", user=test_user)
 
         if created:
             self.stdout.write(self.style.SUCCESS(f"✓ Created feed group: {feed_group.name}"))
@@ -55,5 +54,5 @@ class Command(BaseCommand):
 
         self.stdout.write("")
         self.stdout.write(self.style.SUCCESS("✅ Test feed is ready!"))
-        self.stdout.write(f"\nTo test the aggregator, run:")
+        self.stdout.write("\nTo test the aggregator, run:")
         self.stdout.write(f"  python3 manage.py test_aggregator {feed.id}")

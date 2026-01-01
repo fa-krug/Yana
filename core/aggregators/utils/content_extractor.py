@@ -1,7 +1,8 @@
 """Content extraction utilities using BeautifulSoup."""
 
-from bs4 import BeautifulSoup
 from typing import List, Optional
+
+from bs4 import BeautifulSoup
 
 
 def extract_main_content(

@@ -3,10 +3,18 @@
 import logging
 
 from django.http import HttpResponse, JsonResponse
+from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from core.services.greader.stream_format import format_tag_list
-from core.services.greader.tag_service import TagError, edit_tags, list_tags, mark_all_as_read
+from core.services.greader.tag_service import (
+    TagError,
+    edit_tags,
+    list_tags,
+)
+from core.services.greader.tag_service import (
+    mark_all_as_read as service_mark_all_as_read,
+)
 
 from .decorators import greader_auth_required
 
@@ -34,7 +42,7 @@ def tag_list(request):
 
         return JsonResponse(response_data, status=200)
 
-    except Exception as e:
+    except Exception:
         logger.exception("Error in tag_list view")
         return JsonResponse(
             {"error": "Internal server error"},
@@ -42,6 +50,7 @@ def tag_list(request):
         )
 
 
+@csrf_exempt
 @require_http_methods(["POST"])
 @greader_auth_required
 def edit_tag(request):
@@ -73,7 +82,7 @@ def edit_tag(request):
             raise TagError("No item IDs provided")
 
         # Execute edit
-        result = edit_tags(user_id, item_ids, add_tag, remove_tag)
+        edit_tags(user_id, item_ids, add_tag, remove_tag)
 
         return HttpResponse("OK", status=200, content_type="text/plain")
 
@@ -81,7 +90,7 @@ def edit_tag(request):
         logger.warning(f"Tag error: {e}")
         return HttpResponse(str(e), status=400, content_type="text/plain")
 
-    except Exception as e:
+    except Exception:
         logger.exception("Error in edit_tag view")
         return HttpResponse(
             "Internal server error",
@@ -90,6 +99,7 @@ def edit_tag(request):
         )
 
 
+@csrf_exempt
 @require_http_methods(["POST"])
 @greader_auth_required
 def mark_all_as_read(request):
@@ -119,11 +129,11 @@ def mark_all_as_read(request):
         if timestamp_str:
             try:
                 timestamp = int(timestamp_str)
-            except ValueError:
-                raise TagError("Invalid timestamp format")
+            except ValueError as e:
+                raise TagError("Invalid timestamp format") from e
 
         # Execute mark all as read
-        result = mark_all_as_read(user_id, stream_id, timestamp)
+        service_mark_all_as_read(user_id, stream_id, timestamp)
 
         return HttpResponse("OK", status=200, content_type="text/plain")
 
@@ -131,7 +141,7 @@ def mark_all_as_read(request):
         logger.warning(f"Tag error: {e}")
         return HttpResponse(str(e), status=400, content_type="text/plain")
 
-    except Exception as e:
+    except Exception:
         logger.exception("Error in mark_all_as_read view")
         return HttpResponse(
             "Internal server error",

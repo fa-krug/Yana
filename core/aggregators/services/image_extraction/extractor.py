@@ -5,21 +5,21 @@ Coordinates multiple image extraction strategies in a chain of responsibility pa
 Uses BeautifulSoup for HTML parsing (no browser automation).
 """
 
-from typing import Optional, Dict, Any
 import logging
-from bs4 import BeautifulSoup
-import requests
+from typing import Any, Dict, Optional
 
+import requests
+from bs4 import BeautifulSoup
+
+from ...exceptions import ArticleSkipError
 from .strategies import (
-    ImageExtractionContext,
-    ImageStrategy,
     DirectImageStrategy,
-    YouTubeThumbnailStrategy,
-    TwitterImageStrategy,
+    ImageExtractionContext,
     MetaTagImageStrategy,
     PageImagesStrategy,
+    TwitterImageStrategy,
+    YouTubeThumbnailStrategy,
 )
-from ...exceptions import ArticleSkipError
 
 logger = logging.getLogger(__name__)
 
@@ -89,9 +89,7 @@ class ImageExtractor:
             try:
                 result = await strategy.extract(context)
                 if result:
-                    logger.debug(
-                        f"ImageExtractor: Success with {strategy.__class__.__name__}"
-                    )
+                    logger.debug(f"ImageExtractor: Success with {strategy.__class__.__name__}")
                     return result
             except ArticleSkipError:
                 raise
@@ -123,9 +121,7 @@ class ImageExtractor:
             try:
                 result = await strategy.extract(context)
                 if result:
-                    logger.debug(
-                        f"ImageExtractor: Success with {strategy.__class__.__name__}"
-                    )
+                    logger.debug(f"ImageExtractor: Success with {strategy.__class__.__name__}")
                     return result
             except ArticleSkipError:
                 raise
@@ -166,7 +162,7 @@ class ImageExtractor:
                     f"4xx error fetching page: {e.response.status_code}",
                     status_code=e.response.status_code,
                     original_error=e,
-                )
+                ) from e
             logger.warning(f"HTTP error fetching page: {e.response.status_code}")
             return None
         except requests.exceptions.RequestException as e:

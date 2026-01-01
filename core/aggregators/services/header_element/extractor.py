@@ -7,15 +7,15 @@ Tries strategies in specific order (RedditEmbed BEFORE RedditPost) until one suc
 
 import logging
 
-from .context import HeaderElementContext
+from ...exceptions import ArticleSkipError
+from .context import HeaderElementContext, HeaderElementData
 from .strategies import (
+    GenericImageStrategy,
     HeaderElementStrategy,
     RedditEmbedStrategy,
     RedditPostStrategy,
     YouTubeStrategy,
-    GenericImageStrategy,
 )
-from ...exceptions import ArticleSkipError
 
 logger = logging.getLogger(__name__)
 
@@ -46,22 +46,22 @@ class HeaderElementExtractor:
 
     async def extract_header_element(
         self, url: str, alt: str = "Article image"
-    ) -> str | None:
+    ) -> HeaderElementData | None:
         """
         Extract header element from URL using strategy chain.
 
         Tries strategies in order:
-        1. Reddit embed (iframe)
-        2. Reddit post (subreddit icon as base64 img)
-        3. YouTube (embed iframe)
-        4. Generic image extraction (base64 img)
+        1. Reddit embed (converted to image)
+        2. Reddit post (subreddit icon)
+        3. YouTube (thumbnail image)
+        4. Generic image extraction
 
         Args:
             url: URL to extract header element from
             alt: Alt text / title for element
 
         Returns:
-            HTML string containing iframe or img tag, or None if extraction fails
+            HeaderElementData containing raw bytes and base64 URI, or None if extraction fails
 
         Raises:
             ArticleSkipError: On 4xx HTTP errors (article should be skipped)
@@ -89,9 +89,7 @@ class HeaderElementExtractor:
                 result = await strategy.create(context)
 
                 if result:
-                    logger.debug(
-                        f"HeaderElementExtractor: Success with {strategy_name}"
-                    )
+                    logger.debug(f"HeaderElementExtractor: Success with {strategy_name}")
                     return result
 
                 # Strategy returned None, try next
@@ -106,9 +104,7 @@ class HeaderElementExtractor:
 
             except Exception as e:
                 # Log error and try next strategy
-                logger.debug(
-                    f"HeaderElementExtractor: {strategy_name} raised exception: {e}"
-                )
+                logger.debug(f"HeaderElementExtractor: {strategy_name} raised exception: {e}")
 
         # All strategies tried, none succeeded
         logger.debug("HeaderElementExtractor: All strategies failed")

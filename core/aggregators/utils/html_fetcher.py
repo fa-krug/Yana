@@ -1,8 +1,8 @@
 """HTML fetching utilities with retry logic."""
 
-import requests
 import time
-from typing import Optional
+
+import requests
 
 USER_AGENT = "Mozilla/5.0 (compatible; YanaBot/1.0; +https://github.com/yourusername/yana)"
 
@@ -35,9 +35,7 @@ def fetch_html(url: str, timeout: int = 30, retries: int = 3) -> str:
 
     for attempt in range(retries):
         try:
-            response = requests.get(
-                url, headers=headers, timeout=timeout, allow_redirects=True
-            )
+            response = requests.get(url, headers=headers, timeout=timeout, allow_redirects=True)
             response.raise_for_status()
             return response.text
 

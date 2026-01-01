@@ -6,17 +6,18 @@ Handles tag operations: listing tags and marking articles with tags (read/starre
 import logging
 from typing import Any
 
-from core.models import Article, Feed, FeedGroup
+from core.models import Article, FeedGroup
 
 logger = logging.getLogger(__name__)
 
 
 class TagError(Exception):
     """Tag operation failed."""
+
     pass
 
 
-def list_tags(user_id: int) -> list[str]:
+def list_tags(user_id: int) -> list[dict[str, str]]:
     """List all tags available for a user.
 
     Includes standard states and custom labels (groups).
@@ -25,32 +26,19 @@ def list_tags(user_id: int) -> list[str]:
         user_id: Django user ID
 
     Returns:
-        List of tag ID strings
+        List of tag objects with id field
     """
     tags = [
-        "user/-/state/com.google/starred",
-        "user/-/state/com.google/read",
-        "user/-/state/com.google/reading-list",
-        "user/-/state/com.google/kept-unread",
+        {"id": "user/-/state/com.google/starred"},
+        {"id": "user/-/state/com.google/read"},
+        {"id": "user/-/state/com.google/reading-list"},
+        {"id": "user/-/state/com.google/kept-unread"},
     ]
 
     # Add user's custom labels/groups
     groups = FeedGroup.objects.filter(user_id=user_id).order_by("name")
     for group in groups:
-        tags.append(f"user/-/label/{group.name}")
-
-    # Add special aggregator labels
-    # Check if user has any Reddit feeds
-    if Feed.objects.filter(user_id=user_id, aggregator="reddit", enabled=True).exists():
-        tags.append("user/-/label/Reddit")
-
-    # Check if user has any YouTube feeds
-    if Feed.objects.filter(user_id=user_id, aggregator="youtube", enabled=True).exists():
-        tags.append("user/-/label/YouTube")
-
-    # Check if user has any Podcast feeds
-    if Feed.objects.filter(user_id=user_id, aggregator="podcast", enabled=True).exists():
-        tags.append("user/-/label/Podcasts")
+        tags.append({"id": f"user/-/label/{group.name}"})
 
     return tags
 
@@ -101,18 +89,15 @@ def edit_tags(
         raise TagError("No accessible articles found")
 
     # Determine what state to set
-    is_read = False
-    is_saved = False
 
-    if add_tag == "user/-/state/com.google/read":
-        is_read = True
-    elif add_tag == "user/-/state/com.google/starred":
-        is_saved = True
+    if add_tag == "user/-/state/com.google/read" or add_tag == "user/-/state/com.google/starred":
+        pass
 
-    if remove_tag == "user/-/state/com.google/read":
-        is_read = False
-    elif remove_tag == "user/-/state/com.google/starred":
-        is_saved = False
+    if (
+        remove_tag == "user/-/state/com.google/read"
+        or remove_tag == "user/-/state/com.google/starred"
+    ):
+        pass
 
     # Update articles
     updated_count = 0
@@ -150,8 +135,9 @@ def mark_all_as_read(
     Raises:
         TagError: If operation fails
     """
-    from core.services.greader.stream_filter_builder import StreamFilterOrchestrator
     from datetime import datetime, timezone
+
+    from core.services.greader.stream_filter_builder import StreamFilterOrchestrator
 
     # Build query based on stream filter
     orchestrator = StreamFilterOrchestrator()

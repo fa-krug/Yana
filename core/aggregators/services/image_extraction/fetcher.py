@@ -8,10 +8,11 @@ Handles downloading images from URLs with proper:
 - Error handling
 """
 
-from typing import Optional, Dict, Any
-from urllib.parse import urlparse
-import requests
 import logging
+from typing import Any, Dict, Optional
+from urllib.parse import urlparse
+
+import requests
 
 logger = logging.getLogger(__name__)
 
@@ -83,9 +84,7 @@ def is_image_content_type(content_type: Optional[str]) -> bool:
     return base_type in ACCEPTED_IMAGE_TYPES
 
 
-def fetch_single_image(
-    url: str, timeout: int = DEFAULT_TIMEOUT
-) -> Optional[Dict[str, Any]]:
+def fetch_single_image(url: str, timeout: int = DEFAULT_TIMEOUT) -> Optional[Dict[str, Any]]:
     """
     Fetch a single image from URL with validation.
 
@@ -168,8 +167,9 @@ def validate_image_data_with_pillow(image_data: bytes) -> Optional[Dict[str, Any
         Dict with image metadata if valid, None otherwise
     """
     try:
-        from PIL import Image
         import io
+
+        from PIL import Image
 
         img = Image.open(io.BytesIO(image_data))
         # Try to load image to verify it's valid

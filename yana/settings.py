@@ -13,7 +13,6 @@ Environment variables are loaded from .env file using django-environ.
 See .env.example for all available settings.
 """
 
-import os
 from pathlib import Path
 
 import environ
@@ -27,13 +26,10 @@ env = environ.Env(
     # Security
     DEBUG=(bool, True),
     SECRET_KEY=(str, "django-insecure-l4x)1=)q58u$0#n^r1pgnt29y)-k%z2y(0h0tud&3)4533!ikb"),
-
     # Network
     ALLOWED_HOSTS=(str, "localhost,127.0.0.1"),
-
     # Database
     DATABASE_ENGINE=(str, "django.db.backends.sqlite3"),
-
     # Internationalization
     TIME_ZONE=(str, "UTC"),
 )
@@ -67,6 +63,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django_q",  # Background tasks (supervisor manages qcluster in Docker)
+    "djangoql",
     "core",
 ]
 

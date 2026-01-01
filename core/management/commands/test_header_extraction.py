@@ -8,10 +8,11 @@ Usage:
 """
 
 import asyncio
-from django.core.management.base import BaseCommand, CommandError
 
-from core.aggregators.services.header_element import HeaderElementExtractor
+from django.core.management.base import BaseCommand
+
 from core.aggregators.exceptions import ArticleSkipError
+from core.aggregators.services.header_element import HeaderElementExtractor
 
 
 class Command(BaseCommand):
@@ -74,18 +75,14 @@ class Command(BaseCommand):
                     )
 
             else:
-                self.stdout.write(
-                    self.style.WARNING("⚠ No header element could be extracted")
-                )
+                self.stdout.write(self.style.WARNING("⚠ No header element could be extracted"))
                 self.stdout.write("This might mean:")
                 self.stdout.write("  - The URL is not a recognized type (YouTube, Twitter, Reddit)")
                 self.stdout.write("  - No images found on the page")
                 self.stdout.write("  - Page is inaccessible or returned 4xx error")
 
         except ArticleSkipError as e:
-            self.stdout.write(
-                self.style.ERROR(f"✗ Article Skip Error (4xx HTTP error): {e}")
-            )
+            self.stdout.write(self.style.ERROR(f"✗ Article Skip Error (4xx HTTP error): {e}"))
             self.stdout.write(f"Status code: {e.status_code}")
 
         except Exception as e:

@@ -1,16 +1,18 @@
 """Full website aggregator base class."""
 
 from typing import Any, Dict, List
+
 from bs4 import BeautifulSoup
 
-from .rss import RssAggregator
 from .exceptions import ArticleSkipError
+from .rss import RssAggregator
 from .utils import (
-    fetch_html,
-    extract_main_content,
     clean_html,
-    sanitize_class_names,
+    extract_main_content,
+    fetch_html,
     format_article_content,
+    remove_image_by_url,
+    sanitize_class_names,
 )
 
 
@@ -41,10 +43,10 @@ class FullWebsiteAggregator(RssAggregator):
 
             try:
                 # Extract header element FIRST (may throw ArticleSkipError)
-                header_element = self.extract_header_element(article)
-                if header_element:
-                    article["icon"] = header_element
-                    self.logger.debug(f"Extracted header element for {url}")
+                header_data = self.extract_header_element(article)
+                if header_data:
+                    article["header_data"] = header_data
+                    self.logger.debug(f"Extracted header data for {url}")
                 else:
                     self.logger.debug(f"No header element found for {url}")
 
@@ -89,6 +91,12 @@ class FullWebsiteAggregator(RssAggregator):
         # Parse HTML
         soup = BeautifulSoup(html, "html.parser")
 
+        # Remove header image from content if it was extracted
+        header_data = article.get("header_data")
+        if header_data and header_data.image_url:
+            self.logger.debug(f"Removing header image from content: {header_data.image_url}")
+            remove_image_by_url(soup, header_data.image_url)
+
         # Sanitize class names
         sanitize_class_names(soup)
 
@@ -103,5 +111,16 @@ class FullWebsiteAggregator(RssAggregator):
             author=article.get("author"),
             date=article.get("date"),
         )
+
+        # Prepend header image if available
+        if header_data:
+            header_html = (
+                f'<p style="margin-bottom: 1.5em; text-align: center;">'
+                f'<img src="{header_data.base64_data_uri}" '
+                f'alt="Article header" '
+                f'style="max-width: 100%; height: auto; border-radius: 8px;">'
+                f"</p>"
+            )
+            formatted = header_html + formatted
 
         return formatted

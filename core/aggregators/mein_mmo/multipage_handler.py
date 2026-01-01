@@ -1,9 +1,10 @@
 """Multi-page article detection and fetching for Mein-MMO."""
 
-import re
 import logging
+import re
+from typing import Callable, Set
+
 from bs4 import BeautifulSoup
-from typing import Set, Callable
 
 
 def detect_pagination(html: str, logger: logging.Logger) -> Set[int]:
@@ -27,12 +28,26 @@ def detect_pagination(html: str, logger: logging.Logger) -> Set[int]:
 
     logger.debug("Starting pagination detection")
 
-    # Try multiple selectors
-    pagination = (
-        soup.select_one("nav.navigation.pagination")
-        or soup.select_one("div.gp-pagination")
-        or soup.select_one("ul.page-numbers")
-    )
+    # Try to find pagination within the content area first to avoid header/footer pagination
+    content_div = soup.select_one("div.gp-entry-content")
+
+    pagination = None
+    if content_div:
+        pagination = (
+            content_div.select_one("div.gp-pagination-numbers")
+            or content_div.select_one("ul.page-numbers")
+            or content_div.select_one("nav.navigation.pagination")
+            or content_div.select_one("div.gp-pagination")
+        )
+
+    # Fallback to global search if not found in content div
+    if not pagination:
+        pagination = (
+            soup.select_one("div.gp-pagination-numbers")
+            or soup.select_one("nav.navigation.pagination")
+            or soup.select_one("div.gp-pagination")
+            or soup.select_one("ul.page-numbers")
+        )
 
     if not pagination:
         logger.debug("No pagination container found, assuming single page")
@@ -87,7 +102,13 @@ def detect_pagination(html: str, logger: logging.Logger) -> Set[int]:
     return page_numbers
 
 
-def fetch_all_pages(base_url: str, page_numbers: Set[int], fetcher: Callable[[str], str], logger: logging.Logger) -> str:
+def fetch_all_pages(
+    base_url: str,
+    page_numbers: Set[int],
+    fetcher: Callable[[str], str],
+    logger: logging.Logger,
+    first_page_html: str = None,
+) -> str:
     """
     Fetch all pages and combine content divs.
 
@@ -96,6 +117,7 @@ def fetch_all_pages(base_url: str, page_numbers: Set[int], fetcher: Callable[[st
         page_numbers: Set of page numbers to fetch
         fetcher: Function to fetch HTML from URL
         logger: Logger instance
+        first_page_html: Already fetched HTML for the first page
 
     Returns:
         Combined HTML with all content divs
@@ -118,9 +140,13 @@ def fetch_all_pages(base_url: str, page_numbers: Set[int], fetcher: Callable[[st
                 page_url = f"{base_url}/{page_num}/"
 
         try:
-            logger.debug(f"Fetching page {idx}/{max_pages} (page {page_num}): {page_url}")
-            page_html = fetcher(page_url)
-            logger.debug(f"Page {page_num}: HTML fetched ({len(page_html)} bytes)")
+            if page_num == 1 and first_page_html:
+                logger.debug(f"Using provided first page HTML for page {page_num}")
+                page_html = first_page_html
+            else:
+                logger.debug(f"Fetching page {idx}/{max_pages} (page {page_num}): {page_url}")
+                page_html = fetcher(page_url)
+                logger.debug(f"Page {page_num}: HTML fetched ({len(page_html)} bytes)")
 
             # Extract content div
             soup = BeautifulSoup(page_html, "html.parser")
@@ -142,5 +168,7 @@ def fetch_all_pages(base_url: str, page_numbers: Set[int], fetcher: Callable[[st
         return ""
 
     combined = "\n\n".join(content_parts)
-    logger.info(f"Multi-page fetch complete: {len(content_parts)}/{max_pages} pages fetched, combined size {len(combined)} bytes")
+    logger.info(
+        f"Multi-page fetch complete: {len(content_parts)}/{max_pages} pages fetched, combined size {len(combined)} bytes"
+    )
     return combined

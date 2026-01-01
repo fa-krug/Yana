@@ -5,7 +5,7 @@ Provides functionality for extracting header elements (HTML iframes or base64 im
 from various sources using Strategy pattern.
 """
 
-from .extractor import HeaderElementExtractor
 from .context import HeaderElementContext
+from .extractor import HeaderElementExtractor
 
 __all__ = ["HeaderElementExtractor", "HeaderElementContext"]

@@ -7,7 +7,8 @@ from typing import Any, Dict, List, Optional
 from django.core.exceptions import ObjectDoesNotExist
 
 from ..aggregators import get_aggregator
-from ..models import Feed, Article
+from ..aggregators.services.header_element.file_handler import HeaderElementFileHandler
+from ..models import Article, Feed
 
 
 class AggregatorService:
@@ -72,16 +73,23 @@ class AggregatorService:
                             "content": article_data.get("content", ""),
                             "date": article_data.get("date"),
                             "author": article_data.get("author", ""),
-                            "icon": article_data.get("icon"),
                         },
                     )
+
                     if created:
                         created_count += 1
+
+                        # Handle header image if present
+                        header_data = article_data.get("header_data")
+                        if header_data:
+                            HeaderElementFileHandler.save_image_to_article(
+                                article, header_data.image_bytes, header_data.content_type
+                            )
                 except Exception as e:
                     print(f"Warning: Failed to save article: {e}")
 
             print(f"{'=' * 60}")
-            print(f"Aggregation completed successfully")
+            print("Aggregation completed successfully")
             print(f"Created {created_count} new articles")
             print(f"{'=' * 60}\n")
 

@@ -1,7 +1,36 @@
 """HTML cleaning and sanitization utilities."""
 
-from bs4 import BeautifulSoup, Tag
+import re
 from typing import List, Optional
+
+from bs4 import BeautifulSoup
+
+
+def _get_base_filename(filename: str) -> str:
+    """
+    Extract base filename without extension and without responsive variant suffixes.
+
+    Handles patterns like:
+    - "image-780x438.jpg" -> "image"
+    - "image-1280x720-1.jpg" -> "image"
+    - "image-1280x720-1-780x438.jpg" -> "image"
+    - "image.jpg" -> "image"
+
+    Args:
+        filename: Full filename with extension
+
+    Returns:
+        Base filename without extension and without dimension suffixes
+    """
+    # Remove extension
+    name_without_ext = filename.rsplit(".", 1)[0] if "." in filename else filename
+
+    # Remove all responsive variant suffixes from the end
+    # Matches patterns like: -780x438, -1280x720, -1280x720-1, -1280x720-1-780x438
+    # Pattern: any number of (-NxN or -N) at the end
+    base = re.sub(r"(?:-\d+x\d+|-\d+)*$", "", name_without_ext)
+
+    return base
 
 
 def clean_html(html: str) -> str:
@@ -17,7 +46,9 @@ def clean_html(html: str) -> str:
     soup = BeautifulSoup(html, "html.parser")
 
     # Remove comments
-    for comment in soup.find_all(string=lambda text: isinstance(text, str) and text.strip().startswith("<!--")):
+    for comment in soup.find_all(
+        string=lambda text: isinstance(text, str) and text.strip().startswith("<!--")
+    ):
         comment.extract()
 
     return str(soup)
@@ -72,6 +103,62 @@ def clean_data_attributes(soup: BeautifulSoup, keep: Optional[List[str]] = None)
             del elem[attr]
 
 
+def remove_image_by_url(soup: BeautifulSoup, image_url: Optional[str]) -> None:
+    """
+    Remove the first image with the specified URL from the soup.
+
+    Used to remove header images from the article content after extracting them.
+    Handles exact URL matches, filename matches, and responsive image variants.
+
+    Args:
+        soup: BeautifulSoup object
+        image_url: URL of the image to remove (optional, does nothing if None)
+    """
+    if not image_url:
+        return
+
+    # Skip if image_url is a data URI (already embedded image)
+    if image_url.startswith("data:"):
+        return
+
+    # Extract the filename/path from the image URL for flexible matching
+    image_path = image_url.split("/")[-1] if "/" in image_url else image_url
+    # Get base filename without extension for responsive variant matching
+    image_base = _get_base_filename(image_path)
+
+    for img in soup.find_all("img"):
+        img_src = img.get("src") or img.get("data-src") or img.get("data-lazy-src")
+        if not img_src or img_src.startswith("data:"):
+            continue
+
+        # Try exact match first
+        if img_src == image_url:
+            img.decompose()
+            return
+
+        # Try matching by filename/path for relative vs absolute URLs
+        img_path = img_src.split("/")[-1] if "/" in img_src else img_src
+        if (
+            img_path
+            and img_path == image_path
+            and len(img_path) > 3
+            and img_path not in ["image.jpg", "photo.jpg", "pic.jpg"]
+        ):
+            img.decompose()
+            return
+
+        # Try matching responsive image variants (e.g., -780x438 suffixes)
+        img_base = _get_base_filename(img_path)
+        if (
+            img_base
+            and img_base == image_base
+            and len(img_base) > 3
+            and img_base not in ["image", "photo", "pic"]
+        ):
+            img.decompose()
+            return
+
+
 def sanitize_class_names(soup: BeautifulSoup) -> None:
     """
     Convert all class attributes to data-sanitized-class attributes.
@@ -85,10 +172,7 @@ def sanitize_class_names(soup: BeautifulSoup) -> None:
         if "class" in elem.attrs:
             # Get class value(s)
             classes = elem["class"]
-            if isinstance(classes, list):
-                class_str = " ".join(classes)
-            else:
-                class_str = str(classes)
+            class_str = " ".join(classes) if isinstance(classes, list) else str(classes)
 
             # Move to data-sanitized-class
             elem["data-sanitized-class"] = class_str

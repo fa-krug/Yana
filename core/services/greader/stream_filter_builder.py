@@ -10,7 +10,7 @@ from typing import Optional, Tuple
 
 from django.db.models import Q
 
-from core.models import Article, Feed
+from core.models import Feed
 
 logger = logging.getLogger(__name__)
 
@@ -173,14 +173,11 @@ class StreamFilterOrchestrator:
             if filter_class.can_handle(stream_id):
                 conditions, needs_access = filter_class.build_conditions(stream_id, user_id)
                 logger.debug(
-                    f"Stream filter '{filter_class.__class__.__name__}' "
-                    f"used for: {stream_id}"
+                    f"Stream filter '{filter_class.__class__.__name__}' used for: {stream_id}"
                 )
 
                 # Always add feed access control unless filter explicitly handles it
-                if needs_access and conditions:
-                    conditions &= Q(feed__enabled=True)
-                elif not needs_access:
+                if needs_access and conditions or not needs_access:
                     conditions &= Q(feed__enabled=True)
 
                 return conditions, needs_access

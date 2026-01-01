@@ -7,10 +7,11 @@ Handles:
 - Quality optimization
 """
 
-from typing import Optional, Dict, Any
-import io
 import base64
+import io
 import logging
+from typing import Any, Dict, Optional
+
 from PIL import Image
 
 logger = logging.getLogger(__name__)
@@ -105,9 +106,7 @@ def compress_image(
             # Resize using high-quality resampling
             new_width = int(original_width * ratio)
             new_height = int(original_height * ratio)
-            img = img.resize(
-                (new_width, new_height), Image.Resampling.LANCZOS
-            )
+            img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
             logger.debug(
                 f"Resized image from {original_width}x{original_height} to {new_width}x{new_height}"
             )
@@ -229,6 +228,8 @@ def create_image_element(data_uri: str, alt: str = "Image") -> str:
         HTML string with <p><img></p>
     """
     # Escape alt text for HTML
-    alt_escaped = alt.replace('"', '&quot;').replace("<", "&lt;").replace(">", "&gt;")
+    alt_escaped = alt.replace('"', "&quot;").replace("<", "&lt;").replace(">", "&gt;")
 
-    return f'<p><img src="{data_uri}" alt="{alt_escaped}" style="max-width: 100%; height: auto;"></p>'
+    return (
+        f'<p><img src="{data_uri}" alt="{alt_escaped}" style="max-width: 100%; height: auto;"></p>'
+    )

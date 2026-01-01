@@ -4,10 +4,10 @@ Handles stream queries: article lists, unread counts, pagination, etc.
 """
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from django.core.cache import cache
-from django.db.models import Count, Q
+from django.db.models import Q
 from django.utils import timezone
 
 from core.models import Article, Feed
@@ -20,6 +20,7 @@ UNREAD_COUNT_CACHE_TTL = 30
 
 class StreamError(Exception):
     """Stream operation failed."""
+
     pass
 
 
@@ -78,11 +79,13 @@ def _compute_unread_count(user_id: int, include_all: bool) -> dict[str, Any]:
             newest_article.date if newest_article else timezone.now()
         )
 
-        unreadcounts.append({
-            "id": f"feed/{feed.id}",
-            "count": unread_count,
-            "newestItemTimestampUsec": newest_timestamp,
-        })
+        unreadcounts.append(
+            {
+                "id": f"feed/{feed.id}",
+                "count": unread_count,
+                "newestItemTimestampUsec": newest_timestamp,
+            }
+        )
 
     return {
         "max": 150,
@@ -121,8 +124,10 @@ def get_stream_item_ids(
     # Build query
     orchestrator = StreamFilterOrchestrator()
     conditions, _ = orchestrator.build_filters_for_ids(
-        stream_id, user_id, exclude_read=(exclude_tag == "user/-/state/com.google/read"),
-        include_tag=include_tag
+        stream_id,
+        user_id,
+        exclude_read=(exclude_tag == "user/-/state/com.google/read"),
+        include_tag=include_tag,
     )
 
     if not conditions:
@@ -134,14 +139,12 @@ def get_stream_item_ids(
     # Filter by timestamp if provided
     if older_than:
         from datetime import datetime, timezone
+
         from_datetime = datetime.fromtimestamp(older_than, tz=timezone.utc)
         articles = articles.filter(date__lte=from_datetime)
 
     # Order and limit
-    if reverse_order:
-        articles = articles.order_by("date")
-    else:
-        articles = articles.order_by("-date")
+    articles = articles.order_by("date") if reverse_order else articles.order_by("-date")
 
     articles = articles[:limit]
 
@@ -155,6 +158,7 @@ def get_stream_item_ids(
 
 def get_stream_contents(
     user_id: int,
+    request,
     stream_id: str = "",
     item_ids: list[str] = None,
     limit: int = 50,
@@ -167,6 +171,7 @@ def get_stream_contents(
 
     Args:
         user_id: Django user ID
+        request: Django request object
         stream_id: Stream ID (can be empty for default)
         item_ids: Specific item IDs to fetch (if provided, ignores stream_id)
         limit: Articles per page (default 50)
@@ -195,11 +200,15 @@ def get_stream_contents(
                 continue
 
         # Get articles
-        articles = Article.objects.filter(
-            id__in=article_ids,
-            feed__user_id__in=[user_id, None],
-            feed__enabled=True,
-        ).select_related("feed").order_by("-date")
+        articles = (
+            Article.objects.filter(
+                id__in=article_ids,
+                feed__user_id__in=[user_id, None],
+                feed__enabled=True,
+            )
+            .select_related("feed")
+            .order_by("-date")
+        )
 
     else:
         # Build query based on stream
@@ -219,6 +228,7 @@ def get_stream_contents(
         # Filter by timestamp
         if older_than:
             from datetime import datetime, timezone
+
             from_datetime = datetime.fromtimestamp(older_than, tz=timezone.utc)
             articles = articles.filter(date__lte=from_datetime)
 
@@ -246,6 +256,7 @@ def get_stream_contents(
         item = format_stream_item(
             article,
             article.feed,
+            request,
             is_read=article.read,
             is_starred=article.starred,
         )

@@ -8,10 +8,11 @@ Provides functions for:
 - Extracting images from tweets
 """
 
-import re
-from typing import Optional, Dict, Any, List
-import requests
 import logging
+import re
+from typing import Any, Dict, List, Optional
+
+import requests
 
 logger = logging.getLogger(__name__)
 
@@ -95,9 +96,7 @@ def fetch_tweet_data(tweet_id: str, timeout: int = 10) -> Optional[Dict[str, Any
         if e.response.status_code == 404:
             logger.debug(f"Tweet {tweet_id} not found")
         else:
-            logger.warning(
-                f"HTTP error fetching tweet {tweet_id}: {e.response.status_code}"
-            )
+            logger.warning(f"HTTP error fetching tweet {tweet_id}: {e.response.status_code}")
     except requests.exceptions.RequestException as e:
         logger.warning(f"Error fetching tweet {tweet_id}: {e}")
     except Exception as e:
@@ -137,9 +136,8 @@ def extract_image_urls_from_tweet(data: Dict[str, Any]) -> List[str]:
         # Try all media if no photos found
         if not image_urls and "all" in media:
             for item in media["all"]:
-                if isinstance(item, dict) and item.get("type") == "photo":
-                    if "url" in item:
-                        image_urls.append(item["url"])
+                if isinstance(item, dict) and item.get("type") == "photo" and "url" in item:
+                    image_urls.append(item["url"])
 
     except (KeyError, TypeError) as e:
         logger.debug(f"Error extracting images from tweet: {e}")

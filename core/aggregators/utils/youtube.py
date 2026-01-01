@@ -49,10 +49,9 @@ def extract_youtube_video_id(url: str) -> Optional[str]:
         if match:
             video_id = match.group(1)
             # Validate video ID format
-            if re.match(r"^[A-Za-z0-9_-]{11}$", video_id):
-                return video_id
-            # Also accept non-standard length IDs (some YouTube IDs can vary)
-            elif re.match(r"^[A-Za-z0-9_-]+$", video_id):
+            if re.match(r"^[A-Za-z0-9_-]{11}$", video_id) or re.match(
+                r"^[A-Za-z0-9_-]+$", video_id
+            ):
                 return video_id
 
     return None
@@ -98,7 +97,7 @@ def create_youtube_embed_html(video_id: str, caption: str = "") -> str:
 
     html = (
         f'<div class="youtube-embed-container">'
-        f'<style>'
+        f"<style>"
         f".youtube-embed-container iframe {{ "
         f"width: 100%; "
         f"height: calc((100% / 16) * 9); "
@@ -113,7 +112,7 @@ def create_youtube_embed_html(video_id: str, caption: str = "") -> str:
         f'title="YouTube video player" '
         f'frameborder="0" '
         f'scrolling="no" '
-        f'allowfullscreen></iframe>'
+        f"allowfullscreen></iframe>"
     )
 
     if caption:

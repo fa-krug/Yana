@@ -13,10 +13,10 @@ import django
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "yana.settings")
 django.setup()
 
-from django.contrib.auth.models import User
+from django.contrib.auth.models import User  # noqa: E402
 
-from core.models import Feed, FeedGroup
-from core.services import AggregatorService
+from core.models import Feed, FeedGroup  # noqa: E402
+from core.services import AggregatorService  # noqa: E402
 
 
 def create_test_data():

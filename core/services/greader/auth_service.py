@@ -6,7 +6,7 @@ Handles token generation, validation, and user authentication for the Google Rea
 import hashlib
 import logging
 import secrets
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
@@ -18,11 +18,13 @@ logger = logging.getLogger(__name__)
 
 class AuthenticationError(Exception):
     """Authentication failed."""
+
     pass
 
 
 class TokenExpiredError(Exception):
     """Token has expired."""
+
     pass
 
 
@@ -177,7 +179,7 @@ def _authenticate_with_header(auth_header: str) -> dict | None:
     try:
         auth_token = GReaderAuthToken.objects.select_related("user").get(token=token)
     except GReaderAuthToken.DoesNotExist:
-        logger.warning(f"Authentication failed: token not found")
+        logger.warning("Authentication failed: token not found")
         return None
 
     # Check expiry
@@ -190,7 +192,7 @@ def _authenticate_with_header(auth_header: str) -> dict | None:
             expires_at = expires_at.replace(tzinfo=timezone.utc)
 
         if now > expires_at:
-            logger.warning(f"Authentication failed: token expired")
+            logger.warning("Authentication failed: token expired")
             return None
 
     # Return user info

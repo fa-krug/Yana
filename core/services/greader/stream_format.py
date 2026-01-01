@@ -64,23 +64,23 @@ def parse_item_id(item_id: str) -> int:
     item_id = item_id.strip()
 
     # Handle full Google Reader format
-    if item_id.startswith('tag:google.com,2005:reader/item/'):
-        hex_part = item_id.replace('tag:google.com,2005:reader/item/', '')
+    if item_id.startswith("tag:google.com,2005:reader/item/"):
+        hex_part = item_id.replace("tag:google.com,2005:reader/item/", "")
         return from_hex_id(hex_part)
 
     # Handle hex format (16 chars)
-    if len(item_id) == 16 and all(c in '0123456789abcdefABCDEF' for c in item_id):
+    if len(item_id) == 16 and all(c in "0123456789abcdefABCDEF" for c in item_id):
         return from_hex_id(item_id)
 
     # Handle hex format with 0x prefix
-    if item_id.startswith('0x'):
+    if item_id.startswith("0x"):
         return int(item_id, 16)
 
     # Handle plain integer
     try:
         return int(item_id)
-    except ValueError:
-        raise ValueError(f"Invalid item ID format: {item_id}")
+    except ValueError as e:
+        raise ValueError(f"Invalid item ID format: {item_id}") from e
 
 
 def encode_item_id(article_id: int) -> str:
@@ -127,8 +127,33 @@ def unix_timestamp_microseconds(dt: Optional[datetime]) -> str:
     return str(microseconds)
 
 
+def get_feed_source_url(feed: Feed) -> str:
+    """Get the source URL for a feed using its aggregator.
+
+    Instantiates the aggregator and calls its get_source_url() method,
+    which may provide a hardcoded URL or derive it from the identifier.
+
+    Args:
+        feed: Feed model instance
+
+    Returns:
+        Source URL string, or empty string if not available
+    """
+    try:
+        from core.aggregators.registry import get_aggregator
+
+        aggregator = get_aggregator(feed)
+        return aggregator.get_source_url()
+    except Exception:
+        # Fallback to manual mapping if aggregator fails
+        return get_site_url(feed)
+
+
 def get_site_url(feed: Feed) -> str:
     """Get the website URL for a feed based on aggregator type.
+
+    This is a fallback method used when the aggregator's get_source_url()
+    is not available. Prefer get_feed_source_url() for new code.
 
     Args:
         feed: Feed model instance
@@ -169,11 +194,12 @@ def get_site_url(feed: Feed) -> str:
     return ""
 
 
-def format_subscription(feed: Feed, groups: list[dict] = None) -> dict[str, Any]:
+def format_subscription(feed: Feed, request, groups: list[dict] = None) -> dict[str, Any]:
     """Format a Feed as Google Reader subscription object.
 
     Args:
         feed: Feed model instance
+        request: Django request object (unused, kept for API compatibility)
         groups: List of group dicts with 'id' and 'label' keys
 
     Returns:
@@ -182,19 +208,21 @@ def format_subscription(feed: Feed, groups: list[dict] = None) -> dict[str, Any]
     if groups is None:
         groups = []
 
+    source_url = get_feed_source_url(feed)
+
     return {
         "id": f"feed/{feed.id}",
         "title": feed.name,
         "categories": groups,
-        "url": feed.identifier or "",
-        "htmlUrl": get_site_url(feed),
-        "iconUrl": feed.icon or "",
+        "url": source_url,
+        "htmlUrl": source_url,
     }
 
 
 def format_stream_item(
     article: Article,
     feed: Feed,
+    request,
     is_read: bool = False,
     is_starred: bool = False,
 ) -> dict[str, Any]:
@@ -203,6 +231,7 @@ def format_stream_item(
     Args:
         article: Article model instance
         feed: Associated Feed model instance
+        request: Django request object for building absolute URIs
         is_read: Whether article is marked as read
         is_starred: Whether article is marked as starred
 
@@ -254,7 +283,11 @@ def format_stream_item(
     if article.content:
         item["summary"] = {
             "direction": "ltr",
-            "content": article.content[:2000],  # Limit to 2000 chars
+            "content": article.content,
+        }
+        item["content"] = {
+            "direction": "ltr",
+            "content": article.content,
         }
 
     # Add author if available
@@ -263,7 +296,7 @@ def format_stream_item(
 
     # Add icon if available
     if article.icon:
-        item["image"] = article.icon
+        item["image"] = request.build_absolute_uri(article.icon.url)
 
     return item
 
@@ -282,17 +315,17 @@ def format_subscription_list(subscriptions: list[dict]) -> dict[str, Any]:
     }
 
 
-def format_tag_list(tags: list[str]) -> dict[str, Any]:
+def format_tag_list(tags: list[dict[str, str]]) -> dict[str, Any]:
     """Format list of tags as Google Reader response.
 
     Args:
-        tags: List of tag ID strings
+        tags: List of tag dicts with id field
 
     Returns:
         Dictionary in Google Reader tag/list format
     """
     return {
-        "tags": [{"id": tag} for tag in tags],
+        "tags": tags,
     }
 
 

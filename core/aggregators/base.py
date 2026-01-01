@@ -2,10 +2,15 @@
 Base aggregator class.
 """
 
-import logging
 import asyncio
+import logging
 from abc import ABC, abstractmethod
+from datetime import timedelta
 from typing import Any, Dict, List, Optional
+
+from django.utils import timezone
+
+from .services.header_element.context import HeaderElementData
 
 
 class BaseAggregator(ABC):
@@ -84,7 +89,8 @@ class BaseAggregator(ABC):
         """
         Filter articles based on criteria.
 
-        Override for custom filtering.
+        Default implementation filters articles older than 2 months
+        and sets their date to now.
 
         Args:
             articles: List of article dictionaries
@@ -92,7 +98,29 @@ class BaseAggregator(ABC):
         Returns:
             Filtered list of articles
         """
-        return articles
+        self.logger.debug("[filter_articles] Starting age check filter")
+        cutoff_date = timezone.now() - timedelta(days=60)
+        filtered = []
+
+        for article in articles:
+            article_date = article.get("date")
+
+            # Ensure article_date is aware for comparison
+            if article_date and timezone.is_naive(article_date):
+                article_date = timezone.make_aware(article_date)
+
+            if article_date and article_date < cutoff_date:
+                self.logger.info(
+                    f"[filter_articles] Skipping old article: {article.get('name')} ({article_date})"
+                )
+                continue
+
+            # Update date to now for accepted articles
+            article["date"] = timezone.now()
+            filtered.append(article)
+
+        self.logger.info(f"[filter_articles] Kept {len(filtered)}/{len(articles)} articles")
+        return filtered
 
     def enrich_articles(self, articles: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
@@ -126,12 +154,27 @@ class BaseAggregator(ABC):
         """Get the aggregator type name."""
         return self.__class__.__name__.replace("Aggregator", "").lower()
 
-    def extract_header_element(self, article: Dict[str, Any]) -> Optional[str]:
+    def get_source_url(self) -> str:
         """
-        Extract header element (HTML iframe or base64 image) for an article.
+        Get the source URL for this feed.
+
+        This is used by the GReader API to return the feed's website/source URL
+        to external clients (like NetNewsWire).
+
+        Override this method in subclasses to provide aggregator-specific URLs.
+        Default implementation returns the feed identifier.
+
+        Returns:
+            Source URL as string, or empty string if not available
+        """
+        return self.identifier or ""
+
+    def extract_header_element(self, article: Dict[str, Any]) -> Optional[HeaderElementData]:
+        """
+        Extract header element (image/video converted to image data) for an article.
 
         Uses the HeaderElementExtractor to attempt to extract a header element
-        from the article URL. Returns HTML string or None if extraction fails.
+        from the article URL. Returns HeaderElementData or None if extraction fails.
 
         This method bridges async extraction with the synchronous aggregator pipeline.
 
@@ -139,13 +182,13 @@ class BaseAggregator(ABC):
             article: Article dictionary with 'identifier' and 'name' keys
 
         Returns:
-            HTML string containing header element (iframe or img) or None if extraction fails
+            HeaderElementData containing raw bytes and base64 URI, or None if extraction fails
 
         Raises:
             ArticleSkipError: On 4xx HTTP errors (article should be skipped)
         """
-        from .services.header_element import HeaderElementExtractor
         from .exceptions import ArticleSkipError
+        from .services.header_element import HeaderElementExtractor
 
         try:
             url = article.get("identifier")
@@ -157,9 +200,9 @@ class BaseAggregator(ABC):
 
             # Run async extraction using asyncio
             extractor = HeaderElementExtractor()
-            header_element = asyncio.run(extractor.extract_header_element(url, alt))
+            header_data = asyncio.run(extractor.extract_header_element(url, alt))
 
-            return header_element
+            return header_data
 
         except ArticleSkipError:
             # Re-raise ArticleSkipError to be handled by caller

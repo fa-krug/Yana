@@ -15,30 +15,37 @@ logger = logging.getLogger(__name__)
 
 class SubscriptionError(Exception):
     """Subscription operation failed."""
+
     pass
 
 
 class PermissionDenied(Exception):
     """User does not have permission to modify subscription."""
+
     pass
 
 
-def list_subscriptions(user_id: int) -> list[dict[str, Any]]:
+def list_subscriptions(user_id: int, request) -> list[dict[str, Any]]:
     """List all subscriptions (feeds) for a user.
 
     Includes feeds owned by the user plus shared feeds (user=NULL, enabled=True).
 
     Args:
         user_id: Django user ID
+        request: Django request object
 
     Returns:
         List of subscription dicts with feed info and categories
     """
     # Get user's feeds plus shared feeds
-    feeds = Feed.objects.filter(
-        models.Q(user_id=user_id) | models.Q(user_id__isnull=True),
-        enabled=True,
-    ).select_related("group").order_by("name")
+    feeds = (
+        Feed.objects.filter(
+            models.Q(user_id=user_id) | models.Q(user_id__isnull=True),
+            enabled=True,
+        )
+        .select_related("group")
+        .order_by("name")
+    )
 
     subscriptions = []
 
@@ -47,31 +54,40 @@ def list_subscriptions(user_id: int) -> list[dict[str, Any]]:
         categories = []
 
         if feed.group:
-            categories.append({
-                "id": f"user/-/label/{feed.group.name}",
-                "label": feed.group.name,
-            })
+            categories.append(
+                {
+                    "id": f"user/-/label/{feed.group.name}",
+                    "label": feed.group.name,
+                }
+            )
 
         # Add special categories based on aggregator type
         if feed.aggregator == "reddit":
-            categories.append({
-                "id": "user/-/label/Reddit",
-                "label": "Reddit",
-            })
+            categories.append(
+                {
+                    "id": "user/-/label/Reddit",
+                    "label": "Reddit",
+                }
+            )
         elif feed.aggregator == "youtube":
-            categories.append({
-                "id": "user/-/label/YouTube",
-                "label": "YouTube",
-            })
+            categories.append(
+                {
+                    "id": "user/-/label/YouTube",
+                    "label": "YouTube",
+                }
+            )
         elif feed.aggregator == "podcast":
-            categories.append({
-                "id": "user/-/label/Podcasts",
-                "label": "Podcasts",
-            })
+            categories.append(
+                {
+                    "id": "user/-/label/Podcasts",
+                    "label": "Podcasts",
+                }
+            )
 
         # Format subscription
         from core.services.greader.stream_format import format_subscription
-        subscription = format_subscription(feed, categories)
+
+        subscription = format_subscription(feed, request, categories)
 
         subscriptions.append(subscription)
 
@@ -112,14 +128,14 @@ def edit_subscription(user_id: int, options: dict[str, Any]) -> dict[str, Any]:
 
     try:
         feed_id = int(stream_id.replace("feed/", ""))
-    except ValueError:
-        raise SubscriptionError("Invalid feed ID")
+    except ValueError as e:
+        raise SubscriptionError("Invalid feed ID") from e
 
     # Get the feed
     try:
         feed = Feed.objects.get(id=feed_id)
-    except Feed.DoesNotExist:
-        raise SubscriptionError("Feed not found")
+    except Feed.DoesNotExist as e:
+        raise SubscriptionError("Feed not found") from e
 
     # Check permission (user can only modify their own feeds or shared feeds)
     if feed.user and feed.user_id != user_id:
@@ -163,7 +179,9 @@ def edit_subscription(user_id: int, options: dict[str, Any]) -> dict[str, Any]:
 
 
 def _add_feed_to_labels(feed: Feed, user_id: int, labels: list[str]) -> None:
-    """Add a feed to one or more labels/groups.
+    """Add a feed to one or more labels/groups (additive).
+
+    Uses additive semantics: only sets the group if the feed doesn't already have one.
 
     Args:
         feed: Feed instance
@@ -185,16 +203,18 @@ def _add_feed_to_labels(feed: Feed, user_id: int, labels: list[str]) -> None:
         if label.startswith("user/-/label/"):
             label_name = label.replace("user/-/label/", "")
 
-            # Get or create group
-            try:
-                group = FeedGroup.objects.get(name=label_name, user_id=user_id)
-            except FeedGroup.DoesNotExist:
-                group = FeedGroup.objects.create(name=label_name, user_id=user_id)
+            # Only set group if feed doesn't already have one (additive semantics)
+            if not feed.group:
+                # Get or create group
+                try:
+                    group = FeedGroup.objects.get(name=label_name, user_id=user_id)
+                except FeedGroup.DoesNotExist:
+                    group = FeedGroup.objects.create(name=label_name, user_id=user_id)
 
-            # Add feed to group
-            feed.group = group
-            feed.save()
-            logger.info(f"Added feed {feed.id} to label '{label_name}'")
+                # Add feed to group
+                feed.group = group
+                feed.save()
+                logger.info(f"Added feed {feed.id} to label '{label_name}'")
 
 
 def _remove_feed_from_labels(feed: Feed, user_id: int, labels: list[str]) -> None:
@@ -223,12 +243,13 @@ def _remove_feed_from_labels(feed: Feed, user_id: int, labels: list[str]) -> Non
                 logger.info(f"Removed feed {feed.id} from label '{label_name}'")
 
 
-def get_subscription(user_id: int, feed_id: int) -> dict[str, Any]:
+def get_subscription(user_id: int, feed_id: int, request) -> dict[str, Any]:
     """Get a single subscription by ID.
 
     Args:
         user_id: Django user ID
         feed_id: Feed ID
+        request: Django request object
 
     Returns:
         Subscription dict
@@ -242,16 +263,19 @@ def get_subscription(user_id: int, feed_id: int) -> dict[str, Any]:
             models.Q(user_id=user_id) | models.Q(user_id__isnull=True),
             enabled=True,
         )
-    except Feed.DoesNotExist:
-        raise SubscriptionError("Feed not found or not accessible")
+    except Feed.DoesNotExist as e:
+        raise SubscriptionError("Feed not found or not accessible") from e
 
     # Get categories
     categories = []
     if feed.group:
-        categories.append({
-            "id": f"user/-/label/{feed.group.name}",
-            "label": feed.group.name,
-        })
+        categories.append(
+            {
+                "id": f"user/-/label/{feed.group.name}",
+                "label": feed.group.name,
+            }
+        )
 
     from core.services.greader.stream_format import format_subscription
-    return format_subscription(feed, categories)
+
+    return format_subscription(feed, request, categories)

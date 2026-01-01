@@ -1,8 +1,9 @@
-from django.http import HttpResponse, JsonResponse
-from django.views.decorators.http import require_http_methods
-from django.views.decorators.clickjacking import xframe_options_exempt
-from django.db import connection
 from urllib.parse import urlencode
+
+from django.db import connection
+from django.http import HttpResponse, JsonResponse
+from django.views.decorators.clickjacking import xframe_options_exempt
+from django.views.decorators.http import require_http_methods
 
 
 @xframe_options_exempt
@@ -170,7 +171,4 @@ def health_check(request):
             cursor.execute("SELECT 1")
         return JsonResponse({"status": "healthy", "database": "connected"})
     except Exception as e:
-        return JsonResponse(
-            {"status": "unhealthy", "error": str(e)},
-            status=503
-        )
+        return JsonResponse({"status": "unhealthy", "error": str(e)}, status=503)

@@ -7,6 +7,7 @@ from typing import Any, Dict
 from django.core.exceptions import ObjectDoesNotExist
 
 from ..aggregators import get_aggregator
+from ..aggregators.services.header_element.file_handler import HeaderElementFileHandler
 from ..models import Article
 
 
@@ -79,9 +80,14 @@ class ArticleService:
             # Use the same extraction pipeline as background aggregation
             try:
                 # Extract header element (image/video) - same as background job
-                header_element = aggregator.extract_header_element(article_dict)
-                if header_element:
-                    article.icon = header_element
+                header_data = aggregator.extract_header_element(article_dict)
+                if header_data:
+                    # Save image to ImageField
+                    HeaderElementFileHandler.save_image_to_article(
+                        article, header_data.image_bytes, header_data.content_type
+                    )
+                    # Store in dict for content processing (prepending)
+                    article_dict["header_data"] = header_data
             except Exception as e:
                 # Log but don't fail on header extraction errors
                 print(f"Warning: Failed to extract header element: {e}")
@@ -97,7 +103,7 @@ class ArticleService:
             article.save(update_fields=["raw_content", "content", "icon"])
 
             print(f"{'=' * 60}")
-            print(f"Article reloaded successfully")
+            print("Article reloaded successfully")
             print(f"Raw content: {len(raw_html)} bytes")
             print(f"Processed content: {len(processed_content)} bytes")
             print(f"{'=' * 60}\n")
@@ -111,8 +117,8 @@ class ArticleService:
                 "message": f"Article reloaded ({len(raw_html)} bytes fetched, {len(processed_content)} bytes processed)",
             }
 
-        except ObjectDoesNotExist:
-            raise ObjectDoesNotExist(f"Article with ID {article_id} does not exist")
+        except ObjectDoesNotExist as e:
+            raise ObjectDoesNotExist(f"Article with ID {article_id} does not exist") from e
         except Exception as e:
             return {
                 "success": False,

@@ -1,10 +1,11 @@
 """Embed processing strategies for Mein-MMO content."""
 
-import re
 import logging
+import re
 from abc import ABC, abstractmethod
+from typing import List, Optional
+
 from bs4 import BeautifulSoup, Tag
-from typing import Optional, List
 
 
 class EmbedProcessorStrategy(ABC):
@@ -79,7 +80,10 @@ class YouTubeEmbedProcessor(EmbedProcessorStrategy):
         # Try data attributes
         embed_content = figure.get("data-sanitized-data-embed-content", "")
         if embed_content:
-            match = re.search(r"(?:youtube\.com/embed/|youtube-nocookie\.com/embed/)([a-zA-Z0-9_-]{11})", embed_content)
+            match = re.search(
+                r"(?:youtube\.com/embed/|youtube-nocookie\.com/embed/)([a-zA-Z0-9_-]{11})",
+                embed_content,
+            )
             if match:
                 return match.group(1)
 
@@ -147,7 +151,11 @@ class RedditEmbedProcessor(EmbedProcessorStrategy):
         # Check data-sanitized-class too
         sanitized_class = figure.get("data-sanitized-class", "")
 
-        return "provider-reddit" in class_str or "embed-reddit" in class_str or "provider-reddit" in sanitized_class
+        return (
+            "provider-reddit" in class_str
+            or "embed-reddit" in class_str
+            or "provider-reddit" in sanitized_class
+        )
 
     def process(self, figure: Tag, soup: BeautifulSoup, logger: logging.Logger) -> Optional[Tag]:
         # Find Reddit link
@@ -243,7 +251,9 @@ class YouTubeFallbackProcessor(EmbedProcessorStrategy):
     def _extract_video_id(self, url: str) -> Optional[str]:
         """Extract YouTube video ID from URL."""
         # Pattern: youtube.com/watch?v=ID or youtu.be/ID or youtube.com/embed/ID
-        match = re.search(r"(?:youtube\.com/(?:watch\?v=|embed/)|youtu\.be/)([a-zA-Z0-9_-]{11})", url)
+        match = re.search(
+            r"(?:youtube\.com/(?:watch\?v=|embed/)|youtu\.be/)([a-zA-Z0-9_-]{11})", url
+        )
         if match:
             return match.group(1)
         return None

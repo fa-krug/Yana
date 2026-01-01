@@ -96,5 +96,7 @@ def is_network_error(error: Exception) -> bool:
         "reset",
     ]
 
-    return any(indicator in error_type.lower() or indicator in error_message
-               for indicator in network_indicators)
+    return any(
+        indicator in error_type.lower() or indicator in error_message
+        for indicator in network_indicators
+    )

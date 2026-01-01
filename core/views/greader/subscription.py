@@ -1,9 +1,9 @@
 """Google Reader API subscription views."""
 
 import logging
-from urllib.parse import parse_qs
 
 from django.http import HttpResponse, JsonResponse
+from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from core.services.greader.subscription_service import (
@@ -33,7 +33,7 @@ def subscription_list(request):
         user_id = request.greader_user["id"]
 
         # Get subscriptions
-        subscriptions = list_subscriptions(user_id)
+        subscriptions = list_subscriptions(user_id, request)
 
         response_data = {
             "subscriptions": subscriptions,
@@ -41,7 +41,7 @@ def subscription_list(request):
 
         return JsonResponse(response_data, status=200)
 
-    except Exception as e:
+    except Exception:
         logger.exception("Error in subscription_list view")
         return JsonResponse(
             {"error": "Internal server error"},
@@ -49,6 +49,7 @@ def subscription_list(request):
         )
 
 
+@csrf_exempt
 @require_http_methods(["POST"])
 @greader_auth_required
 def subscription_edit(request):
@@ -91,7 +92,7 @@ def subscription_edit(request):
             options["r"] = remove_labels
 
         # Execute edit
-        result = edit_subscription(user_id, options)
+        edit_subscription(user_id, options)
 
         return HttpResponse("OK", status=200, content_type="text/plain")
 
@@ -103,7 +104,7 @@ def subscription_edit(request):
         logger.warning(f"Permission denied: {e}")
         return HttpResponse(str(e), status=403, content_type="text/plain")
 
-    except Exception as e:
+    except Exception:
         logger.exception("Error in subscription_edit view")
         return HttpResponse(
             "Internal server error",

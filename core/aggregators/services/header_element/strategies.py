@@ -12,23 +12,21 @@ import logging
 from abc import ABC, abstractmethod
 
 from core.aggregators.exceptions import ArticleSkipError
+from core.aggregators.services.header_element.context import HeaderElementContext, HeaderElementData
+from core.aggregators.services.image_extraction.compression import (
+    compress_and_encode_image,
+)
+from core.aggregators.services.image_extraction.extractor import ImageExtractor
+from core.aggregators.services.image_extraction.fetcher import fetch_single_image
 from core.aggregators.utils.reddit import (
-    create_reddit_embed_html,
     extract_post_info_from_url,
     fetch_subreddit_icon,
     is_reddit_embed_url,
 )
 from core.aggregators.utils.youtube import (
-    create_youtube_embed_html,
     extract_youtube_video_id,
+    get_youtube_thumbnail_url,
 )
-from core.aggregators.services.image_extraction.compression import (
-    compress_and_encode_image,
-    create_image_element,
-)
-from core.aggregators.services.image_extraction.extractor import ImageExtractor
-from core.aggregators.services.image_extraction.fetcher import fetch_single_image
-from core.aggregators.services.header_element.context import HeaderElementContext
 
 logger = logging.getLogger(__name__)
 
@@ -42,12 +40,12 @@ class HeaderElementStrategy(ABC):
         pass
 
     @abstractmethod
-    async def create(self, context: HeaderElementContext) -> str | None:
+    async def create(self, context: HeaderElementContext) -> HeaderElementData | None:
         """
-        Create header element HTML.
+        Create header element data.
 
         Returns:
-            HTML string containing iframe or img tag, or None if creation fails
+            HeaderElementData object, or None if creation fails
         """
         pass
 
@@ -59,14 +57,14 @@ class RedditEmbedStrategy(HeaderElementStrategy):
         """Check if URL is a Reddit embed URL."""
         return is_reddit_embed_url(url)
 
-    async def create(self, context: HeaderElementContext) -> str | None:
-        """Create Reddit embed iframe."""
-        logger.debug(f"RedditEmbedStrategy: Creating embed for {context.url}")
+    async def create(self, context: HeaderElementContext) -> HeaderElementData | None:
+        """Extract image from Reddit embed."""
+        logger.debug(f"RedditEmbedStrategy: Extracting image for {context.url}")
 
         try:
-            embed_html = create_reddit_embed_html(context.url)
-            logger.debug("RedditEmbedStrategy: Successfully created embed")
-            return embed_html
+            # Try to extract image using GenericImageStrategy for the embed URL
+            strategy = GenericImageStrategy()
+            return await strategy.create(context)
         except Exception as e:
             logger.warning(f"RedditEmbedStrategy: Failed - {e}")
             return None
@@ -84,8 +82,8 @@ class RedditPostStrategy(HeaderElementStrategy):
         post_info = extract_post_info_from_url(url)
         return post_info["subreddit"] is not None
 
-    async def create(self, context: HeaderElementContext) -> str | None:
-        """Fetch subreddit icon and create base64 image element."""
+    async def create(self, context: HeaderElementContext) -> HeaderElementData | None:
+        """Fetch subreddit icon and return header element data."""
         logger.debug(f"RedditPostStrategy: Extracting icon for {context.url}")
 
         try:
@@ -117,11 +115,12 @@ class RedditPostStrategy(HeaderElementStrategy):
                 logger.debug("RedditPostStrategy: Failed to compress image")
                 return None
 
-            # Create img element
-            img_html = create_image_element(encode_result["dataUri"], context.alt)
-
-            logger.debug("RedditPostStrategy: Successfully created image element")
-            return img_html
+            logger.debug("RedditPostStrategy: Successfully extracted and encoded icon")
+            return HeaderElementData(
+                image_bytes=image_result["imageData"],
+                content_type=image_result["contentType"],
+                base64_data_uri=encode_result["dataUri"],
+            )
 
         except ArticleSkipError:
             raise
@@ -131,24 +130,51 @@ class RedditPostStrategy(HeaderElementStrategy):
 
 
 class YouTubeStrategy(HeaderElementStrategy):
-    """Strategy for YouTube video embeds."""
+    """Strategy for YouTube video thumbnails."""
 
     def can_handle(self, url: str) -> bool:
         """Check if URL is a YouTube URL."""
         return extract_youtube_video_id(url) is not None
 
-    async def create(self, context: HeaderElementContext) -> str | None:
-        """Create YouTube embed iframe."""
-        logger.debug(f"YouTubeStrategy: Creating embed for {context.url}")
+    async def create(self, context: HeaderElementContext) -> HeaderElementData | None:
+        """Fetch YouTube thumbnail and return header element data."""
+        logger.debug(f"YouTubeStrategy: Fetching thumbnail for {context.url}")
 
         try:
             video_id = extract_youtube_video_id(context.url)
             if not video_id:
                 return None
 
-            embed_html = create_youtube_embed_html(video_id)
-            logger.debug("YouTubeStrategy: Successfully created embed")
-            return embed_html
+            # Get thumbnail URL
+            thumbnail_url = get_youtube_thumbnail_url(video_id, quality="maxresdefault")
+
+            # Fetch the thumbnail image
+            image_result = fetch_single_image(thumbnail_url)
+            if not image_result:
+                # Try lower quality if maxresdefault fails
+                thumbnail_url = get_youtube_thumbnail_url(video_id, quality="hqdefault")
+                image_result = fetch_single_image(thumbnail_url)
+
+            if not image_result:
+                logger.debug(f"YouTubeStrategy: Failed to fetch thumbnail for {video_id}")
+                return None
+
+            # Compress and encode
+            encode_result = compress_and_encode_image(
+                image_result["imageData"],
+                image_result["contentType"],
+            )
+
+            if not encode_result:
+                logger.debug("YouTubeStrategy: Failed to compress image")
+                return None
+
+            logger.debug("YouTubeStrategy: Successfully fetched and encoded thumbnail")
+            return HeaderElementData(
+                image_bytes=image_result["imageData"],
+                content_type=image_result["contentType"],
+                base64_data_uri=encode_result["dataUri"],
+            )
 
         except Exception as e:
             logger.warning(f"YouTubeStrategy: Failed - {e}")
@@ -168,7 +194,7 @@ class GenericImageStrategy(HeaderElementStrategy):
         # Accept all other URLs (fallback)
         return True
 
-    async def create(self, context: HeaderElementContext) -> str | None:
+    async def create(self, context: HeaderElementContext) -> HeaderElementData | None:
         """Extract image using ImageExtractor."""
         logger.debug(f"GenericImageStrategy: Extracting from {context.url}")
 
@@ -192,11 +218,13 @@ class GenericImageStrategy(HeaderElementStrategy):
                 logger.debug("GenericImageStrategy: Failed to compress image")
                 return None
 
-            # Create img element
-            img_html = create_image_element(encode_result["dataUri"], context.alt)
-
             logger.debug("GenericImageStrategy: Successfully extracted and encoded image")
-            return img_html
+            return HeaderElementData(
+                image_bytes=image_result["imageData"],
+                content_type=image_result["contentType"],
+                base64_data_uri=encode_result["dataUri"],
+                image_url=image_result.get("imageUrl"),
+            )
 
         except ArticleSkipError:
             raise
@@ -207,5 +235,6 @@ class GenericImageStrategy(HeaderElementStrategy):
             # Close extractor's browser if it was opened
             if extractor:
                 import contextlib
+
                 with contextlib.suppress(Exception):
                     await extractor.close()

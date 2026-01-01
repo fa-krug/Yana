@@ -1,9 +1,9 @@
 """Google Reader API authentication views."""
 
 import logging
-from urllib.parse import parse_qs
 
 from django.http import HttpResponse, JsonResponse
+from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from core.services.greader.auth_service import (
@@ -17,6 +17,7 @@ from .decorators import greader_auth_required
 logger = logging.getLogger(__name__)
 
 
+@csrf_exempt
 @require_http_methods(["POST"])
 def client_login(request):
     """Handle Google Reader ClientLogin authentication.
@@ -65,7 +66,7 @@ def client_login(request):
             content_type="text/plain",
         )
 
-    except Exception as e:
+    except Exception:
         logger.exception("Error in ClientLogin")
         return HttpResponse(
             "Error=UnknownError\n",
@@ -95,7 +96,7 @@ def token_view(request):
 
         return HttpResponse(session_token, status=200, content_type="text/plain")
 
-    except Exception as e:
+    except Exception:
         logger.exception("Error in token view")
         return HttpResponse(
             "Internal server error",
@@ -129,7 +130,7 @@ def user_info(request):
 
         return JsonResponse(response_data, status=200)
 
-    except Exception as e:
+    except Exception:
         logger.exception("Error in user_info view")
         return JsonResponse(
             {"error": "Internal server error"},

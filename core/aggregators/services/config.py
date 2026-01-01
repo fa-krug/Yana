@@ -42,9 +42,7 @@ USER_AGENT = getattr(
 # ==================== External API Endpoints ====================
 
 # fxtwitter API for Twitter/X image extraction
-FXTWITTER_API_BASE = getattr(
-    settings, "YANA_FXTWITTER_API_BASE", "https://api.fxtwitter.com"
-)
+FXTWITTER_API_BASE = getattr(settings, "YANA_FXTWITTER_API_BASE", "https://api.fxtwitter.com")
 
 # Reddit API endpoint
 REDDIT_API_BASE = getattr(settings, "YANA_REDDIT_API_BASE", "https://www.reddit.com")

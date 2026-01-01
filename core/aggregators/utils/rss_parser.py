@@ -1,8 +1,9 @@
 """RSS feed parsing utilities."""
 
-import feedparser
-from typing import Dict, Any
+from typing import Any, Dict
 from urllib.parse import urlparse
+
+import feedparser
 
 
 def parse_rss_feed(url: str) -> Dict[str, Any]:
@@ -27,9 +28,8 @@ def parse_rss_feed(url: str) -> Dict[str, Any]:
     feed = feedparser.parse(url)
 
     # Check for errors
-    if hasattr(feed, "bozo") and feed.bozo:
-        if hasattr(feed, "bozo_exception"):
-            raise ValueError(f"Feed parsing error: {feed.bozo_exception}")
+    if hasattr(feed, "bozo") and feed.bozo and hasattr(feed, "bozo_exception"):
+        raise ValueError(f"Feed parsing error: {feed.bozo_exception}")
 
     if not feed.entries:
         raise ValueError(f"No entries found in feed: {url}")
