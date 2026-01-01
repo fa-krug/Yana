@@ -65,45 +65,43 @@ class ArticleService:
             print(f"URL: {article.identifier}")
             print(f"{'=' * 60}")
 
-            # TODO: Implement article-specific reload logic
-            # For now, we'll use a simplified approach:
-            # The aggregator needs to support fetching a single article by URL
-            # This will be implemented when we port the aggregator logic
+            # Force reload the specific article by re-fetching its content
+            url = article.identifier
 
-            # Placeholder: In the TypeScript version, this would:
-            # 1. Call aggregator.fetchArticleContentInternal(url)
-            # 2. Call aggregator.extractContent(html)
-            # 3. Call aggregator.processContent(extracted)
-            # 4. Update the article with new content
+            # Use the aggregator to fetch and process the article
+            raw_html = aggregator.fetch_article_content(url)
+            extracted_content = aggregator.extract_content(raw_html, {
+                "name": article.name,
+                "identifier": url,
+                "author": article.author,
+                "date": article.created_at,
+            })
+            processed_content = aggregator.process_content(extracted_content, {
+                "name": article.name,
+                "identifier": url,
+                "author": article.author,
+                "date": article.created_at,
+            })
 
-            # For now, we'll just trigger a full feed aggregation
-            # which will update the article if it's still in the feed
-            from .aggregator_service import AggregatorService
+            # Update the article with fresh content
+            article.raw_content = raw_html
+            article.content = processed_content
+            article.save(update_fields=["raw_content", "content"])
 
-            result = AggregatorService.trigger_by_feed_id(feed.id)
+            print(f"{'=' * 60}")
+            print(f"Article reloaded successfully")
+            print(f"Raw content: {len(raw_html)} bytes")
+            print(f"Processed content: {len(processed_content)} bytes")
+            print(f"{'=' * 60}\n")
 
-            if result["success"]:
-                print(f"{'=' * 60}")
-                print("Article reload completed successfully")
-                print(f"{'=' * 60}\n")
-
-                return {
-                    "success": True,
-                    "article_id": article_id,
-                    "article_name": article.name,
-                    "feed_name": feed.name,
-                    "aggregator_type": feed.aggregator,
-                    "message": f"Re-aggregated feed (fetched {result['articles_count']} articles)",
-                }
-            else:
-                return {
-                    "success": False,
-                    "article_id": article_id,
-                    "article_name": article.name,
-                    "feed_name": feed.name,
-                    "aggregator_type": feed.aggregator,
-                    "error": result.get("error", "Unknown error"),
-                }
+            return {
+                "success": True,
+                "article_id": article_id,
+                "article_name": article.name,
+                "feed_name": feed.name,
+                "aggregator_type": feed.aggregator,
+                "message": f"Article reloaded ({len(raw_html)} bytes fetched, {len(processed_content)} bytes processed)",
+            }
 
         except ObjectDoesNotExist:
             raise ObjectDoesNotExist(f"Article with ID {article_id} does not exist")
