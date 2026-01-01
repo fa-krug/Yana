@@ -1,0 +1,73 @@
+[project]
+name = "yana"
+version = "0.1.0"
+description = "Django-based RSS aggregator and feed management system"
+requires-python = ">=3.11"
+
+[tool.ruff]
+# Set the maximum line length to 100.
+line-length = 100
+
+# Assume Python 3.11
+target-version = "py311"
+
+# Exclude common directories
+exclude = [
+    ".git",
+    ".venv",
+    "venv",
+    "__pycache__",
+    "*.pyc",
+    ".pytest_cache",
+    "migrations",
+]
+
+[tool.ruff.lint]
+# Enable Pyflakes (`F`) and pycodestyle (`E`, `W`) by default.
+# Also enable:
+# - isort (I) for import sorting
+# - Django (DJ) for Django-specific checks
+# - flake8-bugbear (B) for common bugs
+# - flake8-simplify (SIM) for simplification suggestions
+# - flake8-comprehensions (C4) for better comprehensions
+# - flake8-django (DJ) for Django best practices
+select = ["E", "F", "W", "I", "B", "SIM", "C4", "DJ"]
+
+# Ignore specific rules if needed
+ignore = [
+    "E501",  # Line too long (handled by formatter)
+]
+
+# Allow fix for all enabled rules (when `--fix`) is provided.
+fixable = ["ALL"]
+unfixable = []
+
+# Allow unused variables when underscore-prefixed.
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+[tool.ruff.lint.per-file-ignores]
+# Ignore import rules in __init__.py files
+"__init__.py" = ["F401"]
+# Ignore all checks in migrations
+"migrations/*.py" = ["ALL"]
+
+[tool.ruff.lint.isort]
+# Use Django's import order
+known-first-party = ["yana", "core"]
+section-order = ["future", "standard-library", "django", "third-party", "first-party", "local-folder"]
+
+[tool.ruff.lint.isort.sections]
+"django" = ["django"]
+
+[tool.ruff.format]
+# Use double quotes for strings.
+quote-style = "double"
+
+# Indent with spaces, rather than tabs.
+indent-style = "space"
+
+# Respect magic trailing commas.
+skip-magic-trailing-comma = false
+
+# Automatically detect the appropriate line ending.
+line-ending = "auto"
