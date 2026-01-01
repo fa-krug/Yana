@@ -8,24 +8,27 @@ Provides strategies for extracting header elements (HTML) from different sources
 4. GenericImageStrategy - Fallback for all other sources (uses ImageExtractor)
 """
 
-from abc import ABC, abstractmethod
 import logging
+from abc import ABC, abstractmethod
 
-from .context import HeaderElementContext
-from ..image_extraction.extractor import ImageExtractor
-from ..image_extraction.compression import compress_and_encode_image, create_image_element
-from ..image_extraction.fetcher import fetch_single_image
-from ...utils.reddit import (
-    is_reddit_embed_url,
-    extract_post_info_from_url,
+from core.aggregators.exceptions import ArticleSkipError
+from core.aggregators.utils.reddit import (
     create_reddit_embed_html,
+    extract_post_info_from_url,
     fetch_subreddit_icon,
+    is_reddit_embed_url,
 )
-from ...utils.youtube import (
-    extract_youtube_video_id,
+from core.aggregators.utils.youtube import (
     create_youtube_embed_html,
+    extract_youtube_video_id,
 )
-from ...exceptions import ArticleSkipError
+from core.aggregators.services.image_extraction.compression import (
+    compress_and_encode_image,
+    create_image_element,
+)
+from core.aggregators.services.image_extraction.extractor import ImageExtractor
+from core.aggregators.services.image_extraction.fetcher import fetch_single_image
+from core.aggregators.services.header_element.context import HeaderElementContext
 
 logger = logging.getLogger(__name__)
 
@@ -159,7 +162,7 @@ class GenericImageStrategy(HeaderElementStrategy):
         """Check if this is any other URL (fallback strategy)."""
         # Skip v.redd.it non-embed URLs (they don't work for image extraction)
         if "v.redd.it" in url and not is_reddit_embed_url(url):
-            logger.debug(f"GenericImageStrategy: Skipping v.redd.it non-embed URL")
+            logger.debug("GenericImageStrategy: Skipping v.redd.it non-embed URL")
             return False
 
         # Accept all other URLs (fallback)
@@ -172,9 +175,7 @@ class GenericImageStrategy(HeaderElementStrategy):
         extractor = None
         try:
             extractor = ImageExtractor()
-            image_result = await extractor.extract_image_from_url(
-                context.url, is_header_image=True
-            )
+            image_result = await extractor.extract_image_from_url(context.url, is_header_image=True)
 
             if not image_result:
                 logger.debug("GenericImageStrategy: No image extracted")
@@ -205,7 +206,6 @@ class GenericImageStrategy(HeaderElementStrategy):
         finally:
             # Close extractor's browser if it was opened
             if extractor:
-                try:
+                import contextlib
+                with contextlib.suppress(Exception):
                     await extractor.close()
-                except Exception:
-                    pass
