@@ -194,7 +194,7 @@ def get_site_url(feed: Feed) -> str:
     return ""
 
 
-def format_subscription(feed: Feed, request, groups: list[dict] = None) -> dict[str, Any]:
+def format_subscription(feed: Feed, request, groups: list[dict] | None = None) -> dict[str, Any]:
     """Format a Feed as Google Reader subscription object.
 
     Args:
@@ -332,7 +332,7 @@ def format_tag_list(tags: list[dict[str, str]]) -> dict[str, Any]:
 def format_stream_contents(
     items: list[dict],
     stream_id: str = "user/-/state/com.google/reading-list",
-    continuation: str = None,
+    continuation: str | None = None,
 ) -> dict[str, Any]:
     """Format stream contents as Google Reader response.
 

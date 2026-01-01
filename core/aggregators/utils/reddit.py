@@ -10,7 +10,7 @@ Provides functions for:
 
 import logging
 import re
-from typing import Dict, Optional
+from typing import Optional
 
 import requests
 
@@ -43,7 +43,7 @@ def is_reddit_embed_url(url: str) -> bool:
     )
 
 
-def extract_post_info_from_url(url: str) -> Dict[str, Optional[str]]:
+def extract_post_info_from_url(url: str) -> dict[str, str | None]:
     """
     Extract subreddit and post ID from Reddit post URL.
 
@@ -55,7 +55,7 @@ def extract_post_info_from_url(url: str) -> Dict[str, Optional[str]]:
     Returns:
         Dict with keys 'subreddit' and 'post_id' (both Optional[str])
     """
-    result = {"subreddit": None, "post_id": None}
+    result: dict[str, str | None] = {"subreddit": None, "post_id": None}
 
     if not url:
         return result

@@ -29,7 +29,7 @@ class ArticleSkipError(AggregatorError):
         self,
         message: str,
         status_code: int = 400,
-        original_error: Exception = None,
+        original_error: Exception | None = None,
     ):
         """
         Initialize ArticleSkipError.

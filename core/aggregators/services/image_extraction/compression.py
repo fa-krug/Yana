@@ -33,7 +33,7 @@ def compress_image(
     max_width: int = MAX_IMAGE_WIDTH,
     max_height: int = MAX_IMAGE_HEIGHT,
     is_header: bool = False,
-) -> Dict[str, Any]:
+) -> Dict[str, Any] | None:
     """
     Compress and convert image to optimized format.
 

@@ -191,7 +191,7 @@ class StreamFilterOrchestrator:
         stream_id: str,
         user_id: int,
         exclude_read: bool = False,
-        include_tag: str = None,
+        include_tag: str | None = None,
     ) -> Tuple[Optional[Q], bool]:
         """Build conditions with additional filters (read status, tags).
 

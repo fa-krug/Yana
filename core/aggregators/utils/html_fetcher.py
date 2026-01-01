@@ -31,7 +31,7 @@ def fetch_html(url: str, timeout: int = 30, retries: int = 3) -> str:
         "Upgrade-Insecure-Requests": "1",
     }
 
-    last_exception = None
+    last_exception: requests.RequestException | None = None
 
     for attempt in range(retries):
         try:
@@ -46,4 +46,6 @@ def fetch_html(url: str, timeout: int = 30, retries: int = 3) -> str:
                 time.sleep(wait_time)
             continue
 
-    raise last_exception
+    if last_exception:
+        raise last_exception
+    raise requests.RequestException(f"Failed to fetch {url} after {retries} retries")

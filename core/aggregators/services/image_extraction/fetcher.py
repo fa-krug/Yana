@@ -34,7 +34,7 @@ ACCEPTED_IMAGE_TYPES = {
 }
 
 
-def get_image_headers(url: str = None) -> Dict[str, str]:
+def get_image_headers(url: str | None = None) -> Dict[str, str]:
     """
     Get HTTP headers for image fetching.
 

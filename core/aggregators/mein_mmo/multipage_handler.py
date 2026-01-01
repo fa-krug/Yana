@@ -107,7 +107,7 @@ def fetch_all_pages(
     page_numbers: Set[int],
     fetcher: Callable[[str], str],
     logger: logging.Logger,
-    first_page_html: str = None,
+    first_page_html: str | None = None,
 ) -> str:
     """
     Fetch all pages and combine content divs.

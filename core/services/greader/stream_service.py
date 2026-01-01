@@ -97,9 +97,9 @@ def get_stream_item_ids(
     user_id: int,
     stream_id: str = "",
     limit: int = 20,
-    older_than: int = None,
-    exclude_tag: str = None,
-    include_tag: str = None,
+    older_than: int | None = None,
+    exclude_tag: str | None = None,
+    include_tag: str | None = None,
     reverse_order: bool = False,
 ) -> dict[str, Any]:
     """Get article IDs from a stream (lightweight query for syncing).
@@ -160,12 +160,12 @@ def get_stream_contents(
     user_id: int,
     request,
     stream_id: str = "",
-    item_ids: list[str] = None,
+    item_ids: list[str] | None = None,
     limit: int = 50,
-    older_than: int = None,
-    exclude_tag: str = None,
-    include_tag: str = None,
-    continuation: str = None,
+    older_than: int | None = None,
+    exclude_tag: str | None = None,
+    include_tag: str | None = None,
+    continuation: str | None = None,
 ) -> dict[str, Any]:
     """Get full article contents from a stream (with pagination).
 
@@ -273,7 +273,7 @@ def get_stream_contents(
     return response
 
 
-def invalidate_unread_cache(user_id: int = None) -> None:
+def invalidate_unread_cache(user_id: int | None = None) -> None:
     """Invalidate cached unread counts.
 
     Args:
