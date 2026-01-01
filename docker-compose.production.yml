@@ -1,0 +1,54 @@
+version: "3.8"
+
+services:
+  yana:
+    image: ${DOCKER_USERNAME:-skrug}/yana:latest
+    container_name: yana-prod
+    restart: always
+    expose:
+      - "8000"
+    environment:
+      - DEBUG=False
+      - SECRET_KEY=${SECRET_KEY}
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS}
+      - DATABASE_ENGINE=django.db.backends.sqlite3
+      - DJANGO_ENV=production
+      - TIME_ZONE=${TIME_ZONE:-UTC}
+      - SUPERUSER_USERNAME=${SUPERUSER_USERNAME:-}
+      - SUPERUSER_EMAIL=${SUPERUSER_EMAIL:-}
+      - SUPERUSER_PASSWORD=${SUPERUSER_PASSWORD:-}
+    volumes:
+      - yana-data:/app/data
+      - yana-media:/app/media
+      - yana-static:/app/staticfiles
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 2G
+        reservations:
+          cpus: "0.5"
+          memory: 512M
+    networks:
+      - yana-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.yana.rule=Host(`${YANA_DOMAIN:-yana.example.com}`)"
+      - "traefik.http.routers.yana.entrypoints=websecure"
+      - "traefik.http.routers.yana.tls.certresolver=letsencrypt"
+      - "traefik.http.services.yana.loadbalancer.server.port=8000"
+
+volumes:
+  yana-data:
+  yana-media:
+  yana-static:
+
+networks:
+  yana-network:
+    driver: bridge

@@ -1,6 +1,6 @@
 from django.contrib import admin, messages
 
-from .models import Article, Feed, FeedGroup
+from .models import Article, Feed, FeedGroup, GReaderAuthToken
 from .services import AggregatorService, ArticleService
 
 
@@ -149,3 +149,19 @@ class ArticleAdmin(admin.ModelAdmin):
 
         if failed == total_articles:
             self.message_user(request, f"All {failed} article(s) failed to reload", messages.ERROR)
+
+
+@admin.register(GReaderAuthToken)
+class GReaderAuthTokenAdmin(admin.ModelAdmin):
+    """Admin configuration for GReaderAuthToken model."""
+
+    list_display = ["user", "token", "expires_at", "created_at"]
+    list_filter = ["user", "created_at", "expires_at"]
+    search_fields = ["user__username", "token"]
+    readonly_fields = ["created_at", "updated_at"]
+    list_select_related = ["user"]
+
+    fieldsets = (
+        (None, {"fields": ("user", "token", "expires_at")}),
+        ("Timestamps", {"fields": ("created_at", "updated_at"), "classes": ("collapse",)}),
+    )

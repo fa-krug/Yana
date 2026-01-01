@@ -188,6 +188,67 @@ class RedditEmbedProcessor(EmbedProcessorStrategy):
         return p
 
 
+class YouTubeFallbackProcessor(EmbedProcessorStrategy):
+    """Fallback processor for YouTube links without specific class markers."""
+
+    def can_handle(self, figure: Tag) -> bool:
+        """Check if figure contains any YouTube links."""
+        for link in figure.find_all("a", href=True):
+            href = link["href"]
+            if "youtube.com" in href or "youtu.be" in href:
+                return True
+        return False
+
+    def process(self, figure: Tag, soup: BeautifulSoup, logger: logging.Logger) -> Optional[Tag]:
+        """Extract video ID from YouTube link and create iframe."""
+        # Find YouTube link
+        video_id = None
+        for link in figure.find_all("a", href=True):
+            href = link["href"]
+            if "youtube.com" in href or "youtu.be" in href:
+                video_id = self._extract_video_id(href)
+                if video_id:
+                    break
+
+        if not video_id:
+            logger.debug("No YouTube video ID extracted from link")
+            return None
+
+        # Create iframe embed
+        iframe = soup.new_tag(
+            "iframe",
+            src=f"https://www.youtube-nocookie.com/embed/{video_id}",
+            width="560",
+            height="315",
+            frameborder="0",
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture",
+            allowfullscreen=True,
+        )
+
+        # Wrap in div
+        wrapper = soup.new_tag("div")
+        wrapper["data-sanitized-class"] = "youtube-embed"
+        wrapper.append(iframe)
+
+        # Add caption if present
+        figcaption = figure.find("figcaption")
+        if figcaption:
+            caption = soup.new_tag("p")
+            caption.string = figcaption.get_text(strip=True)
+            wrapper.append(caption)
+
+        logger.debug(f"Converted YouTube link to iframe (fallback): {video_id}")
+        return wrapper
+
+    def _extract_video_id(self, url: str) -> Optional[str]:
+        """Extract YouTube video ID from URL."""
+        # Pattern: youtube.com/watch?v=ID or youtu.be/ID or youtube.com/embed/ID
+        match = re.search(r"(?:youtube\.com/(?:watch\?v=|embed/)|youtu\.be/)([a-zA-Z0-9_-]{11})", url)
+        if match:
+            return match.group(1)
+        return None
+
+
 def process_embeds(content: Tag, logger: logging.Logger) -> None:
     """
     Process all figure embeds using strategy pattern.
@@ -200,19 +261,26 @@ def process_embeds(content: Tag, logger: logging.Logger) -> None:
         YouTubeEmbedProcessor(),
         TwitterEmbedProcessor(),
         RedditEmbedProcessor(),
+        YouTubeFallbackProcessor(),  # Fallback for YouTube links
     ]
 
     # Find all figures
     figures = content.find_all("figure")
+    logger.debug(f"Processing {len(figures)} figure elements")
 
-    for figure in figures:
+    for idx, figure in enumerate(figures, 1):
         # Try each processor
         for processor in processors:
             if processor.can_handle(figure):
+                logger.debug(f"Figure {idx}: Using {processor.__class__.__name__}")
                 replacement = processor.process(figure, BeautifulSoup("", "html.parser"), logger)
                 if replacement:
                     figure.replace_with(replacement)
+                    logger.debug(f"Figure {idx}: Successfully processed")
                 else:
+                    logger.debug(f"Figure {idx}: Processing returned None, removing figure")
                     figure.decompose()
                 break
-        # If no processor handled it, leave figure as-is
+        else:
+            # If no processor handled it, leave figure as-is
+            logger.debug(f"Figure {idx}: No processor matched, keeping as-is")

@@ -4,6 +4,7 @@ from typing import Any, Dict, List
 from bs4 import BeautifulSoup
 
 from .rss import RssAggregator
+from .exceptions import ArticleSkipError
 from .utils import (
     fetch_html,
     extract_main_content,
@@ -31,7 +32,7 @@ class FullWebsiteAggregator(RssAggregator):
     content_selector: str = "article, .article-content, .entry-content, main"
 
     def enrich_articles(self, articles: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Fetch and extract full article content."""
+        """Fetch and extract full article content with header elements."""
         enriched = []
 
         for article in articles:
@@ -39,6 +40,14 @@ class FullWebsiteAggregator(RssAggregator):
             self.logger.info(f"Fetching full content from: {url}")
 
             try:
+                # Extract header element FIRST (may throw ArticleSkipError)
+                header_element = self.extract_header_element(article)
+                if header_element:
+                    article["icon"] = header_element
+                    self.logger.debug(f"Extracted header element for {url}")
+                else:
+                    self.logger.debug(f"No header element found for {url}")
+
                 # Fetch HTML
                 raw_html = self.fetch_article_content(url)
 
@@ -53,9 +62,14 @@ class FullWebsiteAggregator(RssAggregator):
                 article["content"] = processed
 
                 enriched.append(article)
+
+            except ArticleSkipError as e:
+                # Skip article on 4xx HTTP errors (e.g., from header extraction)
+                self.logger.warning(f"Skipping article {url}: {e}")
+
             except Exception as e:
                 self.logger.error(f"Failed to fetch article {url}: {e}")
-                # Keep original RSS content
+                # Keep original RSS content without header element
                 enriched.append(article)
 
         return enriched

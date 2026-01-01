@@ -1,0 +1,42 @@
+version: "3.8"
+
+services:
+  yana:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: yana-dev
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      # Django Configuration
+      - DEBUG=True
+      - SECRET_KEY=${SECRET_KEY:-dev-secret-key-change-in-production}
+      - ALLOWED_HOSTS=*
+      - DATABASE_ENGINE=django.db.backends.sqlite3
+      - TIME_ZONE=${TIME_ZONE:-UTC}
+
+      # Optional: Create superuser on first run
+      - SUPERUSER_USERNAME=${SUPERUSER_USERNAME:-}
+      - SUPERUSER_EMAIL=${SUPERUSER_EMAIL:-}
+      - SUPERUSER_PASSWORD=${SUPERUSER_PASSWORD:-}
+    volumes:
+      # Development: bind mounts for live reload
+      - .:/app
+      # Persist database
+      - ./data:/app/data
+      # Persist media files
+      - ./media:/app/media
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - yana-network
+
+networks:
+  yana-network:
+    driver: bridge

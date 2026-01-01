@@ -3,6 +3,7 @@ Base aggregator class.
 """
 
 import logging
+import asyncio
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional
 
@@ -124,3 +125,45 @@ class BaseAggregator(ABC):
     def get_aggregator_type(self) -> str:
         """Get the aggregator type name."""
         return self.__class__.__name__.replace("Aggregator", "").lower()
+
+    def extract_header_element(self, article: Dict[str, Any]) -> Optional[str]:
+        """
+        Extract header element (HTML iframe or base64 image) for an article.
+
+        Uses the HeaderElementExtractor to attempt to extract a header element
+        from the article URL. Returns HTML string or None if extraction fails.
+
+        This method bridges async extraction with the synchronous aggregator pipeline.
+
+        Args:
+            article: Article dictionary with 'identifier' and 'name' keys
+
+        Returns:
+            HTML string containing header element (iframe or img) or None if extraction fails
+
+        Raises:
+            ArticleSkipError: On 4xx HTTP errors (article should be skipped)
+        """
+        from .services.header_element import HeaderElementExtractor
+        from .exceptions import ArticleSkipError
+
+        try:
+            url = article.get("identifier")
+            alt = article.get("name", "Article image")
+
+            if not url:
+                self.logger.warning("extract_header_element: Missing article URL")
+                return None
+
+            # Run async extraction using asyncio
+            extractor = HeaderElementExtractor()
+            header_element = asyncio.run(extractor.extract_header_element(url, alt))
+
+            return header_element
+
+        except ArticleSkipError:
+            # Re-raise ArticleSkipError to be handled by caller
+            raise
+        except Exception as e:
+            self.logger.error(f"extract_header_element: Unexpected error - {e}")
+            return None

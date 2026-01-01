@@ -25,6 +25,8 @@ def detect_pagination(html: str, logger: logging.Logger) -> Set[int]:
     soup = BeautifulSoup(html, "html.parser")
     page_numbers = {1}  # Always include page 1
 
+    logger.debug("Starting pagination detection")
+
     # Try multiple selectors
     pagination = (
         soup.select_one("nav.navigation.pagination")
@@ -33,29 +35,55 @@ def detect_pagination(html: str, logger: logging.Logger) -> Set[int]:
     )
 
     if not pagination:
+        logger.debug("No pagination container found, assuming single page")
         return page_numbers
 
+    logger.debug(f"Found pagination container: {pagination.name}")
+
     # Extract page numbers from links
+    logger.debug("Extracting page numbers from links")
     for link in pagination.select("a.page-numbers, a.post-page-numbers"):
         # Try link text
         text = link.get_text(strip=True)
         if text.isdigit():
             page_numbers.add(int(text))
+            logger.debug(f"Found page number from link text: {text}")
+
+        # Try nested span first
+        nested_span = link.find("span", class_="page-numbers")
+        if nested_span:
+            span_text = nested_span.get_text(strip=True)
+            if span_text.isdigit():
+                page_numbers.add(int(span_text))
+                logger.debug(f"Found page number from nested span in link: {span_text}")
 
         # Try URL pattern: /article-name/2/
         href = link.get("href", "")
         if href:
             match = re.search(r"/(\d+)/?$", href)
             if match:
-                page_numbers.add(int(match.group(1)))
+                page_num = int(match.group(1))
+                page_numbers.add(page_num)
+                logger.debug(f"Found page number from URL pattern: {page_num}")
 
-    # Extract current page from spans
+    # Extract current page from spans (direct and nested)
+    logger.debug("Extracting page numbers from spans")
     for span in pagination.select("span.page-numbers, span.post-page-numbers, span.current"):
         text = span.get_text(strip=True)
         if text.isdigit():
             page_numbers.add(int(text))
+            logger.debug(f"Found page number from span: {text}")
 
-    logger.info(f"Detected {len(page_numbers)} pages: {sorted(page_numbers)}")
+        # Also check for nested span.page-numbers within span.post-page-numbers
+        nested_span = span.find("span", class_="page-numbers")
+        if nested_span:
+            nested_text = nested_span.get_text(strip=True)
+            if nested_text.isdigit():
+                page_numbers.add(int(nested_text))
+                logger.debug(f"Found page number from nested span in span: {nested_text}")
+
+    sorted_pages = sorted(page_numbers)
+    logger.info(f"Pagination detection complete: {len(page_numbers)} pages found - {sorted_pages}")
     return page_numbers
 
 
@@ -74,8 +102,11 @@ def fetch_all_pages(base_url: str, page_numbers: Set[int], fetcher: Callable[[st
     """
     sorted_pages = sorted(page_numbers)
     content_parts = []
+    max_pages = len(sorted_pages)
 
-    for page_num in sorted_pages:
+    logger.info(f"Starting multi-page fetch: {max_pages} pages to fetch")
+
+    for idx, page_num in enumerate(sorted_pages, 1):
         # Construct page URL
         if page_num == 1:
             page_url = base_url
@@ -87,22 +118,29 @@ def fetch_all_pages(base_url: str, page_numbers: Set[int], fetcher: Callable[[st
                 page_url = f"{base_url}/{page_num}/"
 
         try:
-            # Fetch page
-            logger.debug(f"Fetching page {page_num}: {page_url}")
+            logger.debug(f"Fetching page {idx}/{max_pages} (page {page_num}): {page_url}")
             page_html = fetcher(page_url)
+            logger.debug(f"Page {page_num}: HTML fetched ({len(page_html)} bytes)")
 
             # Extract content div
             soup = BeautifulSoup(page_html, "html.parser")
             content_div = soup.select_one("div.gp-entry-content")
 
             if content_div:
-                content_parts.append(str(content_div))
+                content_html = str(content_div)
+                content_parts.append(content_html)
+                logger.debug(f"Page {page_num}: Content div extracted ({len(content_html)} bytes)")
             else:
-                logger.warning(f"No content div found on page {page_num}")
+                logger.warning(f"Page {page_num}: No content div found (skipping)")
 
         except Exception as e:
-            logger.error(f"Failed to fetch page {page_num}: {e}")
+            logger.error(f"Page {page_num}: Failed to fetch - {type(e).__name__}: {e}")
             continue
 
-    # Join all content divs
-    return "\n\n".join(content_parts)
+    if not content_parts:
+        logger.error("Multi-page fetch: No content parts extracted from any page")
+        return ""
+
+    combined = "\n\n".join(content_parts)
+    logger.info(f"Multi-page fetch complete: {len(content_parts)}/{max_pages} pages fetched, combined size {len(combined)} bytes")
+    return combined

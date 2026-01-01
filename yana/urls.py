@@ -16,8 +16,15 @@ Including another URLconf
 """
 
 from django.contrib import admin
-from django.urls import path
+from django.urls import path, include, re_path
+from django.shortcuts import redirect
+
+def redirect_to_admin(request, *args, **kwargs):
+    return redirect('admin:index')
 
 urlpatterns = [
     path("admin/", admin.site.urls),
+    path("api/greader/", include("core.urls.greader")),
+    path("", include("core.urls")),
+    re_path(r'^.*$', redirect_to_admin),
 ]
