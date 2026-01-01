@@ -25,7 +25,7 @@ subject_line=$(echo "$commit_msg" | head -n 1)
 # - type (required): feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert
 # - optional scope in parentheses: (scope)
 # - optional ! for breaking changes
-# - colon and space: : 
+# - colon and space: :
 # - description (required)
 # - optional body and footer are allowed after the subject line
 

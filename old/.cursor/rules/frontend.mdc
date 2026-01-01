@@ -56,7 +56,7 @@ Angular Material components handle ARIA automatically, but ensure custom compone
     <input matInput type="email" required>
     <mat-error>Email is required</mat-error>
   </mat-form-field>
-  
+
   <button mat-raised-button type="submit" [disabled]="form.invalid">
     Submit
   </button>
@@ -97,7 +97,7 @@ export class DialogComponent {
     private dialog: MatDialog,
     private focusMonitor: FocusMonitor
   ) {}
-  
+
   openDialog(): void {
     const dialogRef = this.dialog.open(MyDialogComponent);
     dialogRef.afterClosed().subscribe(() => {
@@ -177,7 +177,7 @@ $dark-theme: mat.define-dark-theme(/* ... */);
   // Use Material theme variables
   background-color: mat.get-color-from-palette($primary-palette, 500);
   color: mat.get-color-from-palette($primary-palette, '500-contrast');
-  
+
   // Use typography
   @include mat.typography-level($typography-config, 'body-1');
 }
@@ -208,7 +208,7 @@ import { MatInputModule } from '@angular/material/input';
           Invalid email format
         </mat-error>
       </mat-form-field>
-      
+
       <button mat-raised-button type="submit" [disabled]="form.invalid">
         Submit
       </button>
@@ -217,13 +217,13 @@ import { MatInputModule } from '@angular/material/input';
 })
 export class MyFormComponent {
   form: FormGroup;
-  
+
   constructor(private fb: FormBuilder) {
     this.form = this.fb.group({
       email: ['', [Validators.required, Validators.email]],
     });
   }
-  
+
   onSubmit(): void {
     if (this.form.valid) {
       console.log(this.form.value);
@@ -250,7 +250,7 @@ import { signal } from '@angular/core';
         <th mat-header-cell *matHeaderCellDef>Name</th>
         <td mat-cell *matCellDef="let row">{{ row.name }}</td>
       </ng-container>
-      
+
       <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
       <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
     </table>
@@ -259,11 +259,11 @@ import { signal } from '@angular/core';
 export class DataTableComponent {
   displayedColumns = ['name', 'email'];
   dataSource = signal<User[]>([]);
-  
+
   ngOnInit(): void {
     this.loadData();
   }
-  
+
   loadData(): void {
     this.userService.getUsers().subscribe(users => {
       this.dataSource.set(users);
@@ -304,12 +304,12 @@ export class ConfirmDialogComponent {}
 })
 export class MyComponent {
   constructor(private dialog: MatDialog) {}
-  
+
   openDialog(): void {
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       width: '400px',
     });
-    
+
     dialogRef.afterClosed().subscribe(result => {
       if (result) {
         this.performAction();

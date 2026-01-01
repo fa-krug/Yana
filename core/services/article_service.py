@@ -1,10 +1,13 @@
 """
 Article service for reloading and managing articles.
 """
-from typing import Dict, Any
+
+from typing import Any, Dict
+
 from django.core.exceptions import ObjectDoesNotExist
-from ..models import Article, Feed
+
 from ..aggregators import get_aggregator
+from ..models import Article
 
 
 class ArticleService:
@@ -38,29 +41,29 @@ class ArticleService:
         """
         try:
             # Get the article
-            article = Article.objects.select_related('feed').get(id=article_id)
+            article = Article.objects.select_related("feed").get(id=article_id)
             feed = article.feed
 
             # Check if feed is enabled
             if not feed.enabled:
                 return {
-                    'success': False,
-                    'article_id': article_id,
-                    'article_name': article.name,
-                    'feed_name': feed.name,
-                    'aggregator_type': feed.aggregator,
-                    'error': 'Feed is disabled'
+                    "success": False,
+                    "article_id": article_id,
+                    "article_name": article.name,
+                    "feed_name": feed.name,
+                    "aggregator_type": feed.aggregator,
+                    "error": "Feed is disabled",
                 }
 
             # Get the aggregator
             aggregator = get_aggregator(feed)
 
             # Re-fetch and process the article
-            print(f"\n{'='*60}")
+            print(f"\n{'=' * 60}")
             print(f"Reloading article ID: {article_id}")
             print(f"Article: {article.name}")
             print(f"URL: {article.identifier}")
-            print(f"{'='*60}")
+            print(f"{'=' * 60}")
 
             # TODO: Implement article-specific reload logic
             # For now, we'll use a simplified approach:
@@ -76,39 +79,40 @@ class ArticleService:
             # For now, we'll just trigger a full feed aggregation
             # which will update the article if it's still in the feed
             from .aggregator_service import AggregatorService
+
             result = AggregatorService.trigger_by_feed_id(feed.id)
 
-            if result['success']:
-                print(f"{'='*60}")
-                print(f"Article reload completed successfully")
-                print(f"{'='*60}\n")
+            if result["success"]:
+                print(f"{'=' * 60}")
+                print("Article reload completed successfully")
+                print(f"{'=' * 60}\n")
 
                 return {
-                    'success': True,
-                    'article_id': article_id,
-                    'article_name': article.name,
-                    'feed_name': feed.name,
-                    'aggregator_type': feed.aggregator,
-                    'message': f'Re-aggregated feed (fetched {result["articles_count"]} articles)'
+                    "success": True,
+                    "article_id": article_id,
+                    "article_name": article.name,
+                    "feed_name": feed.name,
+                    "aggregator_type": feed.aggregator,
+                    "message": f"Re-aggregated feed (fetched {result['articles_count']} articles)",
                 }
             else:
                 return {
-                    'success': False,
-                    'article_id': article_id,
-                    'article_name': article.name,
-                    'feed_name': feed.name,
-                    'aggregator_type': feed.aggregator,
-                    'error': result.get('error', 'Unknown error')
+                    "success": False,
+                    "article_id": article_id,
+                    "article_name": article.name,
+                    "feed_name": feed.name,
+                    "aggregator_type": feed.aggregator,
+                    "error": result.get("error", "Unknown error"),
                 }
 
         except ObjectDoesNotExist:
             raise ObjectDoesNotExist(f"Article with ID {article_id} does not exist")
         except Exception as e:
             return {
-                'success': False,
-                'article_id': article_id,
-                'article_name': article.name if 'article' in locals() else 'Unknown',
-                'feed_name': feed.name if 'feed' in locals() else 'Unknown',
-                'aggregator_type': feed.aggregator if 'feed' in locals() else 'Unknown',
-                'error': str(e)
+                "success": False,
+                "article_id": article_id,
+                "article_name": article.name if "article" in locals() else "Unknown",
+                "feed_name": feed.name if "feed" in locals() else "Unknown",
+                "aggregator_type": feed.aggregator if "feed" in locals() else "Unknown",
+                "error": str(e),
             }

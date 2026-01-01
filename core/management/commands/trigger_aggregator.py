@@ -1,58 +1,46 @@
 """
 Django management command to trigger aggregators.
 """
+
 from django.core.management.base import BaseCommand, CommandError
+
 from core.services import AggregatorService
 
 
 class Command(BaseCommand):
-    help = 'Trigger aggregator for a specific feed or all feeds'
+    help = "Trigger aggregator for a specific feed or all feeds"
 
     def add_arguments(self, parser):
+        parser.add_argument("--feed-id", type=int, help="Trigger aggregator for a specific feed ID")
         parser.add_argument(
-            '--feed-id',
+            "--aggregator-type", type=str, help="Trigger all feeds of a specific aggregator type"
+        )
+        parser.add_argument("--all", action="store_true", help="Trigger all enabled feeds")
+        parser.add_argument(
+            "--limit",
             type=int,
-            help='Trigger aggregator for a specific feed ID'
-        )
-        parser.add_argument(
-            '--aggregator-type',
-            type=str,
-            help='Trigger all feeds of a specific aggregator type'
-        )
-        parser.add_argument(
-            '--all',
-            action='store_true',
-            help='Trigger all enabled feeds'
-        )
-        parser.add_argument(
-            '--limit',
-            type=int,
-            help='Limit number of feeds to process (for --all or --aggregator-type)'
+            help="Limit number of feeds to process (for --all or --aggregator-type)",
         )
 
     def handle(self, *args, **options):
-        feed_id = options.get('feed_id')
-        aggregator_type = options.get('aggregator_type')
-        trigger_all = options.get('all')
-        limit = options.get('limit')
+        feed_id = options.get("feed_id")
+        aggregator_type = options.get("aggregator_type")
+        trigger_all = options.get("all")
+        limit = options.get("limit")
 
         # Validate arguments
         if not any([feed_id, aggregator_type, trigger_all]):
-            raise CommandError(
-                'You must specify one of: --feed-id, --aggregator-type, or --all'
-            )
+            raise CommandError("You must specify one of: --feed-id, --aggregator-type, or --all")
 
         if sum([bool(feed_id), bool(aggregator_type), bool(trigger_all)]) > 1:
             raise CommandError(
-                'You can only specify one of: --feed-id, --aggregator-type, or --all'
+                "You can only specify one of: --feed-id, --aggregator-type, or --all"
             )
 
         try:
             if feed_id:
                 # Trigger specific feed
-                self.stdout.write(
-                    self.style.SUCCESS(f'Triggering feed ID: {feed_id}')
-                )
+                self.stdout.write(self.style.SUCCESS(f"Triggering feed ID: {feed_id}"))
                 result = AggregatorService.trigger_by_feed_id(feed_id)
                 self._print_result(result)
 
@@ -60,14 +48,11 @@ class Command(BaseCommand):
                 # Trigger all feeds of a specific type
                 self.stdout.write(
                     self.style.SUCCESS(
-                        f'Triggering all {aggregator_type} feeds'
-                        + (f' (limit: {limit})' if limit else '')
+                        f"Triggering all {aggregator_type} feeds"
+                        + (f" (limit: {limit})" if limit else "")
                     )
                 )
-                results = AggregatorService.trigger_by_aggregator_type(
-                    aggregator_type,
-                    limit=limit
-                )
+                results = AggregatorService.trigger_by_aggregator_type(aggregator_type, limit=limit)
                 for result in results:
                     self._print_result(result)
 
@@ -75,8 +60,7 @@ class Command(BaseCommand):
                 # Trigger all enabled feeds
                 self.stdout.write(
                     self.style.SUCCESS(
-                        'Triggering all enabled feeds'
-                        + (f' (limit: {limit})' if limit else '')
+                        "Triggering all enabled feeds" + (f" (limit: {limit})" if limit else "")
                     )
                 )
                 results = AggregatorService.trigger_all(limit=limit)
@@ -84,11 +68,11 @@ class Command(BaseCommand):
                     self._print_result(result)
 
         except Exception as e:
-            raise CommandError(f'Error: {str(e)}')
+            raise CommandError(f"Error: {str(e)}") from e
 
     def _print_result(self, result):
         """Print aggregation result."""
-        if result['success']:
+        if result["success"]:
             self.stdout.write(
                 self.style.SUCCESS(
                     f"✓ Feed '{result['feed_name']}' (ID: {result['feed_id']}, "

@@ -14,10 +14,10 @@ if echo "$FILE_PATH" | grep -qE "frontend/"; then
     while [ ! -d "$GIT_ROOT/.git" ] && [ "$GIT_ROOT" != "/" ]; do
         GIT_ROOT=$(dirname "$GIT_ROOT")
     done
-    
+
     if [ -d "$GIT_ROOT/.git" ]; then
         cd "$GIT_ROOT" || exit 0
-        
+
         # Format frontend files
         if echo "$FILE_PATH" | grep -qE "frontend/.*\.(ts|html|scss|json)$"; then
             cd "$GIT_ROOT/frontend" 2>/dev/null && npm run format 2>&1 >/dev/null || true

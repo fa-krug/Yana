@@ -1,18 +1,15 @@
 """
 Dummy aggregator implementations for all feed types.
+
+The actual implementations are in separate modules:
+- rss.py: RssAggregator
+- website.py: FullWebsiteAggregator
+- mein_mmo/: MeinMmoAggregator
 """
-from typing import List, Dict, Any
+
+from typing import Any, Dict, List
+
 from .base import BaseAggregator
-
-
-class FullWebsiteAggregator(BaseAggregator):
-    """Aggregator for full website scraping."""
-
-    def aggregate(self) -> List[Dict[str, Any]]:
-        print(f"[FullWebsiteAggregator] Triggered for feed '{self.feed.name}' (ID: {self.feed.id})")
-        print(f"  - Identifier: {self.identifier}")
-        print(f"  - Daily limit: {self.daily_limit}")
-        return []
 
 
 class FeedContentAggregator(BaseAggregator):
@@ -100,16 +97,6 @@ class OglafAggregator(BaseAggregator):
 
     def aggregate(self) -> List[Dict[str, Any]]:
         print(f"[OglafAggregator] Triggered for feed '{self.feed.name}' (ID: {self.feed.id})")
-        print(f"  - Identifier: {self.identifier}")
-        print(f"  - Daily limit: {self.daily_limit}")
-        return []
-
-
-class MeinMmoAggregator(BaseAggregator):
-    """Aggregator for Mein-MMO."""
-
-    def aggregate(self) -> List[Dict[str, Any]]:
-        print(f"[MeinMmoAggregator] Triggered for feed '{self.feed.name}' (ID: {self.feed.id})")
         print(f"  - Identifier: {self.identifier}")
         print(f"  - Daily limit: {self.daily_limit}")
         return []

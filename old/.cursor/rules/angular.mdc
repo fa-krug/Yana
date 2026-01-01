@@ -55,39 +55,39 @@ export class ArticleListComponent implements OnInit, OnDestroy {
   articles = signal<Article[]>([]);
   loading = signal(false);
   searchTerm = signal('');
-  
+
   // 2. Computed signals
   filteredArticles = computed(() => {
     const term = this.searchTerm().toLowerCase();
-    return this.articles().filter(article => 
+    return this.articles().filter(article =>
       article.title.toLowerCase().includes(term)
     );
   });
-  
+
   // 3. Regular properties
   private destroy$ = new Subject<void>();
-  
+
   // 4. Constructor (dependency injection)
   constructor(
     private articleService: ArticleService,
     private router: Router
   ) {}
-  
+
   // 5. Lifecycle hooks
   ngOnInit(): void {
     this.loadArticles();
   }
-  
+
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
   }
-  
+
   // 6. Public methods
   loadArticles(): void {
     // ...
   }
-  
+
   // 7. Private methods
   private handleError(error: Error): void {
     // ...
@@ -116,21 +116,21 @@ import { Component, signal, computed, effect } from '@angular/core';
 })
 export class CounterComponent {
   count = signal(0);
-  
+
   // Computed signal
   doubleCount = computed(() => this.count() * 2);
-  
+
   // Effect for side effects
   constructor() {
     effect(() => {
       console.log('Count changed:', this.count());
     });
   }
-  
+
   increment(): void {
     this.count.update(value => value + 1);
   }
-  
+
   reset(): void {
     this.count.set(0);
   }
@@ -217,7 +217,7 @@ export class ArticleEditorComponent {
         <app-article-card [article]="article"></app-article-card>
       }
     }
-    
+
     @switch (status()) {
       @case ('loading') {
         <mat-spinner></mat-spinner>
@@ -270,13 +270,13 @@ import { Component, input, output } from '@angular/core';
 export class ArticleCardComponent {
   // Required input
   article = input.required<Article>();
-  
+
   // Optional input with default
   showActions = input(false);
-  
+
   // Output
   clicked = output<Article>();
-  
+
   onClick(): void {
     this.clicked.emit(this.article());
   }
@@ -316,11 +316,11 @@ import { Observable } from 'rxjs';
 })
 export class ArticleService {
   constructor(private http: HttpClient) {}
-  
+
   getArticles(): Observable<Article[]> {
     return this.http.get<Article[]>('/api/articles');
   }
-  
+
   getArticle(id: string): Observable<Article> {
     return this.http.get<Article>(`/api/articles/${id}`);
   }

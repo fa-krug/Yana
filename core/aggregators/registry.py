@@ -1,23 +1,25 @@
 """
 Aggregator registry to map feed types to aggregator classes.
 """
+
 from typing import Dict, Type
+
 from .base import BaseAggregator
+from .website import FullWebsiteAggregator
+from .mein_mmo import MeinMmoAggregator
 from .implementations import (
-    FullWebsiteAggregator,
+    CaschysBlogAggregator,
+    DarkLegacyAggregator,
+    ExplosmAggregator,
     FeedContentAggregator,
     HeiseAggregator,
-    MerkurAggregator,
-    TagesschauAggregator,
-    ExplosmAggregator,
-    DarkLegacyAggregator,
-    CaschysBlogAggregator,
     MactechnewsAggregator,
+    MerkurAggregator,
     OglafAggregator,
-    MeinMmoAggregator,
-    YoutubeAggregator,
-    RedditAggregator,
     PodcastAggregator,
+    RedditAggregator,
+    TagesschauAggregator,
+    YoutubeAggregator,
 )
 
 
@@ -25,20 +27,20 @@ class AggregatorRegistry:
     """Registry for aggregator classes."""
 
     _registry: Dict[str, Type[BaseAggregator]] = {
-        'full_website': FullWebsiteAggregator,
-        'feed_content': FeedContentAggregator,
-        'heise': HeiseAggregator,
-        'merkur': MerkurAggregator,
-        'tagesschau': TagesschauAggregator,
-        'explosm': ExplosmAggregator,
-        'dark_legacy': DarkLegacyAggregator,
-        'caschys_blog': CaschysBlogAggregator,
-        'mactechnews': MactechnewsAggregator,
-        'oglaf': OglafAggregator,
-        'mein_mmo': MeinMmoAggregator,
-        'youtube': YoutubeAggregator,
-        'reddit': RedditAggregator,
-        'podcast': PodcastAggregator,
+        "full_website": FullWebsiteAggregator,
+        "feed_content": FeedContentAggregator,
+        "heise": HeiseAggregator,
+        "merkur": MerkurAggregator,
+        "tagesschau": TagesschauAggregator,
+        "explosm": ExplosmAggregator,
+        "dark_legacy": DarkLegacyAggregator,
+        "caschys_blog": CaschysBlogAggregator,
+        "mactechnews": MactechnewsAggregator,
+        "oglaf": OglafAggregator,
+        "mein_mmo": MeinMmoAggregator,
+        "youtube": YoutubeAggregator,
+        "reddit": RedditAggregator,
+        "podcast": PodcastAggregator,
     }
 
     @classmethod

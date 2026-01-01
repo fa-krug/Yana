@@ -1,10 +1,13 @@
 """
 Aggregator service for triggering feed aggregators.
 """
-from typing import List, Dict, Any, Optional
+
+from typing import Any, Dict, List, Optional
+
 from django.core.exceptions import ObjectDoesNotExist
-from ..models import Feed
+
 from ..aggregators import get_aggregator
+from ..models import Feed, Article
 
 
 class AggregatorService:
@@ -37,50 +40,75 @@ class AggregatorService:
             # Check if feed is enabled
             if not feed.enabled:
                 return {
-                    'success': False,
-                    'feed_id': feed_id,
-                    'feed_name': feed.name,
-                    'aggregator_type': feed.aggregator,
-                    'articles_count': 0,
-                    'error': 'Feed is disabled'
+                    "success": False,
+                    "feed_id": feed_id,
+                    "feed_name": feed.name,
+                    "aggregator_type": feed.aggregator,
+                    "articles_count": 0,
+                    "error": "Feed is disabled",
                 }
 
             # Get the aggregator
             aggregator = get_aggregator(feed)
 
             # Trigger aggregation
-            print(f"\n{'='*60}")
+            print(f"\n{'=' * 60}")
             print(f"Triggering aggregator for feed ID: {feed_id}")
-            print(f"{'='*60}")
+            print(f"{'=' * 60}")
 
-            articles = aggregator.aggregate()
+            articles_data = aggregator.aggregate()
 
-            print(f"{'='*60}")
+            # Save articles to database
+            created_count = 0
+            for article_data in articles_data:
+                try:
+                    # Get or create article by identifier
+                    article, created = Article.objects.get_or_create(
+                        feed=feed,
+                        identifier=article_data["identifier"],
+                        defaults={
+                            "name": article_data.get("name", ""),
+                            "raw_content": article_data.get("raw_content", ""),
+                            "content": article_data.get("content", ""),
+                            "date": article_data.get("date"),
+                            "author": article_data.get("author", ""),
+                            "icon": article_data.get("icon"),
+                        },
+                    )
+                    if created:
+                        created_count += 1
+                except Exception as e:
+                    print(f"Warning: Failed to save article: {e}")
+
+            print(f"{'=' * 60}")
             print(f"Aggregation completed successfully")
-            print(f"{'='*60}\n")
+            print(f"Created {created_count} new articles")
+            print(f"{'=' * 60}\n")
 
             return {
-                'success': True,
-                'feed_id': feed_id,
-                'feed_name': feed.name,
-                'aggregator_type': feed.aggregator,
-                'articles_count': len(articles)
+                "success": True,
+                "feed_id": feed_id,
+                "feed_name": feed.name,
+                "aggregator_type": feed.aggregator,
+                "articles_count": created_count,
             }
 
-        except ObjectDoesNotExist:
-            raise ObjectDoesNotExist(f"Feed with ID {feed_id} does not exist")
+        except ObjectDoesNotExist as e:
+            raise ObjectDoesNotExist(f"Feed with ID {feed_id} does not exist") from e
         except Exception as e:
             return {
-                'success': False,
-                'feed_id': feed_id,
-                'feed_name': feed.name if 'feed' in locals() else 'Unknown',
-                'aggregator_type': feed.aggregator if 'feed' in locals() else 'Unknown',
-                'articles_count': 0,
-                'error': str(e)
+                "success": False,
+                "feed_id": feed_id,
+                "feed_name": feed.name if "feed" in locals() else "Unknown",
+                "aggregator_type": feed.aggregator if "feed" in locals() else "Unknown",
+                "articles_count": 0,
+                "error": str(e),
             }
 
     @staticmethod
-    def trigger_by_aggregator_type(aggregator_type: str, limit: Optional[int] = None) -> List[Dict[str, Any]]:
+    def trigger_by_aggregator_type(
+        aggregator_type: str, limit: Optional[int] = None
+    ) -> List[Dict[str, Any]]:
         """
         Trigger all feeds of a specific aggregator type.
 
@@ -91,10 +119,7 @@ class AggregatorService:
         Returns:
             List of result dictionaries from trigger_by_feed_id
         """
-        feeds = Feed.objects.filter(
-            aggregator=aggregator_type,
-            enabled=True
-        )
+        feeds = Feed.objects.filter(aggregator=aggregator_type, enabled=True)
 
         if limit:
             feeds = feeds[:limit]

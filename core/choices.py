@@ -4,22 +4,20 @@ Choices for Django models.
 
 AGGREGATOR_CHOICES = [
     # Custom aggregators (default first)
-    ('full_website', 'Full Website'),
-    ('feed_content', 'Feed Content (RSS/Atom)'),
-
+    ("full_website", "Full Website"),
+    ("feed_content", "Feed Content (RSS/Atom)"),
     # Managed aggregators
-    ('heise', 'Heise'),
-    ('merkur', 'Merkur'),
-    ('tagesschau', 'Tagesschau'),
-    ('explosm', 'Explosm'),
-    ('dark_legacy', 'Dark Legacy Comics'),
-    ('caschys_blog', "Caschy's Blog"),
-    ('mactechnews', 'MacTechNews'),
-    ('oglaf', 'Oglaf'),
-    ('mein_mmo', 'Mein-MMO'),
-
+    ("heise", "Heise"),
+    ("merkur", "Merkur"),
+    ("tagesschau", "Tagesschau"),
+    ("explosm", "Explosm"),
+    ("dark_legacy", "Dark Legacy Comics"),
+    ("caschys_blog", "Caschy's Blog"),
+    ("mactechnews", "MacTechNews"),
+    ("oglaf", "Oglaf"),
+    ("mein_mmo", "Mein-MMO"),
     # Social aggregators
-    ('youtube', 'YouTube'),
-    ('reddit', 'Reddit'),
-    ('podcast', 'Podcast'),
+    ("youtube", "YouTube"),
+    ("reddit", "Reddit"),
+    ("podcast", "Podcast"),
 ]

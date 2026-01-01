@@ -127,7 +127,7 @@ In development, TypeScript can usually resolve types directly from source files,
    ```bash
    # Terminal 1: Start Express server
    tsx src/server.ts
-   
+
    # Terminal 2: Start Angular dev server
    npm run start
    ```

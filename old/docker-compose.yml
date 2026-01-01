@@ -11,27 +11,27 @@ services:
       # Server Configuration
       - NODE_ENV=production
       - PORT=3000
-      
+
       # Database
       - DATABASE_URL=/app/data/db.sqlite3
-      
+
       # Session Security
       - SESSION_SECRET=${SESSION_SECRET:-change-this-in-production}
-      
+
       # Scheduler
       - AGGREGATION_SCHEDULE=${AGGREGATION_SCHEDULE:-*/30 * * * *}
       - SCHEDULER_ENABLED=${SCHEDULER_ENABLED:-true}
-      
+
       # Worker Pool
       - WORKER_COUNT=${WORKER_COUNT:-4}
       - WORKER_POOL_ENABLED=${WORKER_POOL_ENABLED:-true}
-      
+
       # Base URL (for RSS feeds, etc.)
       - BASE_URL=${BASE_URL:-http://localhost:3000}
-      
+
       # Logging
       - LOG_LEVEL=${LOG_LEVEL:-info}
-      
+
       # Optional: Create superuser on first run
       - SUPERUSER_USERNAME=${SUPERUSER_USERNAME:-}
       - SUPERUSER_EMAIL=${SUPERUSER_EMAIL:-}
@@ -53,4 +53,3 @@ services:
 networks:
   yana-network:
     driver: bridge
-

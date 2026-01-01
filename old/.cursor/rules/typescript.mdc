@@ -65,7 +65,7 @@ Leverage TypeScript's type system for better type safety:
 // ✅ Union types for multiple possibilities
 type Status = 'pending' | 'approved' | 'rejected';
 
-type ApiResponse<T> = 
+type ApiResponse<T> =
   | { status: 'success'; data: T }
   | { status: 'error'; error: string };
 
@@ -276,7 +276,7 @@ type Status = typeof Status[keyof typeof Status];
 
 ```typescript
 // ✅ Good - Result type pattern
-type Result<T, E = Error> = 
+type Result<T, E = Error> =
   | { success: true; data: T }
   | { success: false; error: E };
 
