@@ -68,25 +68,33 @@ class ArticleService:
             # Force reload the specific article by re-fetching its content
             url = article.identifier
 
-            # Use the aggregator to fetch and process the article
+            # Build article dict for aggregator methods
+            article_dict = {
+                "name": article.name,
+                "identifier": url,
+                "author": article.author,
+                "date": article.created_at,
+            }
+
+            # Use the same extraction pipeline as background aggregation
+            try:
+                # Extract header element (image/video) - same as background job
+                header_element = aggregator.extract_header_element(article_dict)
+                if header_element:
+                    article.icon = header_element
+            except Exception as e:
+                # Log but don't fail on header extraction errors
+                print(f"Warning: Failed to extract header element: {e}")
+
+            # Fetch and process the article content
             raw_html = aggregator.fetch_article_content(url)
-            extracted_content = aggregator.extract_content(raw_html, {
-                "name": article.name,
-                "identifier": url,
-                "author": article.author,
-                "date": article.created_at,
-            })
-            processed_content = aggregator.process_content(extracted_content, {
-                "name": article.name,
-                "identifier": url,
-                "author": article.author,
-                "date": article.created_at,
-            })
+            extracted_content = aggregator.extract_content(raw_html, article_dict)
+            processed_content = aggregator.process_content(extracted_content, article_dict)
 
             # Update the article with fresh content
             article.raw_content = raw_html
             article.content = processed_content
-            article.save(update_fields=["raw_content", "content"])
+            article.save(update_fields=["raw_content", "content", "icon"])
 
             print(f"{'=' * 60}")
             print(f"Article reloaded successfully")
