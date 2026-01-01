@@ -29,7 +29,7 @@ class FeedAdmin(admin.ModelAdmin):
     list_filter = ["aggregator", "enabled", "user", "group", "created_at"]
     search_fields = ["name", "identifier", "user__username"]
     readonly_fields = ["created_at", "updated_at"]
-    actions = ["aggregate_selected_feeds"]
+    actions = ["aggregate_selected_feeds", "force_delete_selected"]
     save_as = True
     list_select_related = ["user", "group"]
 
@@ -87,6 +87,13 @@ class FeedAdmin(admin.ModelAdmin):
         if failed == total_feeds:
             self.message_user(request, f"All {failed} feed(s) failed to aggregate", messages.ERROR)
 
+    @admin.action(description="Force delete selected feeds")
+    def force_delete_selected(self, request, queryset):
+        """Force delete selected feeds without confirmation."""
+        count = queryset.count()
+        queryset.delete()
+        self.message_user(request, f"Successfully deleted {count} feeds.", messages.SUCCESS)
+
 
 @admin.register(Article)
 class ArticleAdmin(admin.ModelAdmin):
@@ -96,7 +103,7 @@ class ArticleAdmin(admin.ModelAdmin):
     list_filter = ["feed", "read", "starred", "date", "created_at"]
     search_fields = ["name", "author", "identifier", "content"]
     readonly_fields = ["created_at", "updated_at"]
-    actions = ["reload_selected_articles"]
+    actions = ["reload_selected_articles", "force_delete_selected"]
     save_as = True
     list_select_related = ["feed"]
 
@@ -149,6 +156,13 @@ class ArticleAdmin(admin.ModelAdmin):
 
         if failed == total_articles:
             self.message_user(request, f"All {failed} article(s) failed to reload", messages.ERROR)
+
+    @admin.action(description="Force delete selected articles")
+    def force_delete_selected(self, request, queryset):
+        """Force delete selected articles without confirmation."""
+        count = queryset.count()
+        queryset.delete()
+        self.message_user(request, f"Successfully deleted {count} articles.", messages.SUCCESS)
 
 
 @admin.register(GReaderAuthToken)
