@@ -27,13 +27,14 @@
     - **Sub-task:** Write tests for subscribing to a new URL and unsubscribing.
     - **Sub-task:** Implement service to handle `ac=subscribe` and `ac=unsubscribe`.
     - **Sub-task:** Connect view to service.
-- [ ] Task: Implement `edit-tag` (Folder management)
+- [x] Task: Implement `edit-tag` (Folder management) (749caaf)
     - **Sub-task:** Write tests for adding/removing feeds from folders (tags).
     - **Sub-task:** Implement service to handle `a` (add tag) and `r` (remove tag) operations for feeds.
     - **Sub-task:** Connect view to service.
+    - *Note: This functionality is part of `subscription/edit` (implemented in 749caaf).*
 
 ## Phase 3: Stream & Item Retrieval (Read)
-- [ ] Task: Implement `stream/items/ids` service and view
+- [x] Task: Implement `stream/items/ids` service and view (3143184)
     - **Sub-task:** Write tests for fetching ID lists with filters (read/unread, feed, label).
     - **Sub-task:** Implement service to query `Article` table efficiently and return hex IDs.
     - **Sub-task:** Connect view to service.
