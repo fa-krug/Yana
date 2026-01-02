@@ -45,11 +45,11 @@
     - **Sub-task:** Connect view to service.
 
 ## Phase 4: Article State Management (Write)
-- [ ] Task: Implement `edit-tag` for Articles (Read/Star)
+- [x] Task: Implement `edit-tag` for Articles (Read/Star) (cc76182)
     - **Sub-task:** Write tests for marking articles as read/unread and starred/unstarred.
     - **Sub-task:** Implement service to handle `i` (item ID) with `a` (add state) and `r` (remove state).
     - **Sub-task:** Connect view to service.
-- [ ] Task: Implement `mark-all-as-read`
+- [x] Task: Implement `mark-all-as-read` (cc76182)
     - **Sub-task:** Write tests for bulk marking items as read (by feed or global).
     - **Sub-task:** Implement service to perform efficient bulk updates.
     - **Sub-task:** Connect view to service.
