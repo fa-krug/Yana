@@ -54,6 +54,26 @@ def get_reddit_user_settings(user_id: int) -> Dict[str, Any]:
     }
 
 
+def get_reddit_auth_headers(user_id: int) -> Dict[str, str]:
+    """
+    Get Reddit OAuth2 authentication headers.
+
+    Includes Authorization Bearer token and mandatory User-Agent.
+
+    Args:
+        user_id: User ID
+
+    Returns:
+        Dict with Authorization and User-Agent headers
+    """
+    token = get_reddit_access_token(user_id)
+    settings = get_reddit_user_settings(user_id)
+    return {
+        "Authorization": f"Bearer {token}",
+        "User-Agent": settings.get("reddit_user_agent", "Yana/1.0"),
+    }
+
+
 def get_reddit_access_token(user_id: int) -> str:
     """
     Get Reddit OAuth2 access token.

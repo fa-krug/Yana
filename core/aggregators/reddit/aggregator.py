@@ -2,6 +2,7 @@
 
 import logging
 from datetime import datetime, timedelta
+from datetime import timezone as dt_timezone
 from typing import Any, Dict, List, Optional
 
 from django.utils import timezone
@@ -11,7 +12,10 @@ import requests
 from ..base import BaseAggregator
 from ..exceptions import ArticleSkipError
 from ..utils import format_article_content
-from .auth import get_reddit_access_token, get_reddit_user_settings
+from .auth import (
+    get_reddit_auth_headers,
+    get_reddit_user_settings,
+)
 from .content import build_post_content
 from .images import extract_header_image_url, extract_thumbnail_url
 from .posts import fetch_reddit_post
@@ -29,6 +33,8 @@ logger = logging.getLogger(__name__)
 class RedditAggregator(BaseAggregator):
     """Aggregator for Reddit subreddits using Reddit's OAuth2 API."""
 
+    supports_identifier_search = True
+
     def __init__(self, feed):
         """Initialize Reddit aggregator."""
         super().__init__(feed)
@@ -40,6 +46,56 @@ class RedditAggregator(BaseAggregator):
             subreddit = normalize_subreddit(self.identifier)
             return f"https://www.reddit.com/r/{subreddit}"
         return "https://www.reddit.com"
+
+    @classmethod
+    def get_identifier_choices(
+        cls, query: Optional[str] = None, user: Optional[Any] = None
+    ) -> List[tuple]:
+        """
+        Search for subreddits via Reddit API.
+        """
+        if not query or not user or not user.is_authenticated:
+            return []
+
+        try:
+            # Check if Reddit is enabled for this user
+            settings = get_reddit_user_settings(user.id)
+            if not settings.get("reddit_enabled"):
+                return []
+
+            headers = get_reddit_auth_headers(user.id)
+
+            url = "https://oauth.reddit.com/subreddits/search"
+            response = requests.get(
+                url,
+                params={"q": query, "limit": 10, "include_over_18": "on"},
+                headers=headers,
+                timeout=5,
+            )
+            response.raise_for_status()
+
+            data = response.json()
+            children = data.get("data", {}).get("children", [])
+
+            choices = []
+            for child in children:
+                data = child.get("data", {})
+                display_name = data.get("display_name_prefixed", "")  # e.g. r/python
+                title = data.get("title", "")
+                subscribers = data.get("subscribers", 0)
+
+                # Value is the subreddit name (e.g. "python") or prefixed ("r/python")
+                # Using prefixed is clearer for the user.
+                value = display_name
+
+                label = f"{display_name}: {title} ({subscribers:,} subs)"
+                choices.append((value, label))
+
+            return choices
+
+        except Exception as e:
+            logger.error(f"Error searching subreddits: {e}")
+            return []
 
     def aggregate(self) -> List[Dict[str, Any]]:
         """Implement template method pattern flow."""
@@ -119,15 +175,15 @@ class RedditAggregator(BaseAggregator):
         fetch_limit = min(desired_article_count * 3, 100)
 
         try:
-            # Get access token for authenticated API call
-            access_token = get_reddit_access_token(user_id)
+            # Get authentication headers (Bearer token + User-Agent)
+            headers = get_reddit_auth_headers(user_id)
 
             # Fetch posts from Reddit OAuth API
             url = f"https://oauth.reddit.com/r/{subreddit}/{sort_by}"
             response = requests.get(
                 url,
                 params={"limit": fetch_limit},
-                headers={"Authorization": f"Bearer {access_token}"},
+                headers=headers,
                 timeout=30,
             )
             response.raise_for_status()
@@ -204,7 +260,7 @@ class RedditAggregator(BaseAggregator):
                 pass
 
             # Convert created_utc to datetime
-            post_date = datetime.fromtimestamp(post_data.created_utc, tz=timezone.utc)
+            post_date = datetime.fromtimestamp(post_data.created_utc, tz=dt_timezone.utc)
 
             article = {
                 "name": post_data.title,

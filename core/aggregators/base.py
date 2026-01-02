@@ -16,6 +16,10 @@ from .services.header_element.context import HeaderElementData
 class BaseAggregator(ABC):
     """Base class for all aggregators using Template Method pattern."""
 
+    # Set to True if the aggregator implements dynamic identifier search
+    # (i.e. uses the query parameter in get_identifier_choices)
+    supports_identifier_search = False
+
     def __init__(self, feed):
         """
         Initialize aggregator with a feed.
@@ -170,12 +174,18 @@ class BaseAggregator(ABC):
         return self.identifier or ""
 
     @classmethod
-    def get_identifier_choices(cls) -> List[tuple]:
+    def get_identifier_choices(
+        cls, query: Optional[str] = None, user: Optional[Any] = None
+    ) -> List[tuple]:
         """
         Get available identifier choices for this aggregator.
 
         Returns a list of (value, label) tuples for identifier autocomplete.
         Aggregators can override this to provide predefined identifier options.
+
+        Args:
+            query: Optional search query string
+            user: Optional user object (for authenticated APIs)
 
         Returns:
             List of (identifier_value, display_label) tuples

@@ -47,11 +47,16 @@ class FeedAdmin(DjangoQLSearchMixin, admin.ModelAdmin):
         ("Timestamps", {"fields": ("created_at", "updated_at"), "classes": ("collapse",)}),
     )
 
-    def get_form_kwargs(self, request, obj):
+    def get_form(self, request, obj=None, **kwargs):
         """Pass request to form to allow conditional choices."""
-        kwargs = super().get_form_kwargs(request, obj)
-        kwargs["request"] = request
-        return kwargs
+        form_class = super().get_form(request, obj, **kwargs)
+
+        class RequestForm(form_class):
+            def __init__(self, *args, **kwargs):
+                kwargs["request"] = request
+                super().__init__(*args, **kwargs)
+
+        return RequestForm
 
     @admin.action(description="Aggregate selected feeds")
     def aggregate_selected_feeds(self, request, queryset):

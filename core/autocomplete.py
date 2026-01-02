@@ -39,10 +39,11 @@ class FeedIdentifierAutocomplete(autocomplete.Select2ListView):
             aggregator_class = AggregatorRegistry.get(aggregator_type)
 
             # Get identifier choices from aggregator
-            choices = aggregator_class.get_identifier_choices()
+            choices = aggregator_class.get_identifier_choices(query=self.q, user=self.request.user)
 
             # Filter by query if provided
-            if self.q:
+            # Only filter if the aggregator doesn't support dynamic search (i.e. returns all choices)
+            if self.q and not aggregator_class.supports_identifier_search:
                 choices = [
                     (value, label)
                     for value, label in choices

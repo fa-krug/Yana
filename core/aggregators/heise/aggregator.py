@@ -25,7 +25,9 @@ class HeiseAggregator(FullWebsiteAggregator):
         return self.HEISE_URL
 
     @classmethod
-    def get_identifier_choices(cls) -> List[Tuple[str, str]]:
+    def get_identifier_choices(
+        cls, query: Optional[str] = None, user: Optional[Any] = None
+    ) -> List[Tuple[str, str]]:
         """Get available Heise RSS feed choices."""
         return [
             ("https://www.heise.de/rss/heise.rdf", "Main Feed"),

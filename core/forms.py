@@ -46,7 +46,43 @@ class FeedAdminForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
+        request = kwargs.pop("request", None)
         super().__init__(*args, **kwargs)
+
+        if request:
+            from .choices import AGGREGATOR_CHOICES
+            from .models import UserSettings
+
+            # Check enabled aggregators for current user
+            reddit_enabled = False
+            youtube_enabled = False
+            try:
+                if request.user and request.user.is_authenticated:
+                    settings, _ = UserSettings.objects.get_or_create(user=request.user)
+                    reddit_enabled = settings.reddit_enabled
+                    youtube_enabled = settings.youtube_enabled
+            except Exception:
+                pass
+
+            # Filter choices: hide reddit/youtube if disabled, unless already selected
+            current_aggregator = (
+                self.instance.aggregator if self.instance and self.instance.pk else None
+            )
+
+            filtered_choices = []
+            for value, label in AGGREGATOR_CHOICES:
+                if value == "reddit" and not reddit_enabled and current_aggregator != "reddit":
+                    continue
+                if value == "youtube" and not youtube_enabled and current_aggregator != "youtube":
+                    continue
+                filtered_choices.append((value, label))
+
+            self.fields["aggregator"].choices = filtered_choices
+        else:
+            # Fallback if request is not available
+            from .choices import AGGREGATOR_CHOICES
+
+            self.fields["aggregator"].choices = AGGREGATOR_CHOICES
 
         # Make identifier help text more descriptive
         self.fields["identifier"].help_text = (

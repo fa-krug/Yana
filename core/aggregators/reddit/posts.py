@@ -4,7 +4,7 @@ import logging
 
 import requests
 
-from .auth import get_reddit_access_token
+from .auth import get_reddit_auth_headers
 from .types import RedditPostData
 
 logger = logging.getLogger(__name__)
@@ -23,10 +23,10 @@ def fetch_reddit_post(subreddit: str, post_id: str, user_id: int) -> RedditPostD
         RedditPostData instance or None if not found
     """
     try:
-        access_token = get_reddit_access_token(user_id)
+        headers = get_reddit_auth_headers(user_id)
         response = requests.get(
             f"https://oauth.reddit.com/r/{subreddit}/comments/{post_id}",
-            headers={"Authorization": f"Bearer {access_token}"},
+            headers=headers,
             timeout=10,
         )
         response.raise_for_status()

@@ -6,7 +6,7 @@ from typing import Any, Dict, Optional
 
 import requests
 
-from .auth import get_reddit_access_token
+from .auth import get_reddit_auth_headers
 
 logger = logging.getLogger(__name__)
 
@@ -67,16 +67,23 @@ def normalize_subreddit(identifier: str) -> str:
     """
     identifier = identifier.strip()
 
-    # Extract from URL
-    url_match = re.search(r"(?:reddit\.com)?/r/(\w+)", identifier)
+    # Match /r/name, r/name, or reddit.com/r/name
+    # Allows for leading slash to be optional
+    url_match = re.search(r"(?:reddit\.com)?/?r/(\w+)", identifier)
     if url_match:
         return url_match.group(1)
 
-    # Remove r/ or /r/ prefix
+    # Remove r/ or /r/ prefix if still there (fallback)
     if identifier.startswith("/r/"):
-        return identifier[3:]
-    if identifier.startswith("r/"):
-        return identifier[2:]
+        identifier = identifier[3:]
+    elif identifier.startswith("r/"):
+        identifier = identifier[2:]
+
+    # Remove trailing slash and anything after it
+    identifier = identifier.split("/")[0]
+
+    # Remove anything after a colon or space if it looks like a label was accidentally included
+    identifier = re.split(r"[:\s]", identifier)[0]
 
     return identifier
 
@@ -134,11 +141,11 @@ def fetch_subreddit_info(subreddit: str, user_id: int) -> Dict[str, Optional[str
         Dict with 'iconUrl' key
     """
     try:
-        access_token = get_reddit_access_token(user_id)
+        headers = get_reddit_auth_headers(user_id)
         url = f"https://oauth.reddit.com/r/{subreddit}/about"
         response = requests.get(
             url,
-            headers={"Authorization": f"Bearer {access_token}"},
+            headers=headers,
             timeout=10,
         )
         response.raise_for_status()

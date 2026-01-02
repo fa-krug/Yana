@@ -1,7 +1,7 @@
 """Tagesschau aggregator implementation."""
 
 import logging
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from ..website import FullWebsiteAggregator
 from .content_extraction import extract_tagesschau_content
@@ -35,7 +35,9 @@ class TagesschauAggregator(FullWebsiteAggregator):
         return "https://www.tagesschau.de"
 
     @classmethod
-    def get_identifier_choices(cls) -> List[Tuple[str, str]]:
+    def get_identifier_choices(
+        cls, query: Optional[str] = None, user: Optional[Any] = None
+    ) -> List[Tuple[str, str]]:
         """Get available Tagesschau RSS feed choices."""
         return [
             ("https://www.tagesschau.de/xml/rss2/", "Main Feed"),

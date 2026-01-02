@@ -1,6 +1,6 @@
 """Merkur aggregator implementation."""
 
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from bs4 import BeautifulSoup
 
@@ -29,7 +29,9 @@ class MerkurAggregator(FullWebsiteAggregator):
         return self.MERKUR_URL
 
     @classmethod
-    def get_identifier_choices(cls) -> List[Tuple[str, str]]:
+    def get_identifier_choices(
+        cls, query: Optional[str] = None, user: Optional[Any] = None
+    ) -> List[Tuple[str, str]]:
         """Get available Merkur RSS feed choices."""
         return [
             ("https://www.merkur.de/rssfeed.rdf", "Main Feed"),
