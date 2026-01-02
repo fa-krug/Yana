@@ -10,13 +10,13 @@ Focus on aggregators that primarily extract images.
 - [x] Task: Update `core/aggregators/registry.py` to use new Comic Aggregators ea3cdfd
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Comic Aggregators' (Protocol in workflow.md) a1a6632
 
-## Phase 2: News Aggregators
+## Phase 2: News Aggregators [checkpoint: 21fbae5]
 Focus on full-content extraction for tech news sites.
 
 - [x] Task: Implement `CaschysBlogAggregator` in `core/aggregators/caschys_blog/aggregator.py` with TDD e644d72
 - [x] Task: Implement `MactechnewsAggregator` in `core/aggregators/mactechnews/aggregator.py` with TDD cc4ac14
 - [x] Task: Update `core/aggregators/registry.py` to use new News Aggregators b815be8
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: News Aggregators' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 2: News Aggregators' (Protocol in workflow.md) 21fbae5
 
 ## Phase 3: Podcast Aggregator
 Specialized RSS parsing for audio content.
