@@ -15,7 +15,7 @@ Focus on full-content extraction for tech news sites.
 
 - [x] Task: Implement `CaschysBlogAggregator` in `core/aggregators/caschys_blog/aggregator.py` with TDD e644d72
 - [x] Task: Implement `MactechnewsAggregator` in `core/aggregators/mactechnews/aggregator.py` with TDD cc4ac14
-- [ ] Task: Update `core/aggregators/registry.py` to use new News Aggregators
+- [x] Task: Update `core/aggregators/registry.py` to use new News Aggregators b815be8
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: News Aggregators' (Protocol in workflow.md)
 
 ## Phase 3: Podcast Aggregator
