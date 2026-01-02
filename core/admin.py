@@ -196,7 +196,7 @@ class UserSettingsInline(admin.StackedInline):
         ),
         (
             "YouTube API",
-            {"fields": ("youtube_enabled", "youtube_api_key"), "classes": ("collapse",)},
+            {"fields": ("youtube_api_key",), "classes": ("collapse",)},
         ),
         (
             "OpenAI API",
@@ -236,10 +236,9 @@ class UserAdmin(DjangoQLSearchMixin, BaseUserAdmin):
 class UserSettingsAdmin(DjangoQLSearchMixin, admin.ModelAdmin):
     """Standalone admin configuration for UserSettings model."""
 
-    list_display = ["user", "reddit_enabled", "youtube_enabled", "openai_enabled", "updated_at"]
+    list_display = ["user", "reddit_enabled", "openai_enabled", "updated_at"]
     list_filter = [
         "reddit_enabled",
-        "youtube_enabled",
         "openai_enabled",
         "created_at",
         "updated_at",
@@ -264,7 +263,7 @@ class UserSettingsAdmin(DjangoQLSearchMixin, admin.ModelAdmin):
         ),
         (
             "YouTube API",
-            {"fields": ("youtube_enabled", "youtube_api_key"), "classes": ("collapse",)},
+            {"fields": ("youtube_api_key",), "classes": ("collapse",)},
         ),
         (
             "OpenAI API",

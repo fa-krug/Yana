@@ -32,10 +32,12 @@ class Feed(models.Model):
     aggregator = models.CharField(max_length=50, choices=AGGREGATOR_CHOICES, default="full_website")
     identifier = models.TextField(
         blank=True,
+        default="",
         help_text="Required for Reddit and YouTube aggregators. For others, optional URL or identifier.",
     )
     daily_limit = models.IntegerField(default=50)
     enabled = models.BooleanField(default=True)
+    icon = models.TextField(blank=True, default="")
     user = models.ForeignKey(
         "auth.User", on_delete=models.SET_NULL, null=True, blank=True, related_name="feeds"
     )
@@ -104,7 +106,6 @@ class UserSettings(models.Model):
     reddit_user_agent = models.CharField(max_length=255, default="Yana/1.0")
 
     # YouTube API
-    youtube_enabled = models.BooleanField(default=False)
     youtube_api_key = models.CharField(max_length=255, blank=True, default="")
 
     # OpenAI API
