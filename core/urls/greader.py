@@ -6,6 +6,10 @@ Maps HTTP endpoints to view handlers for the Google Reader API.
 from django.urls import path
 
 from core.views.greader.auth import client_login, token_view, user_info
+from core.views.greader.preference import (
+    preference_list,
+    preference_stream_list,
+)
 from core.views.greader.stream import (
     stream_contents,
     stream_items_ids,
@@ -21,6 +25,9 @@ urlpatterns = [
     path("accounts/ClientLogin", client_login, name="client_login"),
     path("reader/api/0/token", token_view, name="token"),
     path("reader/api/0/user-info", user_info, name="user_info"),
+    # Preference endpoints
+    path("reader/api/0/preference/list", preference_list, name="preference_list"),
+    path("reader/api/0/preference/stream/list", preference_stream_list, name="preference_stream_list"),
     # Subscription endpoints
     path("reader/api/0/subscription/list", subscription_list, name="subscription_list"),
     path("reader/api/0/subscription/edit", subscription_edit, name="subscription_edit"),
