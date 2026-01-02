@@ -88,17 +88,6 @@ def edit_tags(
     if not articles.exists():
         raise TagError("No accessible articles found")
 
-    # Determine what state to set
-
-    if add_tag == "user/-/state/com.google/read" or add_tag == "user/-/state/com.google/starred":
-        pass
-
-    if (
-        remove_tag == "user/-/state/com.google/read"
-        or remove_tag == "user/-/state/com.google/starred"
-    ):
-        pass
-
     # Update articles
     updated_count = 0
     for article in articles:
