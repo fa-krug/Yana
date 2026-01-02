@@ -39,6 +39,9 @@ class FeedAdminForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
+        # The ModelAdmin passes 'request' to the form, but ModelForm doesn't expect it.
+        # Remove it before calling super().__init__
+        self.request = kwargs.pop("request", None)
         super().__init__(*args, **kwargs)
         # Set help text or other field attributes
         self.fields[

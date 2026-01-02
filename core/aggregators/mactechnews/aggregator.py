@@ -52,13 +52,21 @@ class MactechnewsAggregator(FullWebsiteAggregator):
         # Resolve relative URLs for images
         for img in soup.find_all("img"):
             src = img.get("src")
-            if src and not isinstance(src, list) and not src.startswith(("http://", "https://", "data:")):
+            if (
+                src
+                and not isinstance(src, list)
+                and not src.startswith(("http://", "https://", "data:"))
+            ):
                 img["src"] = urljoin(base_url, str(src))
 
         # Resolve relative URLs for links
         for a in soup.find_all("a"):
             href = a.get("href")
-            if href and not isinstance(href, list) and not href.startswith(("http://", "https://", "mailto:", "tel:", "#")):
+            if (
+                href
+                and not isinstance(href, list)
+                and not href.startswith(("http://", "https://", "mailto:", "tel:", "#"))
+            ):
                 a["href"] = urljoin(base_url, str(href))
 
         return super().process_content(str(soup), article)
