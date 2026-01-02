@@ -13,7 +13,7 @@ Focus on aggregators that primarily extract images.
 ## Phase 2: News Aggregators
 Focus on full-content extraction for tech news sites.
 
-- [ ] Task: Implement `CaschysBlogAggregator` in `core/aggregators/caschys_blog/aggregator.py` with TDD
+- [x] Task: Implement `CaschysBlogAggregator` in `core/aggregators/caschys_blog/aggregator.py` with TDD e644d72
 - [ ] Task: Implement `MactechnewsAggregator` in `core/aggregators/mactechnews/aggregator.py` with TDD
 - [ ] Task: Update `core/aggregators/registry.py` to use new News Aggregators
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: News Aggregators' (Protocol in workflow.md)
