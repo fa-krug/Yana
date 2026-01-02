@@ -15,7 +15,7 @@
     - **Sub-task:** Implement view to return JSON user profile.
 
 ## Phase 2: Tag & Subscription Management (Read/Write)
-- [~] Task: Implement `tag/list` service and view
+- [x] Task: Implement `tag/list` service and view (4b5d470)
     - **Sub-task:** Write tests for retrieving all user tags (folders, states).
     - **Sub-task:** Implement service to fetch `FeedGroup` and special states (starred/read).
     - **Sub-task:** Connect view to service.
