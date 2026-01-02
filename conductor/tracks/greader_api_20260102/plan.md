@@ -19,7 +19,7 @@
     - **Sub-task:** Write tests for retrieving all user tags (folders, states).
     - **Sub-task:** Implement service to fetch `FeedGroup` and special states (starred/read).
     - **Sub-task:** Connect view to service.
-- [ ] Task: Implement `subscription/list` service and view
+- [x] Task: Implement `subscription/list` service and view (a9a5088)
     - **Sub-task:** Write tests for listing all subscribed feeds.
     - **Sub-task:** Implement service to serialize `Feed` objects to GReader format.
     - **Sub-task:** Connect view to service.
