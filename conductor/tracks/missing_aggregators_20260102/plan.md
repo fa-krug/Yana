@@ -2,13 +2,13 @@
 
 This plan outlines the steps to port five missing aggregators (Explosm, Dark Legacy, Caschy's Blog, MacTechNews, and Podcast) from the legacy TypeScript codebase to the new Python environment.
 
-## Phase 1: Comic Aggregators
+## Phase 1: Comic Aggregators [checkpoint: a1a6632]
 Focus on aggregators that primarily extract images.
 
 - [x] Task: Implement `ExplosmAggregator` in `core/aggregators/explosm/aggregator.py` with TDD d568827
 - [x] Task: Implement `DarkLegacyAggregator` in `core/aggregators/dark_legacy/aggregator.py` with TDD 3078e57
 - [x] Task: Update `core/aggregators/registry.py` to use new Comic Aggregators ea3cdfd
-- [ ] Task: Conductor - User Manual Verification 'Phase 1: Comic Aggregators' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 1: Comic Aggregators' (Protocol in workflow.md) a1a6632
 
 ## Phase 2: News Aggregators
 Focus on full-content extraction for tech news sites.
