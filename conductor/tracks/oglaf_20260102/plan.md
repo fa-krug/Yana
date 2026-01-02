@@ -7,13 +7,13 @@ Based on the specification and the project's TDD-focused workflow (adapted for m
 - [x] Task: Create the directory `core/aggregators/website/oglaf/` and add an empty `__init__.py` (2ba8495)
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Foundation and Scaffolding' (Protocol in workflow.md) (2ba8495)
 
-## Phase 2: Logic Implementation
-- [~] Task: Analyze `old/src/server/aggregators/oglaf.ts` to identify selectors, removal patterns, and custom logic
-- [ ] Task: Implement `OglafAggregator` class in `core/aggregators/website/oglaf/aggregator.py`
-- [ ] Task: Register `OglafAggregator` in `core/aggregators/registry.py`
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: Logic Implementation' (Protocol in workflow.md)
+## Phase 2: Logic Implementation [checkpoint: 2ba8495]
+- [x] Task: Analyze `old/src/server/aggregators/oglaf.ts` to identify selectors, removal patterns, and custom logic (2ba8495)
+- [x] Task: Implement `OglafAggregator` class in `core/aggregators/oglaf/aggregator.py` (2ba8495)
+- [x] Task: Register `OglafAggregator` in `core/aggregators/registry.py` (2ba8495)
+- [x] Task: Conductor - User Manual Verification 'Phase 2: Logic Implementation' (Protocol in workflow.md) (2ba8495)
 
-## Phase 3: Verification and Cleanup
-- [ ] Task: Run `python3 manage.py test_aggregator oglaf --limit 3 --verbose --dry-run` and verify content extraction
-- [ ] Task: Create a test feed in Django Admin for Oglaf and verify it aggregates correctly via `trigger_aggregator`
-- [ ] Task: Conductor - User Manual Verification 'Phase 3: Verification and Cleanup' (Protocol in workflow.md)
+## Phase 3: Verification and Cleanup [checkpoint: 8ede638]
+- [x] Task: Run `python3 manage.py test_aggregator oglaf --limit 3 --verbose --dry-run` and verify content extraction (8ede638)
+- [x] Task: Create a test feed in Django Admin for Oglaf and verify it aggregates correctly via `trigger_aggregator` (8ede638)
+- [x] Task: Conductor - User Manual Verification 'Phase 3: Verification and Cleanup' (Protocol in workflow.md) (8ede638)
