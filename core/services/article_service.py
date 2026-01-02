@@ -128,3 +128,27 @@ class ArticleService:
                 "aggregator_type": feed.aggregator if "feed" in locals() else "Unknown",
                 "error": str(e),
             }
+
+    @staticmethod
+    def delete_old_articles(months: int = 2) -> int:
+        """
+        Delete articles older than the specified number of months.
+
+        Args:
+            months: Number of months to keep articles for (default: 2)
+
+        Returns:
+            Number of deleted articles
+        """
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        # Calculate the cutoff date
+        cutoff_date = timezone.now() - timedelta(days=months * 30)
+
+        # Delete articles older than the cutoff date
+        # We preserve starred articles as they are explicitly saved by the user
+        count, _ = Article.objects.filter(date__lt=cutoff_date, starred=False).delete()
+
+        return count

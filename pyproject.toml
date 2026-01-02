@@ -84,3 +84,13 @@ plugins = ["mypy_django_plugin.main"]
 
 [tool.django-stubs]
 django_settings_module = "yana.settings"
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "yana.settings"
+python_files = ["tests.py", "test_*.py", "*_tests.py"]
+addopts = "--cov=core --cov-report=term-missing --reuse-db"
+testpaths = ["core"]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
+]

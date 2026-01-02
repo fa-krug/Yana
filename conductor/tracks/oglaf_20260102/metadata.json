@@ -1,0 +1,8 @@
+{
+  "track_id": "oglaf_20260102",
+  "type": "feature",
+  "status": "new",
+  "created_at": "2026-01-02T13:45:00Z",
+  "updated_at": "2026-01-02T13:45:00Z",
+  "description": "reimplement oglaf aggregator. see old for old implementation"
+}

@@ -93,23 +93,16 @@ def authenticate_with_credentials(email: str, password: str) -> dict | None:
         logger.warning(f"Failed authentication attempt for email: {email}")
         raise AuthenticationError("BadAuthentication")
 
-    # Generate token
-    auth_token = generate_auth_token(user.username, user.id)
-
-    # Store token in database
-    GReaderAuthToken.objects.create(
-        user=user,
-        token=auth_token,
-        expires_at=None,  # No expiry for auth tokens by default
-    )
+    # Generate and store token using model method
+    auth_token_obj = GReaderAuthToken.generate_for_user(user, days=30)  # Long-lived token
 
     logger.info(f"User {user.username} authenticated via Google Reader API")
 
     # Return tokens in Google Reader format
     return {
-        "SID": auth_token,
+        "SID": auth_token_obj.token,
         "LSID": "",  # Deprecated in Google Reader but included for compatibility
-        "Auth": auth_token,
+        "Auth": auth_token_obj.token,
         "userId": str(user.id),
         "userName": user.username,
         "userEmail": user.email,
@@ -182,18 +175,10 @@ def _authenticate_with_header(auth_header: str) -> dict | None:
         logger.warning("Authentication failed: token not found")
         return None
 
-    # Check expiry
-    if auth_token.expires_at:
-        now = datetime.now(timezone.utc)
-        expires_at = auth_token.expires_at
-
-        # Handle both aware and naive datetimes
-        if expires_at.tzinfo is None:
-            expires_at = expires_at.replace(tzinfo=timezone.utc)
-
-        if now > expires_at:
-            logger.warning("Authentication failed: token expired")
-            return None
+    # Check validity using model method
+    if not auth_token.is_valid():
+        logger.warning("Authentication failed: token invalid or expired")
+        return None
 
     # Return user info
     user = auth_token.user
@@ -215,20 +200,7 @@ def validate_token(token_str: str) -> bool:
     """
     try:
         auth_token = GReaderAuthToken.objects.get(token=token_str)
-
-        # Check expiry
-        if auth_token.expires_at:
-            now = datetime.now(timezone.utc)
-            expires_at = auth_token.expires_at
-
-            if expires_at.tzinfo is None:
-                expires_at = expires_at.replace(tzinfo=timezone.utc)
-
-            if now > expires_at:
-                return False
-
-        return True
-
+        return auth_token.is_valid()
     except GReaderAuthToken.DoesNotExist:
         return False
 

@@ -1,21 +1,21 @@
 # Track Plan: Complete the GReader API Implementation
 
 ## Phase 1: Authentication & User Info
-- [ ] Task: Create `GReaderAuthToken` model tests
+- [x] Task: Create `GReaderAuthToken` model tests (b4c08b8)
     - **Sub-task:** Write tests for token creation, validation, and expiry.
     - **Sub-task:** Implement model methods if missing.
-- [ ] Task: Implement `ClientLogin` view
+- [x] Task: Implement `ClientLogin` view (manual-verify)
     - **Sub-task:** Write integration tests for `POST /accounts/ClientLogin` (success, fail, missing args).
     - **Sub-task:** Implement the view to validate credentials and return `SID`/`Auth` tokens.
-- [ ] Task: Implement `token` endpoint
+- [x] Task: Implement `token` endpoint (pytest-migrated)
     - **Sub-task:** Write tests for `GET /token` (requires valid session).
     - **Sub-task:** Implement view to return a short-lived action token.
-- [ ] Task: Implement `user-info` endpoint
+- [x] Task: Implement `user-info` endpoint (pytest-migrated)
     - **Sub-task:** Write tests for `GET /user-info`.
     - **Sub-task:** Implement view to return JSON user profile.
 
 ## Phase 2: Tag & Subscription Management (Read/Write)
-- [ ] Task: Implement `tag/list` service and view
+- [~] Task: Implement `tag/list` service and view
     - **Sub-task:** Write tests for retrieving all user tags (folders, states).
     - **Sub-task:** Implement service to fetch `FeedGroup` and special states (starred/read).
     - **Sub-task:** Connect view to service.
