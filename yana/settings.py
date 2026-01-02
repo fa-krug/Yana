@@ -28,6 +28,7 @@ env = environ.Env(
     SECRET_KEY=(str, "django-insecure-l4x)1=)q58u$0#n^r1pgnt29y)-k%z2y(0h0tud&3)4533!ikb"),
     # Network
     ALLOWED_HOSTS=(str, "localhost,127.0.0.1"),
+    BASE_URL=(str, "http://localhost:8000"),
     # Database
     DATABASE_ENGINE=(str, "django.db.backends.sqlite3"),
     # Internationalization
@@ -51,6 +52,8 @@ SECRET_KEY = env("SECRET_KEY")
 DEBUG = env("DEBUG")
 
 ALLOWED_HOSTS = [host.strip() for host in env("ALLOWED_HOSTS").split(",")]
+
+BASE_URL = env("BASE_URL").rstrip("/")
 
 
 # Application definition

@@ -103,24 +103,17 @@ class FullWebsiteAggregator(RssAggregator):
         # Clean HTML
         cleaned = clean_html(str(soup))
 
+        # Determine header image URL for formatting
+        header_image_url = None
+        if header_data:
+            header_image_url = header_data.base64_data_uri or header_data.image_url
+
         # Format with header and footer
         formatted = format_article_content(
             cleaned,
             title=article["name"],
             url=article["identifier"],
-            author=article.get("author"),
-            date=article.get("date"),
+            header_image_url=header_image_url,
         )
-
-        # Prepend header image if available
-        if header_data:
-            header_html = (
-                f'<p style="margin-bottom: 1.5em; text-align: center;">'
-                f'<img src="{header_data.base64_data_uri}" '
-                f'alt="Article header" '
-                f'style="max-width: 100%; height: auto; border-radius: 8px;">'
-                f"</p>"
-            )
-            formatted = header_html + formatted
 
         return formatted

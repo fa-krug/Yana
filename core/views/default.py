@@ -54,6 +54,7 @@ def youtube_proxy_view(request):
         "modestbranding": modestbranding,
         "playsinline": playsinline,
         "enablejsapi": "1",
+        "origin": f"{request.scheme}://{request.get_host()}",
     }
 
     # If loop is enabled, add playlist parameter (required by YouTube)
@@ -144,6 +145,8 @@ def _generate_embed_html(embed_url):
     <div class="youtube-embed-container">
         <iframe
             src="{embed_url}"
+            width="560"
+            height="315"
             allowfullscreen
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
             referrerpolicy="strict-origin-when-cross-origin"

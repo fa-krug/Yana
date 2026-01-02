@@ -8,6 +8,7 @@ from typing import List, Optional
 from bs4 import BeautifulSoup, Tag
 
 from ..utils import get_attr_str
+from ..utils.youtube import get_youtube_proxy_url
 
 
 class EmbedProcessorStrategy(ABC):
@@ -53,7 +54,7 @@ class YouTubeEmbedProcessor(EmbedProcessorStrategy):
         # Create iframe embed
         iframe = soup.new_tag(
             "iframe",
-            src=f"https://www.youtube-nocookie.com/embed/{video_id}",
+            src=get_youtube_proxy_url(video_id),
             width="560",
             height="315",
             frameborder="0",
@@ -226,7 +227,7 @@ class YouTubeFallbackProcessor(EmbedProcessorStrategy):
         # Create iframe embed
         iframe = soup.new_tag(
             "iframe",
-            src=f"https://www.youtube-nocookie.com/embed/{video_id}",
+            src=get_youtube_proxy_url(video_id),
             width="560",
             height="315",
             frameborder="0",

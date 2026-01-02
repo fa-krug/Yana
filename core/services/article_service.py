@@ -58,10 +58,11 @@ class ArticleService:
 
             # Get the aggregator
             aggregator = get_aggregator(feed)
+            agg_type = feed.aggregator
 
             # Re-fetch and process the article
             print(f"\n{'=' * 60}")
-            print(f"Reloading article ID: {article_id}")
+            print(f"Reloading article ID: {article_id} ({agg_type})")
             print(f"Article: {article.name}")
             print(f"URL: {article.identifier}")
             print(f"{'=' * 60}")

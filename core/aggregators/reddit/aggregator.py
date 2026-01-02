@@ -84,9 +84,8 @@ class RedditAggregator(BaseAggregator):
                 title = data.get("title", "")
                 subscribers = data.get("subscribers", 0)
 
-                # Value is the subreddit name (e.g. "python") or prefixed ("r/python")
-                # Using prefixed is clearer for the user.
-                value = display_name
+                # Value is the subreddit name (e.g. "python")
+                value = data.get("display_name", "")
 
                 label = f"{display_name}: {title} ({subscribers:,} subs)"
                 choices.append((value, label))
@@ -138,6 +137,29 @@ class RedditAggregator(BaseAggregator):
             raise ValueError(
                 "Reddit API credentials not configured. Please set Client ID and Client Secret in your settings."
             )
+
+    def normalize_identifier(self, identifier: str) -> str:
+        """
+        Normalize Reddit identifier.
+        Extracts subreddit name from 'r/name: title (subs)' format.
+        """
+        iden = identifier.strip()
+
+        # Handle 'r/name: title (subs)' format
+        if ":" in iden:
+            part = iden.split(":")[0].strip()
+            if part.startswith("r/"):
+                return part.replace("r/", "")
+            return part
+
+        # Standard normalization (removes r/ prefix etc)
+        return normalize_subreddit(iden) or iden
+
+    def get_identifier_label(self, identifier: str) -> str:
+        """Get descriptive label for current identifier."""
+        if self.feed and self.feed.name:
+            return f"{self.feed.name} (r/{identifier})"
+        return identifier
 
     def fetch_source_data(self, limit: Optional[int] = None) -> Dict[str, Any]:
         """
@@ -399,6 +421,28 @@ class RedditAggregator(BaseAggregator):
 
         return enriched
 
+    def process_content(self, content: str, article: Dict[str, Any]) -> str:
+        """
+        Process and format Reddit content.
+        Uses header_image_only=True to avoid redundant title/meta header.
+        """
+        # Get header image URL from article dict if available
+        header_image_url = article.get("header_image_url")
+
+        # Fallback to header_data if available (e.g. during article reloads)
+        if not header_image_url and article.get("header_data"):
+            header_data = article["header_data"]
+            header_image_url = getattr(header_data, "base64_data_uri", None) or getattr(
+                header_data, "image_url", None
+            )
+
+        return format_article_content(
+            content=content,
+            title=article["name"],
+            url=article["identifier"],
+            header_image_url=header_image_url,
+        )
+
     def finalize_articles(self, articles: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
         Final processing before returning articles.
@@ -414,22 +458,15 @@ class RedditAggregator(BaseAggregator):
         finalized = []
 
         for article in articles:
-            # Get header image URL if stored
+            # Move header image URL to a standard field for process_content
             header_image_url = article.get("_reddit_header_image_url")
+            if header_image_url:
+                article["header_image_url"] = header_image_url
 
             # Process content with formatting
             content = article.get("content", "")
             if content:
-                # Use format_article_content with Reddit-specific header image
-                processed = format_article_content(
-                    content=content,
-                    title=article["name"],
-                    url=article["identifier"],
-                    author=article.get("author"),
-                    date=article.get("date"),
-                    header_image_url=header_image_url,
-                )
-                article["content"] = processed
+                article["content"] = self.process_content(content, article)
 
             # Clean up internal Reddit-specific fields
             article.pop("_reddit_post_data", None)
@@ -437,10 +474,15 @@ class RedditAggregator(BaseAggregator):
             article.pop("_reddit_is_cross_post", None)
             article.pop("_reddit_num_comments", None)
             article.pop("_reddit_header_image_url", None)
+            article.pop("header_image_url", None)
 
             finalized.append(article)
 
         return finalized
+
+    def collect_feed_icon(self) -> Optional[str]:
+        """Return the subreddit icon URL."""
+        return self.subreddit_icon_url
 
     def fetch_article_content(self, url: str) -> str:
         """

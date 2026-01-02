@@ -176,13 +176,11 @@ class PodcastAggregator(RssAggregator):
         # Clean HTML
         cleaned = clean_html(str(soup))
 
-        # Format with header and footer
+        # Format with footer (artwork is handled in enrich_articles)
         formatted = format_article_content(
             cleaned,
             title=article["name"],
             url=article["identifier"],
-            author=article.get("author"),
-            date=article.get("date"),
         )
 
         return formatted

@@ -5,6 +5,7 @@ Aggregator service for triggering feed aggregators.
 from typing import Any, Dict, List, Optional
 
 from django.core.exceptions import ObjectDoesNotExist
+from django.utils import timezone
 
 from ..aggregators import get_aggregator
 from ..aggregators.services.header_element.file_handler import HeaderElementFileHandler
@@ -59,6 +60,21 @@ class AggregatorService:
 
             articles_data = aggregator.aggregate()
 
+            # Update feed icon if available
+            try:
+                feed_icon_url = aggregator.collect_feed_icon()
+                if feed_icon_url:
+                    from ..aggregators.services.feed_icon.file_handler import FeedIconFileHandler
+                    from ..aggregators.services.image_extraction.fetcher import fetch_single_image
+
+                    image_result = fetch_single_image(feed_icon_url)
+                    if image_result:
+                        FeedIconFileHandler.save_icon_to_feed(
+                            feed, image_result["imageData"], image_result["contentType"]
+                        )
+            except Exception as e:
+                print(f"Warning: Failed to update feed icon: {e}")
+
             # Save articles to database
             created_count = 0
             for article_data in articles_data:
@@ -71,7 +87,7 @@ class AggregatorService:
                             "name": article_data.get("name", ""),
                             "raw_content": article_data.get("raw_content", ""),
                             "content": article_data.get("content", ""),
-                            "date": article_data.get("date"),
+                            "date": timezone.now(),  # Always save with current timestamp
                             "author": article_data.get("author", ""),
                         },
                     )

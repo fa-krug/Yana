@@ -11,6 +11,10 @@ from .utils import parse_rss_feed
 class RssAggregator(BaseAggregator):
     """Base class for RSS-based aggregators."""
 
+    def __init__(self, feed):
+        super().__init__(feed)
+        self.feed_icon_url: Optional[str] = None
+
     def aggregate(self) -> List[Dict[str, Any]]:
         """Implement template method pattern flow."""
         self.validate()
@@ -24,7 +28,19 @@ class RssAggregator(BaseAggregator):
     def fetch_source_data(self, limit: Optional[int] = None) -> Dict[str, Any]:
         """Fetch RSS feed data."""
         self.logger.info(f"Fetching RSS feed: {self.identifier}")
-        return parse_rss_feed(self.identifier)
+        data = parse_rss_feed(self.identifier)
+
+        # Extract feed icon URL from feed metadata
+        feed_info = data.get("feed", {})
+        self.feed_icon_url = (
+            feed_info.get("image", {}).get("href") or feed_info.get("icon") or feed_info.get("logo")
+        )
+
+        return data
+
+    def collect_feed_icon(self) -> Optional[str]:
+        """Return the RSS feed icon URL."""
+        return self.feed_icon_url
 
     def parse_to_raw_articles(self, source_data: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Parse RSS feed items to article dictionaries."""

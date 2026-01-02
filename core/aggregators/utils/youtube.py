@@ -10,6 +10,8 @@ Provides functions for:
 import re
 from typing import Optional
 
+from django.conf import settings
+
 
 def extract_youtube_video_id(url: str) -> Optional[str]:
     """
@@ -78,11 +80,25 @@ def get_youtube_thumbnail_url(video_id: str, quality: str = "maxresdefault") -> 
     return f"https://img.youtube.com/vi/{video_id}/{quality}.jpg"
 
 
+def get_youtube_proxy_url(video_id: str) -> str:
+    """
+    Get full YouTube proxy URL for a video.
+
+    Args:
+        video_id: YouTube video ID
+
+    Returns:
+        Full URL to the proxy endpoint
+    """
+    base_url = getattr(settings, "BASE_URL", "http://localhost:8000")
+    return f"{base_url}/api/youtube-proxy?v={video_id}"
+
+
 def create_youtube_embed_html(video_id: str, caption: str = "") -> str:
     """
     Create HTML for embedded YouTube video.
 
-    Generates an iframe element that uses a proxy endpoint for embedding
+    Generates an iframe element that uses a full proxy endpoint for embedding
     (to avoid embedding YouTube's standard iframe which may have
     privacy/tracking considerations).
 
@@ -93,23 +109,14 @@ def create_youtube_embed_html(video_id: str, caption: str = "") -> str:
     Returns:
         HTML string with youtube-embed-container div and iframe
     """
-    proxy_url = f"/api/youtube-proxy?v={video_id}"
+    proxy_url = get_youtube_proxy_url(video_id)
 
     html = (
         f'<div class="youtube-embed-container">'
-        f"<style>"
-        f".youtube-embed-container iframe {{ "
-        f"width: 100%; "
-        f"height: calc((100% / 16) * 9); "
-        f"aspect-ratio: 16 / 9; "
-        f"}}"
-        f"@media (max-width: 512px) {{ "
-        f".youtube-embed-container {{ position: relative; }} "
-        f".youtube-embed-container iframe {{ position: absolute; }} "
-        f"}}"
-        f"</style>"
         f'<iframe src="{proxy_url}" '
         f'title="YouTube video player" '
+        f'width="560" '
+        f'height="315" '
         f'frameborder="0" '
         f'scrolling="no" '
         f"allowfullscreen></iframe>"

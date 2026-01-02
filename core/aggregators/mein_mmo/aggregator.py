@@ -141,10 +141,7 @@ class MeinMmoAggregator(FullWebsiteAggregator):
             cleaned,
             title=article["name"],
             url=article["identifier"],
-            author=article.get("author"),
-            date=article.get("date"),
             header_image_url=header_image_url,
-            header_image_only=True,  # Header contains only image, no title/author/date
         )
 
         self.logger.info(f"[process_content] Completed, formatted size: {len(formatted)} bytes")

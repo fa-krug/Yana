@@ -68,16 +68,20 @@ def fetch_post_comments(
         # Reddit comments API returns an array with two items:
         # [0] = post data
         # [1] = comments data
-        if not isinstance(response.json(), list) or len(response.json()) < 2:
+        json_data = response.json()
+        if not isinstance(json_data, list) or len(json_data) < 2:
             return []
 
-        comments_data = response.json()[1]
+        comments_data = json_data[1]
         if not comments_data.get("data", {}).get("children"):
             return []
 
         # Collect only top-level comments (direct replies to the post, not nested replies)
         top_level_comments = []
         for comment_item in comments_data["data"]["children"]:
+            if comment_item.get("kind") != "t1":
+                continue
+
             comment_data = comment_item.get("data", {})
             if (
                 comment_data.get("body")

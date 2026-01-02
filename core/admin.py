@@ -10,8 +10,24 @@ from .models import Article, Feed, FeedGroup, GReaderAuthToken, UserSettings
 from .services import AggregatorService, ArticleService
 
 
+@admin.action(description="Clear raw article content for selected feeds")
+def clear_raw_article_content(modeladmin, request, queryset):
+    from .models import Article
+
+    count = Article.objects.filter(feed__in=queryset).update(raw_content="")
+    modeladmin.message_user(request, f"Cleared raw content for {count} articles.")
+
+
+@admin.action(description="Delete all articles from selected feeds")
+def delete_all_articles(modeladmin, request, queryset):
+    from .models import Article
+
+    count, _ = Article.objects.filter(feed__in=queryset).delete()
+    modeladmin.message_user(request, f"Deleted {count} articles from selected feeds.")
+
+
 @admin.register(FeedGroup)
-class FeedGroupAdmin(ImportExportModelAdmin, DjangoQLSearchMixin):
+class FeedGroupAdmin(admin.ModelAdmin):
     """Admin configuration for FeedGroup model."""
 
     list_display = ["name", "user", "created_at"]
@@ -33,16 +49,21 @@ class FeedAdmin(ImportExportModelAdmin, DjangoQLSearchMixin):
 
     form = FeedAdminForm
 
-    list_display = ["name", "aggregator", "enabled", "user", "group", "created_at"]
+    list_display = ["name", "aggregator", "enabled", "user", "group", "icon", "created_at"]
     list_filter = ["aggregator", "enabled", "user", "group", "created_at"]
     search_fields = ["name", "identifier", "user__username"]
     readonly_fields = ["created_at", "updated_at"]
-    actions = ["aggregate_selected_feeds", "force_delete_selected"]
+    actions = [
+        "aggregate_selected_feeds",
+        "force_delete_selected",
+        "delete_all_articles",
+        "clear_raw_article_content",
+    ]
     save_as = True
     list_select_related = ["user", "group"]
 
     fieldsets = (
-        (None, {"fields": ("name", "aggregator", "identifier", "enabled")}),
+        (None, {"fields": ("name", "aggregator", "identifier", "icon", "enabled")}),
         ("Configuration", {"fields": ("daily_limit",)}),
         ("Relationships", {"fields": ("user", "group")}),
         ("Timestamps", {"fields": ("created_at", "updated_at"), "classes": ("collapse",)}),

@@ -5,6 +5,7 @@ import time
 import traceback
 
 from django.core.management.base import BaseCommand
+from django.utils import timezone
 
 from core.aggregators import get_aggregator
 from core.models import Article, Feed
@@ -117,6 +118,28 @@ class Command(BaseCommand):
 
             self._print_field("Time elapsed", f"{elapsed:.2f}s")
             self._print_field("Articles returned", len(articles_data))
+
+            # Update feed icon if available
+            try:
+                feed_icon_url = aggregator.collect_feed_icon()
+                if feed_icon_url:
+                    self._print_field("Feed icon URL", feed_icon_url)
+                    if not dry_run:
+                        from core.aggregators.services.feed_icon.file_handler import (
+                            FeedIconFileHandler,
+                        )
+                        from core.aggregators.services.image_extraction.fetcher import (
+                            fetch_single_image,
+                        )
+
+                        image_result = fetch_single_image(feed_icon_url)
+                        if image_result:
+                            FeedIconFileHandler.save_icon_to_feed(
+                                feed, image_result["imageData"], image_result["contentType"]
+                            )
+                            self.stdout.write(self.style.SUCCESS("  ✓ Updated feed icon"))
+            except Exception as e:
+                self.stdout.write(self.style.WARNING(f"  ⚠ Failed to update feed icon: {e}"))
 
             if len(articles_data) == 0:
                 self.stdout.write(self.style.WARNING("⚠ No articles returned!"))
@@ -330,7 +353,7 @@ class Command(BaseCommand):
                         "name": article_data.get("name", ""),
                         "raw_content": article_data.get("raw_content", ""),
                         "content": article_data.get("content", ""),
-                        "date": article_data.get("date"),
+                        "date": timezone.now(),  # Always save with current timestamp
                         "author": article_data.get("author", ""),
                     },
                 )

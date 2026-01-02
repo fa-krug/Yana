@@ -59,6 +59,49 @@ class BaseAggregator(ABC):
         if not self.identifier:
             raise ValueError("Feed identifier is required")
 
+    def normalize_identifier(self, identifier: str) -> str:
+        """
+        Normalize an identifier before saving.
+
+        Checks if the identifier matches a label in get_identifier_choices()
+        and returns the corresponding value if so. Otherwise returns stripped.
+
+        Args:
+            identifier: Raw identifier string
+
+        Returns:
+            Normalized identifier string
+        """
+        normalized = identifier.strip()
+
+        # If the identifier matches a label in our choices, use the value instead
+        # We call it with default args since we don't have request context here
+        choices = self.get_identifier_choices()
+        for value, label in choices:
+            if normalized == label:
+                return str(value)
+
+        return normalized
+
+    def get_identifier_label(self, identifier: str) -> str:
+        """
+        Get a nice display label for an identifier.
+
+        Checks get_identifier_choices() for a matching value and returns its label.
+
+        Args:
+            identifier: Clean identifier
+
+        Returns:
+            Display label string
+        """
+        choices = self.get_identifier_choices()
+        for value, label in choices:
+            if str(identifier) == str(value):
+                return str(label)
+
+        return identifier
+
     @abstractmethod
     def fetch_source_data(self, limit: Optional[int] = None) -> Any:
         """
@@ -122,7 +165,6 @@ class BaseAggregator(ABC):
             # Update date to now for accepted articles
             article["date"] = timezone.now()
             filtered.append(article)
-
         self.logger.info(f"[filter_articles] Kept {len(filtered)}/{len(articles)} articles")
         return filtered
 
@@ -281,3 +323,12 @@ class BaseAggregator(ABC):
         Override in subclasses to clean/format HTML.
         """
         return content
+
+    def collect_feed_icon(self) -> Optional[str]:
+        """
+        Collect feed icon URL during aggregation.
+
+        Returns:
+            Icon URL or None if no icon available
+        """
+        return None

@@ -144,13 +144,7 @@ def stream_contents(request, stream_id=None):
         params = request.GET if request.method == "GET" else request.POST
 
         # Get stream ID from URL path or parameters
-        if stream_id:
-            # Remove 'feed/' prefix if in URL
-            if stream_id.startswith("feed/"):
-                stream_id = stream_id
-            query_stream_id = stream_id
-        else:
-            query_stream_id = params.get("s", "")
+        query_stream_id = stream_id or params.get("s", "")
 
         # Get item IDs if provided
         item_ids = params.getlist("i")

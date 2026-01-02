@@ -113,16 +113,20 @@ class TagesschauAggregator(FullWebsiteAggregator):
                 )
 
         # Use base process_content for standard cleaning and formatting
-        # Note: FullWebsiteAggregator.process_content prepends the header image from HeaderElementExtractor
-        # We might want to combine or replace it with our media_header.
+        # If we have a media_header, we temporarily remove header_data from the article
+        # so super().process_content() doesn't add a duplicate (and less specific) header image.
+        header_data = article.get("header_data")
+        if media_header and header_data:
+            article["header_data"] = None
 
-        processed = super().process_content(html, article)
+        try:
+            processed = super().process_content(html, article)
+        finally:
+            # Restore header_data
+            if media_header and header_data:
+                article["header_data"] = header_data
 
         if media_header:
-            # Prepend media header.
-            # If there's already a header image from super().process_content(),
-            # we might have two headers.
-            # Tagesschau's media header is more specific.
             return media_header + processed
 
         return processed

@@ -16,6 +16,7 @@ try:
             "fenced_code",  # Support ```code blocks```
             "tables",  # Support tables
             "sane_lists",  # Better list handling
+            "nl2br",  # Convert newlines to <br>
         ]
     )
 except Exception:

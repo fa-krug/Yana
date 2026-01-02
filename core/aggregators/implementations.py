@@ -112,13 +112,11 @@ class FeedContentAggregator(RssAggregator):
         # Clean HTML
         cleaned = clean_html(str(soup))
 
-        # Format with header and footer
+        # Format with footer (header image not used here)
         formatted = format_article_content(
             cleaned,
             title=article["name"],
             url=article["identifier"],
-            author=article.get("author"),
-            date=article.get("date"),
         )
 
         return formatted

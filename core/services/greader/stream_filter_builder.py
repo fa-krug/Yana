@@ -45,18 +45,19 @@ class StreamFilter(ABC):
 
 
 class FeedFilter(StreamFilter):
-    """Filter for specific feed: feed/{feed_id}"""
+    """Filter for specific feed: feed/{feed_id} or feed/{url}"""
 
     def can_handle(self, stream_id: str) -> bool:
         return stream_id.startswith("feed/")
 
     def build_conditions(self, stream_id: str, user_id: int) -> Tuple[Optional[Q], bool]:
+        content = stream_id.replace("feed/", "")
         try:
-            feed_id = int(stream_id.replace("feed/", ""))
+            feed_id = int(content)
             return Q(feed_id=feed_id), False
         except ValueError:
-            logger.warning(f"Invalid feed ID in stream: {stream_id}")
-            return None, False
+            # Handle URL-based identifier
+            return Q(feed__identifier=content, feed__user_id=user_id), False
 
 
 class LabelFilter(StreamFilter):
@@ -67,16 +68,6 @@ class LabelFilter(StreamFilter):
 
     def build_conditions(self, stream_id: str, user_id: int) -> Tuple[Optional[Q], bool]:
         label_name = stream_id.replace("user/-/label/", "")
-
-        # Handle special labels for aggregator types
-        if label_name == "Reddit":
-            return Q(feed__user_id__in=[user_id, None], feed__aggregator="reddit"), True
-
-        if label_name == "YouTube":
-            return Q(feed__user_id__in=[user_id, None], feed__aggregator="youtube"), True
-
-        if label_name == "Podcasts":
-            return Q(feed__user_id__in=[user_id, None], feed__aggregator="podcast"), True
 
         # Handle custom user labels (groups)
         # Get feed IDs that belong to this group
@@ -176,12 +167,13 @@ class StreamFilterOrchestrator:
                     f"Stream filter '{filter_class.__class__.__name__}' used for: {stream_id}"
                 )
 
+                if conditions is None:
+                    return None, needs_access
+
                 # Always add feed access control unless filter explicitly handles it
-                if needs_access and conditions or not needs_access:
-                    conditions &= Q(feed__enabled=True)
+                conditions &= Q(feed__enabled=True)
 
                 return conditions, needs_access
-
         # Fallback: return None (should not happen with DefaultFilter as last option)
         logger.warning(f"No filter matched for stream ID: {stream_id}")
         return None, False
