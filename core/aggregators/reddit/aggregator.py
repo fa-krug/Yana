@@ -68,7 +68,7 @@ class RedditAggregator(BaseAggregator):
             url = "https://oauth.reddit.com/subreddits/search"
             response = requests.get(
                 url,
-                params={"q": query, "limit": 10, "include_over_18": "on"},
+                params={"q": str(query), "limit": "10", "include_over_18": "on"},
                 headers=headers,
                 timeout=5,
             )

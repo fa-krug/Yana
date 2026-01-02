@@ -4,6 +4,8 @@ Optimized SQLite database backend base implementation.
 This module extends Django's SQLite backend with performance PRAGMA settings.
 """
 
+# mypy: ignore-errors
+
 from django.db.backends.sqlite3.base import (
     Database,
     DatabaseFeatures,

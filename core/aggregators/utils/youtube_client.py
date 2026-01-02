@@ -1,20 +1,25 @@
-import requests
 import logging
-from typing import Optional, List, Dict, Any, Tuple
-from urllib.parse import urlparse, parse_qs
+from typing import Any, Dict, List, Optional, Tuple
+from urllib.parse import parse_qs, urlparse
+
+import requests
 
 logger = logging.getLogger(__name__)
 
+
 class YouTubeAPIError(Exception):
     """Exception raised for YouTube API errors."""
+
     def __init__(self, message: str, original_error: Optional[Exception] = None):
         super().__init__(message)
         self.original_error = original_error
+
 
 class YouTubeClient:
     """
     YouTube API client for interacting with YouTube Data API v3.
     """
+
     BASE_URL = "https://www.googleapis.com/youtube/v3"
 
     def __init__(self, api_key: str):
@@ -26,19 +31,19 @@ class YouTubeClient:
         """Execute a GET request to the YouTube API."""
         url = f"{self.BASE_URL}/{endpoint}"
         params["key"] = self.api_key
-        
+
         try:
             response = requests.get(url, params=params, timeout=10)
             response.raise_for_status()
             return response.json()
         except requests.exceptions.RequestException as e:
             logger.error(f"YouTube API error at {endpoint}: {str(e)}")
-            raise YouTubeAPIError(f"YouTube API request failed: {str(e)}", e)
+            raise YouTubeAPIError(f"YouTube API request failed: {str(e)}", e) from e
 
     def resolve_channel_id(self, identifier: str) -> Tuple[Optional[str], Optional[str]]:
         """
         Resolve a YouTube channel identifier (handle, ID, or URL) to a canonical Channel ID.
-        
+
         Returns:
             Tuple of (channel_id, error_message)
         """
@@ -91,23 +96,23 @@ class YouTubeClient:
         """Extract handle or channel ID from a YouTube URL."""
         if not url.startswith("http"):
             url = "https://" + url
-            
+
         try:
             parsed = urlparse(url)
             path = parsed.path.lstrip("/")
-            
+
             if path.startswith("@"):
                 return {"handle": path.split("/")[0][1:]}
             if path.startswith("c/") or path.startswith("user/"):
                 return {"handle": path.split("/")[1]}
             if path.startswith("channel/"):
                 return {"channel_id": path.split("/")[1]}
-            
+
             # Check for channel_id query param
             qs = parse_qs(parsed.query)
             if "channel_id" in qs:
                 return {"channel_id": qs["channel_id"][0]}
-                
+
             return {}
         except Exception:
             return {}
@@ -116,32 +121,29 @@ class YouTubeClient:
         """Resolve handle to channel ID using search.list."""
         q = handle if handle.startswith("@") else f"@{handle}"
         try:
-            data = self._get("search", {
-                "part": "snippet",
-                "q": q,
-                "type": "channel",
-                "maxResults": 10
-            })
-            
+            data = self._get(
+                "search", {"part": "snippet", "q": q, "type": "channel", "maxResults": 10}
+            )
+
             items = data.get("items", [])
             if not items:
                 return None
-                
+
             norm_handle = handle.lower().lstrip("@")
-            
+
             # 1. Exact customUrl match
             for item in items:
                 snippet = item.get("snippet", {})
                 custom_url = snippet.get("customUrl", "").lower().lstrip("@")
                 if custom_url == norm_handle:
                     return item["id"]["channelId"]
-                    
+
             # 2. Title match
             for item in items:
                 title = item.get("snippet", {}).get("title", "").lower()
                 if norm_handle in title or title in norm_handle:
                     return item["id"]["channelId"]
-                    
+
             # 3. First result fallback
             return items[0]["id"]["channelId"]
         except YouTubeAPIError:
@@ -150,10 +152,7 @@ class YouTubeClient:
     def _resolve_via_username(self, handle: str) -> Optional[str]:
         """Resolve legacy username to channel ID using channels.list(forUsername)."""
         try:
-            data = self._get("channels", {
-                "part": "id",
-                "forUsername": handle
-            })
+            data = self._get("channels", {"part": "id", "forUsername": handle})
             items = data.get("items", [])
             if items:
                 return items[0]["id"]
@@ -163,65 +162,62 @@ class YouTubeClient:
 
     def fetch_channel_data(self, channel_id: str) -> Dict[str, Any]:
         """Fetch basic channel data including uploads playlist ID and icon."""
-        data = self._get("channels", {
-            "part": "contentDetails,snippet",
-            "id": channel_id
-        })
-        
+        data = self._get("channels", {"part": "contentDetails,snippet", "id": channel_id})
+
         items = data.get("items", [])
         if not items:
             raise YouTubeAPIError(f"Channel not found: {channel_id}")
-            
+
         channel = items[0]
         snippet = channel.get("snippet", {})
         thumbnails = snippet.get("thumbnails", {})
-        
+
         icon_url = (
-            thumbnails.get("high", {}).get("url") or
-            thumbnails.get("medium", {}).get("url") or
-            thumbnails.get("default", {}).get("url")
+            thumbnails.get("high", {}).get("url")
+            or thumbnails.get("medium", {}).get("url")
+            or thumbnails.get("default", {}).get("url")
         )
-        
+
         uploads_playlist_id = (
-            channel.get("contentDetails", {})
-            .get("relatedPlaylists", {})
-            .get("uploads")
+            channel.get("contentDetails", {}).get("relatedPlaylists", {}).get("uploads")
         )
-        
+
         return {
             "channel_id": channel_id,
             "title": snippet.get("title"),
             "uploads_playlist_id": uploads_playlist_id,
-            "channel_icon_url": icon_url
+            "channel_icon_url": icon_url,
         }
 
-    def fetch_videos_from_playlist(self, playlist_id: str, max_results: int = 50) -> List[Dict[str, Any]]:
+    def fetch_videos_from_playlist(
+        self, playlist_id: str, max_results: int = 50
+    ) -> List[Dict[str, Any]]:
         """Fetch videos from a playlist, then fetch full details for each."""
-        videos = []
-        next_page_token = None
-        
+        videos: List[Dict[str, Any]] = []
+        next_page_token: Optional[str] = None
+
         while len(videos) < max_results:
             params = {
                 "part": "snippet,contentDetails",
                 "playlistId": playlist_id,
-                "maxResults": min(50, max_results - len(videos))
+                "maxResults": min(50, max_results - len(videos)),
             }
             if next_page_token:
                 params["pageToken"] = next_page_token
-                
+
             data = self._get("playlistItems", params)
             items = data.get("items", [])
             if not items:
                 break
-                
+
             video_ids = [item["contentDetails"]["videoId"] for item in items]
             detailed_videos = self.fetch_video_details(video_ids)
             videos.extend(detailed_videos)
-            
+
             next_page_token = data.get("nextPageToken")
             if not next_page_token:
                 break
-                
+
         return videos[:max_results]
 
     def fetch_video_details(self, video_ids: List[str]) -> List[Dict[str, Any]]:
@@ -229,11 +225,10 @@ class YouTubeClient:
         all_videos = []
         # YouTube API allows up to 50 IDs per request
         for i in range(0, len(video_ids), 50):
-            batch = video_ids[i:i+50]
-            data = self._get("videos", {
-                "part": "snippet,statistics,contentDetails",
-                "id": ",".join(batch)
-            })
+            batch = video_ids[i : i + 50]
+            data = self._get(
+                "videos", {"part": "snippet,statistics,contentDetails", "id": ",".join(batch)}
+            )
             all_videos.extend(data.get("items", []))
         return all_videos
 
@@ -241,10 +236,10 @@ class YouTubeClient:
         """Fetch top-level comments for a video."""
         if max_results <= 0:
             return []
-            
-        comments = []
-        next_page_token = None
-        
+
+        comments: List[Dict[str, Any]] = []
+        next_page_token: Optional[str] = None
+
         try:
             while len(comments) < max_results:
                 params = {
@@ -252,23 +247,23 @@ class YouTubeClient:
                     "videoId": video_id,
                     "maxResults": min(100, max_results - len(comments)),
                     "order": "relevance",
-                    "textFormat": "html"
+                    "textFormat": "html",
                 }
                 if next_page_token:
                     params["pageToken"] = next_page_token
-                    
+
                 data = self._get("commentThreads", params)
                 items = data.get("items", [])
                 if not items:
                     break
-                    
+
                 for item in items:
                     snippet = item.get("snippet", {}).get("topLevelComment", {}).get("snippet", {})
                     text = snippet.get("textDisplay")
-                    
+
                     if text and text not in ["[deleted]", "[removed]"]:
                         comments.append(item)
-                
+
                 next_page_token = data.get("nextPageToken")
                 if not next_page_token:
                     break
@@ -276,36 +271,38 @@ class YouTubeClient:
             logger.warning(f"Failed to fetch comments for video {video_id}: {str(e)}")
             # Don't fail the whole video aggregation just because comments failed
             return []
-            
+
         return comments[:max_results]
 
-    def fetch_videos_via_search(self, channel_id: str, max_results: int = 50) -> List[Dict[str, Any]]:
+    def fetch_videos_via_search(
+        self, channel_id: str, max_results: int = 50
+    ) -> List[Dict[str, Any]]:
         """Fallback method using search.list if uploads playlist is unavailable."""
-        videos = []
-        next_page_token = None
-        
+        videos: List[Dict[str, Any]] = []
+        next_page_token: Optional[str] = None
+
         while len(videos) < max_results:
             params = {
                 "part": "id",
                 "channelId": channel_id,
                 "type": "video",
                 "order": "date",
-                "maxResults": min(50, max_results - len(videos))
+                "maxResults": min(50, max_results - len(videos)),
             }
             if next_page_token:
                 params["pageToken"] = next_page_token
-                
+
             data = self._get("search", params)
             items = data.get("items", [])
             if not items:
                 break
-                
+
             video_ids = [item["id"]["videoId"] for item in items]
             detailed_videos = self.fetch_video_details(video_ids)
             videos.extend(detailed_videos)
-            
+
             next_page_token = data.get("nextPageToken")
             if not next_page_token:
                 break
-                
+
         return videos[:max_results]

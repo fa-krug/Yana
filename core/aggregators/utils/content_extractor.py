@@ -2,7 +2,7 @@
 
 from typing import List, Optional
 
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 
 
 def extract_main_content(
@@ -24,12 +24,13 @@ def extract_main_content(
     # Find main content
     content = soup.select_one(selector)
 
-    if not content:
+    if not isinstance(content, Tag):
         # Fallback: return entire body
-        content = soup.find("body") or soup
+        body = soup.find("body")
+        content = body if isinstance(body, Tag) else soup
 
     # Remove unwanted elements
-    if remove_selectors:
+    if remove_selectors and isinstance(content, Tag):
         for sel in remove_selectors:
             for elem in content.select(sel):
                 elem.decompose()

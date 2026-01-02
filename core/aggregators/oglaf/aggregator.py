@@ -2,10 +2,10 @@ import base64
 import logging
 from typing import Any, Dict, Optional
 
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 
 from ..services.image_extraction.fetcher import fetch_single_image
-from ..utils import format_article_content
+from ..utils import format_article_content, get_attr_str
 from ..website import FullWebsiteAggregator
 
 logger = logging.getLogger(__name__)
@@ -65,18 +65,19 @@ class OglafAggregator(FullWebsiteAggregator):
             # Fallback selectors from legacy
             comic_img = soup.select_one(".content img, #content img, .comic img")
 
-        if comic_img and comic_img.get("src"):
-            img_url = comic_img.get("src")
+        if isinstance(comic_img, Tag):
+            img_url = get_attr_str(comic_img, "src")
             # Handle relative URLs
             if img_url.startswith("/"):
                 img_url = "https://www.oglaf.com" + img_url
-            elif not img_url.startswith("http"):
+            elif not img_url.startswith("http") and "media.oglaf.com" not in img_url:
                 # Handle other relative paths if any (usually media.oglaf.com)
-                if "media.oglaf.com" not in img_url:
-                    img_url = "https://media.oglaf.com/comic/" + img_url
+                img_url = "https://media.oglaf.com/comic/" + img_url
 
             # Extract alt text
-            alt_text = comic_img.get("alt") or comic_img.get("title") or "Oglaf comic"
+            alt_text = (
+                get_attr_str(comic_img, "alt") or get_attr_str(comic_img, "title") or "Oglaf comic"
+            )
 
             # Fetch image and convert to base64
             image_result = fetch_single_image(img_url)

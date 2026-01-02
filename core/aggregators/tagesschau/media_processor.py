@@ -6,6 +6,8 @@ from typing import Any, Dict, List, Optional
 
 from bs4 import BeautifulSoup, Tag
 
+from ..utils import get_attr_list, get_attr_str
+
 logger = logging.getLogger(__name__)
 
 
@@ -17,7 +19,7 @@ def extract_media_header(html: str) -> Optional[str]:
     players = _get_media_players(soup)
 
     for player_div in players:
-        data_v = player_div.get("data-v")
+        data_v = get_attr_str(player_div, "data-v")
         if not data_v:
             continue
 
@@ -54,9 +56,7 @@ def _get_media_players(soup: BeautifulSoup) -> List[Tag]:
     """Find media player divs in the soup."""
     media_players = []
     for div in soup.find_all("div", attrs={"data-v-type": "MediaPlayer"}):
-        classes = div.get("class", [])
-        if isinstance(classes, str):
-            classes = [classes]
+        classes = get_attr_list(div, "class")
         if any("mediaplayer" in c.lower() for c in classes):
             media_players.append(div)
 
@@ -64,7 +64,7 @@ def _get_media_players(soup: BeautifulSoup) -> List[Tag]:
     teaser_players = [
         p
         for p in media_players
-        if any("teaser-top" in (c if isinstance(c, str) else "") for c in p.get("class", []))
+        if any("teaser-top" in c.lower() for c in get_attr_list(p, "class"))
     ]
     return teaser_players if teaser_players else media_players
 
@@ -120,17 +120,17 @@ def _get_player_image_from_dom(player_div: Tag) -> Optional[str]:
     """Extract image URL from surrounding DOM."""
     # Check parent
     parent = player_div.parent
-    if parent:
+    if isinstance(parent, Tag):
         img = parent.find("img")
-        if img:
-            return img.get("src")
+        if isinstance(img, Tag):
+            return get_attr_str(img, "src") or None
 
     # Check previous sibling
     prev = player_div.find_previous_sibling()
-    if prev:
+    if isinstance(prev, Tag):
         img = prev.find("img")
-        if img:
-            return img.get("src")
+        if isinstance(img, Tag):
+            return get_attr_str(img, "src") or None
 
     return None
 
@@ -149,10 +149,10 @@ def _build_header_from_embed_code(
 
     soup = BeautifulSoup(decoded, "html.parser")
     iframe = soup.find("iframe")
-    if not iframe:
+    if not isinstance(iframe, Tag):
         return None
 
-    src = iframe.get("src")
+    src = get_attr_str(iframe, "src")
     if not src:
         return None
 

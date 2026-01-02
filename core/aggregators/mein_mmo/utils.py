@@ -3,7 +3,9 @@
 import logging
 from typing import Optional
 
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
+
+from ..utils import get_attr_str
 
 
 def extract_header_image_url(html: str, logger: logging.Logger) -> Optional[str]:
@@ -27,8 +29,8 @@ def extract_header_image_url(html: str, logger: logging.Logger) -> Optional[str]
     # Strategy 1: Find 16:9 aspect ratio image
     logger.debug("[extract_header_image_url] Strategy 1: Looking for img[width='16'][height='9']")
     header_img = soup.find("img", attrs={"width": "16", "height": "9"})
-    if header_img:
-        src = header_img.get("src")
+    if isinstance(header_img, Tag):
+        src = get_attr_str(header_img, "src")
         if src:
             logger.info(f"[extract_header_image_url] Found header image (16:9): {src}")
             return src
@@ -38,11 +40,11 @@ def extract_header_image_url(html: str, logger: logging.Logger) -> Optional[str]
     # Strategy 2: Header div image
     logger.debug("[extract_header_image_url] Strategy 2: Looking in div#gp-page-header-inner")
     header_div = soup.select_one("div#gp-page-header-inner")
-    if header_div:
+    if isinstance(header_div, Tag):
         logger.debug("[extract_header_image_url] Header div found, searching for img")
         img = header_div.find("img")
-        if img:
-            src = img.get("src")
+        if isinstance(img, Tag):
+            src = get_attr_str(img, "src")
             if src:
                 logger.info(f"[extract_header_image_url] Found header image from header div: {src}")
                 return src

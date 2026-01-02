@@ -1,9 +1,11 @@
 """HTML cleaning and sanitization utilities."""
 
 import re
-from typing import List, Optional
+from typing import List, Optional, Union
 
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
+
+from .bs4_utils import get_attr_str
 
 
 def _get_base_filename(filename: str) -> str:
@@ -54,12 +56,12 @@ def clean_html(html: str) -> str:
     return str(soup)
 
 
-def remove_selectors(soup: BeautifulSoup, selectors: List[str]) -> None:
+def remove_selectors(soup: Union[BeautifulSoup, Tag], selectors: List[str]) -> None:
     """
     Remove elements matching CSS selectors from soup.
 
     Args:
-        soup: BeautifulSoup object
+        soup: BeautifulSoup or Tag object
         selectors: List of CSS selectors to remove
     """
     for selector in selectors:
@@ -67,12 +69,12 @@ def remove_selectors(soup: BeautifulSoup, selectors: List[str]) -> None:
             elem.decompose()
 
 
-def remove_empty_elements(soup: BeautifulSoup, tags: List[str]) -> None:
+def remove_empty_elements(soup: Union[BeautifulSoup, Tag], tags: List[str]) -> None:
     """
     Remove empty elements (no text and no images).
 
     Args:
-        soup: BeautifulSoup object
+        soup: BeautifulSoup or Tag object
         tags: List of tag names to check (e.g., ['p', 'div'])
     """
     for tag_name in tags:
@@ -82,12 +84,14 @@ def remove_empty_elements(soup: BeautifulSoup, tags: List[str]) -> None:
                 elem.decompose()
 
 
-def clean_data_attributes(soup: BeautifulSoup, keep: Optional[List[str]] = None) -> None:
+def clean_data_attributes(
+    soup: Union[BeautifulSoup, Tag], keep: Optional[List[str]] = None
+) -> None:
     """
     Remove data attributes except those in the keep list.
 
     Args:
-        soup: BeautifulSoup object
+        soup: BeautifulSoup or Tag object
         keep: List of data attributes to preserve (e.g., ['data-src', 'data-srcset'])
     """
     if keep is None:
@@ -103,7 +107,7 @@ def clean_data_attributes(soup: BeautifulSoup, keep: Optional[List[str]] = None)
             del elem[attr]
 
 
-def remove_image_by_url(soup: BeautifulSoup, image_url: Optional[str]) -> None:
+def remove_image_by_url(soup: Union[BeautifulSoup, Tag], image_url: Optional[str]) -> None:
     """
     Remove the first image with the specified URL from the soup.
 
@@ -111,7 +115,7 @@ def remove_image_by_url(soup: BeautifulSoup, image_url: Optional[str]) -> None:
     Handles exact URL matches, filename matches, and responsive image variants.
 
     Args:
-        soup: BeautifulSoup object
+        soup: BeautifulSoup or Tag object
         image_url: URL of the image to remove (optional, does nothing if None)
     """
     if not image_url:
@@ -127,7 +131,11 @@ def remove_image_by_url(soup: BeautifulSoup, image_url: Optional[str]) -> None:
     image_base = _get_base_filename(image_path)
 
     for img in soup.find_all("img"):
-        img_src = img.get("src") or img.get("data-src") or img.get("data-lazy-src")
+        img_src = (
+            get_attr_str(img, "src")
+            or get_attr_str(img, "data-src")
+            or get_attr_str(img, "data-lazy-src")
+        )
         if not img_src or img_src.startswith("data:"):
             continue
 
@@ -159,29 +167,25 @@ def remove_image_by_url(soup: BeautifulSoup, image_url: Optional[str]) -> None:
             return
 
 
-def sanitize_class_names(soup: BeautifulSoup) -> None:
+def sanitize_class_names(soup: Union[BeautifulSoup, Tag]) -> None:
     """
     Convert all class attributes to data-sanitized-class attributes.
 
     This prevents CSS conflicts by moving class names to data attributes.
 
     Args:
-        soup: BeautifulSoup object
+        soup: BeautifulSoup or Tag object
     """
     for elem in soup.find_all(True):
         if "class" in elem.attrs:
-            # Get class value(s)
-            classes = elem["class"]
-            class_str = " ".join(classes) if isinstance(classes, list) else str(classes)
-
             # Move to data-sanitized-class
-            elem["data-sanitized-class"] = class_str
+            elem["data-sanitized-class"] = get_attr_str(elem, "class")
 
             # Remove original class attribute
             del elem["class"]
 
 
-def sanitize_html_attributes(soup: BeautifulSoup) -> None:
+def sanitize_html_attributes(soup: Union[BeautifulSoup, Tag]) -> None:
     """
     Sanitize HTML by renaming attributes to data-sanitized-* format.
 
@@ -194,7 +198,7 @@ def sanitize_html_attributes(soup: BeautifulSoup) -> None:
     - Converts other data-* attributes → data-sanitized-* (except data-src, data-srcset)
 
     Args:
-        soup: BeautifulSoup object to sanitize in-place
+        soup: BeautifulSoup or Tag object to sanitize in-place
     """
     # Remove dangerous elements
     for tag in soup.find_all(["script", "object", "embed"]):
@@ -208,9 +212,7 @@ def sanitize_html_attributes(soup: BeautifulSoup) -> None:
     for elem in soup.find_all(True):
         # Convert class → data-sanitized-class
         if "class" in elem.attrs:
-            classes = elem["class"]
-            class_str = " ".join(classes) if isinstance(classes, list) else str(classes)
-            elem["data-sanitized-class"] = class_str
+            elem["data-sanitized-class"] = get_attr_str(elem, "class")
             del elem["class"]
 
         # Convert style → data-sanitized-style
@@ -242,14 +244,14 @@ def sanitize_html_attributes(soup: BeautifulSoup) -> None:
             del elem[attr]
 
 
-def remove_sanitized_attributes(soup: BeautifulSoup) -> None:
+def remove_sanitized_attributes(soup: Union[BeautifulSoup, Tag]) -> None:
     """
     Remove all data-sanitized-* attributes from elements.
 
     Used after sanitization to clean up HTML (Merkur-specific behavior).
 
     Args:
-        soup: BeautifulSoup object to clean in-place
+        soup: BeautifulSoup or Tag object to clean in-place
     """
     for elem in soup.find_all(True):
         attrs_to_remove = []

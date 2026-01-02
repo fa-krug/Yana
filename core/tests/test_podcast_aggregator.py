@@ -1,8 +1,10 @@
 import unittest
-from unittest.mock import MagicMock, patch
-from datetime import datetime
+from unittest.mock import MagicMock
+
 from django.utils import timezone
+
 from core.aggregators.podcast.aggregator import PodcastAggregator
+
 
 class TestPodcastAggregator(unittest.TestCase):
     def setUp(self):
@@ -31,9 +33,7 @@ class TestPodcastAggregator(unittest.TestCase):
                     "link": "https://example.com/ep1",
                     "published": "Fri, 12 Dec 2025 18:59:37 -0500",
                     "summary": "Summary 1",
-                    "enclosures": [
-                        {"url": "https://example.com/ep1.mp3", "type": "audio/mpeg"}
-                    ],
+                    "enclosures": [{"url": "https://example.com/ep1.mp3", "type": "audio/mpeg"}],
                     "itunes_duration": "00:30:00",
                     "itunes_image": {"href": "https://example.com/art.jpg"},
                 },
@@ -41,12 +41,12 @@ class TestPodcastAggregator(unittest.TestCase):
                     "title": "No Audio",
                     "link": "https://example.com/no-audio",
                     "enclosures": [],
-                }
+                },
             ]
         }
-        
+
         articles = self.aggregator.parse_to_raw_articles(source_data)
-        
+
         self.assertEqual(len(articles), 1)
         self.assertEqual(articles[0]["name"], "Episode 1")
         self.assertEqual(articles[0]["_media_url"], "https://example.com/ep1.mp3")
@@ -54,25 +54,28 @@ class TestPodcastAggregator(unittest.TestCase):
         self.assertEqual(articles[0]["_image_url"], "https://example.com/art.jpg")
 
     def test_enrich_articles_builds_player(self):
-        articles = [{
-            "name": "Episode 1",
-            "identifier": "https://example.com/ep1",
-            "content": "Original Summary",
-            "date": timezone.now(),
-            "_media_url": "https://example.com/ep1.mp3",
-            "_media_type": "audio/mpeg",
-            "_duration": 1800,
-            "_image_url": "https://example.com/art.jpg"
-        }]
-        
+        articles = [
+            {
+                "name": "Episode 1",
+                "identifier": "https://example.com/ep1",
+                "content": "Original Summary",
+                "date": timezone.now(),
+                "_media_url": "https://example.com/ep1.mp3",
+                "_media_type": "audio/mpeg",
+                "_duration": 1800,
+                "_image_url": "https://example.com/art.jpg",
+            }
+        ]
+
         enriched = self.aggregator.enrich_articles(articles)
         content = enriched[0]["content"]
-        
+
         self.assertIn("<audio controls", content)
         self.assertIn('src="https://example.com/ep1.mp3"', content)
         self.assertIn("30:00", content)
         self.assertIn('src="https://example.com/art.jpg"', content)
         self.assertIn("Original Summary", content)
+
 
 if __name__ == "__main__":
     unittest.main()

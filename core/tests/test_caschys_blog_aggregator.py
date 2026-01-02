@@ -1,6 +1,8 @@
 import unittest
 from unittest.mock import MagicMock, patch
+
 from core.aggregators.caschys_blog.aggregator import CaschysBlogAggregator
+
 
 class TestCaschysBlogAggregator(unittest.TestCase):
     def setUp(self):
@@ -14,22 +16,22 @@ class TestCaschysBlogAggregator(unittest.TestCase):
         # Read fixture
         with open("old/src/server/aggregators/__tests__/fixtures/caschys_blog.html", "r") as f:
             fixture_html = f.read()
-        
+
         mock_fetch.return_value = fixture_html
-        
+
         article = {
             "name": "Google Stadia Controller: Voller Steam-Support kurz vor Ende der Frist",
             "identifier": "https://stadt-bremerhaven.de/google-stadia-controller-voller-steam-support-kurz-vor-ende-der-frist/",
         }
-        
+
         # Test content extraction
         enriched = self.aggregator.enrich_articles([article])
         content = enriched[0]["content"]
-        
+
         # Verify content from .entry-inner is present
         self.assertIn("Google Stadia Controller", content)
         self.assertIn("31. Dezember 2025", content)
-        
+
         # Verify noise is removed
         self.assertNotIn("wpSEO", content)
         self.assertNotIn("Google Analytics", content)
@@ -39,17 +41,20 @@ class TestCaschysBlogAggregator(unittest.TestCase):
             {"name": "Normal Article", "identifier": "url1", "date": None},
             {"name": "Sponsered (Anzeige)", "identifier": "url2", "date": None},
         ]
-        
+
         # We need to mock timezone.now() for filter_articles
         with patch("django.utils.timezone.now") as mock_now:
             from datetime import datetime
+
             from django.utils import timezone
+
             mock_now.return_value = datetime(2026, 1, 2, tzinfo=timezone.UTC)
-            
+
             filtered = self.aggregator.filter_articles(articles)
-            
+
             self.assertEqual(len(filtered), 1)
             self.assertEqual(filtered[0]["name"], "Normal Article")
+
 
 if __name__ == "__main__":
     unittest.main()

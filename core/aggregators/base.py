@@ -254,3 +254,30 @@ class BaseAggregator(ABC):
         except Exception as e:
             self.logger.error(f"extract_header_element: Unexpected error - {e}")
             return None
+
+    def fetch_article_content(self, url: str) -> str:
+        """
+        Fetch HTML content from URL.
+
+        Base implementation returns empty string.
+        Override in subclasses (e.g. FullWebsiteAggregator) to fetch actual HTML.
+        """
+        return ""
+
+    def extract_content(self, html: str, article: Dict[str, Any]) -> str:
+        """
+        Extract main content from HTML.
+
+        Base implementation returns original HTML.
+        Override in subclasses to extract specific elements.
+        """
+        return html
+
+    def process_content(self, content: str, article: Dict[str, Any]) -> str:
+        """
+        Process and format content.
+
+        Base implementation returns original content.
+        Override in subclasses to clean/format HTML.
+        """
+        return content

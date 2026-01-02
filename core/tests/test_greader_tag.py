@@ -1,6 +1,7 @@
-import pytest
 from django.contrib.auth.models import User
 from django.urls import reverse
+
+import pytest
 
 from core.models import Article, Feed, FeedGroup, GReaderAuthToken
 
@@ -63,7 +64,7 @@ class TestGReaderTag:
             aggregator="rss",
             identifier="https://example.com/rss",
             user=user,
-            enabled=True
+            enabled=True,
         )
 
     @pytest.fixture
@@ -74,7 +75,7 @@ class TestGReaderTag:
             identifier="test-id",
             content="Some content",
             read=False,
-            starred=False
+            starred=False,
         )
 
     @pytest.fixture
@@ -85,25 +86,25 @@ class TestGReaderTag:
         response = client.post(
             edit_tag_url,
             {"i": str(article.id), "a": "user/-/state/com.google/read"},
-            **auth_headers
+            **auth_headers,
         )
         assert response.status_code == 200
         assert response.content == b"OK"
-        
+
         article.refresh_from_db()
         assert article.read
 
     def test_edit_tag_mark_unread(self, client, user, auth_headers, edit_tag_url, article):
         article.read = True
         article.save()
-        
+
         response = client.post(
             edit_tag_url,
             {"i": str(article.id), "r": "user/-/state/com.google/read"},
-            **auth_headers
+            **auth_headers,
         )
         assert response.status_code == 200
-        
+
         article.refresh_from_db()
         assert not article.read
 
@@ -111,40 +112,40 @@ class TestGReaderTag:
         response = client.post(
             edit_tag_url,
             {"i": str(article.id), "a": "user/-/state/com.google/starred"},
-            **auth_headers
+            **auth_headers,
         )
         assert response.status_code == 200
-        
+
         article.refresh_from_db()
         assert article.starred
 
     def test_edit_tag_unstar(self, client, user, auth_headers, edit_tag_url, article):
         article.starred = True
         article.save()
-        
+
         response = client.post(
             edit_tag_url,
             {"i": str(article.id), "r": "user/-/state/com.google/starred"},
-            **auth_headers
+            **auth_headers,
         )
         assert response.status_code == 200
-        
+
         article.refresh_from_db()
         assert not article.starred
 
     def test_edit_tag_multiple_items(self, client, user, auth_headers, edit_tag_url, feed):
         a1 = Article.objects.create(feed=feed, name="A1", identifier="id1")
         a2 = Article.objects.create(feed=feed, name="A2", identifier="id2")
-        
+
         # Mark both as starred
         # Use query string for multiple 'i' if needed, but POST data works with list in django client
         response = client.post(
             edit_tag_url,
             {"i": [str(a1.id), str(a2.id)], "a": "user/-/state/com.google/starred"},
-            **auth_headers
+            **auth_headers,
         )
         assert response.status_code == 200
-        
+
         a1.refresh_from_db()
         a2.refresh_from_db()
         assert a1.starred
@@ -152,21 +153,17 @@ class TestGReaderTag:
 
     def test_edit_tag_inaccessible_article(self, client, user, auth_headers, edit_tag_url):
         from django.contrib.auth.models import User
-        
+
         other_user = User.objects.create_user("other2", "other2@example.com", "password")
         other_feed = Feed.objects.create(
-            name="Other Feed", 
-            aggregator="rss", 
-            identifier="other", 
-            user=other_user,
-            enabled=True
+            name="Other Feed", aggregator="rss", identifier="other", user=other_user, enabled=True
         )
         other_article = Article.objects.create(feed=other_feed, name="Other Art", identifier="oa")
-        
+
         response = client.post(
             edit_tag_url,
             {"i": str(other_article.id), "a": "user/-/state/com.google/starred"},
-            **auth_headers
+            **auth_headers,
         )
         assert response.status_code == 400
         assert b"No accessible articles found" in response.content
@@ -178,31 +175,27 @@ class TestGReaderTag:
     def test_mark_all_as_read_global(self, client, user, auth_headers, mark_all_url, feed):
         Article.objects.create(feed=feed, name="A1", identifier="id1", read=False)
         Article.objects.create(feed=feed, name="A2", identifier="id2", read=False)
-        
+
         response = client.post(
-            mark_all_url,
-            {"s": "user/-/state/com.google/reading-list"},
-            **auth_headers
+            mark_all_url, {"s": "user/-/state/com.google/reading-list"}, **auth_headers
         )
         assert response.status_code == 200
         assert response.content == b"OK"
-        
+
         assert not Article.objects.filter(feed=feed, read=False).exists()
 
     def test_mark_all_as_read_feed(self, client, user, auth_headers, mark_all_url, feed):
         a1 = Article.objects.create(feed=feed, name="A1", identifier="id1", read=False)
-        
+
         # Another feed
-        other_feed = Feed.objects.create(name="F2", aggregator="rss", identifier="f2", user=user, enabled=True)
-        a2 = Article.objects.create(feed=other_feed, name="A2", identifier="id2", read=False)
-        
-        response = client.post(
-            mark_all_url,
-            {"s": f"feed/{feed.id}"},
-            **auth_headers
+        other_feed = Feed.objects.create(
+            name="F2", aggregator="rss", identifier="f2", user=user, enabled=True
         )
+        a2 = Article.objects.create(feed=other_feed, name="A2", identifier="id2", read=False)
+
+        response = client.post(mark_all_url, {"s": f"feed/{feed.id}"}, **auth_headers)
         assert response.status_code == 200
-        
+
         a1.refresh_from_db()
         a2.refresh_from_db()
         assert a1.read
@@ -210,26 +203,25 @@ class TestGReaderTag:
 
     def test_mark_all_as_read_timestamp(self, client, user, auth_headers, mark_all_url, feed):
         from datetime import datetime, timedelta, timezone
+
         now = datetime.now(timezone.utc)
-        
+
         a1 = Article.objects.create(feed=feed, name="New", identifier="n", date=now, read=False)
-        a2 = Article.objects.create(feed=feed, name="Old", identifier="o", date=now - timedelta(days=1), read=False)
-        
+        a2 = Article.objects.create(
+            feed=feed, name="Old", identifier="o", date=now - timedelta(days=1), read=False
+        )
+
         # Mark older than 1 hour ago as read
         ts = int((now - timedelta(hours=1)).timestamp())
-        
+
         response = client.post(
             mark_all_url,
             {"s": "user/-/state/com.google/reading-list", "ts": str(ts)},
-            **auth_headers
+            **auth_headers,
         )
         assert response.status_code == 200
-        
+
         a1.refresh_from_db()
         a2.refresh_from_db()
         assert not a1.read
         assert a2.read
-
-
-
-

@@ -4,7 +4,7 @@ Handles tag operations: listing tags and marking articles with tags (read/starre
 """
 
 import logging
-from typing import Any
+from typing import Any, List, Optional, Union
 
 from core.models import Article, FeedGroup
 
@@ -45,9 +45,9 @@ def list_tags(user_id: int) -> list[dict[str, str]]:
 
 def edit_tags(
     user_id: int,
-    item_ids: list[int] | list[str],
-    add_tag: str = None,
-    remove_tag: str = None,
+    item_ids: Union[List[int], List[str]],
+    add_tag: Optional[str] = None,
+    remove_tag: Optional[str] = None,
 ) -> dict[str, Any]:
     """Mark articles with tags (read/starred).
 
@@ -100,6 +100,7 @@ def edit_tags(
 
     if updated_count > 0:
         from core.services.greader.stream_service import invalidate_unread_cache
+
         invalidate_unread_cache(user_id)
 
     logger.info(f"User {user_id} updated {updated_count} articles with tags")
@@ -112,8 +113,8 @@ def edit_tags(
 
 def mark_all_as_read(
     user_id: int,
-    stream_id: str = None,
-    timestamp: int = None,
+    stream_id: Optional[str] = None,
+    timestamp: Optional[int] = None,
 ) -> dict[str, Any]:
     """Mark all articles in a stream as read.
 
@@ -159,6 +160,7 @@ def mark_all_as_read(
 
     if updated_count > 0:
         from core.services.greader.stream_service import invalidate_unread_cache
+
         invalidate_unread_cache(user_id)
 
     logger.info(f"User {user_id} marked {updated_count} articles as read in stream {stream_id}")

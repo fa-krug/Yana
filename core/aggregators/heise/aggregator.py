@@ -4,7 +4,7 @@ import json
 from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import urljoin, urlparse
 
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 
 from ..utils import fetch_html
 from ..website import FullWebsiteAggregator
@@ -206,19 +206,24 @@ class HeiseAggregator(FullWebsiteAggregator):
 
         # JSON-LD
         for script in soup.find_all("script", type="application/ld+json"):
+            if not script.string:
+                continue
             try:
-                data = json.loads(script.string)
+                data = json.loads(str(script.string))
                 items = data if isinstance(data, list) else [data]
                 for item in items:
                     if "discussionUrl" in item:
-                        return urljoin(article_url, item["discussionUrl"])
+                        discussion_url = str(item["discussionUrl"])
+                        return urljoin(article_url, discussion_url)
             except Exception:
                 continue
 
         # Fallback link
         comment_link = soup.select_one('a[href*="/forum/"][href*="comment"]')
-        if comment_link and comment_link.get("href"):
-            return urljoin(article_url, comment_link["href"])
+        if isinstance(comment_link, Tag):
+            href = str(comment_link.get("href", ""))
+            if href:
+                return urljoin(article_url, href)
 
         return None
 

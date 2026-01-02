@@ -7,6 +7,8 @@ from typing import List, Optional
 
 from bs4 import BeautifulSoup, Tag
 
+from ..utils import get_attr_str
+
 
 class EmbedProcessorStrategy(ABC):
     """Base class for embed processing strategies."""
@@ -31,11 +33,10 @@ class YouTubeEmbedProcessor(EmbedProcessorStrategy):
     """Process YouTube embed figures."""
 
     def can_handle(self, figure: Tag) -> bool:
-        classes = figure.get("class", [])
-        class_str = " ".join(classes) if isinstance(classes, list) else str(classes)
+        class_str = get_attr_str(figure, "class")
 
         # Check data-sanitized-class too (after sanitization)
-        sanitized_class = figure.get("data-sanitized-class", "")
+        sanitized_class = get_attr_str(figure, "data-sanitized-class")
 
         return any(
             keyword in class_str or keyword in sanitized_class
@@ -57,7 +58,7 @@ class YouTubeEmbedProcessor(EmbedProcessorStrategy):
             height="315",
             frameborder="0",
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture",
-            allowfullscreen=True,
+            allowfullscreen="true",
         )
 
         # Wrap in div
@@ -78,7 +79,7 @@ class YouTubeEmbedProcessor(EmbedProcessorStrategy):
     def _extract_video_id(self, figure: Tag) -> Optional[str]:
         """Extract YouTube video ID from figure."""
         # Try data attributes
-        embed_content = figure.get("data-sanitized-data-embed-content", "")
+        embed_content = get_attr_str(figure, "data-sanitized-data-embed-content")
         if embed_content:
             match = re.search(
                 r"(?:youtube\.com/embed/|youtube-nocookie\.com/embed/)([a-zA-Z0-9_-]{11})",
@@ -89,7 +90,7 @@ class YouTubeEmbedProcessor(EmbedProcessorStrategy):
 
         # Try links
         for link in figure.find_all("a", href=True):
-            href = link["href"]
+            href = get_attr_str(link, "href")
             # Standard YouTube URL
             match = re.search(r"(?:youtube\.com/watch\?v=|youtu\.be/)([a-zA-Z0-9_-]{11})", href)
             if match:
@@ -112,7 +113,7 @@ class TwitterEmbedProcessor(EmbedProcessorStrategy):
         # Find Twitter link
         twitter_link = None
         for link in figure.find_all("a", href=True):
-            href = link["href"]
+            href = get_attr_str(link, "href")
             if "twitter.com" in href or "x.com" in href:
                 twitter_link = href
                 break
@@ -145,11 +146,10 @@ class RedditEmbedProcessor(EmbedProcessorStrategy):
     """Process Reddit embed figures."""
 
     def can_handle(self, figure: Tag) -> bool:
-        classes = figure.get("class", [])
-        class_str = " ".join(classes) if isinstance(classes, list) else str(classes)
+        class_str = get_attr_str(figure, "class")
 
         # Check data-sanitized-class too
-        sanitized_class = figure.get("data-sanitized-class", "")
+        sanitized_class = get_attr_str(figure, "data-sanitized-class")
 
         return (
             "provider-reddit" in class_str
@@ -161,8 +161,9 @@ class RedditEmbedProcessor(EmbedProcessorStrategy):
         # Find Reddit link
         reddit_link = None
         for link in figure.find_all("a", href=True):
-            if "reddit.com" in link["href"]:
-                reddit_link = link["href"]
+            href = get_attr_str(link, "href")
+            if "reddit.com" in href:
+                reddit_link = href
                 break
 
         if not reddit_link:
@@ -177,7 +178,7 @@ class RedditEmbedProcessor(EmbedProcessorStrategy):
         # Try to find image
         img_tag = figure.find("img")
         if img_tag:
-            img_src = img_tag.get("src") or img_tag.get("data-src")
+            img_src = get_attr_str(img_tag, "src") or get_attr_str(img_tag, "data-src")
             if img_src:
                 # Image link
                 img_link = soup.new_tag("a", href=clean_url, target="_blank", rel="noopener")
@@ -202,7 +203,7 @@ class YouTubeFallbackProcessor(EmbedProcessorStrategy):
     def can_handle(self, figure: Tag) -> bool:
         """Check if figure contains any YouTube links."""
         for link in figure.find_all("a", href=True):
-            href = link["href"]
+            href = get_attr_str(link, "href")
             if "youtube.com" in href or "youtu.be" in href:
                 return True
         return False
@@ -212,7 +213,7 @@ class YouTubeFallbackProcessor(EmbedProcessorStrategy):
         # Find YouTube link
         video_id = None
         for link in figure.find_all("a", href=True):
-            href = link["href"]
+            href = get_attr_str(link, "href")
             if "youtube.com" in href or "youtu.be" in href:
                 video_id = self._extract_video_id(href)
                 if video_id:
@@ -230,7 +231,7 @@ class YouTubeFallbackProcessor(EmbedProcessorStrategy):
             height="315",
             frameborder="0",
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture",
-            allowfullscreen=True,
+            allowfullscreen="true",
         )
 
         # Wrap in div
@@ -278,12 +279,24 @@ def process_embeds(content: Tag, logger: logging.Logger) -> None:
     figures = content.find_all("figure")
     logger.debug(f"Processing {len(figures)} figure elements")
 
+    # Get the parent soup to create new tags
+    soup = content.find_parent()
+    if not soup:
+        # Fallback if content has no parent
+        soup = BeautifulSoup("", "html.parser")
+    elif not isinstance(soup, BeautifulSoup):
+        # Traverse up to find BeautifulSoup
+        curr = content
+        while curr.parent:
+            curr = curr.parent
+        soup = curr if isinstance(curr, BeautifulSoup) else BeautifulSoup("", "html.parser")
+
     for idx, figure in enumerate(figures, 1):
         # Try each processor
         for processor in processors:
             if processor.can_handle(figure):
                 logger.debug(f"Figure {idx}: Using {processor.__class__.__name__}")
-                replacement = processor.process(figure, BeautifulSoup("", "html.parser"), logger)
+                replacement = processor.process(figure, soup, logger)
                 if replacement:
                     figure.replace_with(replacement)
                     logger.debug(f"Figure {idx}: Successfully processed")

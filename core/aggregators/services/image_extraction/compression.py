@@ -76,7 +76,7 @@ def compress_image(
             max_height = MAX_HEADER_IMAGE_HEIGHT
 
         # Load image
-        img = Image.open(io.BytesIO(image_data))
+        img: Any = Image.open(io.BytesIO(image_data))
 
         # Convert RGBA to RGB if needed (for JPEG)
         if img.mode in ("RGBA", "LA", "P"):

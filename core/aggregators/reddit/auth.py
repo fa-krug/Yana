@@ -154,6 +154,6 @@ def get_reddit_access_token(user_id: int) -> str:
             ) from e
         if e.response.status_code == 429:
             raise ValueError("Rate limited by Reddit. Please try again later.") from e
-        raise ValueError(f"Reddit OAuth error: {e.response.status_text or str(e)}") from e
+        raise ValueError(f"Reddit OAuth error: {e.response.reason or str(e)}") from e
     except requests.exceptions.RequestException as e:
         raise ValueError(f"Failed to get Reddit access token: {str(e)}") from e

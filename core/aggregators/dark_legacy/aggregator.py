@@ -1,8 +1,9 @@
 from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import urljoin
 
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 
+from ..utils import get_attr_str
 from ..website import FullWebsiteAggregator
 
 
@@ -51,21 +52,24 @@ class DarkLegacyAggregator(FullWebsiteAggregator):
 
         # Resolve relative URLs for images
         for img in soup.find_all("img"):
-            src = img.get("src")
+            src = get_attr_str(img, "src")
             if src and not src.startswith(("http://", "https://", "data:")):
-                img["src"] = urljoin(base_url, str(src))
+                img["src"] = urljoin(base_url, src)
 
         # We want to keep the images in a clean container
         images = soup.find_all("img")
         if images:
             new_soup = BeautifulSoup("<div></div>", "html.parser")
-            if new_soup.div:
+            div = new_soup.div
+            if isinstance(div, Tag):
                 for img in images:
                     # Clean up the image tag
-                    new_img = new_soup.new_tag("img", src=img["src"])
-                    if img.get("alt"):
-                        new_img["alt"] = str(img.get("alt"))
-                    new_soup.div.append(new_img)
+                    img_src = get_attr_str(img, "src")
+                    new_img = new_soup.new_tag("img", src=img_src)
+                    img_alt = get_attr_str(img, "alt")
+                    if img_alt:
+                        new_img["alt"] = img_alt
+                    div.append(new_img)
                 html = str(new_soup)
 
         return super().process_content(html, article)

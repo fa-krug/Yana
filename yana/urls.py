@@ -15,6 +15,8 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 
+from typing import Any, List
+
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
@@ -27,7 +29,7 @@ def redirect_to_admin(request, *args, **kwargs):
     return redirect("admin:index")
 
 
-urlpatterns = [
+urlpatterns: List[Any] = [
     path("admin/", admin.site.urls),
     path("api/greader/", include("core.urls.greader")),
     path("", include("core.urls")),

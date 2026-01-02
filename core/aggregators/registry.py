@@ -11,15 +11,14 @@ from .explosm.aggregator import ExplosmAggregator
 from .heise import HeiseAggregator
 from .implementations import FeedContentAggregator
 from .mactechnews.aggregator import MactechnewsAggregator
-from .podcast.aggregator import PodcastAggregator
-
-from .youtube.aggregator import YouTubeAggregator
 from .mein_mmo import MeinMmoAggregator
 from .merkur import MerkurAggregator
 from .oglaf import OglafAggregator
+from .podcast.aggregator import PodcastAggregator
 from .reddit import RedditAggregator
 from .tagesschau import TagesschauAggregator
 from .website import FullWebsiteAggregator
+from .youtube.aggregator import YouTubeAggregator
 
 
 class AggregatorRegistry:

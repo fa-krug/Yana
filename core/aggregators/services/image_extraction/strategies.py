@@ -15,9 +15,10 @@ from dataclasses import dataclass
 from typing import Any, Dict, Optional
 from urllib.parse import urlparse
 
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 
 from ...exceptions import ArticleSkipError
+from ...utils import get_attr_str
 from ...utils.twitter import extract_tweet_id, fetch_tweet_data, get_first_tweet_image
 from ...utils.youtube import extract_youtube_video_id, get_youtube_thumbnail_url
 from .fetcher import fetch_single_image
@@ -193,16 +194,20 @@ class MetaTagImageStrategy(ImageStrategy):
 
             # Try og:image first
             og_image = context.soup.select_one('meta[property="og:image"]')
-            if og_image and og_image.get("content"):
-                image_url = og_image.get("content")
-                logger.debug("MetaTagImageStrategy: Found og:image")
+            if isinstance(og_image, Tag):
+                content = get_attr_str(og_image, "content")
+                if content:
+                    image_url = content
+                    logger.debug("MetaTagImageStrategy: Found og:image")
 
             # Fallback to twitter:image
             if not image_url:
                 twitter_image = context.soup.select_one('meta[name="twitter:image"]')
-                if twitter_image and twitter_image.get("content"):
-                    image_url = twitter_image.get("content")
-                    logger.debug("MetaTagImageStrategy: Found twitter:image")
+                if isinstance(twitter_image, Tag):
+                    content = get_attr_str(twitter_image, "content")
+                    if content:
+                        image_url = content
+                        logger.debug("MetaTagImageStrategy: Found twitter:image")
 
             if not image_url:
                 logger.debug("MetaTagImageStrategy: No meta tag images found")
@@ -273,7 +278,14 @@ class PageImagesStrategy(ImageStrategy):
 
             # Try each image
             for img in img_elements:
-                img_url = img.get("src") or img.get("data-src") or img.get("data-lazy-src")
+                if not isinstance(img, Tag):
+                    continue
+
+                img_url = (
+                    get_attr_str(img, "src")
+                    or get_attr_str(img, "data-src")
+                    or get_attr_str(img, "data-lazy-src")
+                )
                 if not img_url:
                     continue
 
@@ -281,8 +293,8 @@ class PageImagesStrategy(ImageStrategy):
                 img_url = self._resolve_url(img_url, context.url)
 
                 # Check dimensions from HTML attributes
-                width = self._get_dimension(img.get("width"))
-                height = self._get_dimension(img.get("height"))
+                width = self._get_dimension(get_attr_str(img, "width"))
+                height = self._get_dimension(get_attr_str(img, "height"))
 
                 min_size = (
                     self.MIN_HEADER_IMAGE_SIZE if context.is_header_image else self.MIN_IMAGE_SIZE

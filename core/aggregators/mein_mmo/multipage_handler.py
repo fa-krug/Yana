@@ -6,6 +6,8 @@ from typing import Callable, Set
 
 from bs4 import BeautifulSoup
 
+from ..utils import get_attr_str
+
 
 def detect_pagination(html: str, logger: logging.Logger) -> Set[int]:
     """
@@ -73,7 +75,7 @@ def detect_pagination(html: str, logger: logging.Logger) -> Set[int]:
                 logger.debug(f"Found page number from nested span in link: {span_text}")
 
         # Try URL pattern: /article-name/2/
-        href = link.get("href", "")
+        href = get_attr_str(link, "href")
         if href:
             match = re.search(r"/(\d+)/?$", href)
             if match:

@@ -231,10 +231,3 @@ class GenericImageStrategy(HeaderElementStrategy):
         except Exception as e:
             logger.warning(f"GenericImageStrategy: Failed - {e}")
             return None
-        finally:
-            # Close extractor's browser if it was opened
-            if extractor:
-                import contextlib
-
-                with contextlib.suppress(Exception):
-                    await extractor.close()

@@ -1,6 +1,7 @@
-import pytest
 from django.contrib.auth.models import User
 from django.urls import reverse
+
+import pytest
 
 from core.models import GReaderAuthToken
 
@@ -35,4 +36,3 @@ class TestGReaderPolish:
         response = client.post(url, {"s": "user/-/label/Test"}, **auth_headers)
         assert response.status_code == 200
         assert response.content == b"OK"
-

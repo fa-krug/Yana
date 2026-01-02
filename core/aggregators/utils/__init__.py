@@ -1,5 +1,6 @@
 """Utility modules for aggregators."""
 
+from .bs4_utils import get_attr_list, get_attr_str
 from .content_extractor import extract_main_content
 from .content_formatter import format_article_content
 from .html_cleaner import (
@@ -28,4 +29,6 @@ __all__ = [
     "sanitize_html_attributes",
     "remove_sanitized_attributes",
     "format_article_content",
+    "get_attr_str",
+    "get_attr_list",
 ]

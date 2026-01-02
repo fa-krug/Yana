@@ -2,6 +2,8 @@
 
 from bs4 import BeautifulSoup, Tag
 
+from ..utils import get_attr_list
+
 
 def extract_tagesschau_content(html: str) -> str:
     """
@@ -14,7 +16,8 @@ def extract_tagesschau_content(html: str) -> str:
         Extracted HTML content
     """
     soup = BeautifulSoup(html, "html.parser")
-    content_div = soup.new_tag("div", **{"class": "article-content"})
+    content_div = soup.new_tag("div")
+    content_div["data-sanitized-class"] = "article-content"
 
     # Find all paragraphs and headings
     for element in soup.find_all(["p", "h2"]):
@@ -22,9 +25,7 @@ def extract_tagesschau_content(html: str) -> str:
         if _should_skip_element(element):
             continue
 
-        classes = element.get("class", [])
-        if isinstance(classes, str):
-            classes = [classes]
+        classes = get_attr_list(element, "class")
 
         if element.name == "p" and any("textabsatz" in c for c in classes):
             # Clone paragraph and remove all classes
@@ -46,9 +47,7 @@ def _should_skip_element(element: Tag) -> bool:
 
     for parent in element.parents:
         if isinstance(parent, Tag):
-            classes = parent.get("class", [])
-            if isinstance(classes, str):
-                classes = [classes]
+            classes = get_attr_list(parent, "class")
 
             if any(any(sc in c for sc in skip_classes) for c in classes):
                 return True

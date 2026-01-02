@@ -15,9 +15,7 @@ class PodcastAggregator(RssAggregator):
 
     @classmethod
     def get_identifier_choices(
-        cls,
-        query: Optional[str] = None,
-        user: Optional[Any] = None
+        cls, query: Optional[str] = None, user: Optional[Any] = None
     ) -> List[Tuple[str, str]]:
         # Generic podcast aggregator, no predefined choices
         return []
@@ -75,7 +73,11 @@ class PodcastAggregator(RssAggregator):
 
             if not image_url:
                 media_thumbnail = entry.get("media_thumbnail")
-                if media_thumbnail and isinstance(media_thumbnail, list) and len(media_thumbnail) > 0:
+                if (
+                    media_thumbnail
+                    and isinstance(media_thumbnail, list)
+                    and len(media_thumbnail) > 0
+                ):
                     image_url = media_thumbnail[0].get("url") or ""
 
             article = {
@@ -141,14 +143,14 @@ class PodcastAggregator(RssAggregator):
 
             html_parts.append(
                 f'<div style="margin-top: 0.5em; font-size: 0.9em; color: #666;">'
-                f'{" | ".join(meta_parts)}'
+                f"{' | '.join(meta_parts)}"
                 f"</div></div>"
             )
 
             # Description
             description = article.get("content", "")
             if description:
-                html_parts.append(f'<div data-sanitized-class="podcast-description">')
+                html_parts.append('<div data-sanitized-class="podcast-description">')
                 html_parts.append("<h4>Show Notes</h4>")
                 html_parts.append(description)
                 html_parts.append("</div>")
