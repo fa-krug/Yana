@@ -166,6 +166,18 @@ class Command(BaseCommand):
 
     def _get_default_identifier(self, aggregator_type):
         """Get default identifier for known aggregators."""
+        try:
+            from core.aggregators.registry import AggregatorRegistry
+
+            aggregator_class = AggregatorRegistry.get(aggregator_type)
+            if hasattr(aggregator_class, "get_default_identifier"):
+                default = aggregator_class.get_default_identifier()
+                if default:
+                    return default
+        except (KeyError, ImportError):
+            pass
+
+        # Fallback for aggregators not yet fully migrated or in registry
         defaults = {
             "tagesschau": "https://www.tagesschau.de/xml/rss2/",
             "heise": "https://www.heise.de/rss/heise.rdf",
