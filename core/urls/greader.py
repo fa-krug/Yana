@@ -16,7 +16,12 @@ from core.views.greader.stream import (
     unread_count,
 )
 from core.views.greader.subscription import subscription_edit, subscription_list
-from core.views.greader.tag import edit_tag, mark_all_as_read, tag_list
+from core.views.greader.tag import (
+    disable_tag,
+    edit_tag,
+    mark_all_as_read,
+    tag_list,
+)
 
 app_name = "greader"
 
@@ -34,6 +39,7 @@ urlpatterns = [
     # Tag endpoints
     path("reader/api/0/tag/list", tag_list, name="tag_list"),
     path("reader/api/0/edit-tag", edit_tag, name="edit_tag"),
+    path("reader/api/0/disable-tag", disable_tag, name="disable_tag"),
     path("reader/api/0/mark-all-as-read", mark_all_as_read, name="mark_all_as_read"),
     # Stream endpoints
     path("reader/api/0/unread-count", unread_count, name="unread_count"),

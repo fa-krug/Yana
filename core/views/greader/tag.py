@@ -148,3 +148,15 @@ def mark_all_as_read(request):
             status=500,
             content_type="text/plain",
         )
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+@greader_auth_required
+def disable_tag(request):
+    """Disable a tag (stub).
+
+    Response:
+        "OK"
+    """
+    return HttpResponse("OK", status=200, content_type="text/plain")

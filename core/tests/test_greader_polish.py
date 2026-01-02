@@ -29,3 +29,10 @@ class TestGReaderPolish:
         response = client.get(url, **auth_headers)
         assert response.status_code == 200
         assert response.json() == {"streamprefs": {}}
+
+    def test_disable_tag(self, client, auth_headers):
+        url = reverse("greader:disable_tag")
+        response = client.post(url, {"s": "user/-/label/Test"}, **auth_headers)
+        assert response.status_code == 200
+        assert response.content == b"OK"
+
