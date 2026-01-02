@@ -23,7 +23,7 @@
     - **Sub-task:** Write tests for listing all subscribed feeds.
     - **Sub-task:** Implement service to serialize `Feed` objects to GReader format.
     - **Sub-task:** Connect view to service.
-- [ ] Task: Implement `subscription/edit` (Subscribe/Unsubscribe)
+- [x] Task: Implement `subscription/edit` (Subscribe/Unsubscribe) (749caaf)
     - **Sub-task:** Write tests for subscribing to a new URL and unsubscribing.
     - **Sub-task:** Implement service to handle `ac=subscribe` and `ac=unsubscribe`.
     - **Sub-task:** Connect view to service.
