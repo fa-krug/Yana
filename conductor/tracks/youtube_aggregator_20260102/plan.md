@@ -7,13 +7,13 @@ This plan outlines the steps to reimplement the YouTube aggregator in Python, in
     - [x] Sub-task: Ensure the `youtube_enabled` field exists in `core.models.UserSettings`.
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Database and Model Cleanup' (Protocol in workflow.md)
 
-## Phase 2: YouTube API Service Layer
-- [ ] Task: Implement YouTube API client.
-    - [ ] Sub-task: Create `core/aggregators/utils/youtube_client.py` to handle raw API requests (channels, playlistItems, videos, commentThreads).
-    - [ ] Sub-task: Implement quota-efficient batching for video details.
-- [ ] Task: Implement Channel Resolution logic.
-    - [ ] Sub-task: Create logic to resolve handles (@name), IDs (UC...), and URLs to a canonical Channel ID.
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: YouTube API Service Layer' (Protocol in workflow.md)
+## Phase 2: YouTube API Service Layer [checkpoint: 7406a88]
+- [x] Task: Implement YouTube API client. 97445e3
+    - [x] Sub-task: Create `core/aggregators/utils/youtube_client.py` to handle raw API requests (channels, playlistItems, videos, commentThreads).
+    - [x] Sub-task: Implement quota-efficient batching for video details.
+- [x] Task: Implement Channel Resolution logic. 97445e3
+    - [x] Sub-task: Create logic to resolve handles (@name), IDs (UC...), and URLs to a canonical Channel ID.
+- [x] Task: Conductor - User Manual Verification 'Phase 2: YouTube API Service Layer' (Protocol in workflow.md) 7406a88
 
 ## Phase 3: Aggregator Implementation
 - [ ] Task: Create `YoutubeAggregator` class in `core/aggregators/youtube/aggregator.py`.
