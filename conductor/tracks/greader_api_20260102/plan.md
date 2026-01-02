@@ -56,7 +56,7 @@
 
 ## Phase 5: Verification & Polish
 - [x] Task: Add unit tests for `unread-count` endpoint (e185737)
-- [ ] Task: Implement `preference/list` and `preference/stream/list` stubs
+- [x] Task: Implement `preference/list` and `preference/stream/list` stubs (3686d3b)
 - [ ] Task: Verify API against Reeder/NetNewsWire
     - **Sub-task:** Manual testing with actual clients (if possible via local network/tunnel).
     - **Sub-task:** Fix any compatibility quirks discovered.
