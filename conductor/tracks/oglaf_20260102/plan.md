@@ -2,13 +2,13 @@
 
 Based on the specification and the project's TDD-focused workflow (adapted for manual verification as requested), here is the plan for porting the Oglaf aggregator.
 
-## Phase 1: Foundation and Scaffolding
-- [ ] Task: Add `("oglaf", "Oglaf")` to `AGGREGATOR_CHOICES` in `core/choices.py`
-- [ ] Task: Create the directory `core/aggregators/website/oglaf/` and add an empty `__init__.py`
-- [ ] Task: Conductor - User Manual Verification 'Phase 1: Foundation and Scaffolding' (Protocol in workflow.md)
+## Phase 1: Foundation and Scaffolding [checkpoint: 2ba8495]
+- [x] Task: Add `("oglaf", "Oglaf")` to `AGGREGATOR_CHOICES` in `core/choices.py` (3143184)
+- [x] Task: Create the directory `core/aggregators/website/oglaf/` and add an empty `__init__.py` (2ba8495)
+- [x] Task: Conductor - User Manual Verification 'Phase 1: Foundation and Scaffolding' (Protocol in workflow.md) (2ba8495)
 
 ## Phase 2: Logic Implementation
-- [ ] Task: Analyze `old/src/server/aggregators/oglaf.ts` to identify selectors, removal patterns, and custom logic
+- [~] Task: Analyze `old/src/server/aggregators/oglaf.ts` to identify selectors, removal patterns, and custom logic
 - [ ] Task: Implement `OglafAggregator` class in `core/aggregators/website/oglaf/aggregator.py`
 - [ ] Task: Register `OglafAggregator` in `core/aggregators/registry.py`
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: Logic Implementation' (Protocol in workflow.md)
