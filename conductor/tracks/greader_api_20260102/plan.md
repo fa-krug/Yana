@@ -38,7 +38,7 @@
     - **Sub-task:** Write tests for fetching ID lists with filters (read/unread, feed, label).
     - **Sub-task:** Implement service to query `Article` table efficiently and return hex IDs.
     - **Sub-task:** Connect view to service.
-- [ ] Task: Implement `stream/contents` service and view
+- [x] Task: Implement `stream/contents` service and view (cb81016)
     - **Sub-task:** Write tests for fetching full content (Atom/JSON) for given IDs or streams.
     - **Sub-task:** Implement service to serialize `Article` objects to Atom/JSON.
     - **Sub-task:** Implement pagination logic (continuation).
