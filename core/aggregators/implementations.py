@@ -170,26 +170,6 @@ class MactechnewsAggregator(BaseAggregator):
         return []
 
 
-class OglafAggregator(BaseAggregator):
-    """Aggregator for Oglaf."""
-
-    def aggregate(self) -> List[Dict[str, Any]]:
-        print(f"[OglafAggregator] Triggered for feed '{self.feed.name}' (ID: {self.feed.id})")
-        print(f"  - Identifier: {self.identifier}")
-        print(f"  - Daily limit: {self.daily_limit}")
-        return []
-
-
-class YoutubeAggregator(BaseAggregator):
-    """Aggregator for YouTube."""
-
-    def aggregate(self) -> List[Dict[str, Any]]:
-        print(f"[YoutubeAggregator] Triggered for feed '{self.feed.name}' (ID: {self.feed.id})")
-        print(f"  - Identifier: {self.identifier}")
-        print(f"  - Daily limit: {self.daily_limit}")
-        return []
-
-
 # RedditAggregator is now in core/aggregators/reddit/aggregator.py
 
 

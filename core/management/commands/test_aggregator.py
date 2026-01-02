@@ -170,6 +170,7 @@ class Command(BaseCommand):
             "tagesschau": "https://www.tagesschau.de/xml/rss2/",
             "heise": "https://www.heise.de/rss/heise.rdf",
             "mein_mmo": "https://www.mein-mmo.de/feed/",
+            "oglaf": "https://www.oglaf.com/feeds/rss/",
         }
         return defaults.get(aggregator_type)
 

@@ -12,12 +12,12 @@ from .implementations import (
     ExplosmAggregator,
     FeedContentAggregator,
     MactechnewsAggregator,
-    OglafAggregator,
     PodcastAggregator,
-    YoutubeAggregator,
 )
+from .youtube.aggregator import YouTubeAggregator
 from .mein_mmo import MeinMmoAggregator
 from .merkur import MerkurAggregator
+from .oglaf import OglafAggregator
 from .reddit import RedditAggregator
 from .tagesschau import TagesschauAggregator
 from .website import FullWebsiteAggregator
@@ -38,7 +38,7 @@ class AggregatorRegistry:
         "mactechnews": MactechnewsAggregator,
         "oglaf": OglafAggregator,
         "mein_mmo": MeinMmoAggregator,
-        "youtube": YoutubeAggregator,
+        "youtube": YouTubeAggregator,
         "reddit": RedditAggregator,
         "podcast": PodcastAggregator,
     }
