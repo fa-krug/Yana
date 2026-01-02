@@ -9,8 +9,9 @@ from .caschys_blog.aggregator import CaschysBlogAggregator
 from .dark_legacy.aggregator import DarkLegacyAggregator
 from .explosm.aggregator import ExplosmAggregator
 from .heise import HeiseAggregator
-from .implementations import FeedContentAggregator, PodcastAggregator
+from .implementations import FeedContentAggregator
 from .mactechnews.aggregator import MactechnewsAggregator
+from .podcast.aggregator import PodcastAggregator
 
 from .youtube.aggregator import YouTubeAggregator
 from .mein_mmo import MeinMmoAggregator
