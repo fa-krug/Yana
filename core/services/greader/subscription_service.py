@@ -98,7 +98,7 @@ def edit_subscription(user_id: int, options: dict[str, Any]) -> dict[str, Any]:
     """Edit a subscription (add, remove, or rename).
 
     Parameters:
-        s: Stream ID (feed/{feed_id})
+        s: Stream ID (feed/{feed_id} or feed/{url})
         ac: Action (subscribe, unsubscribe, edit)
         t: Title (for rename)
         a: Add labels (can be comma-separated or list)
@@ -126,16 +126,39 @@ def edit_subscription(user_id: int, options: dict[str, Any]) -> dict[str, Any]:
     if not stream_id.startswith("feed/"):
         raise SubscriptionError("Invalid stream ID format")
 
-    try:
-        feed_id = int(stream_id.replace("feed/", ""))
-    except ValueError as e:
-        raise SubscriptionError("Invalid feed ID") from e
+    stream_content = stream_id.replace("feed/", "")
+    feed = None
 
-    # Get the feed
-    try:
-        feed = Feed.objects.get(id=feed_id)
-    except Feed.DoesNotExist as e:
-        raise SubscriptionError("Feed not found") from e
+    if stream_content.startswith("http"):
+        # URL-based subscription
+        url = stream_content
+        feed = Feed.objects.filter(identifier=url, user_id=user_id).first()
+
+        if not feed:
+            if action == "subscribe":
+                # Create new feed
+                feed = Feed.objects.create(
+                    name=title or url,
+                    identifier=url,
+                    aggregator="feed_content",  # Default to RSS
+                    user_id=user_id,
+                    enabled=True,
+                )
+                logger.info(f"User {user_id} created new subscription to {url}")
+            else:
+                raise SubscriptionError("Feed not found")
+    else:
+        # ID-based subscription
+        try:
+            feed_id = int(stream_content)
+        except ValueError as e:
+            raise SubscriptionError("Invalid feed ID") from e
+
+        # Get the feed
+        try:
+            feed = Feed.objects.get(id=feed_id)
+        except Feed.DoesNotExist as e:
+            raise SubscriptionError("Feed not found") from e
 
     # Check permission (user can only modify their own feeds or shared feeds)
     if feed.user and feed.user_id != user_id:
@@ -149,14 +172,14 @@ def edit_subscription(user_id: int, options: dict[str, Any]) -> dict[str, Any]:
 
         feed.enabled = False
         feed.save()
-        logger.info(f"User {user_id} unsubscribed from feed {feed_id}")
+        logger.info(f"User {user_id} unsubscribed from feed {feed.id}")
 
     elif action == "edit":
         # Update title if provided
         if title:
             feed.name = title
             feed.save()
-            logger.info(f"User {user_id} renamed feed {feed_id} to '{title}'")
+            logger.info(f"User {user_id} renamed feed {feed.id} to '{title}'")
 
         # Handle label additions
         if add_labels:
@@ -168,12 +191,22 @@ def edit_subscription(user_id: int, options: dict[str, Any]) -> dict[str, Any]:
 
     elif action == "subscribe":
         # Re-enable if disabled
-        feed.enabled = True
-        feed.save()
-        logger.info(f"User {user_id} resubscribed to feed {feed_id}")
+        if not feed.enabled:
+            feed.enabled = True
+            feed.save()
+            logger.info(f"User {user_id} resubscribed to feed {feed.id}")
+
+        # Also handle title update during subscribe if provided
+        if title and feed.name != title:
+            feed.name = title
+            feed.save()
 
     else:
         raise SubscriptionError(f"Unknown action: {action}")
+
+    # Handle labels for subscribe action as well (common in QuickAdd)
+    if action == "subscribe" and add_labels:
+        _add_feed_to_labels(feed, user_id, add_labels)
 
     return {"status": "ok"}
 

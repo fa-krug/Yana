@@ -95,3 +95,115 @@ class TestGReaderSubscription:
         category_ids = [c["id"] for c in sub["categories"]]
         assert "user/-/label/Reddit" in category_ids
         assert sub["url"] == "https://www.reddit.com/r/Python"
+
+    def test_subscription_edit_unsubscribe(self, client, user, auth_headers):
+        feed = Feed.objects.create(
+            name="To Unsubscribe",
+            aggregator="feed_content",
+            identifier="https://example.com/feed",
+            user=user,
+            enabled=True,
+        )
+        url = reverse("greader:subscription_edit")
+        data = {"s": f"feed/{feed.id}", "ac": "unsubscribe"}
+
+        response = client.post(url, data, **auth_headers)
+        assert response.status_code == 200
+        assert response.content == b"OK"
+
+        feed.refresh_from_db()
+        assert not feed.enabled
+
+    def test_subscription_edit_subscribe_new_url(self, client, user, auth_headers):
+        url = reverse("greader:subscription_edit")
+        feed_url = "https://newsite.com/rss"
+        data = {"s": f"feed/{feed_url}", "ac": "subscribe", "t": "New Feed"}
+
+        response = client.post(url, data, **auth_headers)
+        assert response.status_code == 200
+        assert response.content == b"OK"
+
+        # Verify feed created
+        assert Feed.objects.filter(identifier=feed_url, user=user).exists()
+        feed = Feed.objects.get(identifier=feed_url, user=user)
+        assert feed.enabled
+        assert feed.name == "New Feed"
+
+    def test_subscription_edit_rename(self, client, user, auth_headers):
+        feed = Feed.objects.create(
+            name="Old Name",
+            aggregator="rss",
+            identifier="https://example.com/rename",
+            user=user,
+            enabled=True,
+        )
+        url = reverse("greader:subscription_edit")
+        data = {"s": f"feed/{feed.id}", "ac": "edit", "t": "New Name"}
+
+        response = client.post(url, data, **auth_headers)
+        assert response.status_code == 200
+        assert response.content == b"OK"
+
+        feed.refresh_from_db()
+        assert feed.name == "New Name"
+
+    def test_subscription_edit_add_label(self, client, user, auth_headers):
+        feed = Feed.objects.create(
+            name="Label Feed",
+            aggregator="rss",
+            identifier="https://example.com/label",
+            user=user,
+            enabled=True,
+        )
+        url = reverse("greader:subscription_edit")
+        data = {"s": f"feed/{feed.id}", "ac": "edit", "a": "user/-/label/MyLabel"}
+
+        response = client.post(url, data, **auth_headers)
+        assert response.status_code == 200
+
+        feed.refresh_from_db()
+        assert feed.group
+        assert feed.group.name == "MyLabel"
+
+    def test_subscription_edit_remove_label(self, client, user, auth_headers):
+        group = FeedGroup.objects.create(name="OldLabel", user=user)
+        feed = Feed.objects.create(
+            name="Remove Label Feed",
+            aggregator="rss",
+            identifier="https://example.com/remove",
+            user=user,
+            enabled=True,
+            group=group,
+        )
+        url = reverse("greader:subscription_edit")
+        data = {"s": f"feed/{feed.id}", "ac": "edit", "r": "user/-/label/OldLabel"}
+
+        response = client.post(url, data, **auth_headers)
+        assert response.status_code == 200
+
+        feed.refresh_from_db()
+        assert feed.group is None
+
+    def test_subscription_edit_invalid_id(self, client, user, auth_headers):
+        url = reverse("greader:subscription_edit")
+        data = {"s": "feed/99999", "ac": "edit", "t": "Try Rename"}
+
+        response = client.post(url, data, **auth_headers)
+        assert response.status_code == 400
+        assert b"Feed not found" in response.content
+
+    def test_subscription_edit_unsubscribe_other_user(self, client, user, auth_headers):
+        other_user = User.objects.create_user("other", "other@example.com", "password")
+        feed = Feed.objects.create(
+            name="Other Feed",
+            aggregator="rss",
+            identifier="https://example.com/other",
+            user=other_user,
+            enabled=True,
+        )
+        url = reverse("greader:subscription_edit")
+        data = {"s": f"feed/{feed.id}", "ac": "unsubscribe"}
+
+        response = client.post(url, data, **auth_headers)
+        assert response.status_code == 403
+        assert b"Cannot modify other users' feeds" in response.content
