@@ -24,6 +24,52 @@ class YouTubeAggregator(BaseAggregator):
     def get_aggregator_type(self) -> str:
         return "youtube"
 
+    supports_identifier_search = True
+
+    @classmethod
+    def get_identifier_choices(
+        cls, query: Optional[str] = None, user: Optional[Any] = None
+    ) -> List[tuple]:
+        """Search for YouTube channels via API."""
+        if not query or not user or not user.is_authenticated:
+            return []
+
+        try:
+            from core.models import UserSettings
+            settings = UserSettings.objects.get(user=user)
+            if not settings.youtube_enabled or not settings.youtube_api_key:
+                return []
+
+            client = YouTubeClient(settings.youtube_api_key)
+            
+            # Use search.list to find channels
+            data = client._get("search", {
+                "part": "snippet",
+                "q": query,
+                "type": "channel",
+                "maxResults": 10
+            })
+            
+            items = data.get("items", [])
+            choices = []
+            
+            for item in items:
+                channel_id = item.get("id", {}).get("channelId")
+                snippet = item.get("snippet", {})
+                title = snippet.get("title")
+                custom_url = snippet.get("customUrl")
+                
+                if channel_id and title:
+                    # Prefer custom URL (handle) if available, otherwise use channel ID
+                    value = custom_url if custom_url else channel_id
+                    label = f"{title} ({value})"
+                    choices.append((value, label))
+                    
+            return choices
+        except Exception as e:
+            logger.error(f"Error searching YouTube channels: {e}")
+            return []
+
     def get_source_url(self) -> str:
         """Return the YouTube channel URL."""
         if self.identifier:
