@@ -20,6 +20,7 @@ graphql-relay==3.2.0
 identify==2.6.15
 idna==3.11
 lxml==6.0.2
+markdown==3.10
 nodeenv==1.10.0
 Pillow==11.0.0
 platformdirs==4.5.1
@@ -40,3 +41,4 @@ urllib3==2.6.2
 virtualenv==20.35.4
 wheel==0.45.1
 djangoql==0.18.1
+django-autocomplete-light==3.12.1

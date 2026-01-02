@@ -1,6 +1,6 @@
 """Mein-MMO aggregator implementation."""
 
-from typing import Any, Dict
+from typing import Any, Dict, List, Tuple
 
 from ..utils import clean_html, format_article_content, remove_image_by_url
 from ..website import FullWebsiteAggregator
@@ -22,6 +22,18 @@ class MeinMmoAggregator(FullWebsiteAggregator):
     def get_source_url(self) -> str:
         """Return the Mein-MMO website URL for GReader API."""
         return self.MEIN_MMO_URL
+
+    @classmethod
+    def get_identifier_choices(cls) -> List[Tuple[str, str]]:
+        """Get available Mein-MMO RSS feed choices."""
+        return [
+            ("https://mein-mmo.de/feed/", "Main Feed (All Articles)"),
+        ]
+
+    @classmethod
+    def get_default_identifier(cls) -> str:
+        """Get default Mein-MMO identifier."""
+        return "https://mein-mmo.de/feed/"
 
     # Mein-MMO specific selectors
     content_selector = "div.gp-entry-content"

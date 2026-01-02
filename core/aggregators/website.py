@@ -52,6 +52,7 @@ class FullWebsiteAggregator(RssAggregator):
 
                 # Fetch HTML
                 raw_html = self.fetch_article_content(url)
+                article["raw_content"] = raw_html
 
                 # Extract content
                 content = self.extract_content(raw_html, article)
@@ -60,7 +61,6 @@ class FullWebsiteAggregator(RssAggregator):
                 processed = self.process_content(content, article)
 
                 # Update article
-                article["raw_content"] = raw_html
                 article["content"] = processed
 
                 enriched.append(article)

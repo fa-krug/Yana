@@ -7,8 +7,10 @@ from .html_cleaner import (
     clean_html,
     remove_empty_elements,
     remove_image_by_url,
+    remove_sanitized_attributes,
     remove_selectors,
     sanitize_class_names,
+    sanitize_html_attributes,
 )
 from .html_fetcher import fetch_html
 from .rss_parser import parse_rss_feed
@@ -23,5 +25,7 @@ __all__ = [
     "clean_data_attributes",
     "remove_image_by_url",
     "sanitize_class_names",
+    "sanitize_html_attributes",
+    "remove_sanitized_attributes",
     "format_article_content",
 ]

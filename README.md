@@ -230,6 +230,50 @@ python3 manage.py trigger_aggregator --feed-id=1
 python3 manage.py trigger_aggregator --aggregator-type=mein_mmo
 ```
 
+### Debugging Aggregators
+
+**Use `python3 manage.py test_aggregator` for all aggregator debugging.** This command provides comprehensive debugging information.
+
+```bash
+# Quick test by feed ID
+python3 manage.py test_aggregator 5
+
+# Test by aggregator type + identifier (creates temp feed)
+python3 manage.py test_aggregator heise "https://www.heise.de/"
+
+# Show detailed output (first 3 articles)
+python3 manage.py test_aggregator 5 --first 3
+
+# Verbose mode: raw HTML, debug logs, full tracebacks
+python3 manage.py test_aggregator 5 -v
+
+# Dry-run: test without saving to database
+python3 manage.py test_aggregator 5 --dry-run
+
+# Debug CSS selectors
+python3 manage.py test_aggregator 5 --selector-debug
+
+# Limit articles (fast iteration)
+python3 manage.py test_aggregator 5 --limit 2
+```
+
+**Output includes:**
+- Feed configuration details
+- Aggregator class and inheritance info
+- Execution timing
+- Article summaries (first 10)
+- Article details with raw/processed content
+- Data validation (missing fields, empty content, etc.)
+- Database save summary
+
+**Debugging workflow:**
+1. Start: `python3 manage.py test_aggregator <ID> --limit 2` (fast)
+2. Debug: `python3 manage.py test_aggregator <ID> --first 1 -v` (detailed)
+3. Selectors: `python3 manage.py test_aggregator <ID> --selector-debug` (if needed)
+4. Full test: `python3 manage.py test_aggregator <ID>` (when working)
+
+See **CLAUDE.md** > **Aggregator Debugging Guide** for comprehensive debugging documentation.
+
 ### Admin Interface
 
 Django admin at `http://localhost:8000/admin/` includes:

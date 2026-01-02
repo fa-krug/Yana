@@ -9,47 +9,125 @@ The actual implementations are in separate modules:
 
 from typing import Any, Dict, List
 
+from bs4 import BeautifulSoup
+
 from .base import BaseAggregator
+from .rss import RssAggregator
+from .utils import clean_html, format_article_content, sanitize_class_names
 
 
-class FeedContentAggregator(BaseAggregator):
-    """Aggregator for RSS/Atom feeds."""
+class FeedContentAggregator(RssAggregator):
+    """
+    RSS-Only aggregator.
 
-    def aggregate(self) -> List[Dict[str, Any]]:
-        print(f"[FeedContentAggregator] Triggered for feed '{self.feed.name}' (ID: {self.feed.id})")
-        print(f"  - Identifier: {self.identifier}")
-        print(f"  - Daily limit: {self.daily_limit}")
-        return []
+    Lightweight aggregator that uses content directly from the RSS feed
+    without fetching full articles from the web. Ideal for feeds that already
+    include full content in their RSS entries.
+    """
 
+    def parse_to_raw_articles(self, source_data: Any) -> List[Dict[str, Any]]:
+        """
+        Parse RSS feed items, extracting full content from feed entries.
 
-class HeiseAggregator(BaseAggregator):
-    """Aggregator for Heise."""
+        Overrides base implementation to properly extract content from feedparser
+        entries, preferring content over summary (matching old TypeScript behavior).
+        """
+        articles = []
+        entries = source_data.get("entries", [])
 
-    def aggregate(self) -> List[Dict[str, Any]]:
-        print(f"[HeiseAggregator] Triggered for feed '{self.feed.name}' (ID: {self.feed.id})")
-        print(f"  - Identifier: {self.identifier}")
-        print(f"  - Daily limit: {self.daily_limit}")
-        return []
+        for entry in entries[: self.daily_limit]:
+            # Extract content from feedparser entry
+            # feedparser provides content as a list of dicts with 'value' field
+            content = ""
+            if entry.get("content"):
+                # content is a list of dicts: [{"value": "...", "type": "text/html"}, ...]
+                content_parts = []
+                for content_item in entry.get("content", []):
+                    if isinstance(content_item, dict) and "value" in content_item:
+                        content_parts.append(content_item["value"])
+                    elif isinstance(content_item, str):
+                        content_parts.append(content_item)
+                content = "".join(content_parts)
 
+            # Fallback to summary if content is empty
+            if not content:
+                content = entry.get("summary", "")
 
-class MerkurAggregator(BaseAggregator):
-    """Aggregator for Merkur."""
+            # Fallback to description if both are empty
+            if not content:
+                content = entry.get("description", "")
 
-    def aggregate(self) -> List[Dict[str, Any]]:
-        print(f"[MerkurAggregator] Triggered for feed '{self.feed.name}' (ID: {self.feed.id})")
-        print(f"  - Identifier: {self.identifier}")
-        print(f"  - Daily limit: {self.daily_limit}")
-        return []
+            article = {
+                "name": entry.get("title", ""),
+                "identifier": entry.get("link", ""),
+                "raw_content": content,  # Store RSS content as raw_content
+                "content": content,  # Also store in content for processing
+                "summary": entry.get("summary", ""),  # Keep summary for fallback
+                "date": self._parse_date(entry.get("published")),
+                "author": entry.get("author", ""),
+                "icon": None,
+            }
+            articles.append(article)
 
+        return articles
 
-class TagesschauAggregator(BaseAggregator):
-    """Aggregator for Tagesschau."""
+    def enrich_articles(self, articles: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Process RSS content directly without fetching from web.
 
-    def aggregate(self) -> List[Dict[str, Any]]:
-        print(f"[TagesschauAggregator] Triggered for feed '{self.feed.name}' (ID: {self.feed.id})")
-        print(f"  - Identifier: {self.identifier}")
-        print(f"  - Daily limit: {self.daily_limit}")
-        return []
+        Uses content from RSS feed entries, processes it through cleaning
+        and formatting, but never fetches full articles from URLs.
+        """
+        enriched = []
+
+        for article in articles:
+            # Get content from RSS feed (already populated in parse_to_raw_articles)
+            rss_content = article.get("content", "")
+
+            # Fallback to summary if content is empty
+            if not rss_content:
+                rss_content = article.get("summary", "")
+
+            # Ensure raw_content is set
+            if not article.get("raw_content"):
+                article["raw_content"] = rss_content
+
+            # Process RSS content (clean and format)
+            processed = self.process_content(rss_content, article)
+            article["content"] = processed
+
+            enriched.append(article)
+
+        return enriched
+
+    def process_content(self, html: str, article: Dict[str, Any]) -> str:
+        """
+        Process and format RSS content.
+
+        Cleans HTML, sanitizes class names, and formats with header/footer.
+        """
+        if not html:
+            return ""
+
+        # Parse HTML
+        soup = BeautifulSoup(html, "html.parser")
+
+        # Sanitize class names
+        sanitize_class_names(soup)
+
+        # Clean HTML
+        cleaned = clean_html(str(soup))
+
+        # Format with header and footer
+        formatted = format_article_content(
+            cleaned,
+            title=article["name"],
+            url=article["identifier"],
+            author=article.get("author"),
+            date=article.get("date"),
+        )
+
+        return formatted
 
 
 class ExplosmAggregator(BaseAggregator):
@@ -112,14 +190,7 @@ class YoutubeAggregator(BaseAggregator):
         return []
 
 
-class RedditAggregator(BaseAggregator):
-    """Aggregator for Reddit."""
-
-    def aggregate(self) -> List[Dict[str, Any]]:
-        print(f"[RedditAggregator] Triggered for feed '{self.feed.name}' (ID: {self.feed.id})")
-        print(f"  - Identifier: {self.identifier}")
-        print(f"  - Daily limit: {self.daily_limit}")
-        return []
+# RedditAggregator is now in core/aggregators/reddit/aggregator.py
 
 
 class PodcastAggregator(BaseAggregator):

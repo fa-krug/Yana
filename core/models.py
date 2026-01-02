@@ -87,6 +87,51 @@ class Article(models.Model):
         return self.name
 
 
+class UserSettings(models.Model):
+    """User settings for API credentials and preferences."""
+
+    user = models.OneToOneField(
+        "auth.User", on_delete=models.CASCADE, related_name="user_settings", unique=True
+    )
+
+    # Reddit API
+    reddit_enabled = models.BooleanField(default=False)
+    reddit_client_id = models.CharField(max_length=255, blank=True, default="")
+    reddit_client_secret = models.CharField(max_length=255, blank=True, default="")
+    reddit_user_agent = models.CharField(max_length=255, default="Yana/1.0")
+
+    # YouTube API
+    youtube_enabled = models.BooleanField(default=False)
+    youtube_api_key = models.CharField(max_length=255, blank=True, default="")
+
+    # OpenAI API
+    openai_enabled = models.BooleanField(default=False)
+    openai_api_url = models.CharField(max_length=255, default="https://api.openai.com/v1")
+    openai_api_key = models.CharField(max_length=255, blank=True, default="")
+    ai_model = models.CharField(max_length=100, default="gpt-4o-mini")
+    ai_temperature = models.FloatField(default=0.3)
+    ai_max_tokens = models.IntegerField(default=2000)
+    ai_default_daily_limit = models.IntegerField(default=200)
+    ai_default_monthly_limit = models.IntegerField(default=2000)
+    ai_max_prompt_length = models.IntegerField(default=500)
+    ai_request_timeout = models.IntegerField(default=120)
+    ai_max_retries = models.IntegerField(default=3)
+    ai_retry_delay = models.IntegerField(default=2)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "User Settings"
+        verbose_name_plural = "User Settings"
+        indexes = [
+            models.Index(fields=["user"]),
+        ]
+
+    def __str__(self):
+        return f"Settings for {self.user.username}"
+
+
 class GReaderAuthToken(models.Model):
     """Google Reader API authentication token."""
 

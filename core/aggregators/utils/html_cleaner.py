@@ -179,3 +179,83 @@ def sanitize_class_names(soup: BeautifulSoup) -> None:
 
             # Remove original class attribute
             del elem["class"]
+
+
+def sanitize_html_attributes(soup: BeautifulSoup) -> None:
+    """
+    Sanitize HTML by renaming attributes to data-sanitized-* format.
+
+    Similar to TypeScript sanitizeHtml() function. This function:
+    - Removes script, object, embed elements
+    - Removes style and iframe elements
+    - Converts class → data-sanitized-class
+    - Converts style → data-sanitized-style
+    - Converts id → data-sanitized-id
+    - Converts other data-* attributes → data-sanitized-* (except data-src, data-srcset)
+
+    Args:
+        soup: BeautifulSoup object to sanitize in-place
+    """
+    # Remove dangerous elements
+    for tag in soup.find_all(["script", "object", "embed"]):
+        tag.decompose()
+
+    # Remove style and iframe elements
+    for tag in soup.find_all(["style", "iframe"]):
+        tag.decompose()
+
+    # Rename attributes for all elements
+    for elem in soup.find_all(True):
+        # Convert class → data-sanitized-class
+        if "class" in elem.attrs:
+            classes = elem["class"]
+            class_str = " ".join(classes) if isinstance(classes, list) else str(classes)
+            elem["data-sanitized-class"] = class_str
+            del elem["class"]
+
+        # Convert style → data-sanitized-style
+        if "style" in elem.attrs:
+            style_value = elem["style"]
+            elem["data-sanitized-style"] = style_value
+            del elem["style"]
+
+        # Convert id → data-sanitized-id
+        if "id" in elem.attrs:
+            id_value = elem["id"]
+            elem["data-sanitized-id"] = id_value
+            del elem["id"]
+
+        # Convert other data-* attributes → data-sanitized-*
+        # Keep data-src and data-srcset unchanged
+        attrs_to_rename = []
+        for attr in elem.attrs:
+            if (
+                attr.startswith("data-")
+                and attr not in ["data-src", "data-srcset"]
+                and not attr.startswith("data-sanitized-")
+            ):
+                attrs_to_rename.append(attr)
+
+        for attr in attrs_to_rename:
+            new_attr = f"data-sanitized-{attr[5:]}"  # Remove "data-" prefix
+            elem[new_attr] = elem[attr]
+            del elem[attr]
+
+
+def remove_sanitized_attributes(soup: BeautifulSoup) -> None:
+    """
+    Remove all data-sanitized-* attributes from elements.
+
+    Used after sanitization to clean up HTML (Merkur-specific behavior).
+
+    Args:
+        soup: BeautifulSoup object to clean in-place
+    """
+    for elem in soup.find_all(True):
+        attrs_to_remove = []
+        for attr in elem.attrs:
+            if attr.startswith("data-sanitized-"):
+                attrs_to_remove.append(attr)
+
+        for attr in attrs_to_remove:
+            del elem[attr]

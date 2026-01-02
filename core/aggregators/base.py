@@ -169,6 +169,40 @@ class BaseAggregator(ABC):
         """
         return self.identifier or ""
 
+    @classmethod
+    def get_identifier_choices(cls) -> List[tuple]:
+        """
+        Get available identifier choices for this aggregator.
+
+        Returns a list of (value, label) tuples for identifier autocomplete.
+        Aggregators can override this to provide predefined identifier options.
+
+        Returns:
+            List of (identifier_value, display_label) tuples
+            Empty list if no predefined choices available
+
+        Example:
+            [
+                ("https://www.merkur.de/rssfeed.rdf", "Main Feed"),
+                ("https://www.merkur.de/lokales/muenchen/rssfeed.rdf", "München"),
+            ]
+        """
+        return []
+
+    @classmethod
+    def get_default_identifier(cls) -> str:
+        """
+        Get the default identifier for this aggregator.
+
+        Some aggregators set a default identifier in __init__, but that requires
+        a feed instance. This class method allows getting the default without
+        instantiation, useful for autocomplete pre-population.
+
+        Returns:
+            Default identifier string, or empty string if none
+        """
+        return ""
+
     def extract_header_element(self, article: Dict[str, Any]) -> Optional[HeaderElementData]:
         """
         Extract header element (image/video converted to image data) for an article.

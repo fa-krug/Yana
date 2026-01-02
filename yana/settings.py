@@ -56,6 +56,8 @@ ALLOWED_HOSTS = [host.strip() for host in env("ALLOWED_HOSTS").split(",")]
 # Application definition
 
 INSTALLED_APPS = [
+    "dal",  # django-autocomplete-light (must be before admin)
+    "dal_select2",  # django-autocomplete-light with Select2 (must be before admin)
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -100,11 +102,25 @@ WSGI_APPLICATION = "yana.wsgi.application"
 
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
+#
+# Using optimized SQLite backend with performance PRAGMA settings:
+# - WAL mode for better concurrency
+# - Increased cache size (64MB)
+# - Memory-mapped I/O (256MB)
+# - Optimized synchronous mode
+# See core/db/backends.py for details
 
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.sqlite3",
+        "ENGINE": "core.db.backends.sqlite3",
         "NAME": BASE_DIR / "db.sqlite3",
+        "OPTIONS": {
+            # Connection timeout in seconds (prevents "database is locked" errors)
+            "timeout": 30,
+            # Check same thread (set to False for better performance in multi-threaded apps)
+            # Note: Django Q2 uses multiple threads, so we set this to False
+            "check_same_thread": False,
+        },
     }
 }
 

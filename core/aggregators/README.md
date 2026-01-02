@@ -86,6 +86,53 @@ aggregator = get_aggregator(feed)
 articles = aggregator.aggregate()
 ```
 
+## Testing and Debugging
+
+**Use `python3 manage.py test_aggregator` for all debugging work.** This command is the primary debugging tool for aggregators.
+
+### Quick Debug Commands
+
+```bash
+# Test by feed ID
+python3 manage.py test_aggregator 5
+
+# Test by aggregator type + identifier
+python3 manage.py test_aggregator heise "https://www.heise.de/"
+
+# Show detailed output for first article
+python3 manage.py test_aggregator 5 --first 1 -v
+
+# Test without saving to database
+python3 manage.py test_aggregator 5 --dry-run
+
+# Debug CSS selectors (FullWebsiteAggregator)
+python3 manage.py test_aggregator 5 --selector-debug
+
+# Limit articles for fast iteration
+python3 manage.py test_aggregator 5 --limit 2
+```
+
+### Command Output
+
+The command displays:
+
+1. **Feed Configuration** - How the feed is set up
+2. **Aggregator Class Info** - Implementation details
+3. **Aggregation Run** - Execution time and article count
+4. **Article Summaries** - Quick overview of articles
+5. **Article Details** - Deep dive with raw/processed HTML (verbose mode)
+6. **Validation** - Data quality checks (missing fields, empty content, etc.)
+7. **Database Save** - Creation/update/failure counts
+
+### Debugging Workflow
+
+1. **Fast check:** `python3 manage.py test_aggregator <ID> --limit 2`
+2. **Debug issues:** `python3 manage.py test_aggregator <ID> --first 1 -v`
+3. **Check selectors:** `python3 manage.py test_aggregator <ID> --selector-debug`
+4. **Full test:** `python3 manage.py test_aggregator <ID>`
+
+See **CLAUDE.md** > **Aggregator Debugging Guide** for comprehensive documentation.
+
 ## Creating a New Aggregator
 
 To add a new aggregator type:

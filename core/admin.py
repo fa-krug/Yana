@@ -1,8 +1,11 @@
 from django.contrib import admin, messages
+from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from django.contrib.auth.models import User
 
 from djangoql.admin import DjangoQLSearchMixin
 
-from .models import Article, Feed, FeedGroup, GReaderAuthToken
+from .forms import FeedAdminForm
+from .models import Article, Feed, FeedGroup, GReaderAuthToken, UserSettings
 from .services import AggregatorService, ArticleService
 
 
@@ -26,6 +29,8 @@ class FeedGroupAdmin(DjangoQLSearchMixin, admin.ModelAdmin):
 @admin.register(Feed)
 class FeedAdmin(DjangoQLSearchMixin, admin.ModelAdmin):
     """Admin configuration for Feed model."""
+
+    form = FeedAdminForm
 
     list_display = ["name", "aggregator", "enabled", "user", "group", "created_at"]
     list_filter = ["aggregator", "enabled", "user", "group", "created_at"]
@@ -165,6 +170,124 @@ class ArticleAdmin(DjangoQLSearchMixin, admin.ModelAdmin):
         count = queryset.count()
         queryset.delete()
         self.message_user(request, f"Successfully deleted {count} articles.", messages.SUCCESS)
+
+
+class UserSettingsInline(admin.StackedInline):
+    """Inline admin for UserSettings displayed in User admin."""
+
+    model = UserSettings
+    can_delete = False
+    verbose_name = "API Settings"
+    verbose_name_plural = "API Settings"
+    fk_name = "user"
+
+    fieldsets = (
+        (
+            "Reddit API",
+            {
+                "fields": (
+                    "reddit_enabled",
+                    "reddit_client_id",
+                    "reddit_client_secret",
+                    "reddit_user_agent",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            "YouTube API",
+            {"fields": ("youtube_enabled", "youtube_api_key"), "classes": ("collapse",)},
+        ),
+        (
+            "OpenAI API",
+            {
+                "fields": (
+                    "openai_enabled",
+                    "openai_api_url",
+                    "openai_api_key",
+                    "ai_model",
+                    "ai_temperature",
+                    "ai_max_tokens",
+                    "ai_default_daily_limit",
+                    "ai_default_monthly_limit",
+                    "ai_max_prompt_length",
+                    "ai_request_timeout",
+                    "ai_max_retries",
+                    "ai_retry_delay",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+    )
+
+
+# Unregister the default User admin and register with inline
+admin.site.unregister(User)
+
+
+@admin.register(User)
+class UserAdmin(DjangoQLSearchMixin, BaseUserAdmin):
+    """Custom User admin with UserSettings inline."""
+
+    inlines = [UserSettingsInline]
+
+
+@admin.register(UserSettings)
+class UserSettingsAdmin(DjangoQLSearchMixin, admin.ModelAdmin):
+    """Standalone admin configuration for UserSettings model."""
+
+    list_display = ["user", "reddit_enabled", "youtube_enabled", "openai_enabled", "updated_at"]
+    list_filter = [
+        "reddit_enabled",
+        "youtube_enabled",
+        "openai_enabled",
+        "created_at",
+        "updated_at",
+    ]
+    search_fields = ["user__username", "user__email"]
+    readonly_fields = ["created_at", "updated_at"]
+    list_select_related = ["user"]
+
+    fieldsets = (
+        (None, {"fields": ("user",)}),
+        (
+            "Reddit API",
+            {
+                "fields": (
+                    "reddit_enabled",
+                    "reddit_client_id",
+                    "reddit_client_secret",
+                    "reddit_user_agent",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            "YouTube API",
+            {"fields": ("youtube_enabled", "youtube_api_key"), "classes": ("collapse",)},
+        ),
+        (
+            "OpenAI API",
+            {
+                "fields": (
+                    "openai_enabled",
+                    "openai_api_url",
+                    "openai_api_key",
+                    "ai_model",
+                    "ai_temperature",
+                    "ai_max_tokens",
+                    "ai_default_daily_limit",
+                    "ai_default_monthly_limit",
+                    "ai_max_prompt_length",
+                    "ai_request_timeout",
+                    "ai_max_retries",
+                    "ai_retry_delay",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+        ("Timestamps", {"fields": ("created_at", "updated_at"), "classes": ("collapse",)}),
+    )
 
 
 @admin.register(GReaderAuthToken)
