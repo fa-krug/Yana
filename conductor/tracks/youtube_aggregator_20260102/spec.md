@@ -4,7 +4,7 @@
 Reimplement the YouTube aggregator in Python, porting the logic from the legacy TypeScript implementation. This aggregator will use the YouTube Data API v3 to fetch videos from specific channels and present them as articles within Yana.
 
 ## Functional Requirements
-- **Authentication:** Use `youtube_api_key` from the existing `UserSettings` model. The `youtube_enabled` field will be removed from the model and no longer used.
+- **Authentication:** Use `youtube_api_key` and `youtube_enabled` from the `UserSettings` model.
 - **Channel Resolution:** Support resolving YouTube channel identifiers to Channel IDs.
     - Supported formats: Handles (e.g., `@mkbhd`), Channel IDs (e.g., `UC...`), and full Channel URLs.
 - **Data Fetching:**

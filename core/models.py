@@ -106,6 +106,7 @@ class UserSettings(models.Model):
     reddit_user_agent = models.CharField(max_length=255, default="Yana/1.0")
 
     # YouTube API
+    youtube_enabled = models.BooleanField(default=False)
     youtube_api_key = models.CharField(max_length=255, blank=True, default="")
 
     # OpenAI API

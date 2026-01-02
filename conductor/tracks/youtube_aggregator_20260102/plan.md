@@ -3,9 +3,8 @@
 This plan outlines the steps to reimplement the YouTube aggregator in Python, including the removal of legacy fields and the addition of admin autocomplete functionality.
 
 ## Phase 1: Database and Model Cleanup
-- [x] Task: Remove `youtube_enabled` from `UserSettings` model. 3143184
-    - [x] Sub-task: Create a migration to remove the `youtube_enabled` field from `core.models.UserSettings`.
-    - [x] Sub-task: Execute migrations `python manage.py migrate`.
+- [x] Task: Verify `youtube_enabled` in `UserSettings` model.
+    - [x] Sub-task: Ensure the `youtube_enabled` field exists in `core.models.UserSettings`.
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Database and Model Cleanup' (Protocol in workflow.md)
 
 ## Phase 2: YouTube API Service Layer

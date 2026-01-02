@@ -47,6 +47,12 @@ class FeedAdmin(DjangoQLSearchMixin, admin.ModelAdmin):
         ("Timestamps", {"fields": ("created_at", "updated_at"), "classes": ("collapse",)}),
     )
 
+    def get_form_kwargs(self, request, obj):
+        """Pass request to form to allow conditional choices."""
+        kwargs = super().get_form_kwargs(request, obj)
+        kwargs["request"] = request
+        return kwargs
+
     @admin.action(description="Aggregate selected feeds")
     def aggregate_selected_feeds(self, request, queryset):
         """Admin action to aggregate selected feeds directly."""
@@ -196,7 +202,7 @@ class UserSettingsInline(admin.StackedInline):
         ),
         (
             "YouTube API",
-            {"fields": ("youtube_api_key",), "classes": ("collapse",)},
+            {"fields": ("youtube_enabled", "youtube_api_key"), "classes": ("collapse",)},
         ),
         (
             "OpenAI API",
@@ -236,9 +242,10 @@ class UserAdmin(DjangoQLSearchMixin, BaseUserAdmin):
 class UserSettingsAdmin(DjangoQLSearchMixin, admin.ModelAdmin):
     """Standalone admin configuration for UserSettings model."""
 
-    list_display = ["user", "reddit_enabled", "openai_enabled", "updated_at"]
+    list_display = ["user", "reddit_enabled", "youtube_enabled", "openai_enabled", "updated_at"]
     list_filter = [
         "reddit_enabled",
+        "youtube_enabled",
         "openai_enabled",
         "created_at",
         "updated_at",
@@ -263,7 +270,7 @@ class UserSettingsAdmin(DjangoQLSearchMixin, admin.ModelAdmin):
         ),
         (
             "YouTube API",
-            {"fields": ("youtube_api_key",), "classes": ("collapse",)},
+            {"fields": ("youtube_enabled", "youtube_api_key"), "classes": ("collapse",)},
         ),
         (
             "OpenAI API",
