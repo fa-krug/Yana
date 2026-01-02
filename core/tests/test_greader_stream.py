@@ -222,3 +222,42 @@ class TestGReaderStreamIds:
         # Art 3 should be the last one (descending date)
         assert str(articles[2].id) in data["items"][0]["id"]
 
+    def test_unread_count(self, client, user, auth_headers, articles, feed):
+        url = reverse("greader:unread_count")
+        
+        response = client.get(url, **auth_headers)
+        assert response.status_code == 200
+        data = response.json()
+        assert "unreadcounts" in data
+        
+        # Verify feed count
+        feed_counts = [c for c in data["unreadcounts"] if c["id"] == f"feed/{feed.id}"]
+        assert len(feed_counts) == 1
+        # 2 unread articles (Art 1 and Art 3)
+        assert feed_counts[0]["count"] == 2
+
+    def test_unread_count_all(self, client, user, auth_headers, articles, feed):
+        # Mark all as read
+        Article.objects.filter(feed=feed).update(read=True)
+        
+        # Manually invalidate cache because we used direct ORM update
+        from core.services.greader.stream_service import invalidate_unread_cache
+        invalidate_unread_cache(user.id)
+        
+        url = reverse("greader:unread_count")
+        
+        # Default: should not include 0 counts
+        response = client.get(url, **auth_headers)
+        assert response.status_code == 200
+        data = response.json()
+        assert not any(c["id"] == f"feed/{feed.id}" for c in data["unreadcounts"])
+        
+        # All=1: should include 0 counts
+        response = client.get(f"{url}?all=1", **auth_headers)
+        assert response.status_code == 200
+        data = response.json()
+        feed_counts = [c for c in data["unreadcounts"] if c["id"] == f"feed/{feed.id}"]
+        assert len(feed_counts) == 1
+        assert feed_counts[0]["count"] == 0
+
+

@@ -98,6 +98,10 @@ def edit_tags(
             _remove_article_tag(article, remove_tag)
             updated_count += 1
 
+    if updated_count > 0:
+        from core.services.greader.stream_service import invalidate_unread_cache
+        invalidate_unread_cache(user_id)
+
     logger.info(f"User {user_id} updated {updated_count} articles with tags")
 
     return {
@@ -152,6 +156,10 @@ def mark_all_as_read(
 
     # Update all matching articles
     updated_count = articles.update(read=True)
+
+    if updated_count > 0:
+        from core.services.greader.stream_service import invalidate_unread_cache
+        invalidate_unread_cache(user_id)
 
     logger.info(f"User {user_id} marked {updated_count} articles as read in stream {stream_id}")
 
