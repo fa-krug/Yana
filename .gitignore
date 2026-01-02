@@ -154,3 +154,7 @@ ngsw-state.json
 *.seed
 *.pid.lock
 .cache/
+
+# Django media and staticfiles
+media/
+staticfiles/

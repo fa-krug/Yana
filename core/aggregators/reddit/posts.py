@@ -49,7 +49,9 @@ def fetch_reddit_post(subreddit: str, post_id: str, user_id: int) -> RedditPostD
             return None
         if e.response.status_code == 401:
             logger.error("Reddit authentication failed while fetching post")
-            raise ValueError("Reddit authentication failed. Please check your API credentials.") from None
+            raise ValueError(
+                "Reddit authentication failed. Please check your API credentials."
+            ) from None
         logger.warning(f"Error fetching Reddit post {post_id} in r/{subreddit}: {e}")
         return None
     except Exception as e:

@@ -129,7 +129,9 @@ def get_reddit_access_token(user_id: int) -> str:
                 "Invalid Reddit API credentials. Please check your Client ID and Client Secret."
             ) from e
         if e.response.status_code == 403:
-            raise ValueError("Reddit app configuration issue. Check your app settings on Reddit.") from e
+            raise ValueError(
+                "Reddit app configuration issue. Check your app settings on Reddit."
+            ) from e
         if e.response.status_code == 429:
             raise ValueError("Rate limited by Reddit. Please try again later.") from e
         raise ValueError(f"Reddit OAuth error: {e.response.status_text or str(e)}") from e

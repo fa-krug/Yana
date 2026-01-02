@@ -90,6 +90,7 @@ class DatabaseWrapper(SQLiteDatabaseWrapper):
                 # Default is usually 4096, but we'll set it explicitly
                 # Note: This only works if the database is empty/new
                 import contextlib
+
                 with contextlib.suppress(Exception):
                     cursor.execute("PRAGMA page_size=4096")
 
