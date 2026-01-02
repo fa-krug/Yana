@@ -7,7 +7,7 @@ Focus on aggregators that primarily extract images.
 
 - [x] Task: Implement `ExplosmAggregator` in `core/aggregators/explosm/aggregator.py` with TDD d568827
 - [x] Task: Implement `DarkLegacyAggregator` in `core/aggregators/dark_legacy/aggregator.py` with TDD 3078e57
-- [ ] Task: Update `core/aggregators/registry.py` to use new Comic Aggregators
+- [x] Task: Update `core/aggregators/registry.py` to use new Comic Aggregators ea3cdfd
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Comic Aggregators' (Protocol in workflow.md)
 
 ## Phase 2: News Aggregators
