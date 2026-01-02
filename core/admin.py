@@ -3,6 +3,7 @@ from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.models import User
 
 from djangoql.admin import DjangoQLSearchMixin
+from import_export.admin import ImportExportMixin, ImportExportModelAdmin
 
 from .forms import FeedAdminForm
 from .models import Article, Feed, FeedGroup, GReaderAuthToken, UserSettings
@@ -10,7 +11,7 @@ from .services import AggregatorService, ArticleService
 
 
 @admin.register(FeedGroup)
-class FeedGroupAdmin(DjangoQLSearchMixin, admin.ModelAdmin):
+class FeedGroupAdmin(ImportExportModelAdmin, DjangoQLSearchMixin):
     """Admin configuration for FeedGroup model."""
 
     list_display = ["name", "user", "created_at"]
@@ -27,7 +28,7 @@ class FeedGroupAdmin(DjangoQLSearchMixin, admin.ModelAdmin):
 
 
 @admin.register(Feed)
-class FeedAdmin(DjangoQLSearchMixin, admin.ModelAdmin):
+class FeedAdmin(ImportExportModelAdmin, DjangoQLSearchMixin):
     """Admin configuration for Feed model."""
 
     form = FeedAdminForm
@@ -42,7 +43,7 @@ class FeedAdmin(DjangoQLSearchMixin, admin.ModelAdmin):
 
     fieldsets = (
         (None, {"fields": ("name", "aggregator", "identifier", "enabled")}),
-        ("Configuration", {"fields": ("daily_limit", "icon")}),
+        ("Configuration", {"fields": ("daily_limit",)}),
         ("Relationships", {"fields": ("user", "group")}),
         ("Timestamps", {"fields": ("created_at", "updated_at"), "classes": ("collapse",)}),
     )
@@ -114,7 +115,7 @@ class FeedAdmin(DjangoQLSearchMixin, admin.ModelAdmin):
 
 
 @admin.register(Article)
-class ArticleAdmin(DjangoQLSearchMixin, admin.ModelAdmin):
+class ArticleAdmin(ImportExportModelAdmin, DjangoQLSearchMixin):
     """Admin configuration for Article model."""
 
     list_display = ["name", "feed", "author", "date", "read", "starred", "created_at"]
@@ -237,14 +238,14 @@ admin.site.unregister(User)
 
 
 @admin.register(User)
-class UserAdmin(DjangoQLSearchMixin, BaseUserAdmin):
+class UserAdmin(ImportExportMixin, DjangoQLSearchMixin, BaseUserAdmin):
     """Custom User admin with UserSettings inline."""
 
     inlines = [UserSettingsInline]
 
 
 @admin.register(UserSettings)
-class UserSettingsAdmin(DjangoQLSearchMixin, admin.ModelAdmin):
+class UserSettingsAdmin(ImportExportModelAdmin, DjangoQLSearchMixin):
     """Standalone admin configuration for UserSettings model."""
 
     list_display = ["user", "reddit_enabled", "youtube_enabled", "openai_enabled", "updated_at"]
@@ -302,7 +303,7 @@ class UserSettingsAdmin(DjangoQLSearchMixin, admin.ModelAdmin):
 
 
 @admin.register(GReaderAuthToken)
-class GReaderAuthTokenAdmin(DjangoQLSearchMixin, admin.ModelAdmin):
+class GReaderAuthTokenAdmin(ImportExportModelAdmin, DjangoQLSearchMixin):
     """Admin configuration for GReaderAuthToken model."""
 
     list_display = ["user", "token", "expires_at", "created_at"]

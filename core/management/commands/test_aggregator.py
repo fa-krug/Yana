@@ -226,7 +226,7 @@ class Command(BaseCommand):
                 aggregator=target,
                 identifier=identifier,
                 user=user,
-                daily_limit=limit or 10,
+                daily_limit=limit or 20,
             )
             # Save the feed so we can create articles with foreign key
             feed.save()

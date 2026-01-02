@@ -66,8 +66,14 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "django_q",  # Background tasks (supervisor manages qcluster in Docker)
     "djangoql",
+    "import_export",  # Model-level data import and export
     "core",
 ]
+
+# Django Import Export Configuration
+# https://django-import-export.readthedocs.io/en/stable/configuration.html
+IMPORT_EXPORT_USE_TRANSACTIONS = True
+IMPORT_EXPORT_SKIP_ADMIN_LOG = False
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",

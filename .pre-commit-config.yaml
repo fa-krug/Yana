@@ -28,6 +28,16 @@ repos:
     rev: v1.15.0
     hooks:
       - id: mypy
-        additional_dependencies: [django-stubs, django-environ, django-picklefield, django-q2, django-autocomplete-light, djangoql, Pillow, beautifulsoup4, feedparser, requests, lxml, markdown]
+        additional_dependencies: [django-stubs, django-environ, django-picklefield, django-q2, django-autocomplete-light, djangoql, Pillow, beautifulsoup4, feedparser, requests, lxml, markdown, django-import-export, types-requests, types-python-dateutil, types-Markdown]
         args: [--config-file=pyproject.toml]
         exclude: ^.*/migrations/.*\.py$
+
+  - repo: local
+    hooks:
+      - id: pytest
+        name: Run all tests
+        entry: venv/bin/pytest
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]

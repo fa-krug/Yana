@@ -35,9 +35,8 @@ class Feed(models.Model):
         default="",
         help_text="Required for Reddit and YouTube aggregators. For others, optional URL or identifier.",
     )
-    daily_limit = models.IntegerField(default=50)
+    daily_limit = models.IntegerField(default=20)
     enabled = models.BooleanField(default=True)
-    icon = models.TextField(blank=True, default="")
     user = models.ForeignKey(
         "auth.User", on_delete=models.SET_NULL, null=True, blank=True, related_name="feeds"
     )
