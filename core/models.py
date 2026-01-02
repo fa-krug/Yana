@@ -1,3 +1,6 @@
+import secrets
+from datetime import timedelta
+
 from django.db import models
 from django.utils import timezone
 
@@ -151,3 +154,14 @@ class GReaderAuthToken(models.Model):
 
     def __str__(self):
         return f"GReader Token for {self.user.username}"
+
+    def is_valid(self) -> bool:
+        """Check if the token is still valid."""
+        return not (self.expires_at and self.expires_at < timezone.now())
+
+    @classmethod
+    def generate_for_user(cls, user, days: int = 7):
+        """Generate a new token for the user."""
+        token = secrets.token_hex(32)
+        expires_at = timezone.now() + timedelta(days=days)
+        return cls.objects.create(user=user, token=token, expires_at=expires_at)

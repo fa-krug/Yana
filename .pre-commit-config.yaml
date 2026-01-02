@@ -28,6 +28,6 @@ repos:
     rev: v1.15.0
     hooks:
       - id: mypy
-        additional_dependencies: [django-stubs]
+        additional_dependencies: [django-stubs, django-environ, django-picklefield, django-q2, django-autocomplete-light, djangoql, Pillow, beautifulsoup4, feedparser, requests, lxml, markdown]
         args: [--config-file=pyproject.toml]
         exclude: ^.*/migrations/.*\.py$

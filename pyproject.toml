@@ -72,3 +72,15 @@ skip-magic-trailing-comma = false
 
 # Automatically detect the appropriate line ending.
 line-ending = "auto"
+
+[tool.mypy]
+python_version = "3.11"
+check_untyped_defs = false
+ignore_missing_imports = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+warn_unused_configs = true
+plugins = ["mypy_django_plugin.main"]
+
+[tool.django-stubs]
+django_settings_module = "yana.settings"
