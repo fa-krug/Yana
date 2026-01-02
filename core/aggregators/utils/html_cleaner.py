@@ -32,6 +32,10 @@ def _get_base_filename(filename: str) -> str:
     # Pattern: any number of (-NxN or -N) at the end
     base = re.sub(r"(?:-\d+x\d+|-\d+)*$", "", name_without_ext)
 
+    # Also handle alphanumeric variant suffixes (e.g. Merkur's -1Wef)
+    # Matches a dash followed by a 3-6 character alphanumeric hash at the end
+    base = re.sub(r"-[a-zA-Z0-9]{3,6}$", "", base)
+
     return base
 
 

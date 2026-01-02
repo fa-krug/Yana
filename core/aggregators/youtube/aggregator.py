@@ -1,3 +1,4 @@
+import html
 import logging
 from datetime import datetime
 from typing import Any, Dict, List, Optional
@@ -62,7 +63,11 @@ class YouTubeAggregator(BaseAggregator):
                 if channel_id and title:
                     # Prefer custom URL (handle) if available, otherwise use channel ID
                     value = custom_url if custom_url else channel_id
+
+                    # Display name in dropdown
                     label = f"{title} ({value})"
+
+                    # (value, label) -> value is what gets saved, label is what is displayed
                     choices.append((value, label))
 
             return choices
@@ -112,6 +117,33 @@ class YouTubeAggregator(BaseAggregator):
             raise YouTubeAPIError(f"Could not resolve YouTube identifier: {error}")
 
         self._channel_id = channel_id
+
+    def normalize_identifier(self, identifier: str) -> str:
+        """
+        Normalize YouTube identifier.
+        Extracts ID/handle from 'Title (ID)' format or URLs.
+        """
+        iden = identifier.strip()
+
+        # Handle 'Title (ID)' format from autocomplete label
+        if "(" in iden and iden.endswith(")"):
+            start = iden.rfind("(") + 1
+            return iden[start:-1].strip()
+
+        # Handle full URLs
+        if "youtube.com" in iden or "youtu.be" in iden:
+            # Use client's internal extractor if possible, or just return as is
+            # since resolve_channel_id handles URLs anyway.
+            # But for storage, we want it clean.
+            pass
+
+        return iden
+
+    def get_identifier_label(self, identifier: str) -> str:
+        """Get descriptive label for current identifier."""
+        if self.feed and self.feed.name:
+            return f"{self.feed.name} ({identifier})"
+        return identifier
 
     def fetch_source_data(self, limit: Optional[int] = None) -> Any:
         """Fetch videos from the channel."""
@@ -198,7 +230,9 @@ class YouTubeAggregator(BaseAggregator):
                 comments = client.fetch_video_comments(video_id, max_results=comment_limit)
 
             # Build content HTML
-            content_html = self._build_content_html(description, comments)
+            content_html = self._build_content_html(
+                description, comments, video_id if isinstance(video_id, str) else ""
+            )
             article["content"] = content_html
             article["raw_content"] = (
                 content_html  # YouTube articles don't have separate raw content from website
@@ -206,27 +240,36 @@ class YouTubeAggregator(BaseAggregator):
 
         return articles
 
-    def _build_content_html(self, description: str, comments: List[Dict[str, Any]]) -> str:
+    def _build_content_html(
+        self, description: str, comments: List[Dict[str, Any]], video_id: str
+    ) -> str:
         """Build the final HTML content for the article."""
         # Convert description newlines to <br>
         formatted_description = description.replace("\n", "<br>")
 
-        html = f'<div class="youtube-description">{formatted_description}</div>'
+        html_content = f'<div class="youtube-description">{formatted_description}</div>'
 
         if comments:
-            html += '<div class="youtube-comments"><h3>Comments</h3>'
+            html_content += '<div class="youtube-comments"><h3>Comments</h3>'
             for comment in comments:
-                snippet = comment.get("snippet", {}).get("topLevelComment", {}).get("snippet", {})
+                top_level = comment.get("snippet", {}).get("topLevelComment", {})
+                snippet = top_level.get("snippet", {})
                 author = snippet.get("authorDisplayName", "Unknown")
-                text = snippet.get("textDisplay", "")
+                body = snippet.get("textDisplay", "")
+                comment_id = comment.get("id")
 
-                html += '<div class="youtube-comment" style="margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px;">'
-                html += f"<strong>{author}</strong><br>"
-                html += f"<div>{text}</div>"
-                html += "</div>"
-            html += "</div>"
+                # Construct link to specific comment
+                comment_url = f"https://www.youtube.com/watch?v={video_id}&lc={comment_id}"
 
-        return html
+                html_content += f"""
+<blockquote>
+<p><strong>{html.escape(author)}</strong> | <a href="{comment_url}" target="_blank" rel="noopener">source</a></p>
+<div>{body}</div>
+</blockquote>
+"""
+            html_content += "</div>"
+
+        return html_content
 
     def finalize_articles(self, articles: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Finalize articles by adding the YouTube embed in the header."""
@@ -245,9 +288,6 @@ class YouTubeAggregator(BaseAggregator):
                 content=article["content"],
                 title=article["name"],
                 url=article["identifier"],
-                author=article.get("author"),
-                date=article.get("date"),
-                header_image_url=None,  # We use the embed instead
             )
 
             # Prepend the embed to the formatted content
@@ -258,6 +298,74 @@ class YouTubeAggregator(BaseAggregator):
             finalized.append(article)
 
         return finalized
+
+    def collect_feed_icon(self) -> Optional[str]:
+        """Return the YouTube channel icon URL."""
+        return self.channel_icon_url
+
+    def fetch_article_content(self, url: str) -> str:
+        """Fetch video details from YouTube API."""
+        from ..utils.youtube import extract_youtube_video_id
+
+        video_id = extract_youtube_video_id(url)
+        if not video_id:
+            return ""
+
+        client = self._get_client()
+        videos = client.fetch_video_details([video_id])
+        if not videos:
+            return ""
+
+        # Fetch comments
+        comments = client.fetch_video_comments(video_id, max_results=10)
+
+        # We return the video_id and comments as part of a custom string that extract_content can parse
+        # or we just store them in self to be used by extract_content/process_content
+        self._last_reloaded_video = videos[0]
+        self._last_reloaded_comments = comments
+
+        # Return the description as 'raw content'
+        return videos[0].get("snippet", {}).get("description", "")
+
+    def extract_content(self, html: str, article: Dict[str, Any]) -> str:
+        """Build content HTML for YouTube video."""
+        if not hasattr(self, "_last_reloaded_video"):
+            return html
+
+        video = self._last_reloaded_video
+        comments = getattr(self, "_last_reloaded_comments", [])
+
+        video_id = video.get("id")
+        description = video.get("snippet", {}).get("description", "")
+
+        if not isinstance(video_id, str):
+            return html
+
+        # Build the HTML content using the existing method
+        return self._build_content_html(description, comments, video_id)
+
+    def process_content(self, content: str, article: Dict[str, Any]) -> str:
+        """Finalize YouTube article content with embed and Yana formatting."""
+        if not hasattr(self, "_last_reloaded_video"):
+            return content
+
+        video = self._last_reloaded_video
+        video_id = video.get("id")
+
+        if not isinstance(video_id, str):
+            return content
+
+        # Create YouTube embed
+        embed_html = create_youtube_embed_html(video_id)
+
+        # Use format_article_content for standard Yana styling
+        processed = format_article_content(
+            content=content,
+            title=article["name"],
+            url=article["identifier"],
+        )
+
+        return embed_html + processed
 
     def aggregate(self) -> List[Dict[str, Any]]:
         """Implementation of the aggregation flow."""

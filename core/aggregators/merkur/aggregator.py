@@ -80,6 +80,7 @@ class MerkurAggregator(FullWebsiteAggregator):
     selectors_to_remove = [
         ".id-DonaldBreadcrumb--default",
         ".id-StoryElement-headline",
+        ".id-StoryElement-image",
         ".lp_west_printAction",
         ".lp_west_webshareAction",
         ".id-Recommendation",

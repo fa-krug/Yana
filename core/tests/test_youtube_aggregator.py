@@ -53,20 +53,23 @@ class TestYouTubeAggregator(unittest.TestCase):
         description = "This is a video description.\nNew line."
         comments = [
             {
+                "id": "comm1",
                 "snippet": {
                     "topLevelComment": {
                         "snippet": {"authorDisplayName": "User1", "textDisplay": "Nice!"}
                     }
-                }
+                },
             }
         ]
 
-        html = self.aggregator._build_content_html(description, comments)
+        html = self.aggregator._build_content_html(description, comments, "vid1")
 
         self.assertIn("This is a video description.<br>New line.", html)
         self.assertIn("User1", html)
-        self.assertIn("Nice!", html)
+        self.assertIn("https://www.youtube.com/watch?v=vid1&lc=comm1", html)
         self.assertIn("<h3>Comments</h3>", html)
+        # Verify text is in HTML (textDisplay)
+        self.assertIn("Nice!", html)
 
     @patch("core.aggregators.youtube.aggregator.create_youtube_embed_html")
     @patch("core.aggregators.youtube.aggregator.format_article_content")
