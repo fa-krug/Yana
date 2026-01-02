@@ -18,12 +18,12 @@ Focus on full-content extraction for tech news sites.
 - [x] Task: Update `core/aggregators/registry.py` to use new News Aggregators b815be8
 - [x] Task: Conductor - User Manual Verification 'Phase 2: News Aggregators' (Protocol in workflow.md) 21fbae5
 
-## Phase 3: Podcast Aggregator
+## Phase 3: Podcast Aggregator [checkpoint: a7eea33]
 Specialized RSS parsing for audio content.
 
 - [x] Task: Implement `PodcastAggregator` in `core/aggregators/podcast/aggregator.py` with TDD a5c010b
 - [x] Task: Update `core/aggregators/registry.py` to use new Podcast Aggregator 3749ea1
-- [ ] Task: Conductor - User Manual Verification 'Phase 3: Podcast Aggregator' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 3: Podcast Aggregator' (Protocol in workflow.md) a7eea33
 
 ## Phase 4: Finalization and Cleanup
 Remove redundant code and perform full system verification.
