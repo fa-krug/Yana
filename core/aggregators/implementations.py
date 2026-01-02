@@ -1,17 +1,11 @@
 """
-Dummy aggregator implementations for all feed types.
-
-The actual implementations are in separate modules:
-- rss.py: RssAggregator
-- website.py: FullWebsiteAggregator
-- mein_mmo/: MeinMmoAggregator
+Aggregator implementations that don't fit into other categories.
 """
 
 from typing import Any, Dict, List
 
 from bs4 import BeautifulSoup
 
-from .base import BaseAggregator
 from .rss import RssAggregator
 from .utils import clean_html, format_article_content, sanitize_class_names
 
@@ -128,56 +122,3 @@ class FeedContentAggregator(RssAggregator):
         )
 
         return formatted
-
-
-class ExplosmAggregator(BaseAggregator):
-    """Aggregator for Explosm."""
-
-    def aggregate(self) -> List[Dict[str, Any]]:
-        print(f"[ExplosmAggregator] Triggered for feed '{self.feed.name}' (ID: {self.feed.id})")
-        print(f"  - Identifier: {self.identifier}")
-        print(f"  - Daily limit: {self.daily_limit}")
-        return []
-
-
-class DarkLegacyAggregator(BaseAggregator):
-    """Aggregator for Dark Legacy Comics."""
-
-    def aggregate(self) -> List[Dict[str, Any]]:
-        print(f"[DarkLegacyAggregator] Triggered for feed '{self.feed.name}' (ID: {self.feed.id})")
-        print(f"  - Identifier: {self.identifier}")
-        print(f"  - Daily limit: {self.daily_limit}")
-        return []
-
-
-class CaschysBlogAggregator(BaseAggregator):
-    """Aggregator for Caschy's Blog."""
-
-    def aggregate(self) -> List[Dict[str, Any]]:
-        print(f"[CaschysBlogAggregator] Triggered for feed '{self.feed.name}' (ID: {self.feed.id})")
-        print(f"  - Identifier: {self.identifier}")
-        print(f"  - Daily limit: {self.daily_limit}")
-        return []
-
-
-class MactechnewsAggregator(BaseAggregator):
-    """Aggregator for MacTechNews."""
-
-    def aggregate(self) -> List[Dict[str, Any]]:
-        print(f"[MactechnewsAggregator] Triggered for feed '{self.feed.name}' (ID: {self.feed.id})")
-        print(f"  - Identifier: {self.identifier}")
-        print(f"  - Daily limit: {self.daily_limit}")
-        return []
-
-
-# RedditAggregator is now in core/aggregators/reddit/aggregator.py
-
-
-class PodcastAggregator(BaseAggregator):
-    """Aggregator for Podcasts."""
-
-    def aggregate(self) -> List[Dict[str, Any]]:
-        print(f"[PodcastAggregator] Triggered for feed '{self.feed.name}' (ID: {self.feed.id})")
-        print(f"  - Identifier: {self.identifier}")
-        print(f"  - Daily limit: {self.daily_limit}")
-        return []
