@@ -22,7 +22,7 @@ Focus on full-content extraction for tech news sites.
 Specialized RSS parsing for audio content.
 
 - [x] Task: Implement `PodcastAggregator` in `core/aggregators/podcast/aggregator.py` with TDD a5c010b
-- [ ] Task: Update `core/aggregators/registry.py` to use new Podcast Aggregator
+- [x] Task: Update `core/aggregators/registry.py` to use new Podcast Aggregator 3749ea1
 - [ ] Task: Conductor - User Manual Verification 'Phase 3: Podcast Aggregator' (Protocol in workflow.md)
 
 ## Phase 4: Finalization and Cleanup
