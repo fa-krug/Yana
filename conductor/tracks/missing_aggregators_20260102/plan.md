@@ -6,7 +6,7 @@ This plan outlines the steps to port five missing aggregators (Explosm, Dark Leg
 Focus on aggregators that primarily extract images.
 
 - [x] Task: Implement `ExplosmAggregator` in `core/aggregators/explosm/aggregator.py` with TDD d568827
-- [ ] Task: Implement `DarkLegacyAggregator` in `core/aggregators/dark_legacy/aggregator.py` with TDD
+- [x] Task: Implement `DarkLegacyAggregator` in `core/aggregators/dark_legacy/aggregator.py` with TDD 3078e57
 - [ ] Task: Update `core/aggregators/registry.py` to use new Comic Aggregators
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Comic Aggregators' (Protocol in workflow.md)
 
