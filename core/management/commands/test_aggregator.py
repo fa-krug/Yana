@@ -183,6 +183,8 @@ class Command(BaseCommand):
             "heise": "https://www.heise.de/rss/heise.rdf",
             "mein_mmo": "https://www.mein-mmo.de/feed/",
             "oglaf": "https://www.oglaf.com/feeds/rss/",
+            "caschys_blog": "https://stadt-bremerhaven.de/feed/",
+            "mactechnews": "https://www.mactechnews.de/Rss/News.x",
         }
         return defaults.get(aggregator_type)
 

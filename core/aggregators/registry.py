@@ -5,15 +5,13 @@ Aggregator registry to map feed types to aggregator classes.
 from typing import Dict, Type
 
 from .base import BaseAggregator
+from .caschys_blog.aggregator import CaschysBlogAggregator
 from .dark_legacy.aggregator import DarkLegacyAggregator
 from .explosm.aggregator import ExplosmAggregator
 from .heise import HeiseAggregator
-from .implementations import (
-    CaschysBlogAggregator,
-    FeedContentAggregator,
-    MactechnewsAggregator,
-    PodcastAggregator,
-)
+from .implementations import FeedContentAggregator, PodcastAggregator
+from .mactechnews.aggregator import MactechnewsAggregator
+
 from .youtube.aggregator import YouTubeAggregator
 from .mein_mmo import MeinMmoAggregator
 from .merkur import MerkurAggregator
