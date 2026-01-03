@@ -71,6 +71,8 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          flavor: |
+            suffix=-linux-amd64
           tags: |
             type=ref,event=branch
             type=semver,pattern={{version}}
@@ -89,15 +91,6 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           platforms: linux/amd64
-          outputs: type=docker,dest=/tmp/image-amd64.tar
-
-      - name: Upload AMD64 image
-        uses: actions/upload-artifact@v4
-        if: github.event_name == 'pull_request'
-        with:
-          name: image-amd64
-          path: /tmp/image-amd64.tar
-          retention-days: 1
 
   # Build ARM64 image
   build-arm64:
@@ -126,6 +119,8 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          flavor: |
+            suffix=-linux-arm64
           tags: |
             type=ref,event=branch
             type=semver,pattern={{version}}
@@ -144,15 +139,6 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           platforms: linux/arm64
-          outputs: type=docker,dest=/tmp/image-arm64.tar
-
-      - name: Upload ARM64 image
-        uses: actions/upload-artifact@v4
-        if: github.event_name == 'pull_request'
-        with:
-          name: image-arm64
-          path: /tmp/image-arm64.tar
-          retention-days: 1
 
   # Create multi-arch manifest and push to registry
   publish-manifest:
