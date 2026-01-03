@@ -19,7 +19,7 @@ class TestCaschysBlogAggregator(unittest.TestCase):
         mock_header.return_value = None
 
         # Read fixture
-        with open("old/src/server/aggregators/__tests__/fixtures/caschys_blog.html", "r") as f:
+        with open("core/tests/fixtures/caschys_blog.html", "r") as f:
             fixture_html = f.read()
 
         mock_fetch.return_value = fixture_html
