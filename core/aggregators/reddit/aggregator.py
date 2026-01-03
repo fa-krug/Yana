@@ -96,6 +96,35 @@ class RedditAggregator(BaseAggregator):
             logger.error(f"Error searching subreddits: {e}")
             return []
 
+    @classmethod
+    def get_configuration_fields(cls) -> Dict[str, Any]:
+        """Get Reddit configuration fields."""
+        from django import forms
+
+        return {
+            "min_comments": forms.IntegerField(
+                initial=0,
+                label="Minimum Comments",
+                help_text="Skip posts with fewer comments than this.",
+                required=False,
+                min_value=0,
+            ),
+            "comment_limit": forms.IntegerField(
+                initial=10,
+                label="Comment Limit",
+                help_text="Number of top comments to include in the article body.",
+                required=False,
+                min_value=0,
+                max_value=50,
+            ),
+            "include_header_image": forms.BooleanField(
+                initial=True,
+                label="Include Header Image",
+                help_text="Include the post image/thumbnail at the top of the article.",
+                required=False,
+            ),
+        }
+
     def aggregate(self) -> List[Dict[str, Any]]:
         """Implement template method pattern flow."""
         self.validate()
@@ -181,7 +210,6 @@ class RedditAggregator(BaseAggregator):
         user_id = self.feed.user.id
 
         # Get sort method (default: hot)
-        # TODO: Store options in Feed model or use feed metadata
         sort_by = "hot"
 
         # Fetch subreddit info to get icon for feed thumbnail
@@ -330,9 +358,8 @@ class RedditAggregator(BaseAggregator):
         """
         filtered = []
 
-        # Get min_comments option (default: -1, disabled)
-        # TODO: Store options in Feed model
-        min_comments = -1
+        # Get min_comments option (default: 0)
+        min_comments = self.feed.options.get("min_comments", 0)
 
         # Two months ago cutoff
         two_months_ago = timezone.now() - timedelta(days=60)
@@ -350,7 +377,7 @@ class RedditAggregator(BaseAggregator):
                 continue
 
             # Check minimum comment count
-            if min_comments >= 0:
+            if min_comments > 0:
                 num_comments = article.get("_reddit_num_comments", 0)
                 if num_comments < min_comments:
                     logger.debug(
@@ -381,8 +408,7 @@ class RedditAggregator(BaseAggregator):
         user_id = self.feed.user.id
 
         # Get comment_limit option (default: 10)
-        # TODO: Store options in Feed model
-        comment_limit = 10
+        comment_limit = self.feed.options.get("comment_limit", 10)
 
         enriched = []
 
@@ -424,15 +450,20 @@ class RedditAggregator(BaseAggregator):
         Process and format Reddit content.
         Uses header_image_only=True to avoid redundant title/meta header.
         """
-        # Get header image URL from article dict if available
-        header_image_url = article.get("header_image_url")
+        # Check if we should include header image
+        include_header_image = self.feed.options.get("include_header_image", True)
 
-        # Fallback to header_data if available (e.g. during article reloads)
-        if not header_image_url and article.get("header_data"):
-            header_data = article["header_data"]
-            header_image_url = getattr(header_data, "base64_data_uri", None) or getattr(
-                header_data, "image_url", None
-            )
+        header_image_url = None
+        if include_header_image:
+            # Get header image URL from article dict if available
+            header_image_url = article.get("header_image_url")
+
+            # Fallback to header_data if available (e.g. during article reloads)
+            if not header_image_url and article.get("header_data"):
+                header_data = article["header_data"]
+                header_image_url = getattr(header_data, "base64_data_uri", None) or getattr(
+                    header_data, "image_url", None
+                )
 
         return format_article_content(
             content=content,

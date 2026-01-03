@@ -240,6 +240,32 @@ class BaseAggregator(ABC):
         return []
 
     @classmethod
+    def get_configuration_fields(cls) -> Dict[str, Any]:
+        """
+        Get configuration fields for this aggregator.
+
+        Returns a dictionary where keys are field names and values are Django Form fields.
+        These fields will be injected into the Feed Admin form.
+
+        Example:
+            from django import forms
+            return {
+                "subreddit_sort": forms.ChoiceField(
+                    choices=[("hot", "Hot"), ("new", "New")],
+                    initial="hot",
+                    label="Sort Order",
+                    required=False,
+                ),
+                "min_score": forms.IntegerField(
+                    initial=100,
+                    label="Minimum Score",
+                    required=False,
+                ),
+            }
+        """
+        return {}
+
+    @classmethod
     def get_default_identifier(cls) -> str:
         """
         Get the default identifier for this aggregator.

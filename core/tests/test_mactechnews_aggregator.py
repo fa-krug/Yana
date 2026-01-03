@@ -9,10 +9,15 @@ class TestMactechnewsAggregator(unittest.TestCase):
         self.feed = MagicMock()
         self.feed.identifier = "https://www.mactechnews.de/Rss/News.x"
         self.feed.daily_limit = 5
+        self.feed.options = {}
         self.aggregator = MactechnewsAggregator(self.feed)
 
+    @patch("core.aggregators.website.FullWebsiteAggregator.extract_header_element")
     @patch("core.aggregators.website.fetch_html")
-    def test_extract_content_mactechnews(self, mock_fetch):
+    def test_extract_content_mactechnews(self, mock_fetch, mock_header):
+        # Mock header extraction
+        mock_header.return_value = None
+
         # Read fixture
         with open("old/src/server/aggregators/__tests__/fixtures/mactechnews.html", "r") as f:
             fixture_html = f.read()
@@ -22,6 +27,7 @@ class TestMactechnewsAggregator(unittest.TestCase):
         article = {
             "name": "Kurztest Dan Clark Audio Noire XO",
             "identifier": "https://www.mactechnews.de/news/article/Kurztest-Dan-Clark-Audio-Noire-XO-186238.html",
+            "content": "",
         }
 
         # Test content extraction

@@ -77,6 +77,22 @@ class YouTubeAggregator(BaseAggregator):
             logger.error(f"Error searching YouTube channels: {e}")
             return []
 
+    @classmethod
+    def get_configuration_fields(cls) -> Dict[str, Any]:
+        """Get YouTube configuration fields."""
+        from django import forms
+
+        return {
+            "comment_limit": forms.IntegerField(
+                initial=10,
+                label="Comment Limit",
+                help_text="Number of top comments to include below the video.",
+                required=False,
+                min_value=0,
+                max_value=50,
+            ),
+        }
+
     def get_source_url(self) -> str:
         """Return the YouTube channel URL."""
         if self.identifier:
@@ -219,8 +235,7 @@ class YouTubeAggregator(BaseAggregator):
         """Enrich articles with comments and build full HTML content."""
         client = self._get_client()
 
-        # TODO: Make comment limit configurable
-        comment_limit = 10
+        comment_limit = self.feed.options.get("comment_limit", 10)
 
         for article in articles:
             video_id = article.get("_youtube_video_id")

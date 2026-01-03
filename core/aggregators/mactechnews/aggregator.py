@@ -37,7 +37,6 @@ class MactechnewsAggregator(FullWebsiteAggregator):
     # Selectors to strip
     selectors_to_remove = [
         ".NewsPictureMobile",
-        "header",
         "aside",
         "script",
         "style",

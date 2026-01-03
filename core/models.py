@@ -46,6 +46,9 @@ class Feed(models.Model):
         FeedGroup, on_delete=models.SET_NULL, null=True, blank=True, related_name="feeds"
     )
     icon = models.ImageField(upload_to="feed_icons/", blank=True, null=True)
+    options = models.JSONField(
+        default=dict, blank=True, help_text="Aggregator-specific configuration"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

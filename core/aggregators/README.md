@@ -150,7 +150,6 @@ class MyNewAggregator(BaseAggregator):
         print(f"  - Identifier: {self.identifier}")
         print(f"  - Daily limit: {self.daily_limit}")
 
-        # TODO: Implement actual aggregation logic
         articles = []
 
         return articles

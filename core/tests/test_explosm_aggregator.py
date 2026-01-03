@@ -9,10 +9,15 @@ class TestExplosmAggregator(unittest.TestCase):
         self.feed = MagicMock()
         self.feed.identifier = "https://explosm.net/rss.xml"
         self.feed.daily_limit = 5
+        self.feed.options = {}
         self.aggregator = ExplosmAggregator(self.feed)
 
+    @patch("core.aggregators.website.FullWebsiteAggregator.extract_header_element")
     @patch("core.aggregators.website.fetch_html")
-    def test_extract_content_explosm(self, mock_fetch):
+    def test_extract_content_explosm(self, mock_fetch, mock_header):
+        # Mock header extraction
+        mock_header.return_value = None
+
         # Read fixture
         with open("old/src/server/aggregators/__tests__/fixtures/explosm.html", "r") as f:
             fixture_html = f.read()
@@ -23,6 +28,7 @@ class TestExplosmAggregator(unittest.TestCase):
             "name": "Test Comic",
             "identifier": "https://explosm.net/comics/test",
             "author": "Rob DenBleyker",
+            "content": "",
         }
 
         # Test content extraction

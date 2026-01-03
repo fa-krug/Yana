@@ -4,13 +4,11 @@ import contextlib
 
 from django import forms
 
-from dal import autocomplete, forward
-
 from .models import Feed
 
 
 class FeedAdminForm(forms.ModelForm):
-    """Custom form for Feed admin with autocomplete."""
+    """Custom form for Feed admin."""
 
     class Meta:
         model = Feed
@@ -23,21 +21,10 @@ class FeedAdminForm(forms.ModelForm):
             "enabled",
             "user",
             "group",
+            "options",
         ]
         widgets = {
-            "identifier": autocomplete.ListSelect2(
-                url="feed-identifier-autocomplete",
-                forward=[
-                    forward.Field("aggregator", "aggregator"),
-                    forward.Field("identifier", "current_id"),
-                ],
-                attrs={
-                    "data-placeholder": "Select or enter identifier...",
-                    "data-allow-clear": "true",
-                    "data-tags": "true",
-                    "data-minimum-input-length": 0,
-                },
-            ),
+            "identifier": forms.TextInput(attrs={"class": "vTextField"}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -49,23 +36,6 @@ class FeedAdminForm(forms.ModelForm):
         self.fields[
             "aggregator"
         ].help_text = "Select aggregator type. This determines available identifier choices."
-
-        # If we have an instance with an identifier, make sure it's an available choice
-        # so the autocomplete widget can display it correctly on load.
-        if self.instance and self.instance.pk and self.instance.identifier:
-            from .aggregators import get_aggregator
-
-            label = self.instance.identifier
-            try:
-                aggregator = get_aggregator(self.instance)
-                label = aggregator.get_identifier_label(self.instance.identifier)
-            except Exception:
-                pass
-
-            choice = (self.instance.identifier, label)
-            if hasattr(self.fields["identifier"], "choices"):
-                self.fields["identifier"].choices = [choice]
-            self.fields["identifier"].widget.choices = [choice]
 
     def save(self, commit=True):
         """

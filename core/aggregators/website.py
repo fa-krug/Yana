@@ -33,9 +33,42 @@ class FullWebsiteAggregator(RssAggregator):
     # Main content selector (override in subclasses)
     content_selector: str = "article, .article-content, .entry-content, main"
 
+    @classmethod
+    def get_configuration_fields(cls) -> Dict[str, Any]:
+        """Get configuration fields for FullWebsiteAggregator."""
+        from django import forms
+
+        return {
+            "use_full_content": forms.BooleanField(
+                initial=True,
+                label="Fetch Full Content",
+                help_text="If enabled, Yana will fetch the article URL and extract the main content. If disabled, only the RSS summary will be used.",
+                required=False,
+            ),
+            "custom_content_selector": forms.CharField(
+                initial="",
+                label="Custom Content Selector",
+                help_text="Override the default CSS selector to find the main content. Example: div.my-article-body",
+                required=False,
+            ),
+            "custom_selectors_to_remove": forms.CharField(
+                initial="",
+                label="Selectors to Remove",
+                help_text="Additional CSS selectors to remove from the content (comma-separated). Example: .ads, .sidebar, #newsletter",
+                required=False,
+            ),
+        }
+
     def enrich_articles(self, articles: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Fetch and extract full article content with header elements."""
         enriched = []
+
+        # Check configuration
+        use_full_content = self.feed.options.get("use_full_content", True)
+
+        if not use_full_content:
+            self.logger.info("Full content extraction disabled via options.")
+            return articles
 
         for article in articles:
             url = article["identifier"]
@@ -82,8 +115,18 @@ class FullWebsiteAggregator(RssAggregator):
 
     def extract_content(self, html: str, article: Dict[str, Any]) -> str:
         """Extract main content from HTML."""
+        # Get selectors from options
+        content_selector = self.feed.options.get("custom_content_selector") or self.content_selector
+
+        remove_selectors = list(self.selectors_to_remove)
+        custom_remove = self.feed.options.get("custom_selectors_to_remove", "")
+        if custom_remove:
+            # Split comma-separated string and add to list
+            additional = [s.strip() for s in custom_remove.split(",") if s.strip()]
+            remove_selectors.extend(additional)
+
         return extract_main_content(
-            html, selector=self.content_selector, remove_selectors=self.selectors_to_remove
+            html, selector=content_selector, remove_selectors=remove_selectors
         )
 
     def process_content(self, html: str, article: Dict[str, Any]) -> str:

@@ -30,6 +30,20 @@ class ExplosmAggregator(FullWebsiteAggregator):
     def get_default_identifier(cls) -> str:
         return "https://explosm.net/rss.xml"
 
+    @classmethod
+    def get_configuration_fields(cls) -> Dict[str, Any]:
+        """Get Explosm configuration fields."""
+        from django import forms
+
+        return {
+            "show_alt_text": forms.BooleanField(
+                initial=True,
+                label="Show Alt Text",
+                help_text="Display the comic's alt text below the image.",
+                required=False,
+            ),
+        }
+
     # Main comic container
     content_selector = "#comic"
 
@@ -55,6 +69,9 @@ class ExplosmAggregator(FullWebsiteAggregator):
         """Specialized processing to ensure we only have the comic image if possible."""
         soup = BeautifulSoup(html, "html.parser")
 
+        # Get options
+        show_alt_text = self.feed.options.get("show_alt_text", True)
+
         # Try to find the primary comic image
         comic_img = None
         for img in soup.find_all("img"):
@@ -72,9 +89,19 @@ class ExplosmAggregator(FullWebsiteAggregator):
             new_soup = BeautifulSoup("<div></div>", "html.parser")
             if new_soup.div:
                 new_img = new_soup.new_tag("img", src=str(comic_img["src"]))
-                if comic_img.get("alt"):
-                    new_img["alt"] = str(comic_img["alt"])
+                alt_text = comic_img.get("alt")
+                if alt_text:
+                    new_img["alt"] = str(alt_text)
                 new_soup.div.append(new_img)
+
+                if show_alt_text and alt_text:
+                    p = new_soup.new_tag(
+                        "p",
+                        style="font-style: italic; margin-top: 1em; color: #666; text-align: center;",
+                    )
+                    p.string = str(alt_text)
+                    new_soup.div.append(p)
+
                 html = str(new_soup)
 
         return super().process_content(html, article)

@@ -41,6 +41,28 @@ class HeiseAggregator(FullWebsiteAggregator):
         """Get default Heise identifier."""
         return "https://www.heise.de/rss/heise.rdf"
 
+    @classmethod
+    def get_configuration_fields(cls) -> Dict[str, Any]:
+        """Get Heise configuration fields."""
+        from django import forms
+
+        return {
+            "include_comments": forms.BooleanField(
+                initial=True,
+                label="Include Forum Comments",
+                help_text="Extract top comments from the Heise forum.",
+                required=False,
+            ),
+            "max_comments": forms.IntegerField(
+                initial=5,
+                label="Max Comments",
+                help_text="Number of comments to extract if enabled.",
+                required=False,
+                min_value=0,
+                max_value=20,
+            ),
+        }
+
     # Heise specific selectors
     content_selector = "#meldung, .StoryContent"
 
@@ -50,12 +72,12 @@ class HeiseAggregator(FullWebsiteAggregator):
         ".article-sidebar",
         "section",
         "a[name='meldung.ho.bottom.zurstartseite']",
-        "a-img",
         ".a-article-header__lead",
         ".a-article-header__title",
         ".a-article-header__publish-info",
         ".a-article-header__service",
-        "figure.a-article-header__image",  # Main article header image (more specific)
+        "a-lightbox.article-image",  # Main article header image
+        "figure.a-article-header__image",  # Main article header image (fallback)
         "div[data-component='RecommendationBox']",
         ".opt-in__content-container",
         ".a-box",
@@ -152,18 +174,25 @@ class HeiseAggregator(FullWebsiteAggregator):
         # Note: Base FullWebsiteAggregator.process_content calls format_article_content
         processed = super().process_content(html, article)
 
-        # Extract and append comments if possible (Requested "all features")
-        try:
-            # We need the original full HTML to find the forum link
-            raw_html = article.get("raw_content", "")
-            if raw_html:
-                comments_html = self.extract_comments(article["identifier"], raw_html)
-                if comments_html:
-                    processed += f"\n\n{comments_html}"
-        except Exception as e:
-            self.logger.warning(
-                f"[process_content] Failed to extract comments for {article['identifier']}: {e}"
-            )
+        # Check configuration
+        include_comments = self.feed.options.get("include_comments", True)
+        max_comments = self.feed.options.get("max_comments", 5)
+
+        if include_comments:
+            # Extract and append comments if possible (Requested "all features")
+            try:
+                # We need the original full HTML to find the forum link
+                raw_html = article.get("raw_content", "")
+                if raw_html:
+                    comments_html = self.extract_comments(
+                        article["identifier"], raw_html, max_comments=max_comments
+                    )
+                    if comments_html:
+                        processed += f"\n\n{comments_html}"
+            except Exception as e:
+                self.logger.warning(
+                    f"[process_content] Failed to extract comments for {article['identifier']}: {e}"
+                )
 
         return processed
 

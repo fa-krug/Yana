@@ -37,6 +37,20 @@ class MeinMmoAggregator(FullWebsiteAggregator):
         """Get default Mein-MMO identifier."""
         return "https://mein-mmo.de/feed/"
 
+    @classmethod
+    def get_configuration_fields(cls) -> Dict[str, Any]:
+        """Get Mein-MMO configuration fields."""
+        from django import forms
+
+        return {
+            "combine_pages": forms.BooleanField(
+                initial=True,
+                label="Combine Multi-page Articles",
+                help_text="Automatically fetch and combine all pages of a multi-page article into one.",
+                required=False,
+            ),
+        }
+
     # Mein-MMO specific selectors
     content_selector = "div.gp-entry-content"
 
@@ -58,10 +72,11 @@ class MeinMmoAggregator(FullWebsiteAggregator):
     def fetch_article_content(self, url: str) -> str:
         """
         Fetch article content, handling multi-page articles.
-
-        Multi-page is always enabled - fetches all pages and combines them.
         """
         self.logger.debug(f"[fetch_article_content] Starting for URL: {url}")
+
+        # Check configuration
+        combine_pages = self.feed.options.get("combine_pages", True)
 
         # Fetch first page to detect pagination
         self.logger.debug("[fetch_article_content] Fetching first page")
@@ -69,6 +84,10 @@ class MeinMmoAggregator(FullWebsiteAggregator):
         self.logger.debug(
             f"[fetch_article_content] First page fetched ({len(first_page_html)} bytes)"
         )
+
+        if not combine_pages:
+            self.logger.info(f"[fetch_article_content] Multi-page combination disabled for {url}")
+            return first_page_html
 
         # Check if multi-page
         self.logger.debug("[fetch_article_content] Detecting pagination")

@@ -54,6 +54,20 @@ class TagesschauAggregator(FullWebsiteAggregator):
         """Get default Tagesschau identifier."""
         return "https://www.tagesschau.de/xml/rss2/"
 
+    @classmethod
+    def get_configuration_fields(cls) -> Dict[str, Any]:
+        """Get Tagesschau configuration fields."""
+        from django import forms
+
+        return {
+            "skip_livestreams": forms.BooleanField(
+                initial=True,
+                label="Skip Livestreams",
+                help_text="Filter out articles that are just links to livestreams.",
+                required=False,
+            ),
+        }
+
     def filter_articles(self, articles: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Filter out livestreams, podcasts, and other unwanted content."""
         # First use base filtering (age check)
@@ -72,8 +86,11 @@ class TagesschauAggregator(FullWebsiteAggregator):
         title = article.get("name", "")
         url = article.get("identifier", "")
 
+        # Check configuration
+        skip_livestreams = self.feed.options.get("skip_livestreams", True)
+
         # Skip livestreams
-        if "Livestream:" in title:
+        if skip_livestreams and "Livestream:" in title:
             self.logger.info(f"Skipping livestream article: {title}")
             return True
 

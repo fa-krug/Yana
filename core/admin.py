@@ -64,23 +64,160 @@ class FeedAdmin(ImportExportModelAdmin, DjangoQLSearchMixin):
     save_as = True
     list_select_related = ["user", "group"]
 
-    fieldsets = (
-        (None, {"fields": ("name", "aggregator", "identifier", "icon", "enabled")}),
-        ("Configuration", {"fields": ("daily_limit",)}),
-        ("Relationships", {"fields": ("user", "group")}),
-        ("Timestamps", {"fields": ("created_at", "updated_at"), "classes": ("collapse",)}),
-    )
+    def get_fieldsets(self, request, obj=None):
+        """Dynamic fieldsets: Simple for Add, Detailed for Edit."""
+        if not obj:
+            # Add View: Minimal fields
+            return ((None, {"fields": ("name", "aggregator")}),)
+
+        # Edit View: Full fields
+        # Check if identifier should be hidden (fixed)
+        fields = ["name", "aggregator_info", "identifier", "icon", "enabled"]
+
+        # Determine if identifier is fixed/hidden
+        # We can't easily check choices here without instantiating, but we can rely on standard field inclusion
+        # and handle hiding in get_form or just keep it visible but readonly if needed.
+        # User asked to hide it if fixed.
+
+        return (
+            (None, {"fields": fields}),
+            ("Configuration", {"fields": ("daily_limit", "options")}),
+            ("Relationships", {"fields": ("user", "group")}),
+            ("Timestamps", {"fields": ("created_at", "updated_at"), "classes": ("collapse",)}),
+        )
+
+        def get_readonly_fields(self, request, obj=None):
+            """Make aggregator readonly in edit view."""
+
+            if obj:
+                return ["aggregator_info", "created_at", "updated_at"]
+
+            return ["created_at", "updated_at"]
+
+        @admin.display(description="Aggregator Type")
+        def aggregator_info(self, instance):
+            """Display information about the selected aggregator."""
+
+            if not instance.aggregator:
+                return "-"
+
+            try:
+                from .aggregators.registry import get_aggregator_class
+
+                agg_class = get_aggregator_class(instance.aggregator)
+
+                doc = agg_class.__doc__ or ""
+
+                # Return first line of docstring
+
+                return doc.strip().split("\n")[0]
+
+            except Exception:
+                return "Unknown aggregator"
 
     def get_form(self, request, obj=None, **kwargs):
-        """Pass request to form to allow conditional choices."""
+        """
+        Pass request to form and dynamically adjust fields.
+        - Add View: Only name/aggregator.
+        - Edit View: Inject config fields and adjust identifier widget.
+        """
         form_class = super().get_form(request, obj, **kwargs)
 
         class RequestForm(form_class):
-            def __init__(self, *args, **kwargs):
-                kwargs["request"] = request
+            def __init__(self_form, *args, **kwargs):
                 super().__init__(*args, **kwargs)
 
+                # Handling for Edit View (obj exists)
+                if obj and obj.aggregator:
+                    # 1. Inject aggregator-specific configuration fields
+                    try:
+                        from django import forms
+
+                        from .aggregators.registry import get_aggregator_class
+
+                        agg_class = get_aggregator_class(obj.aggregator)
+                        config_fields = agg_class.get_configuration_fields()
+
+                        # Add config fields
+                        for field_name, field in config_fields.items():
+                            self_form.fields[field_name] = field
+                            if obj.options and field_name in obj.options:
+                                self_form.initial[field_name] = obj.options[field_name]
+
+                        # 2. Adjust Identifier Widget
+                        # Get available choices
+                        choices = agg_class.get_identifier_choices(user=request.user)
+
+                        if choices:
+                            if len(choices) == 1:
+                                # Fixed identifier: Hide the field and force value
+                                self_form.fields["identifier"].widget = forms.HiddenInput()
+                                self_form.initial["identifier"] = choices[0][0]
+                                # Also update the instance to ensure it saves if not changed
+                                # (HiddenInput values are posted, so this is fine)
+                            else:
+                                # Multiple choices: Use Select
+                                self_form.fields["identifier"].widget = forms.Select(
+                                    choices=choices
+                                )
+                        else:
+                            # No predefined choices (e.g. YouTube search or generic website): Use Text
+                            # If it was previously Hidden (from a fixed aggregator), make sure it's visible now
+                            if isinstance(self_form.fields["identifier"].widget, forms.HiddenInput):
+                                self_form.fields["identifier"].widget = forms.TextInput()
+
+                    except Exception as e:
+                        print(f"Error configuring form for aggregator: {e}")
+
         return RequestForm
+
+    def save_model(self, request, obj, form, change):
+        """Save aggregator-specific fields to options JSON."""
+        if obj.aggregator:
+            try:
+                from .aggregators.registry import get_aggregator_class
+
+                agg_class = get_aggregator_class(obj.aggregator)
+                config_fields = agg_class.get_configuration_fields()
+
+                # Extract values for config fields
+                options = obj.options or {}
+                for field_name in config_fields:
+                    if field_name in form.cleaned_data:
+                        options[field_name] = form.cleaned_data[field_name]
+
+                obj.options = options
+            except Exception as e:
+                print(f"Error saving aggregator options: {e}")
+
+        super().save_model(request, obj, form, change)
+
+    def response_add(self, request, obj, post_url_continue=None):
+        """
+        Redirect to the change view after adding a new Feed.
+        This allows the user to immediately see and configure the aggregator-specific options
+        that appear only after the feed type is saved.
+        """
+        from django.http import HttpResponseRedirect
+        from django.urls import reverse
+
+        # If the user clicked "Save" (not "Save and add another" or "Save and continue editing")
+        if "_save" in request.POST:
+            opts = obj._meta
+            change_url = reverse(
+                f"admin:{opts.app_label}_{opts.model_name}_change",
+                args=(obj.pk,),
+                current_app=self.admin_site.name,
+            )
+            # Add a message to let the user know they can now configure options
+            self.message_user(
+                request,
+                f'The feed "{obj}" was added successfully. You can now configure its specific options below.',
+                messages.SUCCESS,
+            )
+            return HttpResponseRedirect(change_url)
+
+        return super().response_add(request, obj, post_url_continue)
 
     @admin.action(description="Aggregate selected feeds")
     def aggregate_selected_feeds(self, request, queryset):

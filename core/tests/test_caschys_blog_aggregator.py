@@ -9,10 +9,15 @@ class TestCaschysBlogAggregator(unittest.TestCase):
         self.feed = MagicMock()
         self.feed.identifier = "https://stadt-bremerhaven.de/feed/"
         self.feed.daily_limit = 5
+        self.feed.options = {}
         self.aggregator = CaschysBlogAggregator(self.feed)
 
+    @patch("core.aggregators.website.FullWebsiteAggregator.extract_header_element")
     @patch("core.aggregators.website.fetch_html")
-    def test_extract_content_caschys_blog(self, mock_fetch):
+    def test_extract_content_caschys_blog(self, mock_fetch, mock_header):
+        # Mock header extraction
+        mock_header.return_value = None
+
         # Read fixture
         with open("old/src/server/aggregators/__tests__/fixtures/caschys_blog.html", "r") as f:
             fixture_html = f.read()
@@ -22,6 +27,7 @@ class TestCaschysBlogAggregator(unittest.TestCase):
         article = {
             "name": "Google Stadia Controller: Voller Steam-Support kurz vor Ende der Frist",
             "identifier": "https://stadt-bremerhaven.de/google-stadia-controller-voller-steam-support-kurz-vor-ende-der-frist/",
+            "content": "",
         }
 
         # Test content extraction

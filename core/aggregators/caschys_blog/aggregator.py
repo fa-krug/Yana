@@ -31,6 +31,20 @@ class CaschysBlogAggregator(FullWebsiteAggregator):
     def get_default_identifier(cls) -> str:
         return "https://stadt-bremerhaven.de/feed/"
 
+    @classmethod
+    def get_configuration_fields(cls) -> Dict[str, Any]:
+        """Get Caschy's Blog configuration fields."""
+        from django import forms
+
+        return {
+            "skip_ads": forms.BooleanField(
+                initial=True,
+                label="Skip Advertisements",
+                help_text="Filter out articles marked as '(Anzeige)'.",
+                required=False,
+            ),
+        }
+
     # Main content container
     content_selector = ".entry-inner"
 
@@ -49,6 +63,12 @@ class CaschysBlogAggregator(FullWebsiteAggregator):
         """Skip articles marked as advertisements."""
         # First use base filtering (age check)
         filtered = super().filter_articles(articles)
+
+        # Get options
+        skip_ads = self.feed.options.get("skip_ads", True)
+
+        if not skip_ads:
+            return filtered
 
         # Then filter out advertisements
         result = []

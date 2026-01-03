@@ -74,6 +74,20 @@ class MerkurAggregator(FullWebsiteAggregator):
         """Get default Merkur identifier."""
         return "https://www.merkur.de/rssfeed.rdf"
 
+    @classmethod
+    def get_configuration_fields(cls) -> Dict[str, Any]:
+        """Get Merkur configuration fields."""
+        from django import forms
+
+        return {
+            "remove_empty_elements": forms.BooleanField(
+                initial=True,
+                label="Remove Empty Elements",
+                help_text="Cleanup empty paragraphs and divs from the article content.",
+                required=False,
+            ),
+        }
+
     # Merkur specific selectors
     content_selector = ".idjs-Story"
 
@@ -136,29 +150,20 @@ class MerkurAggregator(FullWebsiteAggregator):
     def process_content(self, html: str, article: Dict[str, Any]) -> str:
         """
         Process Merkur content with custom cleanup.
-
-        Steps:
-        1. Remove empty p, div, span elements
-        2. Sanitize HTML (create data-sanitized-* attributes)
-        3. Remove all data-sanitized-* attributes (Merkur-specific cleanup)
-        4. Call base process_content for final formatting
-
-        Args:
-            html: Extracted HTML content
-            article: Article dictionary
-
-        Returns:
-            Processed and formatted HTML content
         """
         self.logger.debug(
             f"[process_content] Processing Merkur content with custom cleanup for {article.get('identifier')}"
         )
 
+        # Get options
+        remove_empty = self.feed.options.get("remove_empty_elements", True)
+
         # Parse HTML
         soup = BeautifulSoup(html, "html.parser")
 
         # Step 1: Remove empty elements (p, div, span) that have no text and no images
-        remove_empty_elements(soup, tags=["p", "div", "span"])
+        if remove_empty:
+            remove_empty_elements(soup, tags=["p", "div", "span"])
 
         # Step 2: Sanitize HTML (create data-sanitized-* attributes)
         # This removes scripts, converts class/style/id to data-sanitized-* format

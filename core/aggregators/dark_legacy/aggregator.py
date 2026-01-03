@@ -32,6 +32,20 @@ class DarkLegacyAggregator(FullWebsiteAggregator):
     def get_default_identifier(cls) -> str:
         return "https://darklegacycomics.com/feed.xml"
 
+    @classmethod
+    def get_configuration_fields(cls) -> Dict[str, Any]:
+        """Get Dark Legacy Comics configuration fields."""
+        from django import forms
+
+        return {
+            "show_alt_text": forms.BooleanField(
+                initial=True,
+                label="Show Alt Text",
+                help_text="Display the comic's alt text below the image.",
+                required=False,
+            ),
+        }
+
     # Main comic container
     content_selector = "#gallery"
 
@@ -49,6 +63,9 @@ class DarkLegacyAggregator(FullWebsiteAggregator):
 
     def process_content(self, html: str, article: Dict[str, Any]) -> str:
         """Specialized processing to ensure images have absolute URLs."""
+        # Get options
+        show_alt_text = self.feed.options.get("show_alt_text", True)
+
         soup = BeautifulSoup(html, "html.parser")
         base_url = article["identifier"]
 
@@ -72,6 +89,15 @@ class DarkLegacyAggregator(FullWebsiteAggregator):
                     if img_alt:
                         new_img["alt"] = img_alt
                     div.append(new_img)
+
+                    if show_alt_text and img_alt:
+                        p = new_soup.new_tag(
+                            "p",
+                            style="font-style: italic; margin-top: 1em; color: #666; text-align: center;",
+                        )
+                        p.string = img_alt
+                        div.append(p)
+
                 html = str(new_soup)
 
         return super().process_content(html, article)
