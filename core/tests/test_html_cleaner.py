@@ -87,3 +87,12 @@ class TestHtmlCleaner:
         result = clean_html(html)
         assert "comment" not in result
         assert "<p>Text</p>" in result
+
+    def test_remove_selectors(self):
+        from core.aggregators.utils.html_cleaner import remove_selectors
+
+        html = '<div><div class="ads">Ad</div><p>Content</p></div>'
+        soup = BeautifulSoup(html, "html.parser")
+        remove_selectors(soup, [".ads"])
+        assert "Ad" not in str(soup)
+        assert "<p>Content</p>" in str(soup)

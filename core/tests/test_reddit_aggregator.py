@@ -2,6 +2,7 @@ import time
 from unittest.mock import MagicMock, patch
 
 import pytest
+import requests
 
 from core.aggregators.reddit.aggregator import RedditAggregator
 from core.aggregators.reddit.auth import _token_cache, get_reddit_access_token
@@ -92,6 +93,29 @@ class TestRedditAggregator:
         enriched = reddit_agg.enrich_articles(articles)
 
         assert enriched[0]["content"] == "<html>Content</html>"
+
+    def test_get_original_post_data_cross_post(self, reddit_agg):
+        from core.aggregators.reddit.types import RedditPostData
+
+        data = {"id": "cross", "crosspost_parent_list": [{"id": "original", "title": "Original"}]}
+        post_data = RedditPostData(data)
+        original = reddit_agg._get_original_post_data(post_data)
+        assert original.id == "original"
+        assert original.title == "Original"
+
+    @patch("core.aggregators.reddit.aggregator.requests.get")
+    @patch("core.aggregators.reddit.aggregator.get_reddit_auth_headers")
+    def test_fetch_source_data_404(self, mock_headers, mock_get, reddit_agg):
+        mock_headers.return_value = {}
+        mock_response = MagicMock()
+        mock_response.status_code = 404
+        mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError(
+            response=mock_response
+        )
+        mock_get.return_value = mock_response
+
+        with pytest.raises(ValueError, match="does not exist"):
+            reddit_agg.fetch_source_data()
 
 
 @pytest.mark.django_db

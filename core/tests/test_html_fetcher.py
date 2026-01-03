@@ -53,3 +53,9 @@ class TestHtmlFetcher:
 
         assert mock_get.call_count == 3
         assert mock_sleep.call_count == 2
+
+    @patch("core.aggregators.utils.html_fetcher.requests.get")
+    def test_fetch_html_timeout(self, mock_get):
+        mock_get.side_effect = requests.exceptions.Timeout("Timeout")
+        with pytest.raises(requests.exceptions.Timeout):
+            fetch_html("https://example.com", retries=1)
