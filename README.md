@@ -1,484 +1,468 @@
-# Yana - Fullstack TypeScript RSS Aggregator
+# Yana - RSS Aggregator with Google Reader API
 
-A modern, fullstack TypeScript/Node.js RSS aggregator with Angular SSR, featuring AI-powered content processing, multiple aggregator types, and a unified codebase.
+A modern, self-hosted RSS aggregator built with Django that supports Google Reader API compatibility for use with external RSS clients like Reeder, NetNewsWire, and FeedMe.
 
-## 🚀 Quick Start
+## Features
 
-### Prerequisites
+- **Multi-source Content Aggregation**
+  - RSS/Atom feeds
+  - YouTube channels
+  - Reddit subreddits
+  - Podcasts
+  - Specific websites (news, blogs, comics)
+  - Extensible aggregator system for custom sources
 
-- Node.js 22+ (Node.js 24+ requires C++20 compiler flags)
-- npm 10+
+- **Google Reader API Compatibility**
+  - Use any Google Reader-compatible client (Reeder, NetNewsWire, FeedMe)
+  - Full subscription management
+  - Article read/starred state tracking
+  - Stream filtering and pagination
 
-### Installation
+- **Self-Hosted**
+  - SQLite database (no PostgreSQL required)
+  - Docker deployment (multi-stage optimized image)
+  - Background task processing with django-q2
+  - No external dependencies (Redis not required)
 
-**Important:** If you're using Node.js v24+, you need to set C++20 compiler flags before installing dependencies:
+- **User-Friendly Admin Interface**
+  - Django admin with custom bulk actions
+  - Aggregate feeds directly from admin
+  - Reload articles on demand
+  - Filter and search articles
+
+## Quick Start
+
+### Local Development
 
 ```bash
-export CXXFLAGS="-std=c++20"
-npm install
-```
+# Clone and enter directory
+git clone <repo>
+cd Yana
 
-For Node.js v22, you can use the standard install:
+# Create and activate virtual environment
+python3 -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 
-```bash
 # Install dependencies
-npm install
+pip install -r requirements.txt
+
+# Run migrations
+python3 manage.py migrate
+
+# Create admin user
+python3 manage.py createsuperuser
+
+# Start development server
+python3 manage.py runserver
 ```
 
-**Note:** The project uses `better-sqlite3` v12.4.1+ which supports Node.js v24 when compiled with C++20 flags.
+Access at:
+- Admin: http://localhost:8000/admin/
+- GReader API: http://localhost:8000/api/greader/*
 
-### Setup
-
-```bash
-# Run database migrations
-npm run db:migrate
-
-# Create superuser
-tsx src/server/scripts/createSuperuser.ts admin admin@example.com password
-
-# Start development servers (run in separate terminals)
-# Terminal 1: Express server
-tsx src/server.ts
-
-# Terminal 2: Angular dev server
-npm run start
-```
-
-The application will be available at:
-- Frontend: http://localhost:4200
-- API: http://localhost:3000
-
-## 📁 Project Structure
-
-```
-yana/
-├── src/
-│   ├── app/              # Angular frontend
-│   │   ├── core/         # Core services, guards, interceptors
-│   │   │   └── trpc/     # tRPC client service
-│   │   ├── features/     # Feature modules (articles, feeds, auth, etc.)
-│   │   └── shared/       # Shared components and types
-│   └── server/           # Express backend
-│       ├── aggregators/  # RSS aggregator implementations
-│       ├── db/           # Database schema and migrations
-│       ├── middleware/   # Express middleware
-│       ├── routes/       # Non-tRPC API routes (RSS, GReader, etc.)
-│       ├── trpc/         # tRPC routers and procedures
-│       ├── services/     # Business logic
-│       ├── workers/      # Background worker pool
-│       └── scheduler/    # Periodic task scheduler
-├── tests/                # Test files
-└── public/               # Static assets
-```
-
-## 🏗️ Architecture
-
-### Fullstack TypeScript
-
-This is a **monorepo** with both frontend and backend in TypeScript, sharing the same codebase:
-
-- **Frontend**: Angular 21 with SSR (Server-Side Rendering)
-- **Backend**: Express.js with TypeScript
-- **Database**: SQLite with Drizzle ORM
-- **API**: tRPC for type-safe end-to-end communication
-
-### Frontend-Backend Communication
-
-The frontend and backend communicate through **tRPC**, which provides:
-
-- **End-to-end type safety**: TypeScript types are shared between client and server
-- **Automatic validation**: Input validation using Zod schemas
-- **Type inference**: The frontend automatically gets types from the backend router
-
-#### Type Sharing
-
-The frontend imports the `AppRouter` type directly from the server:
-
-```typescript
-// src/app/core/trpc/trpc-client.ts
-import type { AppRouter } from '../../../server/trpc/router';
-```
-
-This means:
-- ✅ Full type safety for all API calls
-- ✅ Autocomplete for all procedures
-- ✅ Compile-time error checking
-- ⚠️ **Requires server code to be built/available for TypeScript compilation**
-
-#### Build Process
-
-**IMPORTANT: Build Order Requirement**
-
-Because the frontend imports types from the server, you may need to build the server first to resolve TypeScript type issues:
-
-```bash
-# Build server first (generates type definitions)
-tsc -p tsconfig.server.json
-
-# Then build frontend (can now resolve server types)
-npm run build
-```
-
-In development, TypeScript can usually resolve types directly from source files, but if you encounter type errors, build the server first using the TypeScript compiler.
-
-### Development Workflow
-
-1. **Development Mode**: Run both servers separately
-   ```bash
-   # Terminal 1: Start Express server
-   tsx src/server.ts
-   
-   # Terminal 2: Start Angular dev server
-   npm run start
-   ```
-   The Express server runs on port 3000, and the Angular dev server runs on port 4200.
-
-2. **Type Checking**: TypeScript checks both frontend and server code
-   - Frontend uses `tsconfig.app.json`
-   - Server uses `tsconfig.server.json`
-   - Both extend `tsconfig.json` for shared configuration
-
-3. **Proxy Configuration**: Angular dev server proxies API requests to Express
-   - `/trpc/*` → `http://localhost:3000/trpc/*`
-   - `/api/*` → `http://localhost:3000/api/*`
-
-## 🛠️ Development
-
-### Available Scripts
+### Docker
 
 ```bash
 # Development
-npm run start            # Start Angular dev server (uses proxy to backend)
+docker-compose up
 
-# Building
-npm run build            # Build Angular for production
+# Production
+docker-compose -f docker-compose.production.yml up
 
-# Code Quality
-npm run lint             # Run ESLint to check for linting errors
-npm run lint:fix          # Run ESLint and auto-fix issues
-npm run format            # Format code with Prettier
-npm run format:check      # Check code formatting with Prettier
-
-# Database
-npm run db:generate      # Generate Drizzle migrations
-npm run db:migrate       # Run database migrations
-npm run db:studio        # Open Drizzle Studio
+# Health check
+curl http://localhost:8000/health/
 ```
 
-**Note**: For development, you'll typically run the Express server separately (e.g., using `tsx src/server.ts` or `nodemon`) and the Angular dev server with `npm run start`. The Angular dev server proxies API requests to the Express server running on port 3000.
+Environment configuration via `.env` file (see `.env.example`).
 
-**Building the Server**: To build the TypeScript server for type resolution, use:
-```bash
-# Build server using TypeScript compiler
-tsc -p tsconfig.server.json
+## Architecture
+
+### Core Components
+
+**Django Models:**
+- `FeedGroup` - Organize feeds by user
+- `Feed` - Feed configuration (URL, aggregator type, limits)
+- `Article` - Individual content items
+- `GReaderAuthToken` - Google Reader API authentication
+
+**Aggregator System:**
+- Template Method pattern for extensibility
+- 14 aggregator types (2 custom, 8 managed site-specific, 3 social)
+- MeinMmo aggregator fully implemented as reference
+- Support for async header extraction and image compression
+
+**Google Reader API:**
+- 11 endpoints for full Google Reader compatibility
+- Authentication via SHA-256 hashed tokens
+- Stream filtering by feed, label, or starred status
+- Pagination with continuation tokens
+
+**Services Layer:**
+- `AggregatorService` - Trigger feeds and fetch content
+- `ArticleService` - Reload article content
+- `AuthService` - Token generation and validation
+- `SubscriptionService` - Feed management
+- `StreamService` - Article querying with caching
+- `TagService` - Article state operations
+
+### Project Structure
+
+```
+core/
+├── models.py                  # 4 data models
+├── admin.py                   # Custom admin interface
+├── choices.py                 # 14 aggregator types
+├── views/                     # Modularized views
+│   ├── default.py             # Health check, YouTube proxy
+│   └── greader/               # Google Reader API views
+├── urls/                      # URL routing
+│   ├── default.py
+│   └── greader.py             # 11 GReader endpoints
+├── services/                  # Business logic
+│   ├── aggregator_service.py
+│   ├── article_service.py
+│   └── greader/               # 7 GReader services
+├── aggregators/               # Content aggregation
+│   ├── base.py                # BaseAggregator
+│   ├── registry.py            # Factory pattern
+│   ├── mein_mmo/              # Reference implementation
+│   └── utils/                 # Shared utilities
+└── migrations/                # Database schema
+
+yana/                          # Django project config
+├── settings.py
+├── urls.py
+├── wsgi.py
+└── asgi.py
 ```
 
-This generates type definitions in `dist/server/` that the frontend can use for type checking.
+## Google Reader API
 
-### TypeScript Configuration
+The application implements the Google Reader API for RSS client compatibility.
 
-The project uses separate TypeScript configurations:
+### Endpoints
 
-- **`tsconfig.json`**: Base configuration with shared compiler options
-- **`tsconfig.app.json`**: Frontend-specific config (extends base)
-- **`tsconfig.server.json`**: Server-specific config (extends base)
+- `POST /api/greader/accounts/ClientLogin` - Authenticate with email/password
+- `GET /api/greader/reader/api/0/token` - Get session token
+- `GET /api/greader/reader/api/0/user-info` - Get user information
+- `GET /api/greader/reader/api/0/subscription/list` - List all subscriptions
+- `POST /api/greader/reader/api/0/subscription/edit` - Add/remove/rename subscriptions
+- `GET /api/greader/reader/api/0/tag/list` - List tags/labels
+- `POST /api/greader/reader/api/0/edit-tag` - Mark articles as read/starred
+- `POST /api/greader/reader/api/0/mark-all-as-read` - Mark stream as read
+- `GET /api/greader/reader/api/0/unread-count` - Get unread counts
+- `GET /api/greader/reader/api/0/stream/items/ids` - Get article IDs
+- `GET/POST /api/greader/reader/api/0/stream/contents` - Get article contents
 
-Path aliases are configured for easier imports:
-- `@server/*` → `src/server/*`
-- `@app/*` → `src/app/*`
+### Authentication
 
-## 🗄️ Database
+1. POST email/password to `/accounts/ClientLogin`
+2. Receive auth token (SHA-256 hashed, 64-char hex)
+3. Include in subsequent requests: `Authorization: GoogleLogin auth=TOKEN`
 
-The application uses SQLite with Drizzle ORM. The database schema is defined in `src/server/db/schema.ts`.
+### Stream Formats
 
-### Migrations
+Articles can be filtered by:
+- `feed/{id}` - Single feed
+- `user/-/label/{name}` - Group/label
+- `user/-/state/com.google/starred` - Starred items
+- `user/-/state/com.google/reading-list` - All items
 
-```bash
-# Generate migration from schema changes
-npm run db:generate
+## Aggregators
 
-# Apply migrations
-npm run db:migrate
+### Supported Types (14 total)
 
-# Open database studio
-npm run db:studio
-```
+| Type | Source | Status |
+|------|--------|--------|
+| `full_website` | Generic web scraper | Reference |
+| `feed_content` | RSS/Atom feeds | Reference |
+| `mein_mmo` | Gaming blog | Implemented |
+| `youtube` | YouTube channels | Stub |
+| `reddit` | Reddit subreddits | Stub |
+| `podcast` | Podcast feeds | Stub |
+| `heise` | German tech news | Stub |
+| `merkur` | German news | Stub |
+| `tagesschau` | German news | Stub |
+| `explosm` | Web comics | Stub |
+| `dark_legacy` | Web comics | Stub |
+| `oglaf` | Web comics | Stub |
+| `caschys_blog` | Tech blog | Stub |
+| `mactechnews` | Apple tech news | Stub |
 
-## 🔐 Authentication
+### Creating New Aggregators
 
-The application uses cookie-based session authentication. Users are managed via the API or the `createSuperuser` script.
+1. Create class extending `BaseAggregator` in `core/aggregators/`
+2. Implement: `fetch_source_data()`, `parse_to_raw_articles()`
+3. Optional hooks: `validate()`, `filter_articles()`, `enrich_articles()`, `finalize_articles()`
+4. Register in `AGGREGATOR_CHOICES` (core/choices.py)
+5. Add to registry (core/aggregators/registry.py)
 
-### Create Superuser
+Reference implementation: `core/aggregators/mein_mmo/` (complete with content extraction, embed processing, multi-page support)
 
-```bash
-tsx src/server/scripts/createSuperuser.ts <username> <email> <password>
-```
+## Development
 
-## 📡 API
+### Environment Setup
 
-The API uses **tRPC** for type-safe, end-to-end API calls. All API endpoints are accessible at `/trpc`.
-
-### tRPC Architecture
-
-tRPC provides type-safe communication between the Angular frontend and Express backend:
-
-1. **Server**: Defines routers with procedures in `src/server/trpc/`
-2. **Client**: Angular service imports `AppRouter` type for type inference
-3. **Communication**: HTTP requests with automatic serialization (SuperJSON)
-
-### tRPC Routers
-
-The API is organized into routers:
-
-- **auth** - Authentication (login, logout, status)
-- **aggregator** - Aggregator metadata (public)
-- **statistics** - Dashboard statistics
-- **feed** - Feed CRUD and management
-- **article** - Article operations
-- **user** - User profile and settings
-- **admin** - Admin user management (superuser only)
-
-### Client Usage (Angular)
-
-The Angular application uses the `TRPCService` to access tRPC procedures:
-
-```typescript
-import { TRPCService } from './core/trpc/trpc.service';
-
-// In a service or component
-constructor(private trpc: TRPCService) {}
-
-// Query example (read operation)
-const stats = await this.trpc.client.statistics.get.query();
-
-// Mutation example (write operation)
-const result = await this.trpc.client.auth.login.mutate({
-  username: 'user',
-  password: 'pass',
-});
-```
-
-### Type Safety
-
-All procedures are fully type-safe:
-
-- ✅ Input types are inferred from Zod schemas
-- ✅ Output types are inferred from return values
-- ✅ Autocomplete works in IDE
-- ✅ Compile-time error checking
-
-### Documentation
-
-- **tRPC API Reference**: See `docs/TRPC_API.md` for complete procedure documentation
-
-## 🤖 Aggregators
-
-The system supports multiple aggregator types:
-
-- **full_website** - Generic RSS feed aggregator
-- **heise** - Heise.de news aggregator
-- **youtube** - YouTube channel aggregator
-- **reddit** - Reddit subreddit aggregator
-- **podcast** - Podcast feed aggregator
-
-### Aggregator Testing Tools
-
-Test all aggregators against a specific article URL for debugging:
-
-```bash
-npm run test:aggregator <url>
-```
-
-**Example:**
-```bash
-npm run test:aggregator https://example.com/article
-```
-
-This script:
-- Tests all registered aggregators against the URL
-- Shows fetch, extraction, and processing results for each
-- Displays success/failure status, content length, and processing time
-- Useful for debugging content extraction issues and comparing aggregator behavior
-
-### Aggregator Flow Documentation
-
-For detailed information about the aggregation flow, see:
-- **[docs/AGGREGATOR_FLOW.md](docs/AGGREGATOR_FLOW.md)** - Comprehensive documentation covering:
-  - Fixed aggregation flow (Template Method Pattern)
-  - Step-by-step breakdown of each phase
-  - Error handling strategy
-  - Configuration options
-  - Debugging tools usage
-  - How to create custom aggregators
-
-## 🧠 AI Features
-
-The application includes AI-powered features:
-
-- **Translation** - Translate article content to different languages
-- **Summarization** - Generate concise summaries
-- **Custom Prompts** - Process content with custom AI prompts
-
-Configure AI settings in user settings (requires OpenAI-compatible API).
-
-## 🐳 Docker
-
-### Quick Start with Docker Compose
-
-The easiest way to run Yana is with Docker Compose:
+**Required:** Python 3.11+, virtual environment
 
 ```bash
-# Start the application
-docker-compose up -d
+source venv/bin/activate
+```
 
+### Common Commands
+
+```bash
+# Development server
+python3 manage.py runserver
+
+# Django shell
+python3 manage.py shell
+
+# Database migrations
+python3 manage.py makemigrations
+python3 manage.py migrate
+
+# Tests
+python3 manage.py test
+
+# Trigger feeds
+python3 manage.py trigger_aggregator --feed-id=1
+python3 manage.py trigger_aggregator --aggregator-type=mein_mmo
+```
+
+### Debugging Aggregators
+
+**Use `python3 manage.py test_aggregator` for all aggregator debugging.** This command provides comprehensive debugging information.
+
+```bash
+# Quick test by feed ID
+python3 manage.py test_aggregator 5
+
+# Test by aggregator type + identifier (creates temp feed)
+python3 manage.py test_aggregator heise "https://www.heise.de/"
+
+# Show detailed output (first 3 articles)
+python3 manage.py test_aggregator 5 --first 3
+
+# Verbose mode: raw HTML, debug logs, full tracebacks
+python3 manage.py test_aggregator 5 -v
+
+# Dry-run: test without saving to database
+python3 manage.py test_aggregator 5 --dry-run
+
+# Debug CSS selectors
+python3 manage.py test_aggregator 5 --selector-debug
+
+# Limit articles (fast iteration)
+python3 manage.py test_aggregator 5 --limit 2
+```
+
+**Output includes:**
+- Feed configuration details
+- Aggregator class and inheritance info
+- Execution timing
+- Article summaries (first 10)
+- Article details with raw/processed content
+- Data validation (missing fields, empty content, etc.)
+- Database save summary
+
+**Debugging workflow:**
+1. Start: `python3 manage.py test_aggregator <ID> --limit 2` (fast)
+2. Debug: `python3 manage.py test_aggregator <ID> --first 1 -v` (detailed)
+3. Selectors: `python3 manage.py test_aggregator <ID> --selector-debug` (if needed)
+4. Full test: `python3 manage.py test_aggregator <ID>` (when working)
+
+See **CLAUDE.md** > **Aggregator Debugging Guide** for comprehensive debugging documentation.
+
+### Admin Interface
+
+Django admin at `http://localhost:8000/admin/` includes:
+
+- **Feed Management:** View, create, edit, filter feeds
+- **Bulk Actions:** Aggregate selected feeds, reload articles
+- **Article Preview:** View raw and processed HTML
+- **Token Management:** Manage GReader API tokens
+- **User Management:** Create users, assign feeds
+
+### Testing
+
+```bash
+# Run all tests
+python3 manage.py test
+
+# Run specific test
+python3 manage.py test core.tests.TestClassName
+
+# Run with coverage
+coverage run --source='.' manage.py test
+coverage report
+```
+
+Current test coverage is minimal - contributions welcome!
+
+## Configuration
+
+### Environment Variables (.env)
+
+```
+DEBUG=True|False
+SECRET_KEY=your-secret-key
+ALLOWED_HOSTS=localhost,127.0.0.1
+DATABASE_ENGINE=django.db.backends.sqlite3
+DATABASE_NAME=db.sqlite3
+TIME_ZONE=UTC
+SUPERUSER_USERNAME=admin
+SUPERUSER_EMAIL=admin@example.com
+SUPERUSER_PASSWORD=password
+```
+
+### Django Settings (yana/settings.py)
+
+- **Database:** SQLite (configurable to PostgreSQL/MySQL)
+- **Task Queue:** django-q2 with 4 workers, ORM broker (no Redis needed)
+- **Static Files:** WhiteNoise with debug autorefresh
+- **Cache:** Per-request cache for GReader unread counts (30s)
+
+## Deployment
+
+### Docker
+
+**Development:**
+```bash
+docker-compose up
+```
+
+**Production:**
+```bash
+docker-compose -f docker-compose.production.yml up
+```
+
+**Health Check:**
+```bash
+curl http://localhost:8000/health/
+```
+
+### Docker Image
+
+- Multi-stage build (optimized for size)
+- Python 3.11-slim base
+- Gunicorn (4 workers) + Django-Q daemon via Supervisor
+- Health check endpoint included
+- Unprivileged `yana` user
+
+### Database
+
+- **Default:** SQLite (included, no setup needed)
+- **Production:** Can be configured to PostgreSQL/MySQL via environment
+- **Migrations:** Auto-run via docker-entrypoint.sh
+
+## Key Dependencies
+
+- **Django 6.0** - Web framework
+- **beautifulsoup4 4.14.3** - HTML parsing
+- **requests 2.32.5** - HTTP client
+- **lxml 6.0.2** - XML/HTML processing
+- **Pillow 11.0.0** - Image processing
+- **feedparser 6.0.12** - RSS/Atom parsing
+- **django-q2 1.9.0** - Task queue
+- **gunicorn 21.2.0** - App server
+- **whitenoise 6.6.0** - Static file serving
+- **supervisor 4.2.5** - Process management
+
+See `requirements.txt` for complete list (41 total packages).
+
+## Implementation Status
+
+### Complete ✅
+- Core models and database
+- Django admin with custom actions
+- Aggregator system foundation
+- MeinMmo aggregator (full implementation)
+- Docker setup with Supervisor
+- YouTube proxy endpoint
+- Health check endpoint
+- Partial Google Reader API
+
+### In Progress 🔄
+- Google Reader service implementations (7 modules)
+- GReader view handlers
+- Article reload functionality
+
+### To Do 📋
+- Port 13 aggregators from TypeScript source
+- Complete GReader service implementations
+- GraphQL support (configured but not implemented)
+- Comprehensive test coverage
+- Performance optimization and caching tuning
+
+## Documentation
+
+- **CLAUDE.md** - Developer guidelines and architecture overview
+- **GREADER_IMPLEMENTATION_PLAN.md** - Detailed Google Reader API specification (426 lines)
+- **core/aggregators/README.md** - Aggregator development guide
+- **old/docs/** - Legacy TypeScript implementation (reference)
+  - AGGREGATOR_FLOW.md - Aggregator patterns
+  - TRPC_API.md - Original API structure
+
+## Contributing
+
+1. Create feature branch from `main`
+2. Implement changes with tests
+3. Ensure all tests pass: `python3 manage.py test`
+4. Commit with clear messages
+5. Create pull request
+
+Note: This project uses a git worktree strategy with multiple branches:
+- `main` - Primary branch
+- `bright-mountain` - Current development branch
+- Other worktrees: `clever-beacon`, `happy-beacon`
+
+## License
+
+This project is a Django rewrite of the original TypeScript/Angular/Express application.
+
+## Performance
+
+- **Unread count caching:** 30 seconds (GReader API)
+- **Database indexes:** Optimized for common queries
+- **Query optimization:** Uses select_related/prefetch_related
+- **Background processing:** django-q2 for non-blocking aggregation
+- **Docker:** Multi-stage build, minimal runtime (~200MB)
+
+## Troubleshooting
+
+**Virtual environment issues:**
+```bash
+# Deactivate and reactivate
+deactivate
+source venv/bin/activate
+```
+
+**Database issues:**
+```bash
+# Reset database (development only!)
+rm db.sqlite3
+python3 manage.py migrate
+python3 manage.py createsuperuser
+```
+
+**Docker issues:**
+```bash
 # View logs
 docker-compose logs -f
 
-# Stop the application
+# Rebuild
 docker-compose down
+docker-compose up --build
 ```
 
-The application will be available at `http://localhost:3000`.
+## Support
 
-### Docker Compose Files
+For issues, questions, or feature requests:
+1. Check existing documentation (CLAUDE.md, GREADER_IMPLEMENTATION_PLAN.md)
+2. Review GitHub issues
+3. Create detailed issue with reproduction steps
 
-- **`docker-compose.yml`** - Basic configuration for development/testing
-- **`docker-compose.production.yml`** - Production-ready configuration with volumes
-- **`docker-compose.example.yml`** - Comprehensive example with documentation
+---
 
-### Environment Variables
-
-Create a `.env` file (see `.env.example` for template):
-
-```env
-SESSION_SECRET=your-secure-random-string-here
-BASE_URL=http://localhost:3000
-WORKER_COUNT=4
-AGGREGATION_SCHEDULE=*/30 * * * *
-```
-
-### Manual Docker Build
-
-```bash
-# Build
-docker build -t yana .
-
-# Run
-docker run -p 3000:3000 \
-  -e DATABASE_URL=/app/data/db.sqlite3 \
-  -e SESSION_SECRET=your-secret \
-  -v $(pwd)/data:/app/data \
-  yana
-```
-
-### Production Deployment
-
-For production, use `docker-compose.production.yml`:
-
-```bash
-docker-compose -f docker-compose.production.yml up -d
-```
-
-**Important for production:**
-- Set a strong `SESSION_SECRET` (generate with: `openssl rand -hex 32`)
-- Update `BASE_URL` to match your domain
-- Set up a reverse proxy (Nginx/Traefik) for SSL/TLS
-- Configure automated backups for the `./data` directory
-
-## 🧪 Testing
-
-```bash
-# Run server tests (using vitest)
-npx vitest
-
-# Run with coverage
-npx vitest --coverage
-
-# Watch mode
-npx vitest --watch
-```
-
-## 📝 Environment Variables
-
-Create a `.env` file (see `.env.example`):
-
-```env
-# Database
-DATABASE_URL=./db.sqlite3
-
-# Server
-PORT=3000
-NODE_ENV=development
-
-# Session
-SESSION_SECRET=change-this-in-production
-
-# Scheduler
-AGGREGATION_SCHEDULE=*/30 * * * *
-WORKER_COUNT=4
-```
-
-## 🔧 Configuration
-
-- `tsconfig.json` - Base TypeScript configuration
-- `tsconfig.app.json` - Frontend-specific TypeScript config
-- `tsconfig.server.json` - Server-specific TypeScript config
-- `angular.json` - Angular configuration
-- `drizzle.config.ts` - Drizzle ORM configuration
-- `vitest.config.ts` - Test configuration
-
-## 🐛 Troubleshooting
-
-### TypeScript Type Errors
-
-If you encounter type errors when building the frontend:
-
-```bash
-# Build server first to generate type definitions
-tsc -p tsconfig.server.json
-
-# Then build frontend
-npm run build
-```
-
-This ensures the `AppRouter` type is available for the frontend TypeScript compiler.
-
-### Database Issues
-
-```bash
-# Reset database (WARNING: Deletes all data)
-rm db.sqlite3
-npm run db:migrate
-```
-
-### Port Already in Use
-
-Change the port in `.env`:
-```env
-PORT=3001
-```
-
-### Build Errors
-
-```bash
-# Clean and rebuild
-rm -rf dist node_modules
-npm install
-tsc -p tsconfig.server.json  # Build server first
-npm run build                # Then build frontend
-```
-
-## 📚 Documentation
-
-- `docs/TRPC_API.md` - Complete tRPC API reference documentation
-- `docs/AGGREGATOR_FLOW.md` - Aggregator flow documentation (Template Method Pattern, step-by-step breakdown, debugging tools)
-- `docs/BACKWARDS_COMPATIBILITY.md` - Backwards compatibility guide explaining how the new architecture maintains compatibility
-- `docs/ESLINT.md` - ESLint configuration, usage, and troubleshooting guide
-
-## 📄 License
-
-See LICENSE file for details.
-
-## 🤝 Contributing
-
-Contributions are welcome! Please follow the existing code style and add tests for new features.
+**Yana** - A modern, self-hosted RSS aggregator with Google Reader compatibility.

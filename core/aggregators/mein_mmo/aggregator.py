@@ -1,0 +1,167 @@
+"""Mein-MMO aggregator implementation."""
+
+from typing import Any, Dict, List, Optional, Tuple
+
+from ..utils import clean_html, format_article_content, remove_image_by_url
+from ..website import FullWebsiteAggregator
+from .content_extraction import extract_mein_mmo_content
+from .multipage_handler import detect_pagination, fetch_all_pages
+
+
+class MeinMmoAggregator(FullWebsiteAggregator):
+    """Specialized aggregator for Mein-MMO.de gaming news."""
+
+    MEIN_MMO_URL = "https://mein-mmo.de/"
+
+    def __init__(self, feed):
+        super().__init__(feed)
+        # Use Mein-MMO RSS feed if identifier is not set
+        if not self.identifier or self.identifier == "":
+            self.identifier = "https://mein-mmo.de/feed/"
+
+    def get_source_url(self) -> str:
+        """Return the Mein-MMO website URL for GReader API."""
+        return self.MEIN_MMO_URL
+
+    @classmethod
+    def get_identifier_choices(
+        cls, query: Optional[str] = None, user: Optional[Any] = None
+    ) -> List[Tuple[str, str]]:
+        """Get available Mein-MMO RSS feed choices."""
+        return [
+            ("https://mein-mmo.de/feed/", "Main Feed (All Articles)"),
+        ]
+
+    @classmethod
+    def get_default_identifier(cls) -> str:
+        """Get default Mein-MMO identifier."""
+        return "https://mein-mmo.de/feed/"
+
+    @classmethod
+    def get_configuration_fields(cls) -> Dict[str, Any]:
+        """Get Mein-MMO configuration fields."""
+        from django import forms
+
+        return {
+            "combine_pages": forms.BooleanField(
+                initial=True,
+                label="Combine Multi-page Articles",
+                help_text="Automatically fetch and combine all pages of a multi-page article into one.",
+                required=False,
+            ),
+        }
+
+    # Mein-MMO specific selectors
+    content_selector = "div.gp-entry-content"
+
+    selectors_to_remove = [
+        "div.wp-block-mmo-video",
+        "div.wp-block-mmo-recirculation-box",
+        "div.reading-position-indicator-end",
+        "label.toggle",
+        "a.wp-block-mmo-content-box",
+        "ul.page-numbers",
+        ".post-page-numbers",
+        "#ftwp-container-outer",
+        "script",
+        "style",
+        "iframe",
+        "noscript",
+    ]
+
+    def fetch_article_content(self, url: str) -> str:
+        """
+        Fetch article content, handling multi-page articles.
+        """
+        self.logger.debug(f"[fetch_article_content] Starting for URL: {url}")
+
+        # Check configuration
+        combine_pages = self.feed.options.get("combine_pages", True)
+
+        # Fetch first page to detect pagination
+        self.logger.debug("[fetch_article_content] Fetching first page")
+        first_page_html = super().fetch_article_content(url)
+        self.logger.debug(
+            f"[fetch_article_content] First page fetched ({len(first_page_html)} bytes)"
+        )
+
+        if not combine_pages:
+            self.logger.info(f"[fetch_article_content] Multi-page combination disabled for {url}")
+            return first_page_html
+
+        # Check if multi-page
+        self.logger.debug("[fetch_article_content] Detecting pagination")
+        page_numbers = detect_pagination(first_page_html, self.logger)
+
+        if len(page_numbers) <= 1:
+            # Single page article
+            self.logger.info(f"[fetch_article_content] Single page article detected for {url}")
+            return first_page_html
+
+        # Multi-page article - fetch all pages
+        self.logger.info(
+            f"[fetch_article_content] Multi-page article detected: {len(page_numbers)} pages"
+        )
+
+        combined_html = fetch_all_pages(
+            base_url=url,
+            page_numbers=page_numbers,
+            fetcher=lambda page_url: super(MeinMmoAggregator, self).fetch_article_content(page_url),
+            logger=self.logger,
+            first_page_html=first_page_html,
+        )
+
+        self.logger.debug(
+            f"[fetch_article_content] Returning combined HTML ({len(combined_html)} bytes)"
+        )
+        return combined_html
+
+    def extract_content(self, html: str, article: Dict[str, Any]) -> str:
+        """Extract Mein-MMO specific content."""
+        self.logger.debug(f"[extract_content] Starting for {article.get('identifier')}")
+        result = extract_mein_mmo_content(
+            html=html,
+            article=article,
+            selectors_to_remove=self.selectors_to_remove,
+            logger=self.logger,
+        )
+        self.logger.debug(f"[extract_content] Completed, result size: {len(result)} bytes")
+        return result
+
+    def process_content(self, html: str, article: Dict[str, Any]) -> str:
+        """Process Mein-MMO content with header image extraction."""
+        self.logger.debug(f"[process_content] Starting for {article.get('identifier')}")
+
+        # Remove header image from content if it was extracted
+        header_data = article.get("header_data")
+        if header_data and header_data.image_url:
+            from bs4 import BeautifulSoup
+
+            soup = BeautifulSoup(html, "html.parser")
+            self.logger.debug(
+                f"[process_content] Removing header image from content: {header_data.image_url}"
+            )
+            remove_image_by_url(soup, header_data.image_url)
+            html = str(soup)
+
+        # Clean HTML
+        self.logger.debug("[process_content] Cleaning HTML")
+        cleaned = clean_html(html)
+
+        # Determine header image URL for formatting
+        # Use base64-encoded data URI if available, otherwise use original URL
+        header_image_url = None
+        if header_data:
+            header_image_url = header_data.base64_data_uri or header_data.image_url
+
+        # Format with header (image only) and footer
+        self.logger.debug("[process_content] Formatting content with header image only")
+        formatted = format_article_content(
+            cleaned,
+            title=article["name"],
+            url=article["identifier"],
+            header_image_url=header_image_url,
+        )
+
+        self.logger.info(f"[process_content] Completed, formatted size: {len(formatted)} bytes")
+        return formatted

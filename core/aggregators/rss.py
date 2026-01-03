@@ -1,0 +1,71 @@
+"""RSS aggregator base class."""
+
+from datetime import datetime
+from email.utils import parsedate_to_datetime
+from typing import Any, Dict, List, Optional
+
+from .base import BaseAggregator
+from .utils import parse_rss_feed
+
+
+class RssAggregator(BaseAggregator):
+    """Base class for RSS-based aggregators."""
+
+    def __init__(self, feed):
+        super().__init__(feed)
+        self.feed_icon_url: Optional[str] = None
+
+    def aggregate(self) -> List[Dict[str, Any]]:
+        """Implement template method pattern flow."""
+        self.validate()
+        source_data = self.fetch_source_data(self.daily_limit)
+        articles = self.parse_to_raw_articles(source_data)
+        articles = self.filter_articles(articles)
+        articles = self.enrich_articles(articles)
+        articles = self.finalize_articles(articles)
+        return articles
+
+    def fetch_source_data(self, limit: Optional[int] = None) -> Dict[str, Any]:
+        """Fetch RSS feed data."""
+        self.logger.info(f"Fetching RSS feed: {self.identifier}")
+        data = parse_rss_feed(self.identifier)
+
+        # Extract feed icon URL from feed metadata
+        feed_info = data.get("feed", {})
+        self.feed_icon_url = (
+            feed_info.get("image", {}).get("href") or feed_info.get("icon") or feed_info.get("logo")
+        )
+
+        return data
+
+    def collect_feed_icon(self) -> Optional[str]:
+        """Return the RSS feed icon URL."""
+        return self.feed_icon_url
+
+    def parse_to_raw_articles(self, source_data: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Parse RSS feed items to article dictionaries."""
+        articles = []
+        entries = source_data.get("entries", [])
+
+        for entry in entries[: self.daily_limit]:
+            article = {
+                "name": entry.get("title", ""),
+                "identifier": entry.get("link", ""),
+                "raw_content": "",  # To be filled by enrich_articles
+                "content": entry.get("summary", ""),
+                "date": self._parse_date(entry.get("published")),
+                "author": entry.get("author", ""),
+                "icon": None,
+            }
+            articles.append(article)
+
+        return articles
+
+    def _parse_date(self, date_str: Optional[str]) -> datetime:
+        """Parse RSS date string to datetime."""
+        if not date_str:
+            return datetime.now()
+        try:
+            return parsedate_to_datetime(date_str)
+        except Exception:
+            return datetime.now()

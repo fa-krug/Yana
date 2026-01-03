@@ -1,0 +1,43 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+      - id: check-merge-conflict
+      - id: check-toml
+      - id: debug-statements
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    # Ruff version.
+    rev: v0.14.10
+    hooks:
+      # Run the linter.
+      - id: ruff
+        args: [--fix]
+        exclude: ^.*/migrations/.*\.py$
+      # Run the formatter.
+      - id: ruff-format
+        exclude: ^.*/migrations/.*\.py$
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.15.0
+    hooks:
+      - id: mypy
+        additional_dependencies: [django-stubs, django-environ, django-picklefield, django-q2, django-autocomplete-light, djangoql, Pillow, beautifulsoup4, feedparser, requests, lxml, markdown, django-import-export, types-requests, types-python-dateutil, types-Markdown]
+        args: [--config-file=pyproject.toml]
+        exclude: ^.*/migrations/.*\.py$
+
+  - repo: local
+    hooks:
+      - id: pytest
+        name: Run all tests
+        entry: venv/bin/pytest
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]

@@ -1,0 +1,268 @@
+"""Reddit image extraction utilities."""
+
+import logging
+import re
+from typing import Optional
+
+from ..utils.youtube import extract_youtube_video_id
+from .types import RedditPostData
+from .urls import (
+    decode_html_entities_in_url,
+    extract_urls_from_text,
+    fix_reddit_media_url,
+)
+
+logger = logging.getLogger(__name__)
+
+
+def extract_thumbnail_url(post: RedditPostData) -> Optional[str]:
+    """
+    Extract thumbnail URL from Reddit post.
+
+    Args:
+        post: RedditPostData instance
+
+    Returns:
+        Thumbnail URL or None
+    """
+    try:
+        # Try post thumbnail property
+        if post.thumbnail and post.thumbnail not in ["self", "default", "nsfw", "spoiler"]:
+            if post.thumbnail.startswith("http"):
+                return decode_html_entities_in_url(post.thumbnail)
+            if post.thumbnail.startswith("/"):
+                return decode_html_entities_in_url(f"https://reddit.com{post.thumbnail}")
+
+        # Try preview images
+        if post.preview and post.preview.get("images") and len(post.preview["images"]) > 0:
+            source_url = post.preview["images"][0].get("source", {}).get("url")
+            if source_url:
+                decoded = decode_html_entities_in_url(source_url)
+                return fix_reddit_media_url(decoded)
+
+        # Try post URL if it's an image
+        if post.url:
+            decoded_url = decode_html_entities_in_url(post.url)
+            url_lower = decoded_url.lower()
+            if any(ext in url_lower for ext in [".jpg", ".jpeg", ".png", ".webp", ".gif"]):
+                return decoded_url
+            if "v.redd.it" in url_lower:
+                return extract_reddit_video_preview(post)
+
+        return None
+    except Exception as e:
+        logger.debug(f"Could not extract thumbnail URL: {e}")
+        return None
+
+
+def extract_reddit_video_preview(post: RedditPostData) -> Optional[str]:
+    """
+    Extract preview/thumbnail image URL from a Reddit video post.
+
+    Args:
+        post: RedditPostData instance
+
+    Returns:
+        Preview URL or None
+    """
+    try:
+        if not post.preview or not post.preview.get("images") or len(post.preview["images"]) == 0:
+            return None
+
+        source_url = post.preview["images"][0].get("source", {}).get("url")
+        if not source_url:
+            return None
+
+        decoded = decode_html_entities_in_url(source_url)
+        preview_url = fix_reddit_media_url(decoded)
+        logger.debug(f"Extracted Reddit video preview: {preview_url}")
+        return preview_url
+    except Exception as e:
+        logger.debug(f"Could not extract Reddit video preview: {e}")
+        return None
+
+
+def extract_animated_gif_url(post: RedditPostData) -> Optional[str]:
+    """
+    Extract animated GIF URL from Reddit preview data.
+
+    Args:
+        post: RedditPostData instance
+
+    Returns:
+        GIF URL or None
+    """
+    try:
+        if not post.preview or not post.preview.get("images") or len(post.preview["images"]) == 0:
+            return None
+
+        image_data = post.preview["images"][0]
+        variants = image_data.get("variants", {})
+
+        if variants.get("gif", {}).get("source", {}).get("url"):
+            gif_url = variants["gif"]["source"]["url"]
+            decoded = decode_html_entities_in_url(gif_url)
+            return fix_reddit_media_url(decoded)
+
+        if variants.get("mp4", {}).get("source", {}).get("url"):
+            mp4_url = variants["mp4"]["source"]["url"]
+            decoded = decode_html_entities_in_url(mp4_url)
+            return fix_reddit_media_url(decoded)
+
+        return None
+    except Exception as e:
+        logger.debug(f"Could not extract animated GIF URL: {e}")
+        return None
+
+
+def extract_header_image_url(post: RedditPostData) -> Optional[str]:
+    """
+    Extract high-quality header image URL from a Reddit post.
+
+    Prioritizes YouTube videos for embedding, then high-quality images
+    suitable for use as header images.
+
+    Args:
+        post: RedditPostData instance
+
+    Returns:
+        Header image URL or None
+    """
+    try:
+        # Priority 0: Check for YouTube videos and v.redd.it videos (highest priority)
+        video_url = _extract_video_embed_url(post)
+        if video_url:
+            return video_url
+
+        # Priority 1: Gallery posts - get first high-quality image
+        gallery_url = _extract_gallery_image_url(post)
+        if gallery_url:
+            return gallery_url
+
+        # Priority 2: Direct image posts (including GIFs)
+        if post.url:
+            decoded_url = decode_html_entities_in_url(post.url)
+            url_lower = decoded_url.lower()
+
+            # Ignore Reddit post URLs
+            if not re.search(
+                r"https?://[^\s]*reddit\.com/r/[^/\s]+/comments/[a-zA-Z0-9]+/[^/\s]+/?$",
+                decoded_url,
+            ):
+                is_direct_image = (
+                    any(
+                        ext in url_lower
+                        for ext in [".jpg", ".jpeg", ".png", ".webp", ".gif", ".gifv"]
+                    )
+                    or "i.redd.it" in url_lower
+                    or ("preview.redd.it" in url_lower and ".gif" in url_lower)
+                )
+
+                if is_direct_image:
+                    return decoded_url
+
+        # Priority 4: Fall back to thumbnail extraction
+        thumbnail_url = extract_thumbnail_url(post)
+        if thumbnail_url:
+            return thumbnail_url
+
+        # Priority 5: Extract URLs from text post selftext and try to find images
+        return _extract_image_url_from_selftext(post)
+
+    except Exception as e:
+        logger.debug(f"Could not extract header image URL: {e}")
+        return None
+
+
+def _extract_video_embed_url(post: RedditPostData) -> Optional[str]:
+    """Extract video embed URL (YouTube or v.redd.it) from post URL or selftext."""
+    # Check post URL first
+    if post.url:
+        decoded_url = decode_html_entities_in_url(post.url)
+
+        # Check for v.redd.it videos
+        if "v.redd.it" in decoded_url:
+            decoded_permalink = decode_html_entities_in_url(post.permalink)
+            normalized_permalink = decoded_permalink.rstrip("/")
+            return f"https://vxreddit.com{normalized_permalink}"
+
+        # Check for YouTube videos
+        if extract_youtube_video_id(decoded_url):
+            return decoded_url
+
+    # Check URLs in selftext
+    if post.is_self and post.selftext:
+        urls = extract_urls_from_text(post.selftext)
+        for url in urls:
+            if "v.redd.it" in url:
+                decoded_permalink = decode_html_entities_in_url(post.permalink)
+                normalized_permalink = decoded_permalink.rstrip("/")
+                return f"https://vxreddit.com{normalized_permalink}"
+
+            if extract_youtube_video_id(url):
+                return url
+
+    return None
+
+
+def _extract_gallery_image_url(post: RedditPostData) -> Optional[str]:
+    """Extract high-quality image URL from a Reddit gallery post."""
+    if not post.is_gallery or not post.media_metadata or not post.gallery_data:
+        return None
+
+    items = post.gallery_data.get("items", [])
+    if not items:
+        return None
+
+    media_id = items[0].get("media_id")
+    if not media_id:
+        return None
+
+    media_info = post.media_metadata.get(media_id)
+    if not media_info:
+        return None
+
+    # For animated images, prefer GIF or MP4
+    if media_info.get("e") == "AnimatedImage":
+        animated_url = media_info.get("s", {}).get("gif") or media_info.get("s", {}).get("mp4")
+        if animated_url:
+            decoded = decode_html_entities_in_url(animated_url)
+            return fix_reddit_media_url(decoded)
+
+    # For regular images, get the high-quality URL
+    if media_info.get("e") == "Image" and media_info.get("s", {}).get("u"):
+        image_url = media_info["s"]["u"]
+        decoded = decode_html_entities_in_url(image_url)
+        return fix_reddit_media_url(decoded)
+
+    return None
+
+
+def _extract_image_url_from_selftext(post: RedditPostData) -> Optional[str]:
+    """Extract image URL from selftext URLs."""
+    if not post.is_self or not post.selftext:
+        return None
+
+    # Truncate selftext before comment URLs
+    import re
+
+    selftext_to_process = post.selftext
+    comment_url_pattern = r"https?://[^\s]*/comments/[a-zA-Z0-9]+/[^/\s]+/[a-zA-Z0-9]+"
+    comment_url_match = re.search(comment_url_pattern, selftext_to_process)
+    if comment_url_match:
+        selftext_to_process = selftext_to_process[: comment_url_match.start()]
+
+    urls = extract_urls_from_text(selftext_to_process)
+    if not urls:
+        return None
+
+    first_valid_url = None
+    for url in urls:
+        if not url.startswith(("http://", "https://")):
+            continue
+        if first_valid_url is None:
+            first_valid_url = url
+        if any(ext in url.lower() for ext in [".jpg", ".jpeg", ".png", ".webp", ".gif"]):
+            return url
+
+    return first_valid_url

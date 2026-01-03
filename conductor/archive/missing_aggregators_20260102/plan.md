@@ -1,0 +1,38 @@
+# Implementation Plan: Re-implement Missing Aggregators
+
+This plan outlines the steps to port five missing aggregators (Explosm, Dark Legacy, Caschy's Blog, MacTechNews, and Podcast) from the legacy TypeScript codebase to the new Python environment.
+
+## Phase 1: Comic Aggregators [checkpoint: a1a6632]
+Focus on aggregators that primarily extract images.
+
+- [x] Task: Implement `ExplosmAggregator` in `core/aggregators/explosm/aggregator.py` with TDD d568827
+- [x] Task: Implement `DarkLegacyAggregator` in `core/aggregators/dark_legacy/aggregator.py` with TDD 3078e57
+- [x] Task: Update `core/aggregators/registry.py` to use new Comic Aggregators ea3cdfd
+- [x] Task: Conductor - User Manual Verification 'Phase 1: Comic Aggregators' (Protocol in workflow.md) a1a6632
+
+## Phase 2: News Aggregators [checkpoint: 21fbae5]
+Focus on full-content extraction for tech news sites.
+
+- [x] Task: Implement `CaschysBlogAggregator` in `core/aggregators/caschys_blog/aggregator.py` with TDD e644d72
+- [x] Task: Implement `MactechnewsAggregator` in `core/aggregators/mactechnews/aggregator.py` with TDD cc4ac14
+- [x] Task: Update `core/aggregators/registry.py` to use new News Aggregators b815be8
+- [x] Task: Conductor - User Manual Verification 'Phase 2: News Aggregators' (Protocol in workflow.md) 21fbae5
+
+## Phase 3: Podcast Aggregator [checkpoint: a7eea33]
+Specialized RSS parsing for audio content.
+
+- [x] Task: Implement `PodcastAggregator` in `core/aggregators/podcast/aggregator.py` with TDD a5c010b
+- [x] Task: Update `core/aggregators/registry.py` to use new Podcast Aggregator 3749ea1
+- [x] Task: Conductor - User Manual Verification 'Phase 3: Podcast Aggregator' (Protocol in workflow.md) a7eea33
+
+## Phase 4: Finalization and Cleanup [checkpoint: 2308dee]
+Remove redundant code and perform full system verification.
+
+- [x] Task: Remove stubbed implementations from `core/aggregators/implementations.py` e2e78d5
+- [x] Task: Verify all 5 ported aggregators using `python3 manage.py test_aggregator`
+- [x] Task: Conductor - User Manual Verification 'Phase 4: Finalization and Cleanup' (Protocol in workflow.md) 2308dee
+
+## Verification Plan
+Each aggregator will be verified using:
+1. `python3 manage.py test_aggregator <type> --dry-run --verbose` to check content extraction.
+2. Unit tests in `core/tests/` or `core/aggregators/<name>/tests.py`.
