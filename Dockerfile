@@ -4,7 +4,7 @@
 # =============================================================================
 
 # Build stage - compile dependencies
-FROM python:3.11-slim-bookworm AS builder
+FROM python:3.13-slim-bookworm AS builder
 
 WORKDIR /build
 
@@ -41,7 +41,7 @@ RUN pip install --upgrade pip setuptools wheel && \
 # =============================================================================
 # Runtime Stage - Minimal production image
 # =============================================================================
-FROM python:3.11-slim-bookworm AS runtime
+FROM python:3.13-slim-bookworm AS runtime
 
 WORKDIR /app
 

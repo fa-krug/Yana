@@ -2,14 +2,14 @@
 name = "yana"
 version = "0.1.0"
 description = "Django-based RSS aggregator and feed management system"
-requires-python = ">=3.11"
+requires-python = ">=3.13"
 
 [tool.ruff]
 # Set the maximum line length to 100.
 line-length = 100
 
-# Assume Python 3.11
-target-version = "py311"
+# Assume Python 3.13
+target-version = "py313"
 
 # Exclude common directories
 exclude = [
@@ -74,7 +74,7 @@ skip-magic-trailing-comma = false
 line-ending = "auto"
 
 [tool.mypy]
-python_version = "3.11"
+python_version = "3.13"
 check_untyped_defs = false
 ignore_missing_imports = true
 warn_unused_ignores = true
