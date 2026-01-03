@@ -19,7 +19,7 @@ class TestMactechnewsAggregator(unittest.TestCase):
         mock_header.return_value = None
 
         # Read fixture
-        with open("old/src/server/aggregators/__tests__/fixtures/mactechnews.html", "r") as f:
+        with open("core/tests/fixtures/mactechnews.html", "r") as f:
             fixture_html = f.read()
 
         mock_fetch.return_value = fixture_html

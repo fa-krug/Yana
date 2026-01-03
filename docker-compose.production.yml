@@ -1,9 +1,7 @@
-version: "3.8"
-
 services:
   yana:
     image: ${DOCKER_USERNAME:-skrug}/yana:latest
-    container_name: yana-prod
+    container_name: yana
     restart: always
     expose:
       - "8000"
@@ -12,8 +10,7 @@ services:
       - SECRET_KEY=${SECRET_KEY}
       - ALLOWED_HOSTS=${ALLOWED_HOSTS}
       - DATABASE_ENGINE=django.db.backends.sqlite3
-      - DJANGO_ENV=production
-      - TIME_ZONE=${TIME_ZONE:-UTC}
+      - TIME_ZONE=${TIME_ZONE:-Europe/Berlin}
       - SUPERUSER_USERNAME=${SUPERUSER_USERNAME:-}
       - SUPERUSER_EMAIL=${SUPERUSER_EMAIL:-}
       - SUPERUSER_PASSWORD=${SUPERUSER_PASSWORD:-}
@@ -22,7 +19,7 @@ services:
       - yana-media:/app/media
       - yana-static:/app/staticfiles
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health/"]
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/health/" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -35,8 +32,6 @@ services:
         reservations:
           cpus: "0.5"
           memory: 512M
-    networks:
-      - yana-network
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.yana.rule=Host(`${YANA_DOMAIN:-yana.example.com}`)"
@@ -48,7 +43,3 @@ volumes:
   yana-data:
   yana-media:
   yana-static:
-
-networks:
-  yana-network:
-    driver: bridge

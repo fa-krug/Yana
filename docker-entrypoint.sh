@@ -37,7 +37,7 @@ python manage.py migrate --noinput || {
 }
 
 # Collect static files (production)
-if [ "$DJANGO_ENV" = "production" ] || [ "$DEBUG" = "False" ]; then
+if [ "$DEBUG" = "False" ]; then
     echo "Collecting static files..."
     python manage.py collectstatic --noinput --clear || {
         echo "WARNING: Static file collection failed, continuing anyway..."
