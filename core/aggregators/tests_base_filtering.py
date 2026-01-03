@@ -1,3 +1,5 @@
+"""Tests for base aggregator filtering logic."""
+
 from datetime import timedelta
 from unittest.mock import MagicMock
 

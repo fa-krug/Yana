@@ -1,6 +1,4 @@
-"""
-Article service for reloading and managing articles.
-"""
+"""Service for reloading and managing article content."""
 
 from typing import Any, Dict
 

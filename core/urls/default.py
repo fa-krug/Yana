@@ -1,6 +1,4 @@
-"""
-URL configuration for core app.
-"""
+"""Default URL configuration for core app."""
 
 from django.urls import path
 

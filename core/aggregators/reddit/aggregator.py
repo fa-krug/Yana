@@ -182,7 +182,7 @@ class RedditAggregator(BaseAggregator):
 
         # Get sort method (default: hot)
         # TODO: Store options in Feed model or use feed metadata
-        sort_by = "hot"  # self.get_option("sort_by", "hot")
+        sort_by = "hot"
 
         # Fetch subreddit info to get icon for feed thumbnail
         subreddit_info = fetch_subreddit_info(subreddit, user_id)
@@ -276,9 +276,7 @@ class RedditAggregator(BaseAggregator):
 
             # Extract video media URL
             if post_data.is_video and post_data.url and "v.redd.it" in post_data.url:
-                # decoded_permalink = post_data.permalink.replace("&amp;", "&")
-                # normalized_permalink = decoded_permalink.rstrip("/")
-                # media_url = f"https://vxreddit.com{normalized_permalink}"
+                # Video handling to be implemented
                 pass
 
             # Convert created_utc to datetime
@@ -334,7 +332,7 @@ class RedditAggregator(BaseAggregator):
 
         # Get min_comments option (default: -1, disabled)
         # TODO: Store options in Feed model
-        min_comments = -1  # self.get_option("min_comments", -1)
+        min_comments = -1
 
         # Two months ago cutoff
         two_months_ago = timezone.now() - timedelta(days=60)
@@ -384,7 +382,7 @@ class RedditAggregator(BaseAggregator):
 
         # Get comment_limit option (default: 10)
         # TODO: Store options in Feed model
-        comment_limit = 10  # self.get_option("comment_limit", 10)
+        comment_limit = 10
 
         enriched = []
 
@@ -529,7 +527,7 @@ class RedditAggregator(BaseAggregator):
             post_data = RedditPostData(original_post)
 
         # Get comment_limit option (default: 10)
-        comment_limit = 10  # self.get_option("comment_limit", 10)
+        comment_limit = 10
 
         content = build_post_content(
             post_data,

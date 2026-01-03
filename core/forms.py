@@ -1,3 +1,5 @@
+"""Forms for the application."""
+
 import contextlib
 
 from django import forms

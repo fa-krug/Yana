@@ -1,3 +1,5 @@
+"""Database models for the application."""
+
 import secrets
 from datetime import timedelta
 

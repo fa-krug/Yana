@@ -1,3 +1,5 @@
+"""Dark Legacy Comics aggregator implementation."""
+
 from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import urljoin
 

@@ -31,6 +31,11 @@ class TagesschauAggregator(FullWebsiteAggregator):
         "svg",
     ]
 
+    def __init__(self, feed):
+        super().__init__(feed)
+        if not self.identifier or self.identifier == "":
+            self.identifier = self.get_default_identifier()
+
     def get_source_url(self) -> str:
         return "https://www.tagesschau.de"
 

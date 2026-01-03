@@ -1,6 +1,4 @@
-"""
-Base aggregator class.
-"""
+"""Base aggregator class for implementing feed providers."""
 
 import asyncio
 import logging

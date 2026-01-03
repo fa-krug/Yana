@@ -1,3 +1,5 @@
+"""Tests for article cleanup functionality."""
+
 from datetime import timedelta
 
 from django.contrib.auth.models import User

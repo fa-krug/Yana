@@ -1,3 +1,5 @@
+"""YouTube aggregator implementation."""
+
 import html
 import logging
 from datetime import datetime

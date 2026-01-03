@@ -3,7 +3,7 @@
 import re
 from typing import List, Optional, Union
 
-from bs4 import BeautifulSoup, Tag
+from bs4 import BeautifulSoup, Comment, Tag
 
 from .bs4_utils import get_attr_str
 
@@ -52,9 +52,7 @@ def clean_html(html: str) -> str:
     soup = BeautifulSoup(html, "html.parser")
 
     # Remove comments
-    for comment in soup.find_all(
-        string=lambda text: isinstance(text, str) and text.strip().startswith("<!--")
-    ):
+    for comment in soup.find_all(string=lambda text: isinstance(text, Comment)):
         comment.extract()
 
     return str(soup)
@@ -214,6 +212,11 @@ def sanitize_html_attributes(soup: Union[BeautifulSoup, Tag]) -> None:
 
     # Rename attributes for all elements
     for elem in soup.find_all(True):
+        # Remove on* attributes (XSS prevention)
+        attrs_to_delete = [attr for attr in elem.attrs if attr.lower().startswith("on")]
+        for attr in attrs_to_delete:
+            del elem[attr]
+
         # Convert class → data-sanitized-class
         if "class" in elem.attrs:
             elem["data-sanitized-class"] = get_attr_str(elem, "class")

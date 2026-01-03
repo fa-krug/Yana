@@ -1,6 +1,4 @@
-"""
-Aggregator service for triggering feed aggregators.
-"""
+"""Service for triggering and managing feed aggregators."""
 
 from typing import Any, Dict, List, Optional
 

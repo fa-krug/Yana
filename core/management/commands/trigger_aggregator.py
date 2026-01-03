@@ -1,6 +1,4 @@
-"""
-Django management command to trigger aggregators.
-"""
+"""Django command to trigger feed aggregators."""
 
 from django.core.management.base import BaseCommand, CommandError
 

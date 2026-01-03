@@ -1,6 +1,4 @@
-"""
-Autocomplete views for django-autocomplete-light integration.
-"""
+"""Autocomplete views for django-autocomplete-light integration."""
 
 from django.http import JsonResponse
 

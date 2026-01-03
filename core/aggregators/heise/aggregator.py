@@ -55,6 +55,7 @@ class HeiseAggregator(FullWebsiteAggregator):
         ".a-article-header__title",
         ".a-article-header__publish-info",
         ".a-article-header__service",
+        "figure.a-article-header__image",  # Main article header image (more specific)
         "div[data-component='RecommendationBox']",
         ".opt-in__content-container",
         ".a-box",

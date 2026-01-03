@@ -1,3 +1,5 @@
+"""Default views for health checks and proxies."""
+
 from urllib.parse import urlencode
 
 from django.db import connection

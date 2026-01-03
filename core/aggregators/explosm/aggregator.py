@@ -1,3 +1,5 @@
+"""Explosm aggregator implementation."""
+
 from typing import Any, Dict, List, Optional, Tuple
 
 from bs4 import BeautifulSoup

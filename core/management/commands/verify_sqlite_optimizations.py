@@ -1,9 +1,4 @@
-"""
-Management command to verify SQLite performance optimizations are applied.
-
-Usage:
-    python manage.py verify_sqlite_optimizations
-"""
+"""Django command to verify SQLite optimizations."""
 
 from django.core.management.base import BaseCommand
 from django.db import connection

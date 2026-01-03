@@ -1,6 +1,4 @@
-"""
-Aggregator registry to map feed types to aggregator classes.
-"""
+"""Aggregator registry for mapping feed types to classes."""
 
 from typing import Dict, Type
 

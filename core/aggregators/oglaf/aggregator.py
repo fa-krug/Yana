@@ -1,3 +1,5 @@
+"""Oglaf aggregator implementation."""
+
 import base64
 import logging
 from typing import Any, Dict, Optional

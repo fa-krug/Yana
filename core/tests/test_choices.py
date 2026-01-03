@@ -1,3 +1,5 @@
+"""Tests for model choices."""
+
 from django.test import SimpleTestCase
 
 from core.choices import AGGREGATOR_CHOICES

@@ -1,0 +1,1 @@
+"""Yana project configuration."""

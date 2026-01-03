@@ -1,6 +1,4 @@
-"""
-Choices for Django models.
-"""
+"""Aggregator type choices for Feed models."""
 
 AGGREGATOR_CHOICES = [
     # Custom aggregators (default first)
