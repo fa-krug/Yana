@@ -13,7 +13,7 @@
 - [x] Task: Review and optimize `get_stream_item_ids` and `get_stream_contents` query logic. (7d1fdce)
 - [x] Task: Conductor - User Manual Verification 'Phase 3: Stream Filtering Optimization' (Protocol in workflow.md)
 
-## Phase 4: Performance Verification
+## Phase 4: Performance Verification [checkpoint: c9e0fd1]
 - [x] Task: Create a verification script to confirm query count reduction for the `unread_count` endpoint. (cda05f9)
 - [x] Task: Run all GReader API tests to ensure no regressions. (12d79bc)
-- [ ] Task: Conductor - User Manual Verification 'Phase 4: Performance Verification' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 4: Performance Verification' (Protocol in workflow.md)
