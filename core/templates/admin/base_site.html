@@ -17,7 +17,12 @@
 </style>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Prevent pinch to zoom
+        // Prevent pinch to zoom (iOS specific)
+        document.addEventListener('gesturestart', function(e) {
+            e.preventDefault();
+        });
+
+        // Prevent pinch to zoom (Standard)
         document.addEventListener('touchmove', function(event) {
             if (event.scale !== 1) {
                 event.preventDefault();
