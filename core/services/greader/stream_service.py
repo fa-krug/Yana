@@ -52,37 +52,40 @@ def get_unread_count(user_id: int, include_all: bool = False) -> dict[str, Any]:
 
 
 def _compute_unread_count(user_id: int, include_all: bool) -> dict[str, Any]:
-    """Actually compute unread counts (internal function)."""
+    """Actually compute unread counts (internal function).
+
+    Optimized to use a single query with annotations to prevent N+1 bottlenecks.
+    """
+    from django.db.models import Count, Max
+
     from core.services.greader.stream_format import unix_timestamp_microseconds
 
-    unreadcounts = []
-
-    # Get all accessible feeds
+    # Get newest timestamp per feed using a subquery for better accuracy if needed,
+    # though aggregation on the main query is usually sufficient.
+    # We use conditional aggregation to get unread counts in one go.
     feeds = Feed.objects.filter(
         Q(user_id=user_id) | Q(user_id__isnull=True),
         enabled=True,
+    ).annotate(
+        unread_count=Count("articles", filter=Q(articles__read=False)),
+        total_count=Count("articles"),
+        newest_item_date=Max("articles__date"),
     )
 
+    unreadcounts = []
     for feed in feeds:
-        # Get article count for this feed
-        total_articles = feed.articles.count()
-        read_articles = feed.articles.filter(read=True).count()
-        unread_count = total_articles - read_articles
-
         # Skip if 0 unread and not include_all
-        if unread_count == 0 and not include_all:
+        if feed.unread_count == 0 and not include_all:
             continue
 
-        # Get newest article timestamp
-        newest_article = feed.articles.order_by("-date").first()
         newest_timestamp = unix_timestamp_microseconds(
-            newest_article.date if newest_article else timezone.now()
+            feed.newest_item_date if feed.newest_item_date else timezone.now()
         )
 
         unreadcounts.append(
             {
                 "id": f"feed/{feed.id}",
-                "count": unread_count,
+                "count": feed.unread_count,
                 "newestItemTimestampUsec": newest_timestamp,
             }
         )
