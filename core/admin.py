@@ -107,9 +107,9 @@ class FeedAdmin(ImportExportModelAdmin, DjangoQLSearchMixin):
                 return "-"
 
             try:
-                from .aggregators.registry import get_aggregator_class
+                from .aggregators.registry import AggregatorRegistry
 
-                agg_class = get_aggregator_class(instance.aggregator)
+                agg_class = AggregatorRegistry.get(instance.aggregator)
 
                 doc = agg_class.__doc__ or ""
 
@@ -138,9 +138,9 @@ class FeedAdmin(ImportExportModelAdmin, DjangoQLSearchMixin):
                     try:
                         from django import forms
 
-                        from .aggregators.registry import get_aggregator_class
+                        from .aggregators.registry import AggregatorRegistry
 
-                        agg_class = get_aggregator_class(obj.aggregator)
+                        agg_class = AggregatorRegistry.get(obj.aggregator)
                         config_fields = agg_class.get_configuration_fields()
 
                         # Add config fields
@@ -180,9 +180,9 @@ class FeedAdmin(ImportExportModelAdmin, DjangoQLSearchMixin):
         """Save aggregator-specific fields to options JSON."""
         if obj.aggregator:
             try:
-                from .aggregators.registry import get_aggregator_class
+                from .aggregators.registry import AggregatorRegistry
 
-                agg_class = get_aggregator_class(obj.aggregator)
+                agg_class = AggregatorRegistry.get(obj.aggregator)
                 config_fields = agg_class.get_configuration_fields()
 
                 # Extract values for config fields
