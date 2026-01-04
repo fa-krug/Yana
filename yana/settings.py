@@ -53,6 +53,22 @@ DEBUG = env("DEBUG")
 
 ALLOWED_HOSTS = [host.strip() for host in env("ALLOWED_HOSTS").split(",")]
 
+# CSRF Trusted Origins for production
+CSRF_TRUSTED_ORIGINS = [
+    f"https://{host.strip()}" for host in env("ALLOWED_HOSTS").split(",") if host.strip() != "*"
+]
+# Support for proxies
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+# Secure cookies in production
+if not DEBUG:
+    CSRF_COOKIE_SECURE = True
+    SESSION_COOKIE_SECURE = True
+    SECURE_SSL_REDIRECT = env.bool("SECURE_SSL_REDIRECT", default=True)
+    SECURE_HSTS_SECONDS = 31536000  # 1 year
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+
 BASE_URL = env("BASE_URL").rstrip("/")
 
 
@@ -61,6 +77,7 @@ BASE_URL = env("BASE_URL").rstrip("/")
 INSTALLED_APPS = [
     "dal",  # django-autocomplete-light (must be before admin)
     "dal_select2",  # django-autocomplete-light with Select2 (must be before admin)
+    "core",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -70,7 +87,6 @@ INSTALLED_APPS = [
     "django_q",  # Background tasks (supervisor manages qcluster in Docker)
     "djangoql",
     "import_export",  # Model-level data import and export
-    "core",
 ]
 
 # Django Import Export Configuration
@@ -94,7 +110,7 @@ ROOT_URLCONF = "yana.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        "DIRS": [BASE_DIR / "core" / "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [

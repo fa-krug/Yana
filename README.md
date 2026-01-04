@@ -1,4 +1,4 @@
-# Yana - RSS Aggregator with Google Reader API
+# <img src="core/static/core/img/logo-icon-only.svg" width="40" height="40" align="center" style="margin-right: 10px;"> Yana - RSS Aggregator
 
 A modern, self-hosted RSS aggregator built with Django that supports Google Reader API compatibility for use with external RSS clients like Reeder, NetNewsWire, and FeedMe.
 

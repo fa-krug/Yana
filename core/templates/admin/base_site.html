@@ -1,0 +1,20 @@
+{% extends "admin/base.html" %}
+{% load static %}
+
+{% block title %}{% if subtitle %}{{ subtitle }} | {% endif %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block extrahead %}
+<link rel="icon" type="image/svg+xml" href="{% static 'core/img/favicon.svg' %}">
+<link rel="alternate icon" type="image/x-icon" href="{% static 'core/img/favicon.ico' %}">
+<link rel="stylesheet" type="text/css" href="{% static 'core/css/admin.css' %}">
+{% endblock %}
+
+{% block branding %}
+<div id="site-name">
+    <a href="{% url 'admin:index' %}">
+        <img src="{% static 'core/img/logo-wordmark.svg' %}" alt="Yana" height="40" style="vertical-align: middle; margin: -5px 10px -5px 0;">
+    </a>
+</div>
+{% endblock %}
+
+{% block nav-global %}{% endblock %}

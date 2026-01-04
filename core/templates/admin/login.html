@@ -1,0 +1,15 @@
+{% extends "admin/login.html" %}
+{% load static %}
+
+{% block branding %}
+<div class="login-logo">
+    <img src="{% static 'core/img/logo-icon-only.svg' %}" alt="Yana">
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="login-logo">
+    <img src="{% static 'core/img/logo-icon-only.svg' %}" alt="Yana">
+</div>
+{{ block.super }}
+{% endblock %}

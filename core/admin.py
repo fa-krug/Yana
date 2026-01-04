@@ -11,6 +11,11 @@ from .forms import FeedAdminForm
 from .models import Article, Feed, FeedGroup, GReaderAuthToken, UserSettings
 from .services import AggregatorService, ArticleService
 
+# Customize Admin Site
+admin.site.site_header = "Yana"
+admin.site.site_title = "Yana Admin"
+admin.site.index_title = "Welcome to Yana"
+
 
 @admin.action(description="Clear raw article content for selected feeds")
 def clear_raw_article_content(modeladmin, request, queryset):

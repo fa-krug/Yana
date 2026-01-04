@@ -78,6 +78,8 @@ def _error_response(message):
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>YouTube Error - Yana</title>
+    <link rel="icon" type="image/svg+xml" href="/static/core/img/favicon.svg">
+    <link rel="alternate icon" type="image/x-icon" href="/static/core/img/favicon.ico">
     <style>
         * {{ margin: 0; padding: 0; box-sizing: border-box; }}
         html, body {{ width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: #000; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }}
@@ -105,6 +107,8 @@ def _generate_embed_html(embed_url):
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="referrer" content="strict-origin-when-cross-origin">
     <title>YouTube Video - Yana</title>
+    <link rel="icon" type="image/svg+xml" href="/static/core/img/favicon.svg">
+    <link rel="alternate icon" type="image/x-icon" href="/static/core/img/favicon.ico">
     <style>
         * {{
             margin: 0;
