@@ -9,6 +9,32 @@
 <link rel="manifest" href="{% static 'core/manifest.json' %}">
 <link rel="apple-touch-icon" href="{% static 'core/img/logo-icon-only.png' %}">
 <link rel="icon" type="image/x-icon" href="{% static 'core/img/favicon.ico' %}">
+<style>
+    /* Force disable touch actions that cause zooming */
+    html, body {
+        touch-action: pan-x pan-y;
+    }
+</style>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Prevent pinch to zoom
+        document.addEventListener('touchmove', function(event) {
+            if (event.scale !== 1) {
+                event.preventDefault();
+            }
+        }, { passive: false });
+
+        // Prevent double-tap to zoom
+        var lastTouchEnd = 0;
+        document.addEventListener('touchend', function(event) {
+            var now = (new Date()).getTime();
+            if (now - lastTouchEnd <= 300) {
+                event.preventDefault();
+            }
+            lastTouchEnd = now;
+        }, false);
+    });
+</script>
 {% endblock %}
 
 {% block branding %}
