@@ -7,7 +7,7 @@
 
 ## Phase 2: Application Infrastructure & Resource Usage
 - [x] Task: Measure application startup time and runtime memory consumption. (8e648da)
-- [~] Task: Benchmark the aggregation process (fetching, parsing, and saving).
+- [x] Task: Benchmark the aggregation process (fetching, parsing, and saving). (0701f6f)
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: Application Infrastructure & Resource Usage' (Protocol in workflow.md)
 
 ## Phase 3: API & Frontend Responsiveness
