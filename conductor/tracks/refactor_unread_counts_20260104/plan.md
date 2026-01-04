@@ -1,7 +1,7 @@
 # Plan: Refactor Unread Counts and Indexes
 
 ## Phase 1: Database Indexing
-- [ ] Task: Add composite index `Article(feed, read, date)` to the Article model.
+- [~] Task: Add composite index `Article(feed, read, date)` to the Article model.
 - [ ] Task: Add index `Feed(aggregator)` to the Feed model.
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Database Indexing' (Protocol in workflow.md)
 

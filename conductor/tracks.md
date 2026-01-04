@@ -4,8 +4,8 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-## [ ] Track: Refactor Unread Counts and Indexes
-*Link: (To be created)*
+## [~] Track: Refactor Unread Counts and Indexes
+*Link: [./conductor/tracks/refactor_unread_counts_20260104/](./conductor/tracks/refactor_unread_counts_20260104/)*
 
 ---
 

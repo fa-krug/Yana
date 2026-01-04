@@ -1,14 +1,15 @@
 """Admin configuration for the application."""
 
 from django.contrib import admin, messages
+from django.contrib.auth.admin import GroupAdmin as BaseGroupAdmin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-from django.contrib.auth.models import User
+from django.contrib.auth.models import Group, User
 
 from djangoql.admin import DjangoQLSearchMixin
 from import_export.admin import ImportExportMixin, ImportExportModelAdmin
 
 from .forms import FeedAdminForm
-from .models import Article, Feed, FeedGroup, UserSettings
+from .models import Article, Feed, FeedGroup, GReaderAuthToken, UserSettings
 from .services import AggregatorService, ArticleService
 
 # Customize Admin Site
@@ -34,7 +35,7 @@ def delete_all_articles(modeladmin, request, queryset):
 
 
 @admin.register(FeedGroup)
-class FeedGroupAdmin(admin.ModelAdmin):
+class FeedGroupAdmin(DjangoQLSearchMixin, admin.ModelAdmin):
     """Admin configuration for FeedGroup model."""
 
     list_display = ["name", "user", "created_at"]
@@ -91,34 +92,34 @@ class FeedAdmin(ImportExportModelAdmin, DjangoQLSearchMixin):
             ("Timestamps", {"fields": ("created_at", "updated_at"), "classes": ("collapse",)}),
         )
 
-        def get_readonly_fields(self, request, obj=None):
-            """Make aggregator readonly in edit view."""
+    def get_readonly_fields(self, request, obj=None):
+        """Make aggregator readonly in edit view."""
 
-            if obj:
-                return ["aggregator_info", "created_at", "updated_at"]
+        if obj:
+            return ["aggregator_info", "created_at", "updated_at"]
 
-            return ["created_at", "updated_at"]
+        return ["created_at", "updated_at"]
 
-        @admin.display(description="Aggregator Type")
-        def aggregator_info(self, instance):
-            """Display information about the selected aggregator."""
+    @admin.display(description="Aggregator Type")
+    def aggregator_info(self, instance):
+        """Display information about the selected aggregator."""
 
-            if not instance.aggregator:
-                return "-"
+        if not instance.aggregator:
+            return "-"
 
-            try:
-                from .aggregators.registry import AggregatorRegistry
+        try:
+            from .aggregators.registry import AggregatorRegistry
 
-                agg_class = AggregatorRegistry.get(instance.aggregator)
+            agg_class = AggregatorRegistry.get(instance.aggregator)
 
-                doc = agg_class.__doc__ or ""
+            doc = agg_class.__doc__ or ""
 
-                # Return first line of docstring
+            # Return first line of docstring
 
-                return doc.strip().split("\n")[0]
+            return doc.strip().split("\n")[0]
 
-            except Exception:
-                return "Unknown aggregator"
+        except Exception:
+            return "Unknown aggregator"
 
     def get_form(self, request, obj=None, **kwargs):
         """
@@ -410,3 +411,24 @@ class UserAdmin(ImportExportMixin, DjangoQLSearchMixin, BaseUserAdmin):
     """Custom User admin with UserSettings inline."""
 
     inlines = [UserSettingsInline]
+
+
+# Unregister default Group admin and register with DjangoQL
+admin.site.unregister(Group)
+
+
+@admin.register(Group)
+class GroupAdmin(DjangoQLSearchMixin, BaseGroupAdmin):
+    """Custom Group admin with DjangoQL support."""
+
+    pass
+
+
+@admin.register(GReaderAuthToken)
+class GReaderAuthTokenAdmin(DjangoQLSearchMixin, admin.ModelAdmin):
+    """Admin configuration for GReaderAuthToken."""
+
+    list_display = ["user", "token", "is_valid", "expires_at", "created_at"]
+    list_filter = ["user", "created_at"]
+    search_fields = ["user__username", "token"]
+    readonly_fields = ["token", "created_at", "updated_at"]

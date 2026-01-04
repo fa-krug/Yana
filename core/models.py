@@ -59,6 +59,7 @@ class Feed(models.Model):
         indexes = [
             models.Index(fields=["user"]),
             models.Index(fields=["group"]),
+            models.Index(fields=["aggregator"]),
         ]
 
     def __str__(self):
@@ -91,6 +92,7 @@ class Article(models.Model):
             models.Index(fields=["date"]),
             models.Index(fields=["read"]),
             models.Index(fields=["starred"]),
+            models.Index(fields=["feed", "read", "date"]),
         ]
 
     def __str__(self):

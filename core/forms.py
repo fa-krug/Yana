@@ -33,9 +33,10 @@ class FeedAdminForm(forms.ModelForm):
         self.request = kwargs.pop("request", None)
         super().__init__(*args, **kwargs)
         # Set help text or other field attributes
-        self.fields[
-            "aggregator"
-        ].help_text = "Select aggregator type. This determines available identifier choices."
+        if "aggregator" in self.fields:
+            self.fields[
+                "aggregator"
+            ].help_text = "Select aggregator type. This determines available identifier choices."
 
     def save(self, commit=True):
         """
