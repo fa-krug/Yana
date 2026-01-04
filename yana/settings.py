@@ -141,7 +141,7 @@ WSGI_APPLICATION = "yana.wsgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "core.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+        "NAME": BASE_DIR / "data" / "db.sqlite3",
         "OPTIONS": {
             # Connection timeout in seconds (prevents "database is locked" errors)
             "timeout": 30,
