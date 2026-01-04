@@ -5,9 +5,9 @@
 - [x] Task: Add index `Feed(aggregator)` to the Feed model. (8bb7186)
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Database Indexing' (Protocol in workflow.md)
 
-## Phase 2: Unread Count Optimization
+## Phase 2: Unread Count Optimization [checkpoint: af2efef]
 - [x] Task: Refactor `StreamService._compute_unread_count` to use single-query conditional aggregation. (7e50919)
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: Unread Count Optimization' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 2: Unread Count Optimization' (Protocol in workflow.md)
 
 ## Phase 3: Stream Filtering Optimization
 - [ ] Task: Review and optimize `get_stream_item_ids` and `get_stream_contents` query logic.
