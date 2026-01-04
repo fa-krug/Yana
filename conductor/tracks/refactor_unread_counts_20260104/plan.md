@@ -1,9 +1,9 @@
 # Plan: Refactor Unread Counts and Indexes
 
-## Phase 1: Database Indexing
+## Phase 1: Database Indexing [checkpoint: f605409]
 - [x] Task: Add composite index `Article(feed, read, date)` to the Article model. (8bb7186)
 - [x] Task: Add index `Feed(aggregator)` to the Feed model. (8bb7186)
-- [~] Task: Conductor - User Manual Verification 'Phase 1: Database Indexing' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 1: Database Indexing' (Protocol in workflow.md)
 
 ## Phase 2: Unread Count Optimization
 - [ ] Task: Refactor `StreamService._compute_unread_count` to use single-query conditional aggregation.
