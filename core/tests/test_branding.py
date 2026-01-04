@@ -9,11 +9,8 @@ class BrandingTestCase(TestCase):
     def test_icons_exist(self):
         """Verify that all required branding icons exist in static files."""
         icons = [
-            "core/img/logo-wordmark.svg",
             "core/img/logo-wordmark.png",
-            "core/img/logo-icon-only.svg",
             "core/img/logo-icon-only.png",
-            "core/img/favicon.svg",
             "core/img/favicon.ico",
             "core/css/admin.css",
         ]
@@ -26,8 +23,8 @@ class BrandingTestCase(TestCase):
         """Verify that the admin login page contains the logo."""
         response = self.client.get(reverse("admin:login"))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "logo-icon-only.svg")
-        self.assertContains(response, "favicon.svg")
+        self.assertContains(response, "logo-icon-only.png")
+        self.assertContains(response, "favicon.ico")
 
     def test_admin_base_branding(self):
         """Verify that the admin base template contains the wordmark."""
@@ -46,6 +43,6 @@ class BrandingTestCase(TestCase):
 
         response = self.client.get(reverse("admin:index"))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "logo-wordmark.svg")
+        self.assertContains(response, "logo-wordmark.png")
         self.assertContains(response, "admin.css")
-        self.assertContains(response, "favicon.svg")
+        self.assertContains(response, "favicon.ico")

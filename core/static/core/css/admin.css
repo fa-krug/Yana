@@ -73,15 +73,42 @@ a:focus, a:hover {
 }
 
 div.login #content-main {
-    float: none;
-    margin: 0 auto;
-    width: 100%;
-    max-width: 400px;
+    float: none !important;
+    margin: 0 auto !important;
+    width: 100% !important;
+    max-width: 400px !important;
     background: #fff;
     padding: 30px;
     border-radius: 12px;
     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
     border: 1px solid #e2e8f0;
+}
+
+/* Breadcrumbs styling */
+div.breadcrumbs {
+    background: #f8fafc !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+    padding: 10px 40px !important;
+    color: #64748b !important;
+    margin-bottom: 20px;
+}
+
+div.breadcrumbs a {
+    color: #6366f1 !important;
+    font-weight: 500;
+}
+
+div.breadcrumbs a:hover {
+    color: #4f46e5 !important;
+}
+
+div.breadcrumbs a:focus {
+    color: #4f46e5 !important;
+}
+
+/* Ensure the breadcrumb separator is also colored correctly if needed */
+.breadcrumbs {
+    color: #94a3b8 !important; /* Slate 400 for separator */
 }
 
 .login .form-row {
@@ -128,4 +155,77 @@ div.login #content-main {
 
 .login .submit-row input:hover {
     background: #4f46e5;
+}
+
+/* Many-to-many selector styling */
+.selector-available h2, .selector-chosen h2 {
+    background: #4f46e5 !important; /* Indigo 600 */
+    color: #fff !important;
+}
+
+.selector .selector-filter {
+    border-color: #e2e8f0 !important;
+}
+
+.selector .selector-filter input:focus {
+    border-color: #6366f1 !important;
+}
+
+.selector-add, .selector-remove {
+    background-color: #f1f5f9 !important;
+}
+
+.selector-chooseall, .selector-clearall {
+    color: #6366f1 !important;
+}
+
+.selector-chooseall:hover, .selector-clearall:hover {
+    color: #4f46e5 !important;
+}
+
+/* Global active/focus state overrides for Django Admin */
+.active-result {
+    background-color: #6366f1 !important;
+}
+
+#changelist-filter li.selected a {
+    color: #6366f1 !important;
+    border-left-color: #6366f1 !important;
+}
+
+.button.default, input[type="submit"].default, .submit-row input.default {
+    background: #6366f1 !important; /* Indigo 600 */
+}
+
+.button.default:active, input[type="submit"].default:active, .button.default:focus, input[type="submit"].default:focus, .button.default:hover, input[type="submit"].default:hover {
+    background: #4f46e5 !important; /* Indigo 700 */
+}
+
+/* Calendar and time widgets */
+.calendar td.selected a {
+    background: #6366f1 !important;
+}
+
+.calendar td.today a {
+    color: #6366f1 !important;
+    font-weight: bold;
+}
+
+.calendar caption, .calendar th {
+    background: #4f46e5 !important;
+}
+
+.clockbox h2 {
+    background: #4f46e5 !important;
+}
+
+/* Tabular Inlines styling */
+.inline-group .tabular td.original p {
+    color: #6366f1 !important;
+}
+
+.inline-related h3 {
+    background: #f8fafc !important;
+    color: #1e1b4b !important;
+    border-bottom: 1px solid #e2e8f0 !important;
 }
