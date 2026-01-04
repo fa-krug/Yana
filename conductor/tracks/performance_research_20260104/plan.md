@@ -6,7 +6,7 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Database Performance Analysis' (Protocol in workflow.md)
 
 ## Phase 2: Application Infrastructure & Resource Usage
-- [ ] Task: Measure application startup time and runtime memory consumption.
+- [~] Task: Measure application startup time and runtime memory consumption.
 - [ ] Task: Benchmark the aggregation process (fetching, parsing, and saving).
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: Application Infrastructure & Resource Usage' (Protocol in workflow.md)
 
