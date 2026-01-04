@@ -8,7 +8,7 @@ from djangoql.admin import DjangoQLSearchMixin
 from import_export.admin import ImportExportMixin, ImportExportModelAdmin
 
 from .forms import FeedAdminForm
-from .models import Article, Feed, FeedGroup, GReaderAuthToken, UserSettings
+from .models import Article, Feed, FeedGroup, UserSettings
 from .services import AggregatorService, ArticleService
 
 # Customize Admin Site
@@ -205,6 +205,8 @@ class FeedAdmin(ImportExportModelAdmin, DjangoQLSearchMixin):
         """
         from django.http import HttpResponseRedirect
         from django.urls import reverse
+        from django.utils.html import format_html
+        from django.utils.translation import gettext as _
 
         # If the user clicked "Save" (not "Save and add another" or "Save and continue editing")
         if "_save" in request.POST:
@@ -215,11 +217,12 @@ class FeedAdmin(ImportExportModelAdmin, DjangoQLSearchMixin):
                 current_app=self.admin_site.name,
             )
             # Add a message to let the user know they can now configure options
-            self.message_user(
-                request,
-                f'The feed "{obj}" was added successfully. You can now configure its specific options below.',
-                messages.SUCCESS,
+            msg = format_html(
+                _('The {name} "{obj}" was added successfully. You may edit it again below.'),
+                name=opts.verbose_name,
+                obj=obj,
             )
+            self.message_user(request, msg, messages.SUCCESS)
             return HttpResponseRedirect(change_url)
 
         return super().response_add(request, obj, post_url_continue)
@@ -407,77 +410,3 @@ class UserAdmin(ImportExportMixin, DjangoQLSearchMixin, BaseUserAdmin):
     """Custom User admin with UserSettings inline."""
 
     inlines = [UserSettingsInline]
-
-
-@admin.register(UserSettings)
-class UserSettingsAdmin(ImportExportModelAdmin, DjangoQLSearchMixin):
-    """Standalone admin configuration for UserSettings model."""
-
-    list_display = ["user", "reddit_enabled", "youtube_enabled", "openai_enabled", "updated_at"]
-    list_filter = [
-        "reddit_enabled",
-        "youtube_enabled",
-        "openai_enabled",
-        "created_at",
-        "updated_at",
-    ]
-    search_fields = ["user__username", "user__email"]
-    readonly_fields = ["created_at", "updated_at"]
-    list_select_related = ["user"]
-
-    fieldsets = (
-        (None, {"fields": ("user",)}),
-        (
-            "Reddit API",
-            {
-                "fields": (
-                    "reddit_enabled",
-                    "reddit_client_id",
-                    "reddit_client_secret",
-                    "reddit_user_agent",
-                ),
-                "classes": ("collapse",),
-            },
-        ),
-        (
-            "YouTube API",
-            {"fields": ("youtube_enabled", "youtube_api_key"), "classes": ("collapse",)},
-        ),
-        (
-            "OpenAI API",
-            {
-                "fields": (
-                    "openai_enabled",
-                    "openai_api_url",
-                    "openai_api_key",
-                    "ai_model",
-                    "ai_temperature",
-                    "ai_max_tokens",
-                    "ai_default_daily_limit",
-                    "ai_default_monthly_limit",
-                    "ai_max_prompt_length",
-                    "ai_request_timeout",
-                    "ai_max_retries",
-                    "ai_retry_delay",
-                ),
-                "classes": ("collapse",),
-            },
-        ),
-        ("Timestamps", {"fields": ("created_at", "updated_at"), "classes": ("collapse",)}),
-    )
-
-
-@admin.register(GReaderAuthToken)
-class GReaderAuthTokenAdmin(ImportExportModelAdmin, DjangoQLSearchMixin):
-    """Admin configuration for GReaderAuthToken model."""
-
-    list_display = ["user", "token", "expires_at", "created_at"]
-    list_filter = ["user", "created_at", "expires_at"]
-    search_fields = ["user__username", "token"]
-    readonly_fields = ["created_at", "updated_at"]
-    list_select_related = ["user"]
-
-    fieldsets = (
-        (None, {"fields": ("user", "token", "expires_at")}),
-        ("Timestamps", {"fields": ("created_at", "updated_at"), "classes": ("collapse",)}),
-    )

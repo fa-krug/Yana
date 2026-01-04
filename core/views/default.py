@@ -76,7 +76,7 @@ def _error_response(message):
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>YouTube Error - Yana</title>
     <link rel="icon" type="image/svg+xml" href="/static/core/img/favicon.svg">
     <link rel="alternate icon" type="image/x-icon" href="/static/core/img/favicon.ico">
@@ -104,7 +104,7 @@ def _generate_embed_html(embed_url):
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="referrer" content="strict-origin-when-cross-origin">
     <title>YouTube Video - Yana</title>
     <link rel="icon" type="image/svg+xml" href="/static/core/img/favicon.svg">
