@@ -15,5 +15,5 @@
 
 ## Phase 4: Performance Verification
 - [x] Task: Create a verification script to confirm query count reduction for the `unread_count` endpoint. (cda05f9)
-- [ ] Task: Run all GReader API tests to ensure no regressions.
+- [~] Task: Run all GReader API tests to ensure no regressions.
 - [ ] Task: Conductor - User Manual Verification 'Phase 4: Performance Verification' (Protocol in workflow.md)
