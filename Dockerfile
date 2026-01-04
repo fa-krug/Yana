@@ -66,24 +66,20 @@ RUN apk add --no-cache \
     libxml2 \
     libxslt \
     curl \
-    && adduser -D -u 1000 yana \
-    && mkdir -p /app/data /app/media /app/staticfiles \
-    && chown -R yana:yana /app
+    && mkdir -p /app/data /app/media /app/staticfiles
 
 # Copy virtual environment from builder
-COPY --from=builder --chown=yana:yana /opt/venv /opt/venv
+COPY --from=builder /opt/venv /opt/venv
 
 # Copy application code
-COPY --chown=yana:yana . .
+COPY . .
 
 # Copy entrypoint script
-COPY --chown=yana:yana docker-entrypoint.sh /usr/local/bin/
+COPY docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # Collect static files during build (reduces startup time)
 RUN python manage.py collectstatic --noinput --clear || true
-
-USER yana
 
 EXPOSE 8000
 
