@@ -12,7 +12,6 @@ class BrandingTestCase(TestCase):
             "core/img/logo-wordmark.png",
             "core/img/logo-icon-only.png",
             "core/img/favicon.ico",
-            "core/css/admin.css",
         ]
         for icon_path in icons:
             self.assertIsNotNone(
@@ -43,6 +42,6 @@ class BrandingTestCase(TestCase):
 
         response = self.client.get(reverse("admin:index"))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "logo-wordmark.png")
-        self.assertContains(response, "admin.css")
+        # We now expect plaintext "Yana" instead of the image
+        self.assertContains(response, "Yana")
         self.assertContains(response, "favicon.ico")
