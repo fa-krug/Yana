@@ -10,7 +10,7 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 2: Unread Count Optimization' (Protocol in workflow.md)
 
 ## Phase 3: Stream Filtering Optimization
-- [~] Task: Review and optimize `get_stream_item_ids` and `get_stream_contents` query logic.
+- [x] Task: Review and optimize `get_stream_item_ids` and `get_stream_contents` query logic. (7d1fdce)
 - [ ] Task: Conductor - User Manual Verification 'Phase 3: Stream Filtering Optimization' (Protocol in workflow.md)
 
 ## Phase 4: Performance Verification
