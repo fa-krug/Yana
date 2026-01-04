@@ -36,8 +36,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.yana.rule=Host(`${YANA_DOMAIN:-yana.fa-krug.de}`)"
-      - "traefik.http.routers.yana.entrypoints=websecure"
-      - "traefik.http.routers.yana.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.yana.entrypoints=web"
       - "traefik.http.services.yana.loadbalancer.server.port=8000"
 
 volumes:
