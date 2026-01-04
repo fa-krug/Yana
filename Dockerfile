@@ -91,7 +91,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
   CMD curl -f http://localhost:8000/health/ || exit 1
 
 # Use tini as init system for proper signal handling
-ENTRYPOINT ["/usr/bin/tini", "--", "docker-entrypoint.sh"]
+ENTRYPOINT ["/sbin/tini", "--", "docker-entrypoint.sh"]
 
 # Default command (supervisord manages gunicorn and qcluster)
 CMD ["supervisord", "-c", "/app/supervisord.conf"]
