@@ -1,0 +1,20 @@
+{
+  "name": "Yana Aggregator",
+  "short_name": "Yana",
+  "start_url": "/admin/",
+  "display": "standalone",
+  "background_color": "#1e88e5",
+  "theme_color": "#1565c0",
+  "icons": [
+    {
+      "src": "/static/core/img/logo-icon-only.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/static/core/img/logo-icon-only.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

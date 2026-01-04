@@ -6,6 +6,10 @@
 {% block extrahead %}
 {{ block.super }}
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#1565c0">
+<link rel="manifest" href="{% static 'core/manifest.json' %}">
+<link rel="apple-touch-icon" href="{% static 'core/img/logo-icon-only.png' %}">
+<link rel="stylesheet" href="{% static 'core/css/admin.css' %}">
 <link rel="icon" type="image/x-icon" href="{% static 'core/img/favicon.ico' %}">
 {% endblock %}
 

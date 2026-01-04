@@ -313,3 +313,98 @@ div.login #content-main {
 [data-theme="dark"] .selector-chosen h2 {
     background: var(--yana-primary-800) !important;
 }
+
+/* Mobile Optimizations */
+@media screen and (max-width: 767px) {
+    /* Responsive Tables */
+    .results, .results table {
+        display: block;
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* Larger Touch Targets & Readable Text */
+    input[type=text], input[type=password], input[type=email], input[type=url], input[type=number], textarea, select {
+        min-height: 44px;
+        font-size: 16px; /* Prevents iOS zoom on focus */
+    }
+
+    .button, .submit-row input {
+        min-height: 44px;
+        line-height: 1.5;
+        padding: 8px 16px;
+    }
+
+    /* Stack Actions */
+    .submit-row {
+        display: flex;
+        flex-direction: column-reverse;
+        gap: 12px;
+        padding: 15px 10px;
+    }
+
+    .submit-row input {
+        width: 100%;
+        margin: 0 !important;
+        float: none !important;
+    }
+
+    /* Action Tools (Add buttons) */
+    .object-tools {
+        float: none;
+        margin: 10px 0;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .object-tools li {
+        display: block;
+        float: none;
+        margin: 0;
+    }
+
+    .object-tools a {
+        display: block;
+        text-align: center;
+        padding: 12px;
+        background-color: var(--yana-primary-600);
+        color: white;
+        border-radius: 4px;
+    }
+
+    /* Filter Sidebar */
+    #changelist-filter {
+        position: static;
+        width: 100%;
+        margin-bottom: 20px;
+        border-right: none;
+        border-bottom: 1px solid var(--border-color, #e2e8f0);
+    }
+
+    /* Dashboard/App List */
+    .dashboard .module table td a {
+        display: block;
+        padding: 12px 0; /* Larger hit area for model links */
+    }
+
+    /* Login Page Mobile */
+    .login #content-main {
+        width: 100% !important;
+        max-width: none !important;
+        box-shadow: none;
+        border: none !important;
+        padding: 10px;
+    }
+
+    /* Header adjustments */
+    #branding h1 {
+        font-size: 1.2rem;
+        margin: 0;
+    }
+
+    #header {
+        padding: 10px;
+    }
+}
