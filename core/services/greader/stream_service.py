@@ -255,7 +255,8 @@ def get_stream_contents(
 
     # Format items
     items = []
-    for article in articles:
+    # Use iterator() for memory efficiency on large querysets
+    for article in articles.iterator(chunk_size=limit):
         item = format_stream_item(
             article,
             article.feed,
