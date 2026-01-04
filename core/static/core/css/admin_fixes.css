@@ -1,22 +1,7 @@
 /* Fix DjangoQL advanced search layout on mobile */
 @media (max-width: 767px) {
-    .djangoql-completion {
-        max-width: 100% !important;
-        box-sizing: border-box !important;
-    }
-    .djangoql-completion textarea {
-        max-width: 100% !important;
-        box-sizing: border-box !important;
-        width: 100% !important;
-    }
-
-    /* Ensure the container doesn't overflow */
-    #toolbar form #searchbar {
-       max-width: 100%;
-    }
-
-    /* Specific fix for the advanced query input container */
-    div.djangoql-completion {
-        width: 100% !important;
+    #changelist #toolbar form textarea#searchbar {
+        width: 60% !important;
+        height: 100% !important;
     }
 }

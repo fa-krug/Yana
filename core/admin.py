@@ -3,7 +3,7 @@
 import contextlib
 
 from django.contrib import admin, messages
-from django.contrib.admin.exceptions import NotRegistered
+from django.contrib.admin.sites import NotRegistered  # type: ignore
 from django.contrib.auth.admin import GroupAdmin as BaseGroupAdmin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.models import Group, User
@@ -17,7 +17,7 @@ from djangoql.admin import DjangoQLSearchMixin
 from import_export.admin import ImportExportMixin, ImportExportModelAdmin
 
 from .forms import FeedAdminForm
-from .models import Article, Feed, FeedGroup, GReaderAuthToken, UserSettings
+from .models import Article, Feed, FeedGroup, UserSettings
 from .services import AggregatorService, ArticleService
 
 
@@ -95,7 +95,13 @@ class FeedAdmin(YanaDjangoQLSearchMixin, ImportExportModelAdmin):
             return ((None, {"fields": ("name", "aggregator")}),)
 
         # Edit View: Full fields
+        # Check if identifier should be hidden (fixed)
         fields = ["name", "aggregator_info", "identifier", "icon", "enabled"]
+
+        # Determine if identifier is fixed/hidden
+        # We can't easily check choices here without instantiating, but we can rely on standard field inclusion
+        # and handle hiding in get_form or just keep it visible but readonly if needed.
+        # User asked to hide it if fixed.
 
         return (
             (None, {"fields": fields}),
@@ -123,8 +129,13 @@ class FeedAdmin(YanaDjangoQLSearchMixin, ImportExportModelAdmin):
             from .aggregators.registry import AggregatorRegistry
 
             agg_class = AggregatorRegistry.get(instance.aggregator)
+
             doc = agg_class.__doc__ or ""
+
+            # Return first line of docstring
+
             return doc.strip().split("\n")[0]
+
         except Exception:
             return "Unknown aggregator"
 
@@ -158,17 +169,24 @@ class FeedAdmin(YanaDjangoQLSearchMixin, ImportExportModelAdmin):
                                 self_form.initial[field_name] = obj.options[field_name]
 
                         # 2. Adjust Identifier Widget
+                        # Get available choices
                         choices = agg_class.get_identifier_choices(user=request.user)
 
                         if choices:
                             if len(choices) == 1:
+                                # Fixed identifier: Hide the field and force value
                                 self_form.fields["identifier"].widget = forms.HiddenInput()
                                 self_form.initial["identifier"] = choices[0][0]
+                                # Also update the instance to ensure it saves if not changed
+                                # (HiddenInput values are posted, so this is fine)
                             else:
+                                # Multiple choices: Use Select
                                 self_form.fields["identifier"].widget = forms.Select(
                                     choices=choices
                                 )
                         else:
+                            # No predefined choices (e.g. YouTube search or generic website): Use Text
+                            # If it was previously Hidden (from a fixed aggregator), make sure it's visible now
                             if isinstance(self_form.fields["identifier"].widget, forms.HiddenInput):
                                 self_form.fields["identifier"].widget = forms.TextInput()
 
@@ -353,16 +371,6 @@ class ArticleAdmin(YanaDjangoQLSearchMixin, ImportExportModelAdmin):
         self.message_user(request, f"Successfully deleted {count} articles.", messages.SUCCESS)
 
 
-@admin.register(GReaderAuthToken)
-class GReaderAuthTokenAdmin(YanaDjangoQLSearchMixin, admin.ModelAdmin):
-    """Admin configuration for GReaderAuthToken."""
-
-    list_display = ["user", "token", "is_valid", "expires_at", "created_at"]
-    list_filter = ["user", "created_at"]
-    search_fields = ["user__username", "token"]
-    readonly_fields = ["token", "created_at", "updated_at"]
-
-
 class UserSettingsInline(admin.StackedInline):
     """Inline admin for UserSettings displayed in User admin."""
 
@@ -413,8 +421,7 @@ class UserSettingsInline(admin.StackedInline):
 
 
 # Unregister the default User admin and register with inline
-with contextlib.suppress(NotRegistered):
-    admin.site.unregister(User)
+admin.site.unregister(User)
 
 
 @admin.register(User)
@@ -425,8 +432,7 @@ class UserAdmin(ImportExportMixin, YanaDjangoQLSearchMixin, BaseUserAdmin):
 
 
 # Unregister default Group admin and register with DjangoQL
-with contextlib.suppress(NotRegistered):
-    admin.site.unregister(Group)
+admin.site.unregister(Group)
 
 
 @admin.register(Group)
