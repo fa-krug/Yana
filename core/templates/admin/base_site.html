@@ -5,41 +5,11 @@
 
 {% block extrahead %}
 {{ block.super }}
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="initial-scale=1, user-scalable=no">
 <link rel="manifest" href="{% static 'core/manifest.json' %}">
 <link rel="apple-touch-icon" href="{% static 'core/img/logo-icon-only.png' %}">
 <link rel="icon" type="image/x-icon" href="{% static 'core/img/favicon.ico' %}">
-<style>
-    /* Force disable touch actions that cause zooming */
-    html, body {
-        touch-action: pan-x pan-y;
-    }
-</style>
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Prevent pinch to zoom (iOS specific)
-        document.addEventListener('gesturestart', function(e) {
-            e.preventDefault();
-        });
-
-        // Prevent pinch to zoom (Standard)
-        document.addEventListener('touchmove', function(event) {
-            if (event.scale !== 1) {
-                event.preventDefault();
-            }
-        }, { passive: false });
-
-        // Prevent double-tap to zoom
-        var lastTouchEnd = 0;
-        document.addEventListener('touchend', function(event) {
-            var now = (new Date()).getTime();
-            if (now - lastTouchEnd <= 300) {
-                event.preventDefault();
-            }
-            lastTouchEnd = now;
-        }, false);
-    });
-</script>
+<style>.skip-to-content-link { display: none !important; }</style>
 {% endblock %}
 
 {% block branding %}
