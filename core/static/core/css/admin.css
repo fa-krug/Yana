@@ -1,75 +1,107 @@
 /* Yana Admin Custom Styles */
 
 :root {
-    --yana-indigo-950: #1e1b4b;
-    --yana-indigo-900: #312e81;
-    --yana-indigo-800: #3730a3;
-    --yana-indigo-700: #4338ca;
-    --yana-indigo-600: #4f46e5;
-    --yana-indigo-500: #6366f1;
-    --yana-indigo-400: #818cf8;
+    /* Blue Palette (Material Blue) */
+    --yana-primary-50: #e3f2fd;
+    --yana-primary-100: #bbdefb;
+    --yana-primary-200: #90caf9;
+    --yana-primary-300: #64b5f6;
+    --yana-primary-400: #42a5f5;
+    --yana-primary-500: #2196f3;
+    --yana-primary-600: #1e88e5;
+    --yana-primary-700: #1976d2;
+    --yana-primary-800: #1565c0;
+    --yana-primary-900: #0d47a1;
+    --yana-primary-950: #0a3678;
 
-    --primary: var(--yana-indigo-600);
+    /* Accent Palette (Pink A200) */
+    --yana-accent: #ff4081;
+    --yana-accent-hover: #f50057;
+
+    /* Django Admin Variables Override */
+    --primary: var(--yana-primary-600);
     --primary-fg: #fff;
 
-    --header-bg: var(--yana-indigo-950);
+    --header-bg: var(--yana-primary-800);
     --header-color: #fff;
-    --header-link-color: var(--yana-indigo-400);
+    --header-link-color: var(--yana-primary-100);
 
     --breadcrumbs-bg: #f8fafc;
-    --breadcrumbs-link-color: var(--yana-indigo-600);
+    --breadcrumbs-link-color: var(--yana-primary-700);
 
-    --button-bg: var(--yana-indigo-600);
-    --button-hover-bg: var(--yana-indigo-700);
-    --default-button-bg: var(--yana-indigo-500);
-    --default-button-hover-bg: var(--yana-indigo-600);
+    --button-bg: var(--yana-primary-600);
+    --button-hover-bg: var(--yana-primary-700);
+    --default-button-bg: var(--yana-primary-500);
+    --default-button-hover-bg: var(--yana-primary-600);
+
+    --accent: var(--yana-accent);
 }
 
 [data-theme="dark"] {
+    --primary: var(--yana-primary-400); /* Lighter for dark mode */
     --breadcrumbs-bg: #1e293b;
-    --breadcrumbs-link-color: var(--yana-indigo-400);
+    --breadcrumbs-link-color: var(--yana-primary-300);
     --body-bg: #0f172a;
+    --header-bg: #1e293b; /* Darker header for dark mode */
+    --header-link-color: var(--yana-primary-200);
+    --button-bg: var(--yana-primary-700);
+    --button-hover-bg: var(--yana-primary-600);
 }
 
 /* Header styles */
 #header {
-    background: linear-gradient(135deg, var(--yana-indigo-950) 0%, var(--yana-indigo-900) 100%);
-    color: #fff;
-    border-bottom: 2px solid var(--yana-indigo-500);
+    background: var(--header-bg);
+    color: var(--header-color);
+    border-bottom: none;
+}
+
+/* Add a subtle bottom border/shadow to header */
+#header {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 #branding h1 {
     color: #fff;
     display: flex;
     align-items: center;
+    font-weight: 300;
 }
 
 #branding h1 a {
     display: flex;
     align-items: center;
     color: #fff;
+    font-weight: 500;
 }
 
 /* Sidebar and menu enhancements */
 .module h2, .module caption, .inline-group h2 {
-    background: var(--yana-indigo-600) !important;
+    background: var(--yana-primary-700) !important;
 }
 
 a:link, a:visited {
-    color: var(--yana-indigo-600);
+    color: var(--yana-primary-700);
 }
 
 a:focus, a:hover {
-    color: var(--yana-indigo-500);
+    color: var(--yana-primary-600);
+}
+
+[data-theme="dark"] a:link, [data-theme="dark"] a:visited {
+    color: var(--yana-primary-300);
+}
+
+[data-theme="dark"] a:focus, [data-theme="dark"] a:hover {
+    color: var(--yana-primary-200);
 }
 
 /* Breadcrumbs styling */
 div.breadcrumbs {
     background: var(--breadcrumbs-bg) !important;
     border-bottom: 1px solid var(--border-color, #e2e8f0) !important;
-    padding: 10px 40px !important;
+    padding: 12px 40px !important;
     color: var(--body-quiet-color, #64748b) !important;
-    margin-bottom: 20px;
+    font-size: 0.9em;
 }
 
 div.breadcrumbs a {
@@ -78,13 +110,14 @@ div.breadcrumbs a {
 }
 
 div.breadcrumbs a:hover {
-    color: var(--yana-indigo-500) !important;
+    color: var(--yana-primary-500) !important;
 }
 
 /* Login page enhancements */
 .login #header {
     background: transparent;
     border-bottom: none;
+    box-shadow: none;
 }
 
 .login #container {
@@ -116,7 +149,6 @@ div.login #content-main {
     border-radius: 12px;
     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
     border: 1px solid var(--border-color, #e2e8f0) !important;
-    border-top: 1px solid var(--border-color, #e2e8f0) !important; /* Explicitly override any top accent line */
 }
 
 /* Remove colored line at top of login card */
@@ -157,7 +189,7 @@ div.login #content-main {
 .login .submit-row input {
     width: 100%;
     padding: 12px;
-    background: var(--yana-indigo-600);
+    background: var(--yana-primary-600);
     color: #fff;
     border: none;
     border-radius: 6px;
@@ -166,15 +198,17 @@ div.login #content-main {
     transition: background 0.2s;
     height: auto;
     float: none;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .login .submit-row input:hover {
-    background: var(--yana-indigo-500);
+    background: var(--yana-primary-700);
 }
 
 /* Many-to-many selector styling */
 .selector-available h2, .selector-chosen h2 {
-    background: var(--yana-indigo-600) !important;
+    background: var(--yana-primary-700) !important;
     color: #fff !important;
 }
 
@@ -184,74 +218,73 @@ div.login #content-main {
 }
 
 .selector .selector-filter input:focus {
-    border-color: var(--yana-indigo-500) !important;
+    border-color: var(--yana-primary-500) !important;
 }
 
 .selector-add, .selector-remove {
     background-color: var(--body-bg, #f1f5f9) !important;
-    background-image: none !important; /* Remove default arrows if they are images */
+    background-image: none !important;
     display: flex !important;
     align-items: center;
     justify-content: center;
     font-weight: bold;
-    color: var(--yana-indigo-600) !important;
+    color: var(--yana-primary-600) !important;
 }
 
 .selector-add::before { content: "→"; }
 .selector-remove::before { content: "←"; }
 
-/* Hide default icons if they are implemented via background-position */
 .active.selector-add, .active.selector-remove {
     opacity: 1 !important;
 }
 
 .selector-chooseall, .selector-clearall {
-    color: var(--yana-indigo-600) !important;
+    color: var(--yana-primary-600) !important;
 }
 
 .selector-chooseall:hover, .selector-clearall:hover {
-    color: var(--yana-indigo-500) !important;
+    color: var(--yana-primary-500) !important;
 }
 
 /* Global active/focus state overrides */
 .active-result {
-    background-color: var(--yana-indigo-600) !important;
+    background-color: var(--yana-primary-600) !important;
 }
 
 #changelist-filter li.selected a {
-    color: var(--yana-indigo-600) !important;
-    border-left-color: var(--yana-indigo-600) !important;
+    color: var(--yana-primary-600) !important;
+    border-left-color: var(--yana-primary-600) !important;
 }
 
 .button.default, input[type="submit"].default, .submit-row input.default {
-    background: var(--yana-indigo-600) !important;
+    background: var(--yana-primary-600) !important;
 }
 
 .button.default:active, input[type="submit"].default:active, .button.default:focus, input[type="submit"].default:focus, .button.default:hover, input[type="submit"].default:hover {
-    background: var(--yana-indigo-500) !important;
+    background: var(--yana-primary-700) !important;
 }
 
 /* Calendar and time widgets */
 .calendar td.selected a {
-    background: var(--yana-indigo-600) !important;
+    background: var(--yana-primary-600) !important;
 }
 
 .calendar td.today a {
-    color: var(--yana-indigo-600) !important;
+    color: var(--yana-primary-700) !important;
     font-weight: bold;
 }
 
 .calendar caption, .calendar th {
-    background: var(--yana-indigo-600) !important;
+    background: var(--yana-primary-700) !important;
 }
 
 .clockbox h2 {
-    background: var(--yana-indigo-600) !important;
+    background: var(--yana-primary-700) !important;
 }
 
 /* Tabular Inlines styling */
 .inline-group .tabular td.original p {
-    color: var(--yana-indigo-600) !important;
+    color: var(--yana-primary-700) !important;
 }
 
 .inline-related h3 {
@@ -260,42 +293,23 @@ div.login #content-main {
     border-bottom: 1px solid var(--border-color, #e2e8f0) !important;
 }
 
-/* Select widgets in dark mode */
-
+/* Dark mode adjustments */
 [data-theme="dark"] select,
-
 [data-theme="dark"] .selector-available select,
-
 [data-theme="dark"] .selector-chosen select,
-
 [data-theme="dark"] .selector .selector-filter input {
-
     background-color: #1e293b !important;
-
     color: #f1f5f9 !important;
-
     border-color: #334155 !important;
-
 }
-
-
 
 [data-theme="dark"] .selector-add,
-
 [data-theme="dark"] .selector-remove {
-
     background-color: #334155 !important;
-
-    color: var(--yana-indigo-400) !important;
-
+    color: var(--yana-primary-300) !important;
 }
 
-
-
 [data-theme="dark"] .selector-available h2,
-
 [data-theme="dark"] .selector-chosen h2 {
-
-    background: var(--yana-indigo-800) !important;
-
+    background: var(--yana-primary-800) !important;
 }
