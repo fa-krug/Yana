@@ -1,10 +1,41 @@
 /* Yana Admin Custom Styles */
 
+:root {
+    --yana-indigo-950: #1e1b4b;
+    --yana-indigo-900: #312e81;
+    --yana-indigo-800: #3730a3;
+    --yana-indigo-700: #4338ca;
+    --yana-indigo-600: #4f46e5;
+    --yana-indigo-500: #6366f1;
+    --yana-indigo-400: #818cf8;
+
+    --primary: var(--yana-indigo-600);
+    --primary-fg: #fff;
+
+    --header-bg: var(--yana-indigo-950);
+    --header-color: #fff;
+    --header-link-color: var(--yana-indigo-400);
+
+    --breadcrumbs-bg: #f8fafc;
+    --breadcrumbs-link-color: var(--yana-indigo-600);
+
+    --button-bg: var(--yana-indigo-600);
+    --button-hover-bg: var(--yana-indigo-700);
+    --default-button-bg: var(--yana-indigo-500);
+    --default-button-hover-bg: var(--yana-indigo-600);
+}
+
+[data-theme="dark"] {
+    --breadcrumbs-bg: #1e293b;
+    --breadcrumbs-link-color: var(--yana-indigo-400);
+    --body-bg: #0f172a;
+}
+
 /* Header styles */
 #header {
-    background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%); /* Indigo 950 to 900 */
+    background: linear-gradient(135deg, var(--yana-indigo-950) 0%, var(--yana-indigo-900) 100%);
     color: #fff;
-    border-bottom: 2px solid #6366f1;
+    border-bottom: 2px solid var(--yana-indigo-500);
 }
 
 #branding h1 {
@@ -21,40 +52,43 @@
 
 /* Sidebar and menu enhancements */
 .module h2, .module caption, .inline-group h2 {
-    background: #4f46e5; /* Indigo 600 */
+    background: var(--yana-indigo-600) !important;
 }
 
 a:link, a:visited {
-    color: #6366f1;
+    color: var(--yana-indigo-600);
 }
 
 a:focus, a:hover {
-    color: #4f46e5;
+    color: var(--yana-indigo-500);
 }
 
-.button, input[type="submit"], input[type="button"], .submit-row input, a.button {
-    background: #6366f1;
+/* Breadcrumbs styling */
+div.breadcrumbs {
+    background: var(--breadcrumbs-bg) !important;
+    border-bottom: 1px solid var(--border-color, #e2e8f0) !important;
+    padding: 10px 40px !important;
+    color: var(--body-quiet-color, #64748b) !important;
+    margin-bottom: 20px;
 }
 
-.button:active, input[type="submit"]:active, input[type="button"]:active, .button:focus, input[type="submit"]:focus, input[type="button"]:focus, .button:hover, input[type="submit"]:hover, input[type="button"]:hover {
-    background: #4f46e5;
+div.breadcrumbs a {
+    color: var(--breadcrumbs-link-color) !important;
+    font-weight: 500;
 }
 
-.button.default, input[type="submit"].default, .submit-row input.default {
-    background: #8b5cf6; /* Violet 600 */
-}
-
-.button.default:active, input[type="submit"].default:active, .button.default:focus, input[type="submit"].default:focus, .button.default:hover, input[type="submit"].default:hover {
-    background: #7c3aed; /* Violet 700 */
+div.breadcrumbs a:hover {
+    color: var(--yana-indigo-500) !important;
 }
 
 /* Login page enhancements */
 .login #header {
     background: transparent;
+    border-bottom: none;
 }
 
 .login #container {
-    background: #f8fafc;
+    background: var(--body-bg, #f8fafc);
 }
 
 .login #content {
@@ -77,38 +111,17 @@ div.login #content-main {
     margin: 0 auto !important;
     width: 100% !important;
     max-width: 400px !important;
-    background: #fff;
+    background: var(--body-bg, #fff);
     padding: 30px;
     border-radius: 12px;
     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--border-color, #e2e8f0) !important;
+    border-top: 1px solid var(--border-color, #e2e8f0) !important; /* Explicitly override any top accent line */
 }
 
-/* Breadcrumbs styling */
-div.breadcrumbs {
-    background: #f8fafc !important;
-    border-bottom: 1px solid #e2e8f0 !important;
-    padding: 10px 40px !important;
-    color: #64748b !important;
-    margin-bottom: 20px;
-}
-
-div.breadcrumbs a {
-    color: #6366f1 !important;
-    font-weight: 500;
-}
-
-div.breadcrumbs a:hover {
-    color: #4f46e5 !important;
-}
-
-div.breadcrumbs a:focus {
-    color: #4f46e5 !important;
-}
-
-/* Ensure the breadcrumb separator is also colored correctly if needed */
-.breadcrumbs {
-    color: #94a3b8 !important; /* Slate 400 for separator */
+/* Remove colored line at top of login card */
+.login #content-main::before {
+    display: none !important;
 }
 
 .login .form-row {
@@ -118,7 +131,7 @@ div.breadcrumbs a:focus {
 
 .login label {
     font-weight: 600;
-    color: #475569;
+    color: var(--body-quiet-color, #475569);
     margin-bottom: 8px;
     display: block;
 }
@@ -126,9 +139,11 @@ div.breadcrumbs a:focus {
 .login input[type="text"], .login input[type="password"] {
     width: 100%;
     padding: 10px;
-    border: 1px solid #cbd5e1;
+    border: 1px solid var(--border-color, #cbd5e1);
     border-radius: 6px;
     box-sizing: border-box;
+    background: var(--body-bg);
+    color: var(--body-fg);
 }
 
 .login .submit-row {
@@ -142,7 +157,7 @@ div.breadcrumbs a:focus {
 .login .submit-row input {
     width: 100%;
     padding: 12px;
-    background: #6366f1;
+    background: var(--yana-indigo-600);
     color: #fff;
     border: none;
     border-radius: 6px;
@@ -154,78 +169,133 @@ div.breadcrumbs a:focus {
 }
 
 .login .submit-row input:hover {
-    background: #4f46e5;
+    background: var(--yana-indigo-500);
 }
 
 /* Many-to-many selector styling */
 .selector-available h2, .selector-chosen h2 {
-    background: #4f46e5 !important; /* Indigo 600 */
+    background: var(--yana-indigo-600) !important;
     color: #fff !important;
 }
 
 .selector .selector-filter {
-    border-color: #e2e8f0 !important;
+    border-color: var(--border-color, #e2e8f0) !important;
+    background: var(--body-bg) !important;
 }
 
 .selector .selector-filter input:focus {
-    border-color: #6366f1 !important;
+    border-color: var(--yana-indigo-500) !important;
 }
 
 .selector-add, .selector-remove {
-    background-color: #f1f5f9 !important;
+    background-color: var(--body-bg, #f1f5f9) !important;
+    background-image: none !important; /* Remove default arrows if they are images */
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    color: var(--yana-indigo-600) !important;
+}
+
+.selector-add::before { content: "→"; }
+.selector-remove::before { content: "←"; }
+
+/* Hide default icons if they are implemented via background-position */
+.active.selector-add, .active.selector-remove {
+    opacity: 1 !important;
 }
 
 .selector-chooseall, .selector-clearall {
-    color: #6366f1 !important;
+    color: var(--yana-indigo-600) !important;
 }
 
 .selector-chooseall:hover, .selector-clearall:hover {
-    color: #4f46e5 !important;
+    color: var(--yana-indigo-500) !important;
 }
 
-/* Global active/focus state overrides for Django Admin */
+/* Global active/focus state overrides */
 .active-result {
-    background-color: #6366f1 !important;
+    background-color: var(--yana-indigo-600) !important;
 }
 
 #changelist-filter li.selected a {
-    color: #6366f1 !important;
-    border-left-color: #6366f1 !important;
+    color: var(--yana-indigo-600) !important;
+    border-left-color: var(--yana-indigo-600) !important;
 }
 
 .button.default, input[type="submit"].default, .submit-row input.default {
-    background: #6366f1 !important; /* Indigo 600 */
+    background: var(--yana-indigo-600) !important;
 }
 
 .button.default:active, input[type="submit"].default:active, .button.default:focus, input[type="submit"].default:focus, .button.default:hover, input[type="submit"].default:hover {
-    background: #4f46e5 !important; /* Indigo 700 */
+    background: var(--yana-indigo-500) !important;
 }
 
 /* Calendar and time widgets */
 .calendar td.selected a {
-    background: #6366f1 !important;
+    background: var(--yana-indigo-600) !important;
 }
 
 .calendar td.today a {
-    color: #6366f1 !important;
+    color: var(--yana-indigo-600) !important;
     font-weight: bold;
 }
 
 .calendar caption, .calendar th {
-    background: #4f46e5 !important;
+    background: var(--yana-indigo-600) !important;
 }
 
 .clockbox h2 {
-    background: #4f46e5 !important;
+    background: var(--yana-indigo-600) !important;
 }
 
 /* Tabular Inlines styling */
 .inline-group .tabular td.original p {
-    color: #6366f1 !important;
+    color: var(--yana-indigo-600) !important;
 }
 
 .inline-related h3 {
-    background: #f8fafc !important;
-    color: #1e1b4b !important;
-    border-bottom: 1px solid #e2e8f0 !important;
+    background: var(--breadcrumbs-bg) !important;
+    color: var(--body-fg) !important;
+    border-bottom: 1px solid var(--border-color, #e2e8f0) !important;
+}
+
+/* Select widgets in dark mode */
+
+[data-theme="dark"] select,
+
+[data-theme="dark"] .selector-available select,
+
+[data-theme="dark"] .selector-chosen select,
+
+[data-theme="dark"] .selector .selector-filter input {
+
+    background-color: #1e293b !important;
+
+    color: #f1f5f9 !important;
+
+    border-color: #334155 !important;
+
+}
+
+
+
+[data-theme="dark"] .selector-add,
+
+[data-theme="dark"] .selector-remove {
+
+    background-color: #334155 !important;
+
+    color: var(--yana-indigo-400) !important;
+
+}
+
+
+
+[data-theme="dark"] .selector-available h2,
+
+[data-theme="dark"] .selector-chosen h2 {
+
+    background: var(--yana-indigo-800) !important;
+
 }
