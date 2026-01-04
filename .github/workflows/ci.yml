@@ -91,6 +91,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           platforms: linux/amd64
+          provenance: false
 
   # Build ARM64 image
   build-arm64:
@@ -139,6 +140,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           platforms: linux/arm64
+          provenance: false
 
   # Create multi-arch manifest and push to registry
   publish-manifest:
@@ -169,11 +171,17 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Create and push multi-arch manifest
+        env:
+          TAGS: ${{ steps.meta.outputs.tags }}
         run: |
-          docker manifest create ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }} \
-            --amend ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}-linux-amd64 \
-            --amend ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}-linux-arm64
-          docker manifest push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}
+          echo "$TAGS" | while read -r tag; do
+            if [ -z "$tag" ]; then continue; fi
+            echo "Creating manifest for $tag"
+            docker manifest create "$tag" \
+              --amend "$tag-linux-amd64" \
+              --amend "$tag-linux-arm64"
+            docker manifest push "$tag"
+          done
 
   # Deploy to Portainer (fetch current config and redeploy)
   deploy:
