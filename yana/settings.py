@@ -80,6 +80,7 @@ BASE_URL = env("BASE_URL").rstrip("/")
 INSTALLED_APPS = [
     "dal",  # django-autocomplete-light (must be before admin)
     "dal_select2",  # django-autocomplete-light with Select2 (must be before admin)
+    "django_q",  # Background tasks (supervisor manages qcluster in Docker)
     "core",
     "django.contrib.admin",
     "django.contrib.auth",
@@ -87,7 +88,6 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "django_q",  # Background tasks (supervisor manages qcluster in Docker)
     "djangoql",
     "import_export",  # Model-level data import and export
 ]
