@@ -1,29 +1,30 @@
 # =============================================================================
 # Optimized Dockerfile for Yana - Django RSS Aggregator
-# Strategy: Multi-stage build with layer caching optimization
+# Strategy: Multi-stage build with Alpine base for minimal footprint
 # =============================================================================
 
 # Build stage - compile dependencies
-FROM python:3.13-slim-bookworm AS builder
+FROM python:3.13-alpine AS builder
 
 WORKDIR /build
 
-ENV DEBIAN_FRONTEND=noninteractive \
+ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
 # Install build dependencies for native modules (Pillow, lxml, etc.)
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apk add --no-cache \
     gcc \
     g++ \
-    libpq-dev \
+    musl-dev \
+    postgresql-dev \
     python3-dev \
-    libjpeg-dev \
-    zlib1g-dev \
+    jpeg-dev \
+    zlib-dev \
     libxml2-dev \
-    libxslt1-dev \
-    && rm -rf /var/lib/apt/lists/*
+    libxslt-dev \
+    linux-headers
 
 # Create virtual environment
 RUN python -m venv /opt/venv
@@ -39,9 +40,9 @@ RUN pip install --upgrade pip setuptools wheel && \
     pip install -r requirements.txt
 
 # =============================================================================
-# Runtime Stage - Minimal production image
+# Runtime Stage - Minimal production image (Alpine)
 # =============================================================================
-FROM python:3.13-slim-bookworm AS runtime
+FROM python:3.13-alpine AS runtime
 
 WORKDIR /app
 
@@ -57,15 +58,15 @@ ENV PYTHONUNBUFFERED=1 \
     DJANGO_SETTINGS_MODULE=yana.settings
 
 # Install runtime dependencies and tini
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apk add --no-cache \
     tini \
-    libpq5 \
-    libjpeg62-turbo \
+    bash \
+    libpq \
+    libjpeg-turbo \
     libxml2 \
-    libxslt1.1 \
+    libxslt \
     curl \
-    && rm -rf /var/lib/apt/lists/* \
-    && useradd -m -u 1000 -s /bin/bash yana \
+    && adduser -D -u 1000 yana \
     && mkdir -p /app/data /app/media /app/staticfiles \
     && chown -R yana:yana /app
 
@@ -80,7 +81,6 @@ COPY --chown=yana:yana docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # Collect static files during build (reduces startup time)
-# This runs with empty DB, so we skip migrations
 RUN python manage.py collectstatic --noinput --clear || true
 
 USER yana
