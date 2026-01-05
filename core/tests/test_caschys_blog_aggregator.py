@@ -61,6 +61,26 @@ class TestCaschysBlogAggregator(unittest.TestCase):
             self.assertEqual(len(filtered), 1)
             self.assertEqual(filtered[0]["name"], "Normal Article")
 
+    def test_filter_articles_weekly_recap(self):
+        articles = [
+            {"name": "Normal Article", "identifier": "url1", "date": None},
+            {"name": "Immer wieder sonntags KW 1: Rückblick", "identifier": "url2", "date": None},
+            {"name": "Immer wieder sonntags KW: Andere Woche", "identifier": "url3", "date": None},
+        ]
+
+        # We need to mock timezone.now() for filter_articles
+        with patch("django.utils.timezone.now") as mock_now:
+            from datetime import datetime
+
+            from django.utils import timezone
+
+            mock_now.return_value = datetime(2026, 1, 2, tzinfo=timezone.UTC)
+
+            filtered = self.aggregator.filter_articles(articles)
+
+            self.assertEqual(len(filtered), 1)
+            self.assertEqual(filtered[0]["name"], "Normal Article")
+
 
 if __name__ == "__main__":
     unittest.main()

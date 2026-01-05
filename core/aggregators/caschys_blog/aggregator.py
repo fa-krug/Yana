@@ -60,22 +60,28 @@ class CaschysBlogAggregator(FullWebsiteAggregator):
     ]
 
     def filter_articles(self, articles: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Skip articles marked as advertisements."""
+        """Skip articles marked as advertisements or weekly recaps."""
         # First use base filtering (age check)
         filtered = super().filter_articles(articles)
 
         # Get options
         skip_ads = self.feed.options.get("skip_ads", True)
 
-        if not skip_ads:
-            return filtered
-
-        # Then filter out advertisements
+        # Filter articles
         result = []
         for article in filtered:
-            if "(Anzeige)" in article.get("name", ""):
-                self.logger.info(f"Skipping advertisement article: {article.get('name')}")
+            name = article.get("name", "")
+
+            # Filter out advertisements
+            if skip_ads and "(Anzeige)" in name:
+                self.logger.info(f"Skipping advertisement article: {name}")
                 continue
+
+            # Filter out weekly recaps
+            if "Immer wieder sonntags KW" in name:
+                self.logger.info(f"Skipping weekly recap article: {name}")
+                continue
+
             result.append(article)
 
         return result
