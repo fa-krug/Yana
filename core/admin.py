@@ -54,11 +54,9 @@ def delete_all_articles(modeladmin, request, queryset):
 
 @admin.register(RedditSubreddit)
 class RedditSubredditAdmin(admin.ModelAdmin):
-    search_fields = ["display_name"]
-
-    def has_module_permission(self, request):
-        """Hide from admin index."""
-        return False
+    list_display = ["display_name", "title", "subscribers", "created_at"]
+    search_fields = ["display_name", "title"]
+    readonly_fields = ["created_at"]
 
     def get_search_results(self, request, queryset, search_term):
         queryset, use_distinct = super().get_search_results(request, queryset, search_term)
@@ -82,11 +80,9 @@ class RedditSubredditAdmin(admin.ModelAdmin):
 
 @admin.register(YouTubeChannel)
 class YouTubeChannelAdmin(admin.ModelAdmin):
-    search_fields = ["title", "channel_id"]
-
-    def has_module_permission(self, request):
-        """Hide from admin index."""
-        return False
+    list_display = ["title", "handle", "channel_id", "created_at"]
+    search_fields = ["title", "handle", "channel_id"]
+    readonly_fields = ["created_at"]
 
     def get_search_results(self, request, queryset, search_term):
         queryset, use_distinct = super().get_search_results(request, queryset, search_term)
