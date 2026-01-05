@@ -20,11 +20,18 @@ class YouTubeAggregator(BaseAggregator):
     YouTube aggregator using YouTube Data API v3.
     """
 
+    identifier_field = "youtube_channel"
+
     def __init__(self, feed):
         super().__init__(feed)
         self.channel_icon_url: Optional[str] = None
         self._client: Optional[YouTubeClient] = None
         self._channel_id: Optional[str] = None
+
+    @classmethod
+    def get_identifier_from_related(cls, related_obj: Any) -> str:
+        """Extract channel ID."""
+        return getattr(related_obj, "channel_id", str(related_obj))
 
     def get_aggregator_type(self) -> str:
         return "youtube"

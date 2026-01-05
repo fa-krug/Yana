@@ -207,11 +207,12 @@ class FeedAdmin(YanaDjangoQLSearchMixin, ImportExportModelAdmin):
             "aggregator_info",
         ]
 
-        if obj.aggregator == "reddit":
-            fields.append("reddit_subreddit")
-        elif obj.aggregator == "youtube":
-            fields.append("youtube_channel")
-        else:
+        try:
+            from .aggregators.registry import AggregatorRegistry
+
+            agg_class = AggregatorRegistry.get(obj.aggregator)
+            fields.append(agg_class.identifier_field)
+        except Exception:
             fields.append("identifier")
 
         fields.extend(["icon", "enabled"])

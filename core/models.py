@@ -74,10 +74,19 @@ class Feed(models.Model):
 
     def save(self, *args, **kwargs):
         """Sync identifier from related models if applicable."""
-        if self.aggregator == "reddit" and self.reddit_subreddit:
-            self.identifier = self.reddit_subreddit.display_name
-        elif self.aggregator == "youtube" and self.youtube_channel:
-            self.identifier = self.youtube_channel.channel_id
+        try:
+            from .aggregators.registry import AggregatorRegistry
+
+            agg_class = AggregatorRegistry.get(self.aggregator)
+
+            # If the aggregator uses a specialized field, sync the string identifier
+            if agg_class.identifier_field != "identifier":
+                related_obj = getattr(self, agg_class.identifier_field)
+                if related_obj:
+                    self.identifier = agg_class.get_identifier_from_related(related_obj)
+        except Exception:
+            # Fallback for initialization or unknown aggregators
+            pass
 
         super().save(*args, **kwargs)
 

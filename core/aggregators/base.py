@@ -14,6 +14,9 @@ from .services.header_element.context import HeaderElementData
 class BaseAggregator(ABC):
     """Base class for all aggregators using Template Method pattern."""
 
+    # The model field name used for identifier input (e.g. "identifier", "reddit_subreddit")
+    identifier_field = "identifier"
+
     # Set to True if the aggregator implements dynamic identifier search
     # (i.e. uses the query parameter in get_identifier_choices)
     supports_identifier_search = False
@@ -29,6 +32,14 @@ class BaseAggregator(ABC):
         self.identifier = feed.identifier
         self.daily_limit = feed.daily_limit
         self.logger = logging.getLogger(f"aggregator.{self.get_aggregator_type()}")
+
+    @classmethod
+    def get_identifier_from_related(cls, related_obj: Any) -> str:
+        """
+        Extract the identifier string from a related model object.
+        Default implementation returns str(related_obj).
+        """
+        return str(related_obj)
 
     @abstractmethod
     def aggregate(self) -> List[Dict[str, Any]]:

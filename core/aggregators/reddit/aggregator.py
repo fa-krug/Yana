@@ -33,12 +33,18 @@ logger = logging.getLogger(__name__)
 class RedditAggregator(BaseAggregator):
     """Aggregator for Reddit subreddits using Reddit's OAuth2 API."""
 
+    identifier_field = "reddit_subreddit"
     supports_identifier_search = True
 
     def __init__(self, feed):
         """Initialize Reddit aggregator."""
         super().__init__(feed)
         self.subreddit_icon_url: Optional[str] = None
+
+    @classmethod
+    def get_identifier_from_related(cls, related_obj: Any) -> str:
+        """Extract subreddit display name."""
+        return getattr(related_obj, "display_name", str(related_obj))
 
     def get_source_url(self) -> str:
         """Return the Reddit subreddit URL for GReader API."""
