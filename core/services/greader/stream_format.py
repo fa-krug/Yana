@@ -9,8 +9,6 @@ from datetime import datetime
 from typing import Any, Optional
 from urllib.parse import urlparse
 
-from django.urls import reverse
-
 from core.models import Article, Feed
 
 logger = logging.getLogger(__name__)
@@ -196,27 +194,6 @@ def get_site_url(feed: Feed) -> str:
     return ""
 
 
-def get_meta_url(feed: Feed, request) -> str:
-    """Get the metadata page URL for a feed.
-
-    Args:
-        feed: Feed model instance
-        request: Django request object
-
-    Returns:
-        Absolute URL to the feed metadata page
-    """
-    try:
-        path = reverse("feed_meta")
-        url = f"{path}?id={feed.id}"
-        if request:
-            return request.build_absolute_uri(url)
-        return url
-    except Exception as e:
-        logger.error(f"Failed to generate meta URL for feed {feed.id}: {e}")
-        return ""
-
-
 def format_subscription(feed: Feed, request, groups: list[dict] | None = None) -> dict[str, Any]:
     """Format a Feed as Google Reader subscription object.
 
@@ -231,16 +208,16 @@ def format_subscription(feed: Feed, request, groups: list[dict] | None = None) -
     if groups is None:
         groups = []
 
-    # Use meta page as the feed URL and HTML URL
-    # This ensures clients open the meta page which contains the iframe
-    meta_url = get_meta_url(feed, request)
+    # Use original feed URL and website URL
+    feed_url = get_feed_source_url(feed)
+    html_url = get_site_url(feed) or feed_url
 
     return {
         "id": f"feed/{feed.id}",
         "title": feed.name,
         "categories": groups,
-        "url": meta_url,
-        "htmlUrl": meta_url,
+        "url": feed_url,
+        "htmlUrl": html_url,
     }
 
 
@@ -298,11 +275,13 @@ def format_stream_item(
         item["canonical"] = [{"href": article.identifier}]
 
     # Add origin (feed info)
-    meta_url = get_meta_url(feed, request)
+    feed_url = get_feed_source_url(feed)
+    html_url = get_site_url(feed) or feed_url
+
     item["origin"] = {
         "streamId": f"feed/{feed.id}",
         "title": feed.name,
-        "htmlUrl": meta_url,
+        "htmlUrl": html_url,
     }
 
     # Add summary (content)
