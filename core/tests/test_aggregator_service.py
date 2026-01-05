@@ -23,7 +23,6 @@ class TestAggregatorService:
                 "author": "Author",
             }
         ]
-        mock_aggregator.collect_feed_icon.return_value = None
         mock_get_agg.return_value = mock_aggregator
 
         # Act
@@ -60,7 +59,6 @@ class TestAggregatorService:
                 "content": "different clean",
             }
         ]
-        mock_aggregator.collect_feed_icon.return_value = None
         mock_get_agg.return_value = mock_aggregator
 
         # Act
@@ -82,7 +80,6 @@ class TestAggregatorService:
         mock_aggregator.aggregate.return_value = [
             {"name": "Article with Image", "identifier": "img-1", "header_data": mock_header_data}
         ]
-        mock_aggregator.collect_feed_icon.return_value = None
         mock_get_agg.return_value = mock_aggregator
 
         AggregatorService.trigger_by_feed_id(rss_feed.id)
@@ -91,24 +88,6 @@ class TestAggregatorService:
         args, kwargs = mock_save_img.call_args
         assert args[1] == b"fake_image"
         assert args[2] == "image/jpeg"
-
-    @patch("core.services.aggregator_service.get_aggregator")
-    @patch("core.aggregators.services.feed_icon.file_handler.FeedIconFileHandler.save_icon_to_feed")
-    @patch("core.aggregators.services.image_extraction.fetcher.fetch_single_image")
-    def test_trigger_by_feed_id_feed_icon_update(
-        self, mock_fetch, mock_save_icon, mock_get_agg, rss_feed
-    ):
-        mock_aggregator = MagicMock()
-        mock_aggregator.aggregate.return_value = []
-        mock_aggregator.collect_feed_icon.return_value = "https://example.com/icon.png"
-        mock_get_agg.return_value = mock_aggregator
-
-        mock_fetch.return_value = {"imageData": b"icon_data", "contentType": "image/png"}
-
-        AggregatorService.trigger_by_feed_id(rss_feed.id)
-
-        assert mock_fetch.called
-        assert mock_save_icon.called
 
     @patch("core.services.aggregator_service.get_aggregator")
     def test_trigger_by_feed_id_aggregator_exception(self, mock_get_agg, rss_feed):

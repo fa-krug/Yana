@@ -52,7 +52,6 @@ class Feed(models.Model):
     youtube_channel = models.ForeignKey(
         "YouTubeChannel", on_delete=models.SET_NULL, null=True, blank=True
     )
-    icon = models.ImageField(upload_to="feed_icons/", blank=True, null=True)
     options = models.JSONField(
         default=dict, blank=True, help_text="Aggregator-specific configuration"
     )

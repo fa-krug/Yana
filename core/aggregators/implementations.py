@@ -28,8 +28,9 @@ class FeedContentAggregator(RssAggregator):
         """
         articles = []
         entries = source_data.get("entries", [])
+        limit = self.get_current_run_limit()
 
-        for entry in entries[: self.daily_limit]:
+        for entry in entries[:limit]:
             # Extract content from feedparser entry
             # feedparser provides content as a list of dicts with 'value' field
             content = ""

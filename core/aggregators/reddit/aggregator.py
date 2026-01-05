@@ -39,7 +39,6 @@ class RedditAggregator(BaseAggregator):
     def __init__(self, feed):
         """Initialize Reddit aggregator."""
         super().__init__(feed)
-        self.subreddit_icon_url: Optional[str] = None
 
     @classmethod
     def get_identifier_from_related(cls, related_obj: Any) -> str:
@@ -176,9 +175,19 @@ class RedditAggregator(BaseAggregator):
     def aggregate(self) -> List[Dict[str, Any]]:
         """Implement template method pattern flow."""
         self.validate()
-        source_data = self.fetch_source_data(self.daily_limit)
+        limit = self.get_current_run_limit()
+        if limit == 0:
+            return []
+
+        source_data = self.fetch_source_data(limit)
         articles = self.parse_to_raw_articles(source_data)
         articles = self.filter_articles(articles)
+
+        # Respect daily_limit after filtering
+        if len(articles) > limit:
+            logger.info(f"Limiting Reddit articles from {len(articles)} to {limit}")
+            articles = articles[:limit]
+
         articles = self.enrich_articles(articles)
         articles = self.finalize_articles(articles)
         return articles
@@ -556,10 +565,6 @@ class RedditAggregator(BaseAggregator):
             finalized.append(article)
 
         return finalized
-
-    def collect_feed_icon(self) -> Optional[str]:
-        """Return the subreddit icon URL."""
-        return self.subreddit_icon_url
 
     def fetch_article_content(self, url: str) -> str:
         """

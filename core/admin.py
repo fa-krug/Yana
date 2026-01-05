@@ -128,7 +128,7 @@ class FeedAdmin(YanaDjangoQLSearchMixin, ImportExportModelAdmin):
 
     form = FeedAdminForm
 
-    list_display = ["name", "aggregator", "enabled", "user", "group", "icon", "created_at"]
+    list_display = ["name", "aggregator", "enabled", "user", "group", "created_at"]
     list_filter = ["aggregator", "enabled", "user", "group", "created_at"]
     search_fields = ["name", "identifier", "user__username"]
     readonly_fields = ["created_at", "updated_at"]
@@ -162,7 +162,7 @@ class FeedAdmin(YanaDjangoQLSearchMixin, ImportExportModelAdmin):
         except Exception:
             fields.append("identifier")
 
-        fields.extend(["icon", "enabled"])
+        fields.extend(["enabled"])
 
         # DYNAMIC CONFIG FIELDS
         config_field_names = []

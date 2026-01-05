@@ -24,7 +24,6 @@ class YouTubeAggregator(BaseAggregator):
 
     def __init__(self, feed):
         super().__init__(feed)
-        self.channel_icon_url: Optional[str] = None
         self._client: Optional[YouTubeClient] = None
         self._channel_id: Optional[str] = None
 
@@ -210,7 +209,6 @@ class YouTubeAggregator(BaseAggregator):
 
         # Fetch channel metadata (for icon and uploads playlist)
         channel_data = client.fetch_channel_data(self._channel_id)
-        self.channel_icon_url = channel_data.get("channel_icon_url")
 
         # Back-populate metadata to local YouTubeChannel model if attached
         if self.feed and self.feed.youtube_channel:
@@ -369,10 +367,6 @@ class YouTubeAggregator(BaseAggregator):
 
         return finalized
 
-    def collect_feed_icon(self) -> Optional[str]:
-        """Return the YouTube channel icon URL."""
-        return self.channel_icon_url
-
     def fetch_article_content(self, url: str) -> str:
         """Fetch video details from YouTube API."""
         from ..utils.youtube import extract_youtube_video_id
@@ -441,7 +435,11 @@ class YouTubeAggregator(BaseAggregator):
         """Implementation of the aggregation flow."""
         try:
             self.validate()
-            source_data = self.fetch_source_data(self.daily_limit)
+            limit = self.get_current_run_limit()
+            if limit == 0:
+                return []
+
+            source_data = self.fetch_source_data(limit)
             articles = self.parse_to_raw_articles(source_data)
             articles = self.filter_articles(articles)
             articles = self.enrich_articles(articles)

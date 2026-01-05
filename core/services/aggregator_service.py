@@ -58,21 +58,6 @@ class AggregatorService:
 
             articles_data = aggregator.aggregate()
 
-            # Update feed icon if available
-            try:
-                feed_icon_url = aggregator.collect_feed_icon()
-                if feed_icon_url:
-                    from ..aggregators.services.feed_icon.file_handler import FeedIconFileHandler
-                    from ..aggregators.services.image_extraction.fetcher import fetch_single_image
-
-                    image_result = fetch_single_image(feed_icon_url)
-                    if image_result:
-                        FeedIconFileHandler.save_icon_to_feed(
-                            feed, image_result["imageData"], image_result["contentType"]
-                        )
-            except Exception as e:
-                print(f"Warning: Failed to update feed icon: {e}")
-
             # Save articles to database
             created_count = 0
             for article_data in articles_data:

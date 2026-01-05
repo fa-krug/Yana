@@ -1,1 +1,0 @@
-"""Feed icon services."""

@@ -58,8 +58,9 @@ class PodcastAggregator(RssAggregator):
         """Parse RSS feed items, extracting podcast-specific metadata."""
         articles = []
         entries = source_data.get("entries", [])
+        limit = self.get_current_run_limit()
 
-        for entry in entries[: self.daily_limit]:
+        for entry in entries[:limit]:
             # Extract audio enclosure
             media_url = ""
             media_type = "audio/mpeg"

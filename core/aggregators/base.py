@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import math
 from abc import ABC, abstractmethod
 from datetime import timedelta
 from typing import Any, Dict, List, Optional
@@ -110,6 +111,72 @@ class BaseAggregator(ABC):
                 return str(label)
 
         return identifier
+
+    def get_collected_today_count(self) -> int:
+        """Get the number of articles collected today for this feed."""
+        if not self.feed:
+            return 0
+        from core.models import Article
+
+        today = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        return Article.objects.filter(feed=self.feed, created_at__gte=today).count()
+
+    def get_current_run_limit(self) -> int:
+        """
+        Calculate the article limit for the current run based on daily limit,
+        already collected count, and time of day.
+
+        Logic:
+        1. Calculate target quota for the current time of day (linear progression).
+        2. In the morning, we allow collecting more to fill the quota.
+        3. The more is left to reach the daily limit, the more we allow to collect in this run.
+        """
+        collected = self.get_collected_today_count()
+        if collected >= self.daily_limit:
+            self.logger.info(
+                f"Daily limit of {self.daily_limit} reached ({collected} collected today)."
+            )
+            return 0
+
+        now = timezone.now()
+        start_of_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        seconds_since_start = (now - start_of_day).total_seconds()
+        total_seconds_in_day = 24 * 3600
+
+        # Linear target quota based on time of day
+        # e.g. at 12:00 (midday), target is 50% of daily limit
+        # Use ceil to ensure we can reach the full limit by end of day even for small limits
+        target_quota = math.ceil(self.daily_limit * (seconds_since_start / total_seconds_in_day))
+
+        # Ensure we always allow at least a minimum catch-up if we are behind target
+        # or if it's very early in the morning.
+        remaining_total = self.daily_limit - collected
+
+        # "The more left, the more it should collect"
+        # We calculate a run limit that tries to bridge the gap but doesn't necessarily
+        # take everything at once unless we are far behind.
+        gap_to_target = max(0, target_quota - collected)
+
+        # Base allowance: at least some articles even if we are on target
+        base_allowance = max(1, int(self.daily_limit / 48))
+
+        # Proportional allowance: the more is left, the more we collect (e.g. 20% of remaining)
+        proportional_allowance = int(remaining_total * 0.2)
+
+        run_limit = max(base_allowance, gap_to_target, proportional_allowance)
+
+        # In the morning (e.g. before 10 AM), we are more aggressive (e.g. 40% of remaining)
+        if now.hour < 10:
+            run_limit = max(run_limit, int(remaining_total * 0.4))
+
+        run_limit = min(run_limit, remaining_total)
+
+        self.logger.info(
+            f"Adaptive Daily Limit: {collected}/{self.daily_limit} collected today. "
+            f"Target at {now.strftime('%H:%M')}: {target_quota}. "
+            f"Run limit: {run_limit}"
+        )
+        return run_limit
 
     @abstractmethod
     def fetch_source_data(self, limit: Optional[int] = None) -> Any:
@@ -350,12 +417,3 @@ class BaseAggregator(ABC):
         Override in subclasses to clean/format HTML.
         """
         return content
-
-    def collect_feed_icon(self) -> Optional[str]:
-        """
-        Collect feed icon URL during aggregation.
-
-        Returns:
-            Icon URL or None if no icon available
-        """
-        return None
