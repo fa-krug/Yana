@@ -34,6 +34,7 @@ class YanaDjangoQLSearchMixin(DjangoQLSearchMixin):
 admin.site.site_header = "Yana"
 admin.site.site_title = "Yana Admin"
 admin.site.index_title = "Welcome to Yana"
+admin.site.site_url = None
 
 
 @admin.action(description="Clear raw article content for selected feeds")
