@@ -45,7 +45,6 @@ class FeedAdminForm(forms.ModelForm):
         Save the feed and try to fetch the icon if missing or if identifier changed.
         """
         from .aggregators import get_aggregator
-        from .aggregators.registry import AggregatorRegistry
 
         instance = super().save(commit=False)
 
@@ -57,21 +56,8 @@ class FeedAdminForm(forms.ModelForm):
             except Exception:
                 pass
 
-        # Check if we should try to fetch the icon
-        should_fetch_icon = False
-        active_iden_field = "identifier"
-        try:
-            agg_class = AggregatorRegistry.get(instance.aggregator)
-            active_iden_field = agg_class.identifier_field
-        except Exception:
-            pass
-
-        if (
-            not instance.icon
-            or active_iden_field in self.changed_data
-            or "aggregator" in self.changed_data
-        ):
-            should_fetch_icon = True
+        # Always try to fetch the icon on save
+        should_fetch_icon = True
 
         if commit:
             instance.save()
