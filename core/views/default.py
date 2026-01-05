@@ -72,7 +72,7 @@ def youtube_proxy_view(request):
 
 @xframe_options_exempt
 @require_http_methods(["GET"])
-def meta_view(request):
+def feed_proxy_view(request):
     """
     Provide metadata for a feed as an HTML page.
 
@@ -110,13 +110,13 @@ def meta_view(request):
         )
 
     # Get icon URL
-    icon_url = "/static/core/img/favicon.svg"  # Default
-    alternate_icon_url = "/static/core/img/favicon.ico"  # Default
+    icon_url = "/static/core/img/icon.png"
+    apple_touch_icon_url = "/static/core/img/apple-touch-icon.png"
 
     if feed.icon:
         full_icon_url = request.build_absolute_uri(feed.icon.url)
         icon_url = full_icon_url
-        alternate_icon_url = full_icon_url
+        apple_touch_icon_url = full_icon_url
 
     # Get source URL from aggregator
     try:
@@ -133,7 +133,7 @@ def meta_view(request):
     <meta name="referrer" content="no-referrer-when-downgrade">
     <title>{feed.name}</title>
     <link rel="icon" href="{icon_url}">
-    <link rel="alternate icon" href="{alternate_icon_url}">
+    <link rel="apple-touch-icon" href="{apple_touch_icon_url}">
     <style>
         * {{
             margin: 0;
@@ -145,7 +145,7 @@ def meta_view(request):
             width: 100%;
             height: 100%;
             overflow: hidden;
-            background: #f8f9fa;
+            background: #000;
         }}
 
         .meta-container {{
@@ -168,7 +168,7 @@ def meta_view(request):
             align-items: center;
             justify-content: center;
             height: 100%;
-            color: #6c757d;
+            color: #fff;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             padding: 40px;
             text-align: center;
@@ -193,8 +193,8 @@ def _error_response(message):
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>YouTube Error - Yana</title>
-    <link rel="icon" type="image/svg+xml" href="/static/core/img/favicon.svg">
-    <link rel="alternate icon" type="image/x-icon" href="/static/core/img/favicon.ico">
+    <link rel="icon" type="image/png" href="/static/core/img/icon.png">
+    <link rel="apple-touch-icon" href="/static/core/img/apple-touch-icon.png">
     <style>
         * {{ margin: 0; padding: 0; box-sizing: border-box; }}
         html, body {{ width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: #000; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }}
@@ -222,8 +222,8 @@ def _generate_embed_html(embed_url):
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="referrer" content="strict-origin-when-cross-origin">
     <title>YouTube Video - Yana</title>
-    <link rel="icon" type="image/svg+xml" href="/static/core/img/favicon.svg">
-    <link rel="alternate icon" type="image/x-icon" href="/static/core/img/favicon.ico">
+    <link rel="icon" type="image/png" href="/static/core/img/icon.png">
+    <link rel="apple-touch-icon" href="/static/core/img/apple-touch-icon.png">
     <style>
         * {{
             margin: 0;

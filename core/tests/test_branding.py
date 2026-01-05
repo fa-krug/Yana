@@ -11,7 +11,8 @@ class BrandingTestCase(TestCase):
         icons = [
             "core/img/logo-wordmark.png",
             "core/img/logo-icon-only.png",
-            "core/img/favicon.ico",
+            "core/img/icon.png",
+            "core/img/apple-touch-icon.png",
         ]
         for icon_path in icons:
             self.assertIsNotNone(
@@ -22,8 +23,8 @@ class BrandingTestCase(TestCase):
         """Verify that the admin login page contains the logo."""
         response = self.client.get(reverse("admin:login"))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "logo-icon-only.png")
-        self.assertContains(response, "favicon.ico")
+        self.assertContains(response, "icon.png")
+        self.assertContains(response, "apple-touch-icon.png")
 
     def test_admin_base_branding(self):
         """Verify that the admin base template contains the wordmark."""
@@ -44,4 +45,4 @@ class BrandingTestCase(TestCase):
         self.assertEqual(response.status_code, 200)
         # We now expect plaintext "Yana" instead of the image
         self.assertContains(response, "Yana")
-        self.assertContains(response, "favicon.ico")
+        self.assertContains(response, "apple-touch-icon.png")

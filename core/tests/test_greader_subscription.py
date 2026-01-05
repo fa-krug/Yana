@@ -52,7 +52,7 @@ class TestGReaderSubscription:
         sub = data["subscriptions"][0]
         assert sub["id"] == f"feed/{feed.id}"
         assert sub["title"] == "Test Feed"
-        assert f"/api/meta?id={feed.id}" in sub["url"]
+        assert f"/api/feed-proxy?id={feed.id}" in sub["url"]
 
     def test_subscription_list_with_group(self, client, user, auth_headers, subscription_list_url):
         group = FeedGroup.objects.create(name="Tech", user=user)
@@ -94,7 +94,7 @@ class TestGReaderSubscription:
         # Check for auto-added category for Reddit
         category_ids = [c["id"] for c in sub["categories"]]
         assert "user/-/label/Reddit" in category_ids
-        assert "/api/meta" in sub["url"]
+        assert "/api/feed-proxy" in sub["url"]
 
     def test_subscription_edit_unsubscribe(self, client, user, auth_headers):
         feed = Feed.objects.create(
