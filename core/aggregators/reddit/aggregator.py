@@ -103,6 +103,36 @@ class RedditAggregator(BaseAggregator):
             return []
 
     @classmethod
+    def update_search_results(cls, query: str, user: Any) -> None:
+        """Search subreddits and update local RedditSubreddit models."""
+        import re
+
+        from core.models import RedditSubreddit
+
+        choices = cls.get_identifier_choices(query=query, user=user)
+
+        # Format: "r/{display_name}: {title} ({subscribers:,} subs)"
+        pattern = re.compile(r"^r/[^:]+:\s*(?P<title>.*)\s+\((?P<subs>[\d,]+)\s+subs\)$")
+
+        for value, label in choices:
+            title = ""
+            subscribers = 0
+            match = pattern.match(label)
+            if match:
+                title = match.group("title")
+                subs_str = match.group("subs").replace(",", "")
+                if subs_str.isdigit():
+                    subscribers = int(subs_str)
+
+            RedditSubreddit.objects.update_or_create(
+                display_name=value,
+                defaults={
+                    "title": title[:255],
+                    "subscribers": subscribers,
+                },
+            )
+
+    @classmethod
     def get_configuration_fields(cls) -> Dict[str, Any]:
         """Get Reddit configuration fields."""
         from django import forms

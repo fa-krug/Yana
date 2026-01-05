@@ -89,6 +89,28 @@ class YouTubeAggregator(BaseAggregator):
             return []
 
     @classmethod
+    def update_search_results(cls, query: str, user: Any) -> None:
+        """Search YouTube channels and update local YouTubeChannel models."""
+        from core.models import YouTubeChannel
+
+        choices = cls.get_identifier_choices(query=query, user=user)
+
+        # Format: "{title} ({channel_id})"
+        for value, label in choices:
+            suffix = f" ({value})"
+            title = label
+            if label.endswith(suffix):
+                title = label[: -len(suffix)]
+
+            YouTubeChannel.objects.update_or_create(
+                channel_id=value,
+                defaults={
+                    "title": title[:255],
+                    "handle": value if value.startswith("@") else "",
+                },
+            )
+
+    @classmethod
     def get_configuration_fields(cls) -> Dict[str, Any]:
         """Get YouTube configuration fields."""
         from django import forms

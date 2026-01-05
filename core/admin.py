@@ -65,47 +65,16 @@ class RedditSubredditAdmin(admin.ModelAdmin):
 
         if search_term and len(search_term) >= 2:
             try:
-                import re
-
                 from .aggregators.reddit.aggregator import RedditAggregator
 
-                # We reuse the existing logic which does the API call
-                choices = RedditAggregator.get_identifier_choices(
-                    query=search_term, user=request.user
-                )
-
-                # Format: "r/{display_name}: {title} ({subscribers:,} subs)"
-                # Example: "r/python: Python (1,234,567 subs)"
-                pattern = re.compile(r"^r/[^:]+:\s*(?P<title>.*)\s+\((?P<subs>[\d,]+)\s+subs\)$")
-
-                for value, label in choices:
-                    title = ""
-                    subscribers = 0
-
-                    match = pattern.match(label)
-                    if match:
-                        title = match.group("title")
-                        subs_str = match.group("subs").replace(",", "")
-                        if subs_str.isdigit():
-                            subscribers = int(subs_str)
-
-                    # Create or Update with parsed info
-                    RedditSubreddit.objects.update_or_create(
-                        display_name=value,
-                        defaults={
-                            "title": title[:255],  # Truncate if necessary
-                            "subscribers": subscribers,
-                        },
-                    )
+                if hasattr(RedditAggregator, "update_search_results"):
+                    RedditAggregator.update_search_results(search_term, request.user)
 
                 queryset, _ = super().get_search_results(
                     request, self.model.objects.all(), search_term
                 )
 
             except Exception as e:
-                import traceback
-
-                traceback.print_exc()
                 print(f"Error searching Reddit: {e}")
 
         return queryset, use_distinct
@@ -126,27 +95,8 @@ class YouTubeChannelAdmin(admin.ModelAdmin):
             try:
                 from .aggregators.youtube.aggregator import YouTubeAggregator
 
-                choices = YouTubeAggregator.get_identifier_choices(
-                    query=search_term, user=request.user
-                )
-
-                # Format: "{title} ({channel_id})"
-                # We need to be careful if title has parens, so we verify the ID at the end match
-                for value, label in choices:
-                    # value is the channel_id
-                    # label ends with " ({value})"
-                    suffix = f" ({value})"
-                    title = label
-                    if label.endswith(suffix):
-                        title = label[: -len(suffix)]
-
-                    YouTubeChannel.objects.update_or_create(
-                        channel_id=value,
-                        defaults={
-                            "title": title[:255],
-                            "handle": value if value.startswith("@") else "",
-                        },
-                    )
+                if hasattr(YouTubeAggregator, "update_search_results"):
+                    YouTubeAggregator.update_search_results(search_term, request.user)
 
                 queryset, _ = super().get_search_results(
                     request, self.model.objects.all(), search_term
@@ -326,16 +276,8 @@ class FeedAdmin(YanaDjangoQLSearchMixin, ImportExportModelAdmin):
             try:
                 from .aggregators.registry import AggregatorRegistry
 
-                agg_class = AggregatorRegistry.get(obj.aggregator)
-                config_fields = agg_class.get_configuration_fields()
-
-                # Extract values for config fields
-                options = obj.options or {}
-                for field_name in config_fields:
-                    if field_name in form.cleaned_data:
-                        options[field_name] = form.cleaned_data[field_name]
-
-                obj.options = options
+                aggregator = AggregatorRegistry.get(obj.aggregator)(obj)
+                aggregator.save_options(form.cleaned_data)
             except Exception as e:
                 print(f"Error saving aggregator options: {e}")
 
