@@ -45,6 +45,13 @@ class Feed(models.Model):
     group = models.ForeignKey(
         FeedGroup, on_delete=models.SET_NULL, null=True, blank=True, related_name="feeds"
     )
+    # Autocomplete relationships
+    reddit_subreddit = models.ForeignKey(
+        "RedditSubreddit", on_delete=models.SET_NULL, null=True, blank=True
+    )
+    youtube_channel = models.ForeignKey(
+        "YouTubeChannel", on_delete=models.SET_NULL, null=True, blank=True
+    )
     icon = models.ImageField(upload_to="feed_icons/", blank=True, null=True)
     options = models.JSONField(
         default=dict, blank=True, help_text="Aggregator-specific configuration"
@@ -64,6 +71,15 @@ class Feed(models.Model):
 
     def __str__(self):
         return self.name
+
+    def save(self, *args, **kwargs):
+        """Sync identifier from related models if applicable."""
+        if self.aggregator == "reddit" and self.reddit_subreddit:
+            self.identifier = self.reddit_subreddit.display_name
+        elif self.aggregator == "youtube" and self.youtube_channel:
+            self.identifier = self.youtube_channel.channel_id
+
+        super().save(*args, **kwargs)
 
 
 class Article(models.Model):
@@ -142,6 +158,37 @@ class UserSettings(models.Model):
 
     def __str__(self):
         return f"Settings for {self.user.username}"
+
+
+class RedditSubreddit(models.Model):
+    """Reddit subreddit model for autocomplete."""
+
+    display_name = models.CharField(max_length=255, unique=True)
+    title = models.CharField(max_length=255, blank=True)
+    subscribers = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["display_name"]
+        indexes = [models.Index(fields=["display_name"])]
+
+    def __str__(self):
+        return f"r/{self.display_name} ({self.subscribers:,} subs)"
+
+
+class YouTubeChannel(models.Model):
+    """YouTube channel model for autocomplete."""
+
+    channel_id = models.CharField(max_length=255, unique=True)
+    title = models.CharField(max_length=255)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["title"]
+        indexes = [models.Index(fields=["title"])]
+
+    def __str__(self):
+        return f"@{self.title}"
 
 
 class GReaderAuthToken(models.Model):

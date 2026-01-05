@@ -114,6 +114,8 @@ class ArticleService:
                 "feed_name": feed.name,
                 "aggregator_type": feed.aggregator,
                 "message": f"Article reloaded ({len(raw_html)} bytes fetched, {len(processed_content)} bytes processed)",
+                "fetch_size": len(raw_html),
+                "process_size": len(processed_content),
             }
 
         except ObjectDoesNotExist as e:

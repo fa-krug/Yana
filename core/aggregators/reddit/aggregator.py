@@ -123,6 +123,18 @@ class RedditAggregator(BaseAggregator):
                 help_text="Include the post image/thumbnail at the top of the article.",
                 required=False,
             ),
+            "subreddit_sort": forms.ChoiceField(
+                choices=[
+                    ("hot", "Hot"),
+                    ("new", "New"),
+                    ("top", "Top"),
+                    ("rising", "Rising"),
+                ],
+                initial="hot",
+                label="Sort Order",
+                help_text="Which posts to fetch (Hot, New, Top, Rising).",
+                required=False,
+            ),
         }
 
     def aggregate(self) -> List[Dict[str, Any]]:
@@ -210,7 +222,7 @@ class RedditAggregator(BaseAggregator):
         user_id = self.feed.user.id
 
         # Get sort method (default: hot)
-        sort_by = "hot"
+        sort_by = self.feed.options.get("subreddit_sort", "hot")
 
         # Fetch subreddit info to get icon for feed thumbnail
         subreddit_info = fetch_subreddit_info(subreddit, user_id)

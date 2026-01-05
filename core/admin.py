@@ -17,7 +17,7 @@ from djangoql.admin import DjangoQLSearchMixin
 from import_export.admin import ImportExportMixin, ImportExportModelAdmin
 
 from .forms import FeedAdminForm
-from .models import Article, Feed, FeedGroup, UserSettings
+from .models import Article, Feed, FeedGroup, RedditSubreddit, UserSettings, YouTubeChannel
 from .services import AggregatorService, ArticleService
 
 
@@ -50,6 +50,108 @@ def delete_all_articles(modeladmin, request, queryset):
 
     count, _ = Article.objects.filter(feed__in=queryset).delete()
     modeladmin.message_user(request, f"Deleted {count} articles from selected feeds.")
+
+
+@admin.register(RedditSubreddit)
+class RedditSubredditAdmin(admin.ModelAdmin):
+    search_fields = ["display_name"]
+
+    def has_module_permission(self, request):
+        """Hide from admin index."""
+        return False
+
+    def get_search_results(self, request, queryset, search_term):
+        queryset, use_distinct = super().get_search_results(request, queryset, search_term)
+
+        if search_term and len(search_term) >= 2:
+            try:
+                import re
+
+                from .aggregators.reddit.aggregator import RedditAggregator
+
+                # We reuse the existing logic which does the API call
+                choices = RedditAggregator.get_identifier_choices(
+                    query=search_term, user=request.user
+                )
+
+                # Format: "r/{display_name}: {title} ({subscribers:,} subs)"
+                # Example: "r/python: Python (1,234,567 subs)"
+                pattern = re.compile(r"^r/[^:]+:\s*(?P<title>.*)\s+\((?P<subs>[\d,]+)\s+subs\)$")
+
+                for value, label in choices:
+                    title = ""
+                    subscribers = 0
+
+                    match = pattern.match(label)
+                    if match:
+                        title = match.group("title")
+                        subs_str = match.group("subs").replace(",", "")
+                        if subs_str.isdigit():
+                            subscribers = int(subs_str)
+
+                    # Create or Update with parsed info
+                    RedditSubreddit.objects.update_or_create(
+                        display_name=value,
+                        defaults={
+                            "title": title[:255],  # Truncate if necessary
+                            "subscribers": subscribers,
+                        },
+                    )
+
+                queryset, _ = super().get_search_results(
+                    request, self.model.objects.all(), search_term
+                )
+
+            except Exception as e:
+                import traceback
+
+                traceback.print_exc()
+                print(f"Error searching Reddit: {e}")
+
+        return queryset, use_distinct
+
+
+@admin.register(YouTubeChannel)
+class YouTubeChannelAdmin(admin.ModelAdmin):
+    search_fields = ["title", "channel_id"]
+
+    def has_module_permission(self, request):
+        """Hide from admin index."""
+        return False
+
+    def get_search_results(self, request, queryset, search_term):
+        queryset, use_distinct = super().get_search_results(request, queryset, search_term)
+
+        if search_term and len(search_term) >= 2:
+            try:
+                from .aggregators.youtube.aggregator import YouTubeAggregator
+
+                choices = YouTubeAggregator.get_identifier_choices(
+                    query=search_term, user=request.user
+                )
+
+                # Format: "{title} ({channel_id})"
+                # We need to be careful if title has parens, so we verify the ID at the end match
+                for value, label in choices:
+                    # value is the channel_id
+                    # label ends with " ({value})"
+                    suffix = f" ({value})"
+                    title = label
+                    if label.endswith(suffix):
+                        title = label[: -len(suffix)]
+
+                    YouTubeChannel.objects.update_or_create(
+                        channel_id=value, defaults={"title": title[:255]}
+                    )
+
+                queryset, _ = super().get_search_results(
+                    request, self.model.objects.all(), search_term
+                )
+
+            except Exception as e:
+                print(f"Error searching YouTube: {e}")
+
+        return queryset, use_distinct
 
 
 @admin.register(FeedGroup)
@@ -85,8 +187,9 @@ class FeedAdmin(YanaDjangoQLSearchMixin, ImportExportModelAdmin):
         "delete_all_articles",
         "clear_raw_article_content",
     ]
+    autocomplete_fields = ["reddit_subreddit", "youtube_channel"]
     save_as = True
-    list_select_related = ["user", "group"]
+    list_select_related = ["user", "group", "reddit_subreddit", "youtube_channel"]
 
     def get_fieldsets(self, request, obj=None):
         """Dynamic fieldsets: Simple for Add, Detailed for Edit."""
@@ -95,17 +198,34 @@ class FeedAdmin(YanaDjangoQLSearchMixin, ImportExportModelAdmin):
             return ((None, {"fields": ("name", "aggregator")}),)
 
         # Edit View: Full fields
-        # Check if identifier should be hidden (fixed)
-        fields = ["name", "aggregator_info", "identifier", "icon", "enabled"]
+        fields = [
+            "name",
+            "aggregator_info",
+            "identifier",
+            "reddit_subreddit",
+            "youtube_channel",
+            "icon",
+            "enabled",
+        ]
 
-        # Determine if identifier is fixed/hidden
-        # We can't easily check choices here without instantiating, but we can rely on standard field inclusion
-        # and handle hiding in get_form or just keep it visible but readonly if needed.
-        # User asked to hide it if fixed.
+        # DYNAMIC CONFIG FIELDS
+        config_field_names = []
+        if obj.aggregator:
+            try:
+                from .aggregators.registry import AggregatorRegistry
+
+                agg_class = AggregatorRegistry.get(obj.aggregator)
+                config_fields = agg_class.get_configuration_fields()
+                config_field_names = list(config_fields.keys())
+            except Exception:
+                pass
+
+        # Add config fields to the Configuration set
+        config_fieldset_fields = config_field_names + ["daily_limit"]
 
         return (
             (None, {"fields": fields}),
-            ("Configuration", {"fields": ("daily_limit", "options")}),
+            ("Configuration", {"fields": config_fieldset_fields}),
             ("Relationships", {"fields": ("user", "group")}),
             ("Timestamps", {"fields": ("created_at", "updated_at"), "classes": ("collapse",)}),
         )
@@ -143,8 +263,16 @@ class FeedAdmin(YanaDjangoQLSearchMixin, ImportExportModelAdmin):
         """
         Pass request to form and dynamically adjust fields.
         - Add View: Only name/aggregator.
-        - Edit View: Inject config fields and adjust identifier widget.
+        - Edit View: Inject config fields and toggling logic.
         """
+        # Filter out non-model fields (dynamic config fields) from kwargs['fields']
+        # to ensure modelform_factory doesn't raise FieldError
+        if "fields" in kwargs and kwargs["fields"]:
+            valid_fields = {f.name for f in self.model._meta.get_fields()}
+            kwargs["fields"] = [f for f in kwargs["fields"] if f in valid_fields]
+            # Ensure our FKs are in valid_fields if we passed them?
+            # They are in the model, so yes.
+
         form_class = super().get_form(request, obj, **kwargs)
 
         class RequestForm(form_class):
@@ -168,30 +296,33 @@ class FeedAdmin(YanaDjangoQLSearchMixin, ImportExportModelAdmin):
                             if obj.options and field_name in obj.options:
                                 self_form.initial[field_name] = obj.options[field_name]
 
-                        # 2. Adjust Identifier Widget
-                        # Get available choices
-                        choices = agg_class.get_identifier_choices(user=request.user)
+                        # 2. Field Visibility Logic
+                        # Define all potentially toggleable fields
+                        all_toggle_fields = ["identifier", "reddit_subreddit", "youtube_channel"]
 
-                        if choices:
-                            if len(choices) == 1:
-                                # Fixed identifier: Hide the field and force value
-                                self_form.fields["identifier"].widget = forms.HiddenInput()
-                                self_form.initial["identifier"] = choices[0][0]
-                                # Also update the instance to ensure it saves if not changed
-                                # (HiddenInput values are posted, so this is fine)
-                            else:
-                                # Multiple choices: Use Select
-                                self_form.fields["identifier"].widget = forms.Select(
-                                    choices=choices
-                                )
-                        else:
-                            # No predefined choices (e.g. YouTube search or generic website): Use Text
-                            # If it was previously Hidden (from a fixed aggregator), make sure it's visible now
-                            if isinstance(self_form.fields["identifier"].widget, forms.HiddenInput):
-                                self_form.fields["identifier"].widget = forms.TextInput()
+                        # Determine which field should be visible based on aggregator
+                        visible_field = "identifier"  # Default fallback
+                        if obj.aggregator == "reddit":
+                            visible_field = "reddit_subreddit"
+                        elif obj.aggregator == "youtube":
+                            visible_field = "youtube_channel"
+
+                        # Hide all EXCEPT the visible one
+                        for field_name in all_toggle_fields:
+                            if field_name in self_form.fields and field_name != visible_field:
+                                self_form.fields[field_name].widget = forms.HiddenInput()
+                                # NOTE: We do NOT touch the widget of the visible field.
+                                # This preserves the AutocompleteSelect widget for FKs,
+                                # and the default TextInput for identifier.
 
                     except Exception as e:
                         print(f"Error configuring form for aggregator: {e}")
+
+        # We need to construct the form such that logic is cleaner than above.
+        # But for now, we leave the hiding logic for JS or simple conditional?
+        # Since we can't easily change widgets here without losing the autocomplete wrapper.
+        # Let's rely on CSS or JS to hide rows?
+        # Or better: We assume standard behavior and just fix the `identifier` generic field usage.
 
         return RequestForm
 
@@ -261,25 +392,11 @@ class FeedAdmin(YanaDjangoQLSearchMixin, ImportExportModelAdmin):
                 if result["success"]:
                     successful += 1
                     total_articles += result["articles_count"]
-                    self.message_user(
-                        request,
-                        f"✓ Successfully aggregated '{result['feed_name']}': "
-                        f"{result['articles_count']} articles",
-                        messages.SUCCESS,
-                    )
                 else:
                     failed += 1
-                    self.message_user(
-                        request,
-                        f"✗ Failed to aggregate '{result['feed_name']}': "
-                        f"{result.get('error', 'Unknown error')}",
-                        messages.ERROR,
-                    )
-            except Exception as e:
+
+            except Exception:
                 failed += 1
-                self.message_user(
-                    request, f"✗ Error aggregating feed '{feed.name}': {str(e)}", messages.ERROR
-                )
 
         # Summary message
         if successful > 0:
@@ -290,8 +407,12 @@ class FeedAdmin(YanaDjangoQLSearchMixin, ImportExportModelAdmin):
                 messages.SUCCESS if failed == 0 else messages.WARNING,
             )
 
-        if failed == total_feeds:
-            self.message_user(request, f"All {failed} feed(s) failed to aggregate", messages.ERROR)
+        if failed > 0:
+            self.message_user(
+                request,
+                f"Aggregation finished with {failed} failure(s). Check logs for details.",
+                messages.WARNING if successful > 0 else messages.ERROR,
+            )
 
     @admin.action(description="Force delete selected feeds")
     def force_delete_selected(self, request, queryset):
@@ -328,40 +449,41 @@ class ArticleAdmin(YanaDjangoQLSearchMixin, ImportExportModelAdmin):
         successful = 0
         failed = 0
 
+        total_fetched = 0
+        total_processed = 0
+
         for article in queryset:
             try:
                 result = ArticleService.reload_article(article.id)
 
                 if result["success"]:
                     successful += 1
-                    message = f"✓ Successfully reloaded '{result['article_name']}'"
-                    if "message" in result:
-                        message += f": {result['message']}"
-                    self.message_user(request, message, messages.SUCCESS)
+                    total_fetched += result.get("fetch_size", 0)
+                    total_processed += result.get("process_size", 0)
                 else:
                     failed += 1
-                    self.message_user(
-                        request,
-                        f"✗ Failed to reload '{result['article_name']}': "
-                        f"{result.get('error', 'Unknown error')}",
-                        messages.ERROR,
-                    )
-            except Exception as e:
+
+            except Exception:
                 failed += 1
-                self.message_user(
-                    request, f"✗ Error reloading article '{article.name}': {str(e)}", messages.ERROR
-                )
 
         # Summary message
         if successful > 0:
+            msg = f"Reload complete: {successful}/{total_articles} articles successful."
+            if total_fetched > 0 or total_processed > 0:
+                msg += f" Total: {total_fetched} bytes fetched, {total_processed} bytes processed."
+
             self.message_user(
                 request,
-                f"Reload complete: {successful}/{total_articles} articles successful",
+                msg,
                 messages.SUCCESS if failed == 0 else messages.WARNING,
             )
 
-        if failed == total_articles:
-            self.message_user(request, f"All {failed} article(s) failed to reload", messages.ERROR)
+        if failed > 0:
+            self.message_user(
+                request,
+                f"Reload finished with {failed} failure(s). Check logs for details.",
+                messages.WARNING if successful > 0 else messages.ERROR,
+            )
 
     @admin.action(description="Force delete selected articles")
     def force_delete_selected(self, request, queryset):
