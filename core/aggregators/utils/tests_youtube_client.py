@@ -26,23 +26,37 @@ class TestYouTubeClient(unittest.TestCase):
 
     @patch("requests.get")
     def test_resolve_channel_id_from_handle(self, mock_get):
-        # Mock search response
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
+        # 1. Mock search response
+        search_response = MagicMock()
+        search_response.status_code = 200
+        search_response.json.return_value = {
             "items": [
                 {
                     "id": {"channelId": "UC_MKBHD"},
+                    "snippet": {"title": "MKBHD"},
+                }
+            ]
+        }
+
+        # 2. Mock channels response
+        channels_response = MagicMock()
+        channels_response.status_code = 200
+        channels_response.json.return_value = {
+            "items": [
+                {
+                    "id": "UC_MKBHD",
                     "snippet": {"customUrl": "@mkbhd", "title": "MKBHD"},
                 }
             ]
         }
-        mock_get.return_value = mock_response
+
+        mock_get.side_effect = [search_response, channels_response]
 
         channel_id, error = self.client.resolve_channel_id("@mkbhd")
 
         self.assertEqual(channel_id, "UC_MKBHD")
         self.assertIsNone(error)
+        self.assertEqual(mock_get.call_count, 2)
 
     @patch("requests.get")
     def test_fetch_channel_data(self, mock_get):

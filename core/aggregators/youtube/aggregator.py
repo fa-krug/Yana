@@ -43,6 +43,28 @@ class YouTubeAggregator(BaseAggregator):
         cls, query: Optional[str] = None, user: Optional[Any] = None
     ) -> List[tuple]:
         """Search for YouTube channels via API."""
+        if not query or not user:
+            return []
+
+        channels = cls.search_channels(query, user)
+        choices = []
+
+        for channel in channels:
+            channel_id = channel["channel_id"]
+            title = channel["title"]
+            handle = channel["custom_url"]
+
+            # Prefer handle in label for better UX
+            label = f"{title} ({handle})" if handle else f"{title} ({channel_id})"
+
+            # (value, label) -> value is what gets saved (channel_id), label is what is displayed
+            choices.append((channel_id, label))
+
+        return choices
+
+    @classmethod
+    def search_channels(cls, query: str, user: Any) -> List[Dict[str, Any]]:
+        """Search for YouTube channels and return full metadata."""
         if not query or not user or not user.is_authenticated:
             return []
 
@@ -55,35 +77,23 @@ class YouTubeAggregator(BaseAggregator):
 
             client = YouTubeClient(settings.youtube_api_key)
 
-            # Use search.list to find channels
+            # 1. Search for channel IDs
             data = client._get(
-                "search", {"part": "snippet", "q": query, "type": "channel", "maxResults": 10}
+                "search", {"part": "id", "q": query, "type": "channel", "maxResults": 10}
             )
 
             items = data.get("items", [])
-            choices = []
+            channel_ids = [
+                item.get("id", {}).get("channelId")
+                for item in items
+                if item.get("id", {}).get("channelId")
+            ]
 
-            for item in items:
-                channel_id = item.get("id", {}).get("channelId")
-                snippet = item.get("snippet", {})
-                title = snippet.get("title")
-                custom_url = snippet.get("customUrl")
+            if not channel_ids:
+                return []
 
-                if channel_id and title:
-                    # Prefer custom URL (handle) if available, otherwise use channel ID
-                    # Ensure handle starts with @
-                    if custom_url and not custom_url.startswith("@"):
-                        custom_url = f"@{custom_url}"
-
-                    value = custom_url if custom_url else channel_id
-
-                    # Display name in dropdown
-                    label = f"{title} ({value})"
-
-                    # (value, label) -> value is what gets saved, label is what is displayed
-                    choices.append((value, label))
-
-            return choices
+            # 2. Fetch full channel data (including customUrl/handle)
+            return client.fetch_channels_data(channel_ids)
         except Exception as e:
             logger.error(f"Error searching YouTube channels: {e}")
             return []
@@ -93,20 +103,14 @@ class YouTubeAggregator(BaseAggregator):
         """Search YouTube channels and update local YouTubeChannel models."""
         from core.models import YouTubeChannel
 
-        choices = cls.get_identifier_choices(query=query, user=user)
+        channels = cls.search_channels(query, user)
 
-        # Format: "{title} ({channel_id})"
-        for value, label in choices:
-            suffix = f" ({value})"
-            title = label
-            if label.endswith(suffix):
-                title = label[: -len(suffix)]
-
+        for channel in channels:
             YouTubeChannel.objects.update_or_create(
-                channel_id=value,
+                channel_id=channel["channel_id"],
                 defaults={
-                    "title": title[:255],
-                    "handle": value if value.startswith("@") else "",
+                    "title": channel["title"][:255],
+                    "handle": channel["custom_url"] or "",
                 },
             )
 
@@ -207,6 +211,22 @@ class YouTubeAggregator(BaseAggregator):
         # Fetch channel metadata (for icon and uploads playlist)
         channel_data = client.fetch_channel_data(self._channel_id)
         self.channel_icon_url = channel_data.get("channel_icon_url")
+
+        # Back-populate metadata to local YouTubeChannel model if attached
+        if self.feed and self.feed.youtube_channel:
+            try:
+                yt_channel = self.feed.youtube_channel
+                updated = False
+                if not yt_channel.handle and channel_data.get("custom_url"):
+                    yt_channel.handle = channel_data["custom_url"]
+                    updated = True
+                if yt_channel.title != channel_data.get("title"):
+                    yt_channel.title = (channel_data.get("title") or "")[:255]
+                    updated = True
+                if updated:
+                    yt_channel.save()
+            except Exception as e:
+                logger.warning(f"Failed to update YouTubeChannel metadata: {e}")
 
         uploads_playlist_id = channel_data.get("uploads_playlist_id")
         desired_count = limit or self.daily_limit

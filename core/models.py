@@ -178,6 +178,8 @@ class RedditSubreddit(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
+        verbose_name = "Reddit Subreddit"
+        verbose_name_plural = "Reddit Subreddits"
         ordering = ["display_name"]
         indexes = [models.Index(fields=["display_name"])]
 
@@ -194,12 +196,14 @@ class YouTubeChannel(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
+        verbose_name = "YouTube Channel"
+        verbose_name_plural = "YouTube Channels"
         ordering = ["title"]
         indexes = [models.Index(fields=["title"])]
 
     def __str__(self):
         if self.handle:
-            return self.handle
+            return f"{self.title} ({self.handle})"
         return self.title
 
 

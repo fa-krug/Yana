@@ -129,23 +129,25 @@ class YouTubeClient:
             if not items:
                 return None
 
+            channel_ids = [item["id"]["channelId"] for item in items]
+            channels_data = self.fetch_channels_data(channel_ids)
+
             norm_handle = handle.lower().lstrip("@")
 
             # 1. Exact customUrl match
-            for item in items:
-                snippet = item.get("snippet", {})
-                custom_url = snippet.get("customUrl", "").lower().lstrip("@")
+            for channel in channels_data:
+                custom_url = channel.get("custom_url", "").lower().lstrip("@")
                 if custom_url == norm_handle:
-                    return item["id"]["channelId"]
+                    return channel["channel_id"]
 
             # 2. Title match
-            for item in items:
-                title = item.get("snippet", {}).get("title", "").lower()
+            for channel in channels_data:
+                title = channel.get("title", "").lower()
                 if norm_handle in title or title in norm_handle:
-                    return item["id"]["channelId"]
+                    return channel["channel_id"]
 
             # 3. First result fallback
-            return items[0]["id"]["channelId"]
+            return channel_ids[0]
         except YouTubeAPIError:
             return None
 
@@ -162,37 +164,50 @@ class YouTubeClient:
 
     def fetch_channel_data(self, channel_id: str) -> Dict[str, Any]:
         """Fetch basic channel data including uploads playlist ID and icon."""
-        data = self._get("channels", {"part": "contentDetails,snippet", "id": channel_id})
-
-        items = data.get("items", [])
-        if not items:
+        channels = self.fetch_channels_data([channel_id])
+        if not channels:
             raise YouTubeAPIError(f"Channel not found: {channel_id}")
+        return channels[0]
 
-        channel = items[0]
-        snippet = channel.get("snippet", {})
-        thumbnails = snippet.get("thumbnails", {})
+    def fetch_channels_data(self, channel_ids: List[str]) -> List[Dict[str, Any]]:
+        """Fetch basic data for multiple channels."""
+        if not channel_ids:
+            return []
 
-        icon_url = (
-            thumbnails.get("high", {}).get("url")
-            or thumbnails.get("medium", {}).get("url")
-            or thumbnails.get("default", {}).get("url")
-        )
+        results = []
+        # YouTube API allows up to 50 IDs per request
+        for i in range(0, len(channel_ids), 50):
+            batch = channel_ids[i : i + 50]
+            data = self._get("channels", {"part": "contentDetails,snippet", "id": ",".join(batch)})
 
-        uploads_playlist_id = (
-            channel.get("contentDetails", {}).get("relatedPlaylists", {}).get("uploads")
-        )
+            for item in data.get("items", []):
+                snippet = item.get("snippet", {})
+                thumbnails = snippet.get("thumbnails", {})
 
-        custom_url = snippet.get("customUrl")
-        if custom_url and not custom_url.startswith("@"):
-            custom_url = f"@{custom_url}"
+                icon_url = (
+                    thumbnails.get("high", {}).get("url")
+                    or thumbnails.get("medium", {}).get("url")
+                    or thumbnails.get("default", {}).get("url")
+                )
 
-        return {
-            "channel_id": channel_id,
-            "title": snippet.get("title"),
-            "custom_url": custom_url,
-            "uploads_playlist_id": uploads_playlist_id,
-            "channel_icon_url": icon_url,
-        }
+                uploads_playlist_id = (
+                    item.get("contentDetails", {}).get("relatedPlaylists", {}).get("uploads")
+                )
+
+                custom_url = snippet.get("customUrl")
+                if custom_url and not custom_url.startswith("@"):
+                    custom_url = f"@{custom_url}"
+
+                results.append(
+                    {
+                        "channel_id": item.get("id"),
+                        "title": snippet.get("title"),
+                        "custom_url": custom_url,
+                        "uploads_playlist_id": uploads_playlist_id,
+                        "channel_icon_url": icon_url,
+                    }
+                )
+        return results
 
     def fetch_videos_from_playlist(
         self, playlist_id: str, max_results: int = 50

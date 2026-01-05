@@ -95,23 +95,22 @@ class TestYouTubeAggregator(unittest.TestCase):
         mock_embed.assert_called_with("vid1")
 
     @patch("core.models.UserSettings.objects.get")
-    @patch("core.aggregators.utils.youtube_client.YouTubeClient._get")
-    def test_get_identifier_choices(self, mock_client_get, mock_get_settings):
+    @patch("core.aggregators.youtube.aggregator.YouTubeAggregator.search_channels")
+    def test_get_identifier_choices(self, mock_search, mock_get_settings):
         # Mock settings
         mock_settings = MagicMock()
         mock_settings.youtube_enabled = True
         mock_settings.youtube_api_key = "valid_key"
         mock_get_settings.return_value = mock_settings
 
-        # Mock API response
-        mock_client_get.return_value = {
-            "items": [
-                {
-                    "id": {"channelId": "UC_MKBHD"},
-                    "snippet": {"title": "MKBHD", "customUrl": "@mkbhd"},
-                }
-            ]
-        }
+        # Mock search results
+        mock_search.return_value = [
+            {
+                "channel_id": "UC_MKBHD",
+                "title": "MKBHD",
+                "custom_url": "@mkbhd",
+            }
+        ]
 
         user = MagicMock()
         user.is_authenticated = True
@@ -119,5 +118,5 @@ class TestYouTubeAggregator(unittest.TestCase):
         choices = YouTubeAggregator.get_identifier_choices(query="mkbhd", user=user)
 
         self.assertEqual(len(choices), 1)
-        self.assertEqual(choices[0][0], "@mkbhd")
+        self.assertEqual(choices[0][0], "UC_MKBHD")
         self.assertEqual(choices[0][1], "MKBHD (@mkbhd)")
