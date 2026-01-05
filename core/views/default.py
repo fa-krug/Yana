@@ -110,9 +110,13 @@ def meta_view(request):
         )
 
     # Get icon URL
-    icon_url = ""
+    icon_url = "/static/core/img/favicon.svg"  # Default
+    alternate_icon_url = "/static/core/img/favicon.ico"  # Default
+
     if feed.icon:
-        icon_url = request.build_absolute_uri(feed.icon.url)
+        full_icon_url = request.build_absolute_uri(feed.icon.url)
+        icon_url = full_icon_url
+        alternate_icon_url = full_icon_url
 
     # Get source URL from aggregator
     try:
@@ -126,9 +130,10 @@ def meta_view(request):
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>{feed.name} - Meta - Yana</title>
-    <link rel="icon" type="image/svg+xml" href="/static/core/img/favicon.svg">
-    <link rel="alternate icon" type="image/x-icon" href="/static/core/img/favicon.ico">
+    <meta name="referrer" content="no-referrer-when-downgrade">
+    <title>{feed.name}</title>
+    <link rel="icon" href="{icon_url}">
+    <link rel="alternate icon" href="{alternate_icon_url}">
     <style>
         * {{
             margin: 0;
@@ -141,50 +146,15 @@ def meta_view(request):
             height: 100%;
             overflow: hidden;
             background: #f8f9fa;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         }}
 
         .meta-container {{
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-            width: 100%;
-        }}
-
-        .header {{
-            padding: 12px 20px;
-            background: #fff;
-            border-bottom: 1px solid #dee2e6;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-            z-index: 10;
-        }}
-
-        .icon {{
-            width: 32px;
-            height: 32px;
-            object-fit: contain;
-            border-radius: 4px;
-        }}
-
-        .title {{
-            font-weight: 600;
-            font-size: 16px;
-            color: #212529;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }}
-
-        .iframe-container {{
-            flex: 1;
             position: relative;
-            background: #fff;
+            width: 100%;
+            height: 100%;
         }}
 
-        iframe {{
+        .meta-container iframe {{
             border: 0;
             position: absolute;
             top: 0;
@@ -199,6 +169,7 @@ def meta_view(request):
             justify-content: center;
             height: 100%;
             color: #6c757d;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             padding: 40px;
             text-align: center;
         }}
@@ -206,13 +177,7 @@ def meta_view(request):
 </head>
 <body>
     <div class="meta-container">
-        <div class="header">
-            {f'<img src="{icon_url}" class="icon" alt="">' if icon_url else ""}
-            <span class="title">{feed.name}</span>
-        </div>
-        <div class="iframe-container">
-            {f'<iframe src="{source_url}" allowfullscreen referrerpolicy="no-referrer-when-downgrade"></iframe>' if source_url else '<div class="no-source"><p>No source URL available for this feed.</p></div>'}
-        </div>
+        {f'<iframe src="{source_url}" allowfullscreen></iframe>' if source_url else '<div class="no-source"><p>No source URL available for this feed.</p></div>'}
     </div>
 </body>
 </html>"""
