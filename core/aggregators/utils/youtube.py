@@ -90,8 +90,7 @@ def get_youtube_proxy_url(video_id: str) -> str:
     Returns:
         Full URL to the proxy endpoint
     """
-    base_url = getattr(settings, "BASE_URL", "http://localhost:8000")
-    return f"{base_url}/api/youtube-proxy?v={video_id}"
+    return f"{settings.BASE_URL}/api/youtube-proxy?v={video_id}"
 
 
 def create_youtube_embed_html(video_id: str, caption: str = "") -> str:
