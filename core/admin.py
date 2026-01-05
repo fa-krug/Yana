@@ -294,6 +294,18 @@ class FeedAdmin(YanaDjangoQLSearchMixin, ImportExportModelAdmin):
                         from .aggregators.registry import AggregatorRegistry
 
                         agg_class = AggregatorRegistry.get(obj.aggregator)
+
+                        # Check if aggregator provides static identifier choices
+                        # (not dynamic search)
+                        if not agg_class.supports_identifier_search:
+                            choices = agg_class.get_identifier_choices(user=request.user)
+                            if choices:
+                                from django import forms
+
+                                self_form.fields["identifier"].widget = forms.Select(
+                                    choices=choices
+                                )
+
                         config_fields = agg_class.get_configuration_fields()
 
                         # Add config fields
