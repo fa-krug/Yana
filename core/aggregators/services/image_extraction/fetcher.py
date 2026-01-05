@@ -129,7 +129,7 @@ def fetch_single_image(url: str, timeout: int = DEFAULT_TIMEOUT) -> Optional[Dic
 
         # Validate content length
         image_data = response.content
-        if len(image_data) < 1024:  # Minimum 1KB
+        if len(image_data) < 100:  # Minimum 100 bytes
             logger.debug(f"Image too small ({len(image_data)} bytes): {url}")
             return None
 

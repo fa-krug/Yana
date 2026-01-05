@@ -103,7 +103,7 @@ class RedditAggregator(BaseAggregator):
 
         return {
             "min_comments": forms.IntegerField(
-                initial=0,
+                initial=5,
                 label="Minimum Comments",
                 help_text="Skip posts with fewer comments than this.",
                 required=False,
@@ -370,8 +370,8 @@ class RedditAggregator(BaseAggregator):
         """
         filtered = []
 
-        # Get min_comments option (default: 0)
-        min_comments = self.feed.options.get("min_comments", 0)
+        # Get min_comments option (default: 5)
+        min_comments = self.feed.options.get("min_comments", 5)
 
         # Two months ago cutoff
         two_months_ago = timezone.now() - timedelta(days=60)

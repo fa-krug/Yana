@@ -1,5 +1,6 @@
 """Reddit URL utilities."""
 
+import html
 import logging
 import re
 from typing import Any, Dict, Optional
@@ -15,9 +16,7 @@ REDDIT_API_BASE = "https://www.reddit.com"
 
 def decode_html_entities_in_url(url: str) -> str:
     """
-    Decode HTML entities in URLs.
-
-    Converts &amp; to &, &lt; to <, &gt; to >, &quot; to ", &#39; to '.
+    Decode HTML entities in URLs using html.unescape.
 
     Args:
         url: URL string
@@ -25,20 +24,13 @@ def decode_html_entities_in_url(url: str) -> str:
     Returns:
         Decoded URL
     """
-    return (
-        url.replace("&amp;", "&")
-        .replace("&lt;", "<")
-        .replace("&gt;", ">")
-        .replace("&quot;", '"')
-        .replace("&#39;", "'")
-    )
+    return html.unescape(url)
 
 
 def fix_reddit_media_url(url: Optional[str]) -> Optional[str]:
     """
-    Fix redditmedia.com and external-preview.redd.it URLs.
-
-    Replaces &amp; with & and decodes HTML entities.
+    Fix Reddit media URLs by decoding HTML entities.
+    Reddit API often returns URLs with double-escaped entities like &amp;amp;.
 
     Args:
         url: URL from Reddit API
@@ -49,9 +41,11 @@ def fix_reddit_media_url(url: Optional[str]) -> Optional[str]:
     if not url:
         return None
 
-    decoded = decode_html_entities_in_url(url)
-    if "styles.redditmedia.com" in decoded or "external-preview.redd.it" in decoded:
-        return decoded.replace("&amp;", "&")
+    # Use html.unescape twice to handle double-escaped entities like &amp;amp;
+    decoded = html.unescape(url)
+    if "&" in decoded:
+        decoded = html.unescape(decoded)
+
     return decoded
 
 
@@ -153,11 +147,15 @@ def fetch_subreddit_info(subreddit: str, user_id: int) -> Dict[str, Optional[str
         data = response.json()
         subreddit_data = data.get("data", {})
 
-        # Prefer icon_img, fall back to community_icon
-        raw_icon_url = subreddit_data.get("icon_img") or subreddit_data.get("community_icon")
+        # Try multiple fields for icon in order of preference
+        raw_icon_url = (
+            subreddit_data.get("icon_img")
+            or subreddit_data.get("community_icon")
+            or subreddit_data.get("header_img")
+        )
         icon_url = None
         if raw_icon_url:
-            icon_url = fix_reddit_media_url(decode_html_entities_in_url(raw_icon_url))
+            icon_url = fix_reddit_media_url(raw_icon_url)
 
         if icon_url:
             logger.debug(f"Fetched subreddit icon for r/{subreddit}: {icon_url}")

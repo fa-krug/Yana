@@ -71,6 +71,12 @@ class TestRedditAggregator:
             {"name": "Good", "author": "user1", "date": timezone.now(), "_reddit_num_comments": 10},
             {"name": "AutoMod", "author": "AutoModerator", "date": timezone.now()},
             {"name": "Old", "author": "user2", "date": timezone.now() - timedelta(days=70)},
+            {
+                "name": "Few comments",
+                "author": "user3",
+                "date": timezone.now(),
+                "_reddit_num_comments": 2,
+            },
         ]
 
         filtered = reddit_agg.filter_articles(articles)

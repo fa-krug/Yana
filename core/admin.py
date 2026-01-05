@@ -141,7 +141,11 @@ class YouTubeChannelAdmin(admin.ModelAdmin):
                         title = label[: -len(suffix)]
 
                     YouTubeChannel.objects.update_or_create(
-                        channel_id=value, defaults={"title": title[:255]}
+                        channel_id=value,
+                        defaults={
+                            "title": title[:255],
+                            "handle": value if value.startswith("@") else "",
+                        },
                     )
 
                 queryset, _ = super().get_search_results(

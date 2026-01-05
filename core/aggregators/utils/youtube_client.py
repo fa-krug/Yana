@@ -182,9 +182,14 @@ class YouTubeClient:
             channel.get("contentDetails", {}).get("relatedPlaylists", {}).get("uploads")
         )
 
+        custom_url = snippet.get("customUrl")
+        if custom_url and not custom_url.startswith("@"):
+            custom_url = f"@{custom_url}"
+
         return {
             "channel_id": channel_id,
             "title": snippet.get("title"),
+            "custom_url": custom_url,
             "uploads_playlist_id": uploads_playlist_id,
             "channel_icon_url": icon_url,
         }

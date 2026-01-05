@@ -60,6 +60,8 @@ class FeedAdminForm(forms.ModelForm):
             not instance.icon
             or "identifier" in self.changed_data
             or "aggregator" in self.changed_data
+            or "reddit_subreddit" in self.changed_data
+            or "youtube_channel" in self.changed_data
         ):
             should_fetch_icon = True
 

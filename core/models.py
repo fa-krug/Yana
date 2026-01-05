@@ -181,6 +181,7 @@ class YouTubeChannel(models.Model):
 
     channel_id = models.CharField(max_length=255, unique=True)
     title = models.CharField(max_length=255)
+    handle = models.CharField(max_length=255, blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -188,7 +189,9 @@ class YouTubeChannel(models.Model):
         indexes = [models.Index(fields=["title"])]
 
     def __str__(self):
-        return f"@{self.title}"
+        if self.handle:
+            return self.handle
+        return self.title
 
 
 class GReaderAuthToken(models.Model):

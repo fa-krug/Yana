@@ -64,6 +64,10 @@ class YouTubeAggregator(BaseAggregator):
 
                 if channel_id and title:
                     # Prefer custom URL (handle) if available, otherwise use channel ID
+                    # Ensure handle starts with @
+                    if custom_url and not custom_url.startswith("@"):
+                        custom_url = f"@{custom_url}"
+
                     value = custom_url if custom_url else channel_id
 
                     # Display name in dropdown
@@ -189,7 +193,7 @@ class YouTubeAggregator(BaseAggregator):
         return {
             "videos": videos,
             "channel_id": self._channel_id,
-            "channel_title": channel_data.get("title"),
+            "channel_title": channel_data.get("custom_url") or channel_data.get("title"),
         }
 
     def parse_to_raw_articles(self, source_data: Any) -> List[Dict[str, Any]]:
