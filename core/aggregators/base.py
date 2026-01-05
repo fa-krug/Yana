@@ -3,6 +3,7 @@
 import asyncio
 import logging
 import math
+import random
 from abc import ABC, abstractmethod
 from datetime import timedelta
 from typing import Any, Dict, List, Optional
@@ -238,8 +239,10 @@ class BaseAggregator(ABC):
                 )
                 continue
 
-            # Update date to now for accepted articles
-            article["date"] = timezone.now()
+            # Update date to now for accepted articles, with a random offset of +/- 30s
+            # to shuffle them slightly (avoid exact same timestamp for sorting)
+            offset = random.randint(-30, 30)
+            article["date"] = timezone.now() + timedelta(seconds=offset)
             filtered.append(article)
         self.logger.info(f"[filter_articles] Kept {len(filtered)}/{len(articles)} articles")
         return filtered
