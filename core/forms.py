@@ -16,6 +16,8 @@ class FeedAdminForm(forms.ModelForm):
             "name",
             "aggregator",
             "identifier",
+            "reddit_subreddit",
+            "youtube_channel",
             "icon",
             "daily_limit",
             "enabled",
