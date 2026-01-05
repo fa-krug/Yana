@@ -10,13 +10,15 @@ class TestTagesschauAggregator:
     @pytest.fixture
     def tages_agg(self, rss_feed):
         rss_feed.aggregator = "tagesschau"
-        rss_feed.identifier = "https://www.tagesschau.de/xml/rss2/"
+        rss_feed.identifier = "https://www.tagesschau.de/infoservices/alle-meldungen-100~rss2.xml"
         return TagesschauAggregator(rss_feed)
 
     def test_default_identifier(self, rss_feed):
         rss_feed.identifier = ""
         agg = TagesschauAggregator(rss_feed)
-        assert agg.identifier == "https://www.tagesschau.de/xml/rss2/"
+        assert (
+            agg.identifier == "https://www.tagesschau.de/infoservices/alle-meldungen-100~rss2.xml"
+        )
 
     def test_filter_articles_skips_livestream(self, tages_agg):
         articles = [
