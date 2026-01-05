@@ -205,12 +205,16 @@ class FeedAdmin(YanaDjangoQLSearchMixin, ImportExportModelAdmin):
         fields = [
             "name",
             "aggregator_info",
-            "identifier",
-            "reddit_subreddit",
-            "youtube_channel",
-            "icon",
-            "enabled",
         ]
+
+        if obj.aggregator == "reddit":
+            fields.append("reddit_subreddit")
+        elif obj.aggregator == "youtube":
+            fields.append("youtube_channel")
+        else:
+            fields.append("identifier")
+
+        fields.extend(["icon", "enabled"])
 
         # DYNAMIC CONFIG FIELDS
         config_field_names = []
@@ -287,8 +291,6 @@ class FeedAdmin(YanaDjangoQLSearchMixin, ImportExportModelAdmin):
                 if obj and obj.aggregator:
                     # 1. Inject aggregator-specific configuration fields
                     try:
-                        from django import forms
-
                         from .aggregators.registry import AggregatorRegistry
 
                         agg_class = AggregatorRegistry.get(obj.aggregator)
@@ -300,33 +302,8 @@ class FeedAdmin(YanaDjangoQLSearchMixin, ImportExportModelAdmin):
                             if obj.options and field_name in obj.options:
                                 self_form.initial[field_name] = obj.options[field_name]
 
-                        # 2. Field Visibility Logic
-                        # Define all potentially toggleable fields
-                        all_toggle_fields = ["identifier", "reddit_subreddit", "youtube_channel"]
-
-                        # Determine which field should be visible based on aggregator
-                        visible_field = "identifier"  # Default fallback
-                        if obj.aggregator == "reddit":
-                            visible_field = "reddit_subreddit"
-                        elif obj.aggregator == "youtube":
-                            visible_field = "youtube_channel"
-
-                        # Hide all EXCEPT the visible one
-                        for field_name in all_toggle_fields:
-                            if field_name in self_form.fields and field_name != visible_field:
-                                self_form.fields[field_name].widget = forms.HiddenInput()
-                                # NOTE: We do NOT touch the widget of the visible field.
-                                # This preserves the AutocompleteSelect widget for FKs,
-                                # and the default TextInput for identifier.
-
                     except Exception as e:
                         print(f"Error configuring form for aggregator: {e}")
-
-        # We need to construct the form such that logic is cleaner than above.
-        # But for now, we leave the hiding logic for JS or simple conditional?
-        # Since we can't easily change widgets here without losing the autocomplete wrapper.
-        # Let's rely on CSS or JS to hide rows?
-        # Or better: We assume standard behavior and just fix the `identifier` generic field usage.
 
         return RequestForm
 
