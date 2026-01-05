@@ -9,6 +9,8 @@ from datetime import datetime
 from typing import Any, Optional
 from urllib.parse import urlparse
 
+from django.urls import reverse
+
 from core.models import Article, Feed
 
 logger = logging.getLogger(__name__)
@@ -194,12 +196,33 @@ def get_site_url(feed: Feed) -> str:
     return ""
 
 
+def get_meta_url(feed: Feed, request) -> str:
+    """Get the metadata page URL for a feed.
+
+    Args:
+        feed: Feed model instance
+        request: Django request object
+
+    Returns:
+        Absolute URL to the feed metadata page
+    """
+    try:
+        path = reverse("feed_meta")
+        url = f"{path}?id={feed.id}"
+        if request:
+            return request.build_absolute_uri(url)
+        return url
+    except Exception as e:
+        logger.error(f"Failed to generate meta URL for feed {feed.id}: {e}")
+        return ""
+
+
 def format_subscription(feed: Feed, request, groups: list[dict] | None = None) -> dict[str, Any]:
     """Format a Feed as Google Reader subscription object.
 
     Args:
         feed: Feed model instance
-        request: Django request object (unused, kept for API compatibility)
+        request: Django request object
         groups: List of group dicts with 'id' and 'label' keys
 
     Returns:
@@ -208,14 +231,16 @@ def format_subscription(feed: Feed, request, groups: list[dict] | None = None) -
     if groups is None:
         groups = []
 
-    source_url = get_feed_source_url(feed)
+    # Use meta page as the feed URL and HTML URL
+    # This ensures clients open the meta page which contains the iframe
+    meta_url = get_meta_url(feed, request)
 
     return {
         "id": f"feed/{feed.id}",
         "title": feed.name,
         "categories": groups,
-        "url": source_url,
-        "htmlUrl": source_url,
+        "url": meta_url,
+        "htmlUrl": meta_url,
     }
 
 
@@ -273,10 +298,11 @@ def format_stream_item(
         item["canonical"] = [{"href": article.identifier}]
 
     # Add origin (feed info)
+    meta_url = get_meta_url(feed, request)
     item["origin"] = {
         "streamId": f"feed/{feed.id}",
         "title": feed.name,
-        "htmlUrl": get_site_url(feed),
+        "htmlUrl": meta_url,
     }
 
     # Add summary (content)

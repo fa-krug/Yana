@@ -70,6 +70,156 @@ def youtube_proxy_view(request):
     return HttpResponse(html, content_type="text/html")
 
 
+@xframe_options_exempt
+@require_http_methods(["GET"])
+def meta_view(request):
+    """
+    Provide metadata for a feed as an HTML page.
+
+    This endpoint returns an HTML page containing the feed's icon and an iframe
+    embedding the feed's source URL. This is intended to be used as both the
+    website URL and feed URL for certain specialized feeds.
+
+    Query Parameters:
+        id (required): The ID of the feed to display metadata for.
+
+    Returns:
+        HttpResponse: HTML page with feed icon and source iframe
+        400: If feed ID is missing or invalid
+        404: If feed is not found
+    """
+    feed_id = request.GET.get("id", "").strip()
+
+    if not feed_id:
+        return HttpResponse(
+            "Error: Missing feed ID parameter (?id=FEED_ID)", status=400, content_type="text/plain"
+        )
+
+    from core.aggregators.registry import get_aggregator
+    from core.models import Feed
+
+    try:
+        feed = Feed.objects.get(id=feed_id)
+    except Feed.DoesNotExist:
+        return HttpResponse(
+            f"Error: Feed with ID {feed_id} not found", status=404, content_type="text/plain"
+        )
+    except (ValueError, TypeError):
+        return HttpResponse(
+            f"Error: Invalid feed ID '{feed_id}'", status=400, content_type="text/plain"
+        )
+
+    # Get icon URL
+    icon_url = ""
+    if feed.icon:
+        icon_url = request.build_absolute_uri(feed.icon.url)
+
+    # Get source URL from aggregator
+    try:
+        aggregator = get_aggregator(feed)
+        source_url = aggregator.get_source_url()
+    except Exception:
+        source_url = feed.identifier if feed.identifier.startswith("http") else ""
+
+    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>{feed.name} - Meta - Yana</title>
+    <link rel="icon" type="image/svg+xml" href="/static/core/img/favicon.svg">
+    <link rel="alternate icon" type="image/x-icon" href="/static/core/img/favicon.ico">
+    <style>
+        * {{
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }}
+
+        html, body {{
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #f8f9fa;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }}
+
+        .meta-container {{
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            width: 100%;
+        }}
+
+        .header {{
+            padding: 12px 20px;
+            background: #fff;
+            border-bottom: 1px solid #dee2e6;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            z-index: 10;
+        }}
+
+        .icon {{
+            width: 32px;
+            height: 32px;
+            object-fit: contain;
+            border-radius: 4px;
+        }}
+
+        .title {{
+            font-weight: 600;
+            font-size: 16px;
+            color: #212529;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }}
+
+        .iframe-container {{
+            flex: 1;
+            position: relative;
+            background: #fff;
+        }}
+
+        iframe {{
+            border: 0;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }}
+
+        .no-source {{
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #6c757d;
+            padding: 40px;
+            text-align: center;
+        }}
+    </style>
+</head>
+<body>
+    <div class="meta-container">
+        <div class="header">
+            {f'<img src="{icon_url}" class="icon" alt="">' if icon_url else ""}
+            <span class="title">{feed.name}</span>
+        </div>
+        <div class="iframe-container">
+            {f'<iframe src="{source_url}" allowfullscreen referrerpolicy="no-referrer-when-downgrade"></iframe>' if source_url else '<div class="no-source"><p>No source URL available for this feed.</p></div>'}
+        </div>
+    </div>
+</body>
+</html>"""
+
+    return HttpResponse(html, content_type="text/html")
+
+
 def _error_response(message):
     """Generate an error response page."""
     html = f"""<!DOCTYPE html>
