@@ -44,7 +44,7 @@ class HeaderElementExtractor:
             GenericImageStrategy(),  # Must be last (fallback, accepts all URLs)
         ]
 
-    async def extract_header_element(
+    def extract_header_element(
         self, url: str, alt: str = "Article image"
     ) -> HeaderElementData | None:
         """
@@ -86,7 +86,7 @@ class HeaderElementExtractor:
             logger.debug(f"HeaderElementExtractor: Trying {strategy_name}")
 
             try:
-                result = await strategy.create(context)
+                result = strategy.create(context)
 
                 if result:
                     logger.debug(f"HeaderElementExtractor: Success with {strategy_name}")

@@ -4,8 +4,6 @@ import logging
 import re
 from typing import Optional
 
-from asgiref.sync import async_to_sync
-
 from core.aggregators.services.image_extraction.extractor import ImageExtractor
 from ..utils.youtube import extract_youtube_video_id
 from .types import RedditPostData
@@ -300,8 +298,7 @@ def _extract_image_from_url_sync(url: str) -> Optional[str]:
     """
     try:
         extractor = ImageExtractor()
-        # Use asgiref.sync.async_to_sync to correctly handle async call in synchronous context
-        result = async_to_sync(extractor.extract_image_from_url)(url, is_header_image=True)
+        result = extractor.extract_image_from_url(url, is_header_image=True)
         if result and result.get("imageUrl"):
             return result["imageUrl"]
         return None

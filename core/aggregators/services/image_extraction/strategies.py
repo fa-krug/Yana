@@ -44,7 +44,7 @@ class ImageStrategy(ABC):
         pass
 
     @abstractmethod
-    async def extract(self, context: ImageExtractionContext) -> Optional[Dict[str, Any]]:
+    def extract(self, context: ImageExtractionContext) -> Optional[Dict[str, Any]]:
         """
         Extract image from context.
 
@@ -70,7 +70,7 @@ class DirectImageStrategy(ImageStrategy):
         except Exception:
             return False
 
-    async def extract(self, context: ImageExtractionContext) -> Optional[Dict[str, Any]]:
+    def extract(self, context: ImageExtractionContext) -> Optional[Dict[str, Any]]:
         """Fetch direct image URL."""
         logger.debug(f"DirectImageStrategy: Attempting to fetch {context.url}")
 
@@ -94,7 +94,7 @@ class YouTubeThumbnailStrategy(ImageStrategy):
         """Check if URL is a YouTube URL."""
         return extract_youtube_video_id(context.url) is not None
 
-    async def extract(self, context: ImageExtractionContext) -> Optional[Dict[str, Any]]:
+    def extract(self, context: ImageExtractionContext) -> Optional[Dict[str, Any]]:
         """Fetch YouTube thumbnail."""
         logger.debug(f"YouTubeThumbnailStrategy: Attempting to extract from {context.url}")
 
@@ -136,7 +136,7 @@ class TwitterImageStrategy(ImageStrategy):
         twitter_domains = ["twitter.com", "x.com", "mobile.twitter.com"]
         return any(domain in context.url for domain in twitter_domains)
 
-    async def extract(self, context: ImageExtractionContext) -> Optional[Dict[str, Any]]:
+    def extract(self, context: ImageExtractionContext) -> Optional[Dict[str, Any]]:
         """Fetch image from Twitter post via fxtwitter API."""
         logger.debug(f"TwitterImageStrategy: Attempting to extract from {context.url}")
 
@@ -182,7 +182,7 @@ class MetaTagImageStrategy(ImageStrategy):
         """Check if we have parsed HTML (soup)."""
         return context.soup is not None
 
-    async def extract(self, context: ImageExtractionContext) -> Optional[Dict[str, Any]]:
+    def extract(self, context: ImageExtractionContext) -> Optional[Dict[str, Any]]:
         """Extract image from meta tags."""
         logger.debug(f"MetaTagImageStrategy: Extracting from {context.url}")
 
@@ -261,7 +261,7 @@ class PageImagesStrategy(ImageStrategy):
         """Check if we have parsed HTML."""
         return context.soup is not None
 
-    async def extract(self, context: ImageExtractionContext) -> Optional[Dict[str, Any]]:
+    def extract(self, context: ImageExtractionContext) -> Optional[Dict[str, Any]]:
         """Find and extract first large image from page."""
         logger.debug(f"PageImagesStrategy: Extracting from {context.url}")
 
