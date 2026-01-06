@@ -5,6 +5,7 @@ import re
 from typing import Optional
 
 from core.aggregators.services.image_extraction.extractor import ImageExtractor
+
 from ..utils.youtube import extract_youtube_video_id
 from .types import RedditPostData
 from .urls import (
