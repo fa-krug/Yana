@@ -209,6 +209,7 @@ class TestGReaderSubscription:
         response = client.post(url, data, **auth_headers)
         assert response.status_code == 403
         assert b"Cannot modify other users' feeds" in response.content
+
     def test_quickadd_success(self, client, user, auth_headers):
         url = reverse("greader:quickadd")
         feed_url = "http://example.com/quick"
