@@ -110,7 +110,7 @@ class FeedGroupAdmin(YanaDjangoQLSearchMixin, admin.ModelAdmin):
     """Admin configuration for FeedGroup model."""
 
     list_display = ["name", "user", "created_at"]
-    list_filter = ["user", "created_at"]
+    list_filter = [("user", admin.RelatedOnlyFieldListFilter), "created_at"]
     search_fields = ["name", "user__username"]
     readonly_fields = ["created_at", "updated_at"]
     save_as = True
@@ -129,7 +129,13 @@ class FeedAdmin(YanaDjangoQLSearchMixin, ImportExportModelAdmin):
     form = FeedAdminForm
 
     list_display = ["name", "aggregator", "enabled", "user", "group", "created_at"]
-    list_filter = ["aggregator", "enabled", "user", "group", "created_at"]
+    list_filter = [
+        "aggregator",
+        "enabled",
+        ("user", admin.RelatedOnlyFieldListFilter),
+        ("group", admin.RelatedOnlyFieldListFilter),
+        "created_at",
+    ]
     search_fields = ["name", "identifier", "user__username"]
     readonly_fields = ["created_at", "updated_at"]
     actions = [
@@ -360,7 +366,13 @@ class ArticleAdmin(YanaDjangoQLSearchMixin, ImportExportModelAdmin):
     """Admin configuration for Article model."""
 
     list_display = ["name", "feed", "author", "date", "read", "starred", "created_at"]
-    list_filter = ["feed", "read", "starred", "date", "created_at"]
+    list_filter = [
+        ("feed", admin.RelatedOnlyFieldListFilter),
+        "read",
+        "starred",
+        "date",
+        "created_at",
+    ]
     search_fields = ["name", "author", "identifier", "content"]
     readonly_fields = ["created_at", "updated_at"]
     actions = ["reload_selected_articles", "force_delete_selected"]
@@ -374,6 +386,10 @@ class ArticleAdmin(YanaDjangoQLSearchMixin, ImportExportModelAdmin):
         ("Status", {"fields": ("read", "starred")}),
         ("Timestamps", {"fields": ("created_at", "updated_at"), "classes": ("collapse",)}),
     )
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs.defer("content", "raw_content")
 
     @admin.action(description="Reload selected articles")
     def reload_selected_articles(self, request, queryset):
