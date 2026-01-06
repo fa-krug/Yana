@@ -4,7 +4,9 @@ import logging
 import re
 from typing import Optional
 
-from ..utils.content_extractor import find_image_on_page
+from asgiref.sync import async_to_sync
+
+from core.aggregators.services.image_extraction.extractor import ImageExtractor
 from ..utils.youtube import extract_youtube_video_id
 from .types import RedditPostData
 from .urls import (
@@ -181,7 +183,7 @@ def extract_header_image_url(post: RedditPostData) -> Optional[str]:
                 decoded_url,
             ):
                 logger.debug(f"Checking {decoded_url} for header image (link post)")
-                page_image = find_image_on_page(decoded_url)
+                page_image = _extract_image_from_url_sync(decoded_url)
                 if page_image:
                     return page_image
 
@@ -286,8 +288,23 @@ def _extract_image_url_from_selftext(post: RedditPostData) -> Optional[str]:
     # If no direct image URL found, try to extract image from the linked page
     if first_valid_url:
         logger.debug(f"Checking {first_valid_url} for header image")
-        page_image = find_image_on_page(first_valid_url)
+        page_image = _extract_image_from_url_sync(first_valid_url)
         if page_image:
             return page_image
 
     return None
+
+def _extract_image_from_url_sync(url: str) -> Optional[str]:
+    """
+    Synchronous wrapper for ImageExtractor.
+    """
+    try:
+        extractor = ImageExtractor()
+        # Use asgiref.sync.async_to_sync to correctly handle async call in synchronous context
+        result = async_to_sync(extractor.extract_image_from_url)(url, is_header_image=True)
+        if result and result.get("imageUrl"):
+            return result["imageUrl"]
+        return None
+    except Exception as e:
+        logger.debug(f"ImageExtractor failed for {url}: {e}")
+        return None
