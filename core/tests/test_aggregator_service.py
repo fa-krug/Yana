@@ -48,8 +48,11 @@ class TestAggregatorService:
             AggregatorService.trigger_by_feed_id(9999)
 
     @patch("core.services.aggregator_service.get_aggregator")
-    def test_trigger_by_feed_id_deduplication(self, mock_get_agg, rss_feed, article):
-        # Setup mock aggregator to return existing article
+    def test_trigger_by_feed_id_no_update_default(self, mock_get_agg, rss_feed, article):
+        """Test that existing articles are NOT updated by default."""
+        original_content = article.content
+
+        # Setup mock aggregator to return existing article with updated content
         mock_aggregator = MagicMock()
         mock_aggregator.aggregate.return_value = [
             {
@@ -66,8 +69,40 @@ class TestAggregatorService:
 
         # Assert
         assert result["success"] is True
-        assert result["articles_count"] == 0  # Should not create new article
+        assert result["articles_count"] == 0  # Should NOT count as processed
         assert Article.objects.filter(feed=rss_feed).count() == 1
+
+        # Verify NO update
+        article.refresh_from_db()
+        assert article.content == original_content
+
+    @patch("core.services.aggregator_service.get_aggregator")
+    def test_trigger_by_feed_id_force_update(self, mock_get_agg, rss_feed, article):
+        """Test that existing articles ARE updated when force_update=True."""
+        # Setup mock aggregator to return existing article with updated content
+        mock_aggregator = MagicMock()
+        mock_aggregator.aggregate.return_value = [
+            {
+                "name": article.name,
+                "identifier": article.identifier,
+                "raw_content": "different raw",
+                "content": "different clean",
+            }
+        ]
+        mock_get_agg.return_value = mock_aggregator
+
+        # Act
+        result = AggregatorService.trigger_by_feed_id(rss_feed.id, force_update=True)
+
+        # Assert
+        assert result["success"] is True
+        assert result["articles_count"] == 1  # Should count as processed (updated)
+        assert Article.objects.filter(feed=rss_feed).count() == 1
+
+        # Verify update
+        article.refresh_from_db()
+        assert article.content == "different clean"
+        assert article.raw_content == "different raw"
 
     @patch("core.services.aggregator_service.get_aggregator")
     @patch("core.services.aggregator_service.HeaderElementFileHandler.save_image_to_article")

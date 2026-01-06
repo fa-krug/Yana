@@ -19,12 +19,18 @@ class Command(BaseCommand):
             type=int,
             help="Limit number of feeds to process (for --all or --aggregator-type)",
         )
+        parser.add_argument(
+            "--force-update",
+            action="store_true",
+            help="Update existing articles if content has changed",
+        )
 
     def handle(self, *args, **options):
         feed_id = options.get("feed_id")
         aggregator_type = options.get("aggregator_type")
         trigger_all = options.get("all")
         limit = options.get("limit")
+        force_update = options.get("force_update")
 
         # Validate arguments
         if not any([feed_id, aggregator_type, trigger_all]):
@@ -39,7 +45,7 @@ class Command(BaseCommand):
             if feed_id:
                 # Trigger specific feed
                 self.stdout.write(self.style.SUCCESS(f"Triggering feed ID: {feed_id}"))
-                result = AggregatorService.trigger_by_feed_id(feed_id)
+                result = AggregatorService.trigger_by_feed_id(feed_id, force_update=force_update)
                 self._print_result(result)
 
             elif aggregator_type:
@@ -50,7 +56,9 @@ class Command(BaseCommand):
                         + (f" (limit: {limit})" if limit else "")
                     )
                 )
-                results = AggregatorService.trigger_by_aggregator_type(aggregator_type, limit=limit)
+                results = AggregatorService.trigger_by_aggregator_type(
+                    aggregator_type, limit=limit, force_update=force_update
+                )
                 for result in results:
                     self._print_result(result)
 
@@ -61,7 +69,7 @@ class Command(BaseCommand):
                         "Triggering all enabled feeds" + (f" (limit: {limit})" if limit else "")
                     )
                 )
-                results = AggregatorService.trigger_all(limit=limit)
+                results = AggregatorService.trigger_all(limit=limit, force_update=force_update)
                 for result in results:
                     self._print_result(result)
 
