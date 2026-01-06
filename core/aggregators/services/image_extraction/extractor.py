@@ -49,7 +49,7 @@ class ImageExtractor:
             PageImagesStrategy(),
         ]
 
-    async def extract_image_from_url(
+    def extract_image_from_url(
         self, url: str, is_header_image: bool = False
     ) -> Optional[Dict[str, Any]]:
         """
@@ -87,7 +87,7 @@ class ImageExtractor:
 
             logger.debug(f"ImageExtractor: Trying {strategy.__class__.__name__}")
             try:
-                result = await strategy.extract(context)
+                result = strategy.extract(context)
                 if result:
                     logger.debug(f"ImageExtractor: Success with {strategy.__class__.__name__}")
                     return result
@@ -119,7 +119,7 @@ class ImageExtractor:
 
             logger.debug(f"ImageExtractor: Trying {strategy.__class__.__name__}")
             try:
-                result = await strategy.extract(context)
+                result = strategy.extract(context)
                 if result:
                     logger.debug(f"ImageExtractor: Success with {strategy.__class__.__name__}")
                     return result

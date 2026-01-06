@@ -1,6 +1,5 @@
 """Base aggregator class for implementing feed providers."""
 
-import asyncio
 import logging
 import math
 import random
@@ -381,9 +380,9 @@ class BaseAggregator(ABC):
                 self.logger.warning("extract_header_element: Missing article URL")
                 return None
 
-            # Run async extraction using asyncio
+            # Run extraction synchronously
             extractor = HeaderElementExtractor()
-            header_data = asyncio.run(extractor.extract_header_element(url, alt))
+            header_data = extractor.extract_header_element(url, alt)
 
             return header_data
 

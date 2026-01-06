@@ -7,8 +7,6 @@ Usage:
     python manage.py test_header_extraction "https://reddit.com/r/python/comments/abc/title"
 """
 
-import asyncio
-
 from django.core.management.base import BaseCommand
 
 from core.aggregators.exceptions import ArticleSkipError
@@ -51,9 +49,9 @@ class Command(BaseCommand):
         self.stdout.write(self.style.HTTP_INFO(f"Alt text: {alt}\n"))
 
         try:
-            # Run async extraction
+            # Run extraction synchronously
             extractor = HeaderElementExtractor()
-            header_element = asyncio.run(extractor.extract_header_element(url, alt))
+            header_element = extractor.extract_header_element(url, alt)
 
             if header_element:
                 self.stdout.write(self.style.SUCCESS("✓ Successfully extracted header element!\n"))

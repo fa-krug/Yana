@@ -40,7 +40,7 @@ class HeaderElementStrategy(ABC):
         pass
 
     @abstractmethod
-    async def create(self, context: HeaderElementContext) -> HeaderElementData | None:
+    def create(self, context: HeaderElementContext) -> HeaderElementData | None:
         """
         Create header element data.
 
@@ -57,14 +57,14 @@ class RedditEmbedStrategy(HeaderElementStrategy):
         """Check if URL is a Reddit embed URL."""
         return is_reddit_embed_url(url)
 
-    async def create(self, context: HeaderElementContext) -> HeaderElementData | None:
+    def create(self, context: HeaderElementContext) -> HeaderElementData | None:
         """Extract image from Reddit embed."""
         logger.debug(f"RedditEmbedStrategy: Extracting image for {context.url}")
 
         try:
             # Try to extract image using GenericImageStrategy for the embed URL
             strategy = GenericImageStrategy()
-            return await strategy.create(context)
+            return strategy.create(context)
         except Exception as e:
             logger.warning(f"RedditEmbedStrategy: Failed - {e}")
             return None
@@ -82,7 +82,7 @@ class RedditPostStrategy(HeaderElementStrategy):
         post_info = extract_post_info_from_url(url)
         return post_info["subreddit"] is not None
 
-    async def create(self, context: HeaderElementContext) -> HeaderElementData | None:
+    def create(self, context: HeaderElementContext) -> HeaderElementData | None:
         """Fetch subreddit icon and return header element data."""
         logger.debug(f"RedditPostStrategy: Extracting icon for {context.url}")
 
@@ -136,7 +136,7 @@ class YouTubeStrategy(HeaderElementStrategy):
         """Check if URL is a YouTube URL."""
         return extract_youtube_video_id(url) is not None
 
-    async def create(self, context: HeaderElementContext) -> HeaderElementData | None:
+    def create(self, context: HeaderElementContext) -> HeaderElementData | None:
         """Fetch YouTube thumbnail and return header element data."""
         logger.debug(f"YouTubeStrategy: Fetching thumbnail for {context.url}")
 
@@ -194,14 +194,14 @@ class GenericImageStrategy(HeaderElementStrategy):
         # Accept all other URLs (fallback)
         return True
 
-    async def create(self, context: HeaderElementContext) -> HeaderElementData | None:
+    def create(self, context: HeaderElementContext) -> HeaderElementData | None:
         """Extract image using ImageExtractor."""
         logger.debug(f"GenericImageStrategy: Extracting from {context.url}")
 
         extractor = None
         try:
             extractor = ImageExtractor()
-            image_result = await extractor.extract_image_from_url(context.url, is_header_image=True)
+            image_result = extractor.extract_image_from_url(context.url, is_header_image=True)
 
             if not image_result:
                 logger.debug("GenericImageStrategy: No image extracted")
