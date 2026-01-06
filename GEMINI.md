@@ -374,9 +374,8 @@ SUPERUSER_PASSWORD=password
 |-----------|--------|
 | Models, Admin, Docker | ✅ Complete |
 | SQLite performance optimizations | ✅ Complete (Django 6 approach) |
-| MeinMmo aggregator | ✅ Complete (reference) |
-| GReader API | 🔄 Partial (services scaffolded) |
-| Other 13 aggregators | ❌ Stubs only |
+| Aggregator System | ✅ Complete (14 types implemented) |
+| GReader API | 🔄 Partial (services active) |
 | Test coverage | ❌ Minimal |
 
 ## References

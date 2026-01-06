@@ -177,17 +177,17 @@ Articles can be filtered by:
 | `full_website` | Generic web scraper | Reference |
 | `feed_content` | RSS/Atom feeds | Reference |
 | `mein_mmo` | Gaming blog | Implemented |
-| `youtube` | YouTube channels | Stub |
-| `reddit` | Reddit subreddits | Stub |
-| `podcast` | Podcast feeds | Stub |
-| `heise` | German tech news | Stub |
-| `merkur` | German news | Stub |
-| `tagesschau` | German news | Stub |
-| `explosm` | Web comics | Stub |
-| `dark_legacy` | Web comics | Stub |
-| `oglaf` | Web comics | Stub |
-| `caschys_blog` | Tech blog | Stub |
-| `mactechnews` | Apple tech news | Stub |
+| `youtube` | YouTube channels | Implemented |
+| `reddit` | Reddit subreddits | Implemented |
+| `podcast` | Podcast feeds | Implemented |
+| `heise` | German tech news | Implemented |
+| `merkur` | German news | Implemented |
+| `tagesschau` | German news | Implemented |
+| `explosm` | Web comics | Implemented |
+| `dark_legacy` | Web comics | Implemented |
+| `oglaf` | Web comics | Implemented |
+| `caschys_blog` | Tech blog | Implemented |
+| `mactechnews` | Apple tech news | Implemented |
 
 ### Creating New Aggregators
 
@@ -365,11 +365,13 @@ curl http://localhost:8000/health/
 - **Pillow 11.0.0** - Image processing
 - **feedparser 6.0.12** - RSS/Atom parsing
 - **django-q2 1.9.0** - Task queue
+- **graphene-django 3.2.3** - GraphQL API
+- **djangoql 0.18.1** - Advanced query language
 - **gunicorn 21.2.0** - App server
 - **whitenoise 6.6.0** - Static file serving
 - **supervisor 4.2.5** - Process management
 
-See `requirements.txt` for complete list (41 total packages).
+See `requirements.txt` for complete list.
 
 ## Implementation Status
 
@@ -377,21 +379,20 @@ See `requirements.txt` for complete list (41 total packages).
 - Core models and database
 - Django admin with custom actions
 - Aggregator system foundation
-- MeinMmo aggregator (full implementation)
+- All 14 aggregators (ported from TypeScript)
 - Docker setup with Supervisor
 - YouTube proxy endpoint
 - Health check endpoint
 - Partial Google Reader API
 
 ### In Progress 🔄
-- Google Reader service implementations (7 modules)
+- GReader service implementations (7 modules active)
 - GReader view handlers
 - Article reload functionality
+- GraphQL API integration
 
 ### To Do 📋
-- Port 13 aggregators from TypeScript source
 - Complete GReader service implementations
-- GraphQL support (configured but not implemented)
 - Comprehensive test coverage
 - Performance optimization and caching tuning
 
