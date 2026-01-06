@@ -60,22 +60,44 @@ class AggregatorService:
 
             # Save articles to database
             created_count = 0
+            updated_count = 0
             for article_data in articles_data:
                 try:
                     # Get or create article by identifier
-                    article, created = Article.objects.get_or_create(
-                        feed=feed,
-                        identifier=article_data["identifier"],
-                        defaults={
-                            "name": article_data.get("name", ""),
-                            "raw_content": article_data.get("raw_content", ""),
-                            "content": article_data.get("content", ""),
-                            "date": timezone.now(),  # Always save with current timestamp
-                            "author": article_data.get("author", ""),
-                        },
-                    )
+                    article = Article.objects.filter(
+                        feed=feed, identifier=article_data["identifier"]
+                    ).first()
 
-                    if created:
+                    if article:
+                        # Update existing article
+                        updated = False
+                        if article.name != article_data.get("name", ""):
+                            article.name = article_data.get("name", "")
+                            updated = True
+                        if article.raw_content != article_data.get("raw_content", ""):
+                            article.raw_content = article_data.get("raw_content", "")
+                            updated = True
+                        if article.content != article_data.get("content", ""):
+                            article.content = article_data.get("content", "")
+                            updated = True
+                        if article.author != article_data.get("author", ""):
+                            article.author = article_data.get("author", "")
+                            updated = True
+
+                        if updated:
+                            article.save()
+                            updated_count += 1
+                    else:
+                        # Create new article
+                        article = Article.objects.create(
+                            feed=feed,
+                            identifier=article_data["identifier"],
+                            name=article_data.get("name", ""),
+                            raw_content=article_data.get("raw_content", ""),
+                            content=article_data.get("content", ""),
+                            date=timezone.now(),  # Always save with current timestamp
+                            author=article_data.get("author", ""),
+                        )
                         created_count += 1
 
                         # Handle header image if present
@@ -90,6 +112,7 @@ class AggregatorService:
             print(f"{'=' * 60}")
             print("Aggregation completed successfully")
             print(f"Created {created_count} new articles")
+            print(f"Updated {updated_count} articles")
             print(f"{'=' * 60}\n")
 
             return {
@@ -97,7 +120,7 @@ class AggregatorService:
                 "feed_id": feed_id,
                 "feed_name": feed.name,
                 "aggregator_type": feed.aggregator,
-                "articles_count": created_count,
+                "articles_count": created_count + updated_count,
             }
 
         except ObjectDoesNotExist as e:
