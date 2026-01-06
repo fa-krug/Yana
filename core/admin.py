@@ -14,6 +14,7 @@ from django_q.admin import ScheduleAdmin as BaseScheduleAdmin
 from django_q.admin import TaskAdmin as BaseTaskAdmin
 from django_q.models import Failure, OrmQ, Schedule, Task
 from djangoql.admin import DjangoQLSearchMixin
+from djangoql.schema import DjangoQLSchema
 from import_export.admin import ImportExportMixin, ImportExportModelAdmin
 
 from .forms import FeedAdminForm
@@ -51,6 +52,29 @@ def delete_all_articles(modeladmin, request, queryset):
 
     count, _ = Article.objects.filter(feed__in=queryset).delete()
     modeladmin.message_user(request, f"Deleted {count} articles from selected feeds.")
+
+
+class ArticleQLSchema(DjangoQLSchema):
+    """
+    Custom DjangoQL schema for Article model.
+    Excludes large text fields from search suggestions and queries to improve performance.
+    """
+
+    def get_fields(self, model):
+        fields = super().get_fields(model)
+        from .models import Article
+
+        if model == Article:
+            # Filter out large text fields to prevent heavy queries and suggestions
+            # Fields in DjangoQL can be strings (model field names) or Field instances
+            excluded_fields = {"content", "raw_content"}
+            filtered_fields = []
+            for f in fields:
+                name = f.name if hasattr(f, "name") else f
+                if name not in excluded_fields:
+                    filtered_fields.append(f)
+            return filtered_fields
+        return fields
 
 
 @admin.register(RedditSubreddit)
@@ -365,6 +389,7 @@ class FeedAdmin(YanaDjangoQLSearchMixin, ImportExportModelAdmin):
 class ArticleAdmin(YanaDjangoQLSearchMixin, ImportExportModelAdmin):
     """Admin configuration for Article model."""
 
+    djangoql_schema = ArticleQLSchema
     list_display = ["name", "feed", "author", "date", "read", "starred", "created_at"]
     list_filter = [
         ("feed", admin.RelatedOnlyFieldListFilter),
