@@ -11,6 +11,7 @@ from core.services.greader.subscription_service import (
     SubscriptionError,
     edit_subscription,
     list_subscriptions,
+    quick_add_subscription,
 )
 
 from .decorators import greader_auth_required
@@ -110,4 +111,35 @@ def subscription_edit(request):
             "Internal server error",
             status=500,
             content_type="text/plain",
+        )
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+@greader_auth_required
+def quickadd(request):
+    """Quickly add a subscription.
+
+    POST parameters:
+    - quickadd: URL to subscribe to
+
+    Response (on success):
+        JSON with subscription info
+    """
+    try:
+        user_id = request.greader_user["id"]
+        quick_add_url = request.POST.get("quickadd")
+
+        if not quick_add_url:
+            return JsonResponse({"error": "Missing quickadd parameter"}, status=400)
+
+        result = quick_add_subscription(user_id, quick_add_url)
+
+        return JsonResponse(result, status=200)
+
+    except Exception:
+        logger.exception("Error in quickadd view")
+        return JsonResponse(
+            {"error": "Internal server error"},
+            status=500,
         )

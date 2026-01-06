@@ -15,7 +15,11 @@ from core.views.greader.stream import (
     stream_items_ids,
     unread_count,
 )
-from core.views.greader.subscription import subscription_edit, subscription_list
+from core.views.greader.subscription import (
+    quickadd,
+    subscription_edit,
+    subscription_list,
+)
 from core.views.greader.tag import (
     disable_tag,
     edit_tag,
@@ -38,6 +42,7 @@ urlpatterns = [
     # Subscription endpoints
     path("reader/api/0/subscription/list", subscription_list, name="subscription_list"),
     path("reader/api/0/subscription/edit", subscription_edit, name="subscription_edit"),
+    path("reader/api/0/subscription/quickadd", quickadd, name="quickadd"),
     # Tag endpoints
     path("reader/api/0/tag/list", tag_list, name="tag_list"),
     path("reader/api/0/edit-tag", edit_tag, name="edit_tag"),

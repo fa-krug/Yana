@@ -211,6 +211,43 @@ def edit_subscription(user_id: int, options: dict[str, Any]) -> dict[str, Any]:
     return {"status": "ok"}
 
 
+def quick_add_subscription(user_id: int, url: str) -> dict[str, Any]:
+    """Quickly add a subscription by URL.
+
+    Args:
+        user_id: Django user ID
+        url: URL to subscribe to
+
+    Returns:
+        Dict with quickadd response format
+    """
+    # Check if feed exists
+    feed = Feed.objects.filter(identifier=url, user_id=user_id).first()
+
+    if not feed:
+        # Create new feed
+        feed = Feed.objects.create(
+            name=url,
+            identifier=url,
+            aggregator="feed_content",
+            user_id=user_id,
+            enabled=True,
+        )
+        logger.info(f"User {user_id} quick-added subscription to {url}")
+    else:
+        # Enable if disabled
+        if not feed.enabled:
+            feed.enabled = True
+            feed.save()
+            logger.info(f"User {user_id} re-enabled subscription to {url}")
+
+    return {
+        "query": url,
+        "numResults": 1,
+        "streamId": f"feed/{feed.identifier}",
+    }
+
+
 def _add_feed_to_labels(feed: Feed, user_id: int, labels: list[str]) -> None:
     """Add a feed to one or more labels/groups (additive).
 
