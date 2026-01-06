@@ -165,7 +165,9 @@ class AggregatorService:
         return results
 
     @staticmethod
-    def trigger_all(limit: Optional[int] = None, force_update: bool = False) -> List[Dict[str, Any]]:
+    def trigger_all(
+        limit: Optional[int] = None, force_update: bool = False
+    ) -> List[Dict[str, Any]]:
         """
         Trigger all enabled feeds.
 
