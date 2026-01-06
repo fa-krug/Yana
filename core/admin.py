@@ -14,7 +14,7 @@ from django_q.admin import ScheduleAdmin as BaseScheduleAdmin
 from django_q.admin import TaskAdmin as BaseTaskAdmin
 from django_q.models import Failure, OrmQ, Schedule, Task
 from djangoql.admin import DjangoQLSearchMixin
-from djangoql.schema import DjangoQLSchema
+from djangoql.schema import DjangoQLSchema, StrField
 from import_export.admin import ImportExportMixin, ImportExportModelAdmin
 
 from .forms import FeedAdminForm
@@ -57,7 +57,7 @@ def delete_all_articles(modeladmin, request, queryset):
 class ArticleQLSchema(DjangoQLSchema):
     """
     Custom DjangoQL schema for Article model.
-    Excludes large text fields from search suggestions and queries to improve performance.
+    Configures large text fields to be searchable but without suggestions to improve performance.
     """
 
     def get_fields(self, model):
@@ -65,15 +65,17 @@ class ArticleQLSchema(DjangoQLSchema):
         from .models import Article
 
         if model == Article:
-            # Filter out large text fields to prevent heavy queries and suggestions
-            # Fields in DjangoQL can be strings (model field names) or Field instances
-            excluded_fields = {"content", "raw_content"}
-            filtered_fields = []
+            # Customize large text fields to disable suggestions
+            # This allows searching (e.g. content ~ "text") but prevents heavy suggestion queries
+            custom_fields = []
             for f in fields:
                 name = f.name if hasattr(f, "name") else f
-                if name not in excluded_fields:
-                    filtered_fields.append(f)
-            return filtered_fields
+                if name in {"content", "raw_content"}:
+                    # Replace with a custom field that has suggestions disabled
+                    custom_fields.append(StrField(name=name, suggest_options=False))
+                else:
+                    custom_fields.append(f)
+            return custom_fields
         return fields
 
 
