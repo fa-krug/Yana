@@ -21,8 +21,8 @@ MAX_IMAGE_WIDTH = 600
 MAX_IMAGE_HEIGHT = 600
 MAX_HEADER_IMAGE_WIDTH = 1200
 MAX_HEADER_IMAGE_HEIGHT = 1200
-JPEG_QUALITY = 65
-WEBP_QUALITY = 65
+JPEG_QUALITY = 95
+WEBP_QUALITY = 95
 PREFER_WEBP = True
 MIN_IMAGE_SIZE = 5000  # 5KB - skip compression if smaller
 
@@ -66,14 +66,6 @@ def compress_image(
                 "height": None,
             }
 
-        # Use header dimensions if specified
-        if is_header:
-            max_width = MAX_HEADER_IMAGE_WIDTH
-            max_height = MAX_HEADER_IMAGE_HEIGHT
-        else:
-            max_width = MAX_IMAGE_WIDTH
-            max_height = MAX_IMAGE_HEIGHT
-
         # Load image
         img: Any = Image.open(io.BytesIO(image_data))
 
@@ -98,8 +90,15 @@ def compress_image(
         # Get original dimensions
         original_width, original_height = img.size
 
-        # Calculate resize ratio (never upscale)
-        ratio = min(max_width / original_width, max_height / original_height, 1.0)
+        # Calculate resize ratio
+        if is_header:
+            max_width = MAX_HEADER_IMAGE_WIDTH
+            max_height = MAX_HEADER_IMAGE_HEIGHT
+            # Never upscale
+            ratio = min(max_width / original_width, max_height / original_height, 1.0)
+        else:
+            # Do not shrink non-header images
+            ratio = 1.0
 
         if ratio < 1.0:
             # Resize using high-quality resampling
@@ -144,10 +143,10 @@ def compress_image(
         # Log compression ratio
         original_size = len(image_data)
         compressed_size = len(compressed_data)
-        ratio = (1 - compressed_size / original_size) * 100 if original_size > 0 else 0
+        ratio_pct = (1 - compressed_size / original_size) * 100 if original_size > 0 else 0
 
         logger.debug(
-            f"Compressed image: {original_size}b -> {compressed_size}b ({ratio:.1f}% reduction) [{content_type}]"
+            f"Compressed image: {original_size}b -> {compressed_size}b ({ratio_pct:.1f}% reduction) [{content_type}]"
         )
 
         return {

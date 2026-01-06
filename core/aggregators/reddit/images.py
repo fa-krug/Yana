@@ -293,6 +293,7 @@ def _extract_image_url_from_selftext(post: RedditPostData) -> Optional[str]:
 
     return None
 
+
 def _extract_image_from_url_sync(url: str) -> Optional[str]:
     """
     Synchronous wrapper for ImageExtractor.
