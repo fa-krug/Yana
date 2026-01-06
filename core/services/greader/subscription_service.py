@@ -221,30 +221,35 @@ def quick_add_subscription(user_id: int, url: str) -> dict[str, Any]:
     Returns:
         Dict with quickadd response format
     """
+    # Strip feed/ prefix if present
+    clean_url = url
+    if clean_url.startswith("feed/"):
+        clean_url = clean_url[5:]
+
     # Check if feed exists
-    feed = Feed.objects.filter(identifier=url, user_id=user_id).first()
+    feed = Feed.objects.filter(identifier=clean_url, user_id=user_id).first()
 
     if not feed:
         # Create new feed
         feed = Feed.objects.create(
-            name=url,
-            identifier=url,
+            name=clean_url,
+            identifier=clean_url,
             aggregator="feed_content",
             user_id=user_id,
             enabled=True,
         )
-        logger.info(f"User {user_id} quick-added subscription to {url}")
+        logger.info(f"User {user_id} quick-added subscription to {clean_url}")
     else:
         # Enable if disabled
         if not feed.enabled:
             feed.enabled = True
             feed.save()
-            logger.info(f"User {user_id} re-enabled subscription to {url}")
+            logger.info(f"User {user_id} re-enabled subscription to {clean_url}")
 
     return {
         "query": url,
         "numResults": 1,
-        "streamId": f"feed/{feed.identifier}",
+        "streamId": f"feed/{feed.id}",
         "streamName": feed.name,
     }
 
