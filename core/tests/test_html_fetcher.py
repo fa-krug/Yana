@@ -36,7 +36,8 @@ class TestHtmlFetcher:
 
         mock_get.side_effect = [requests.RequestException("Fail"), success_response]
 
-        result = fetch_html("https://example.com", retries=2)
+        # Relies on default retries=3
+        result = fetch_html("https://example.com")
 
         assert result == "Success"
         assert mock_get.call_count == 2
@@ -49,13 +50,20 @@ class TestHtmlFetcher:
         mock_get.side_effect = requests.RequestException("Persistent Fail")
 
         with pytest.raises(requests.RequestException, match="Persistent Fail"):
-            fetch_html("https://example.com", retries=3)
+            fetch_html("https://example.com")
 
         assert mock_get.call_count == 3
         assert mock_sleep.call_count == 2
 
     @patch("core.aggregators.utils.html_fetcher.requests.get")
-    def test_fetch_html_timeout(self, mock_get):
+    @patch("core.aggregators.utils.html_fetcher.time.sleep")
+    def test_fetch_html_timeout(self, mock_sleep, mock_get):
+        # Mock sleep to avoid waiting during test
         mock_get.side_effect = requests.exceptions.Timeout("Timeout")
+
         with pytest.raises(requests.exceptions.Timeout):
-            fetch_html("https://example.com", retries=1)
+            fetch_html("https://example.com")
+
+        # Should try 3 times
+        assert mock_get.call_count == 3
+        assert mock_sleep.call_count == 2

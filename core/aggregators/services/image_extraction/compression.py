@@ -30,8 +30,6 @@ MIN_IMAGE_SIZE = 5000  # 5KB - skip compression if smaller
 def compress_image(
     image_data: bytes,
     content_type: str,
-    max_width: int = MAX_IMAGE_WIDTH,
-    max_height: int = MAX_IMAGE_HEIGHT,
     is_header: bool = False,
 ) -> Dict[str, Any] | None:
     """
@@ -46,8 +44,6 @@ def compress_image(
     Args:
         image_data: Raw image bytes
         content_type: Original MIME type
-        max_width: Maximum width in pixels
-        max_height: Maximum height in pixels
         is_header: Whether this is a header image (uses MAX_HEADER_IMAGE_* if True)
 
     Returns:
@@ -74,6 +70,9 @@ def compress_image(
         if is_header:
             max_width = MAX_HEADER_IMAGE_WIDTH
             max_height = MAX_HEADER_IMAGE_HEIGHT
+        else:
+            max_width = MAX_IMAGE_WIDTH
+            max_height = MAX_IMAGE_HEIGHT
 
         # Load image
         img: Any = Image.open(io.BytesIO(image_data))

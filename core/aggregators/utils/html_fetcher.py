@@ -5,16 +5,16 @@ import time
 import requests
 
 USER_AGENT = "Mozilla/5.0 (compatible; YanaBot/1.0; +https://github.com/yourusername/yana)"
+DEFAULT_RETRIES = 3
 
 
-def fetch_html(url: str, timeout: int = 30, retries: int = 3) -> str:
+def fetch_html(url: str, timeout: int = 30) -> str:
     """
     Fetch HTML content from URL with retry logic.
 
     Args:
         url: URL to fetch
         timeout: Request timeout in seconds
-        retries: Number of retry attempts
 
     Returns:
         HTML content as string
@@ -32,6 +32,7 @@ def fetch_html(url: str, timeout: int = 30, retries: int = 3) -> str:
     }
 
     last_exception: requests.RequestException | None = None
+    retries = DEFAULT_RETRIES
 
     for attempt in range(retries):
         try:
