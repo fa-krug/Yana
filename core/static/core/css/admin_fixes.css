@@ -1,7 +1,0 @@
-/* Fix DjangoQL advanced search layout on mobile */
-@media (max-width: 767px) {
-    #changelist #toolbar form textarea#searchbar {
-        width: 60% !important;
-        height: 100% !important;
-    }
-}

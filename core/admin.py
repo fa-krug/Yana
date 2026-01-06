@@ -13,23 +13,11 @@ from django_q.admin import QueueAdmin as BaseQueueAdmin
 from django_q.admin import ScheduleAdmin as BaseScheduleAdmin
 from django_q.admin import TaskAdmin as BaseTaskAdmin
 from django_q.models import Failure, OrmQ, Schedule, Task
-from djangoql.admin import DjangoQLSearchMixin
-from djangoql.schema import DjangoQLSchema, StrField
 from import_export.admin import ImportExportMixin, ImportExportModelAdmin
 
 from .forms import FeedAdminForm
 from .models import Article, Feed, FeedGroup, RedditSubreddit, UserSettings, YouTubeChannel
 from .services import AggregatorService, ArticleService
-
-
-class YanaDjangoQLSearchMixin(DjangoQLSearchMixin):
-    """Custom Mixin to add overrides for DjangoQL."""
-
-    class Media:
-        css = {
-            "all": ("core/css/admin_fixes.css",),
-        }
-
 
 # Customize Admin Site
 admin.site.site_header = "Yana"
@@ -52,31 +40,6 @@ def delete_all_articles(modeladmin, request, queryset):
 
     count, _ = Article.objects.filter(feed__in=queryset).delete()
     modeladmin.message_user(request, f"Deleted {count} articles from selected feeds.")
-
-
-class ArticleQLSchema(DjangoQLSchema):
-    """
-    Custom DjangoQL schema for Article model.
-    Configures large text fields to be searchable but without suggestions to improve performance.
-    """
-
-    def get_fields(self, model):
-        fields = super().get_fields(model)
-        from .models import Article
-
-        if model == Article:
-            # Customize large text fields to disable suggestions
-            # This allows searching (e.g. content ~ "text") but prevents heavy suggestion queries
-            custom_fields = []
-            for f in fields:
-                name = f.name if hasattr(f, "name") else f
-                if name in {"content", "raw_content"}:
-                    # Replace with a custom field that has suggestions disabled
-                    custom_fields.append(StrField(name=name, suggest_options=False))
-                else:
-                    custom_fields.append(f)
-            return custom_fields
-        return fields
 
 
 @admin.register(RedditSubreddit)
@@ -132,7 +95,7 @@ class YouTubeChannelAdmin(admin.ModelAdmin):
 
 
 @admin.register(FeedGroup)
-class FeedGroupAdmin(YanaDjangoQLSearchMixin, admin.ModelAdmin):
+class FeedGroupAdmin(admin.ModelAdmin):
     """Admin configuration for FeedGroup model."""
 
     list_display = ["name", "user", "created_at"]
@@ -149,7 +112,7 @@ class FeedGroupAdmin(YanaDjangoQLSearchMixin, admin.ModelAdmin):
 
 
 @admin.register(Feed)
-class FeedAdmin(YanaDjangoQLSearchMixin, ImportExportModelAdmin):
+class FeedAdmin(ImportExportModelAdmin):
     """Admin configuration for Feed model."""
 
     form = FeedAdminForm
@@ -388,10 +351,9 @@ class FeedAdmin(YanaDjangoQLSearchMixin, ImportExportModelAdmin):
 
 
 @admin.register(Article)
-class ArticleAdmin(YanaDjangoQLSearchMixin, ImportExportModelAdmin):
+class ArticleAdmin(ImportExportModelAdmin):
     """Admin configuration for Article model."""
 
-    djangoql_schema = ArticleQLSchema
     list_display = ["name", "feed", "author", "date", "read", "starred", "created_at"]
     list_filter = [
         ("feed", admin.RelatedOnlyFieldListFilter),
@@ -523,7 +485,7 @@ admin.site.unregister(User)
 
 
 @admin.register(User)
-class UserAdmin(ImportExportMixin, YanaDjangoQLSearchMixin, BaseUserAdmin):
+class UserAdmin(ImportExportMixin, BaseUserAdmin):
     """Custom User admin with UserSettings inline."""
 
     inlines = [UserSettingsInline]
@@ -534,7 +496,7 @@ admin.site.unregister(Group)
 
 
 @admin.register(Group)
-class GroupAdmin(YanaDjangoQLSearchMixin, BaseGroupAdmin):
+class GroupAdmin(BaseGroupAdmin):
     """Custom Group admin with DjangoQL support."""
 
     pass
@@ -547,28 +509,28 @@ for model in [Schedule, Task, Failure, OrmQ]:
 
 
 @admin.register(Schedule)
-class ScheduleAdmin(YanaDjangoQLSearchMixin, BaseScheduleAdmin):
+class ScheduleAdmin(BaseScheduleAdmin):
     """Custom Schedule admin with DjangoQL support."""
 
     pass
 
 
 @admin.register(Task)
-class TaskAdmin(YanaDjangoQLSearchMixin, BaseTaskAdmin):
+class TaskAdmin(BaseTaskAdmin):
     """Custom Task admin with DjangoQL support."""
 
     pass
 
 
 @admin.register(Failure)
-class FailAdmin(YanaDjangoQLSearchMixin, BaseFailAdmin):
+class FailAdmin(BaseFailAdmin):
     """Custom Failure admin with DjangoQL support."""
 
     pass
 
 
 @admin.register(OrmQ)
-class QueueAdmin(YanaDjangoQLSearchMixin, BaseQueueAdmin):
+class QueueAdmin(BaseQueueAdmin):
     """Custom Queue admin with DjangoQL support."""
 
     pass
