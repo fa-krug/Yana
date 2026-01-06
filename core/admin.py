@@ -19,7 +19,6 @@ from .forms import FeedAdminForm
 from .models import Article, Feed, FeedGroup, RedditSubreddit, UserSettings, YouTubeChannel
 from .services import AggregatorService, ArticleService
 
-
 # Customize Admin Site
 admin.site.site_header = "Yana"
 admin.site.site_title = "Yana Admin"
