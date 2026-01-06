@@ -14,12 +14,13 @@ class AggregatorService:
     """Service for managing and triggering aggregators."""
 
     @staticmethod
-    def trigger_by_feed_id(feed_id: int) -> Dict[str, Any]:
+    def trigger_by_feed_id(feed_id: int, force_update: bool = False) -> Dict[str, Any]:
         """
         Trigger aggregator for a specific feed by its ID.
 
         Args:
             feed_id: The ID of the feed to aggregate
+            force_update: Whether to update existing articles
 
         Returns:
             Dictionary with:
@@ -69,24 +70,25 @@ class AggregatorService:
                     ).first()
 
                     if article:
-                        # Update existing article
-                        updated = False
-                        if article.name != article_data.get("name", ""):
-                            article.name = article_data.get("name", "")
-                            updated = True
-                        if article.raw_content != article_data.get("raw_content", ""):
-                            article.raw_content = article_data.get("raw_content", "")
-                            updated = True
-                        if article.content != article_data.get("content", ""):
-                            article.content = article_data.get("content", "")
-                            updated = True
-                        if article.author != article_data.get("author", ""):
-                            article.author = article_data.get("author", "")
-                            updated = True
+                        # Update existing article only if force_update is True
+                        if force_update:
+                            updated = False
+                            if article.name != article_data.get("name", ""):
+                                article.name = article_data.get("name", "")
+                                updated = True
+                            if article.raw_content != article_data.get("raw_content", ""):
+                                article.raw_content = article_data.get("raw_content", "")
+                                updated = True
+                            if article.content != article_data.get("content", ""):
+                                article.content = article_data.get("content", "")
+                                updated = True
+                            if article.author != article_data.get("author", ""):
+                                article.author = article_data.get("author", "")
+                                updated = True
 
-                        if updated:
-                            article.save()
-                            updated_count += 1
+                            if updated:
+                                article.save()
+                                updated_count += 1
                     else:
                         # Create new article
                         article = Article.objects.create(
@@ -137,7 +139,7 @@ class AggregatorService:
 
     @staticmethod
     def trigger_by_aggregator_type(
-        aggregator_type: str, limit: Optional[int] = None
+        aggregator_type: str, limit: Optional[int] = None, force_update: bool = False
     ) -> List[Dict[str, Any]]:
         """
         Trigger all feeds of a specific aggregator type.
@@ -145,6 +147,7 @@ class AggregatorService:
         Args:
             aggregator_type: The aggregator type (e.g., 'youtube', 'reddit')
             limit: Optional limit on number of feeds to process
+            force_update: Whether to update existing articles
 
         Returns:
             List of result dictionaries from trigger_by_feed_id
@@ -156,18 +159,19 @@ class AggregatorService:
 
         results = []
         for feed in feeds:
-            result = AggregatorService.trigger_by_feed_id(feed.id)
+            result = AggregatorService.trigger_by_feed_id(feed.id, force_update=force_update)
             results.append(result)
 
         return results
 
     @staticmethod
-    def trigger_all(limit: Optional[int] = None) -> List[Dict[str, Any]]:
+    def trigger_all(limit: Optional[int] = None, force_update: bool = False) -> List[Dict[str, Any]]:
         """
         Trigger all enabled feeds.
 
         Args:
             limit: Optional limit on number of feeds to process
+            force_update: Whether to update existing articles
 
         Returns:
             List of result dictionaries from trigger_by_feed_id
@@ -179,7 +183,7 @@ class AggregatorService:
 
         results = []
         for feed in feeds:
-            result = AggregatorService.trigger_by_feed_id(feed.id)
+            result = AggregatorService.trigger_by_feed_id(feed.id, force_update=force_update)
             results.append(result)
 
         return results
