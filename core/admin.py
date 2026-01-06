@@ -362,8 +362,7 @@ class ArticleAdmin(ImportExportModelAdmin):
         "date",
         "created_at",
     ]
-    # Removed content and raw_content from search_fields for performance
-    search_fields = ["name", "author", "identifier"]
+    search_fields = ["name", "author", "identifier", "content"]
     readonly_fields = ["created_at", "updated_at"]
     actions = ["reload_selected_articles", "force_delete_selected"]
     save_as = True
