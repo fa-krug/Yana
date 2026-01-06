@@ -245,6 +245,7 @@ def quick_add_subscription(user_id: int, url: str) -> dict[str, Any]:
         "query": url,
         "numResults": 1,
         "streamId": f"feed/{feed.identifier}",
+        "streamName": feed.name,
     }
 
 
