@@ -209,3 +209,33 @@ class TestGReaderSubscription:
         response = client.post(url, data, **auth_headers)
         assert response.status_code == 403
         assert b"Cannot modify other users' feeds" in response.content
+    def test_quickadd_success(self, client, user, auth_headers):
+        url = reverse("greader:quickadd")
+        feed_url = "http://example.com/quick"
+        data = {"quickadd": feed_url}
+
+        response = client.post(url, data, **auth_headers)
+        assert response.status_code == 200
+        result = response.json()
+
+        feed = Feed.objects.get(identifier=feed_url)
+        assert result["numResults"] == 1
+        assert result["query"] == feed_url
+        assert result["streamId"] == f"feed/{feed.id}"
+        assert result["streamName"] == feed.name
+
+    def test_quickadd_with_prefix(self, client, user, auth_headers):
+        url = reverse("greader:quickadd")
+        feed_url = "http://example.com/prefix"
+        input_url = f"feed/{feed_url}"
+        data = {"quickadd": input_url}
+
+        response = client.post(url, data, **auth_headers)
+        assert response.status_code == 200
+        result = response.json()
+
+        feed = Feed.objects.get(identifier=feed_url)
+        assert result["numResults"] == 1
+        assert result["query"] == input_url
+        assert result["streamId"] == f"feed/{feed.id}"
+        assert result["streamName"] == feed.name
