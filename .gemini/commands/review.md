@@ -1,0 +1,1 @@
+Do a git diff and pretend you're a senior dev doing a code review and you HATE this implementation. What would you criticize? What edge cases am I missing? list them all with a score. display only the ones with a score above 80%. if there are none, than its fine.
