@@ -13,6 +13,9 @@ class MactechnewsAggregator(FullWebsiteAggregator):
 
     def __init__(self, feed):
         super().__init__(feed)
+        # Force full content extraction
+        self.feed.options["use_full_content"] = True
+
         if not self.identifier or self.identifier == "":
             self.identifier = "https://www.mactechnews.de/Rss/News.x"
 
@@ -20,16 +23,9 @@ class MactechnewsAggregator(FullWebsiteAggregator):
         return "https://www.mactechnews.de"
 
     @classmethod
-    def get_identifier_choices(
-        cls, query: Optional[str] = None, user: Optional[Any] = None
-    ) -> List[Tuple[str, str]]:
-        return [
-            ("https://www.mactechnews.de/Rss/News.x", "Main News Feed"),
-        ]
-
-    @classmethod
-    def get_default_identifier(cls) -> str:
-        return "https://www.mactechnews.de/Rss/News.x"
+    def get_configuration_fields(cls) -> Dict[str, Any]:
+        """Remove configuration options for this managed aggregator."""
+        return {}
 
     # Main content container
     content_selector = ".MtnArticle"
@@ -43,6 +39,8 @@ class MactechnewsAggregator(FullWebsiteAggregator):
         "iframe",
         "noscript",
         "svg",
+        "header",  # Remove article header (title, meta) to avoid duplication
+        ".TexticonBox.Right",  # Remove sidebars/summary boxes inside content
     ]
 
     def process_content(self, html: str, article: Dict[str, Any]) -> str:

@@ -1,0 +1,211 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.12, pytest-9.0.2, pluggy-1.6.0
+django: version: 6.0, settings: yana.settings (from ini)
+rootdir: /app
+configfile: pyproject.toml
+plugins: django-4.11.1, cov-7.0.0
+collected 1 item
+
+core/tests/test_mactechnews_aggregator.py F                              [100%]
+
+=================================== FAILURES ===================================
+__________ TestMactechnewsAggregator.test_extract_content_mactechnews __________
+
+self = <core.tests.test_mactechnews_aggregator.TestMactechnewsAggregator testMethod=test_extract_content_mactechnews>
+mock_fetch = <MagicMock name='fetch_html' id='140650511051488'>
+mock_header = <MagicMock name='extract_header_element' id='140650511055280'>
+
+    @patch("core.aggregators.website.FullWebsiteAggregator.extract_header_element")
+    @patch("core.aggregators.website.fetch_html")
+    def test_extract_content_mactechnews(self, mock_fetch, mock_header):
+        # Mock header extraction
+        mock_header.return_value = None
+
+        # Read fixture
+        with open("core/tests/fixtures/mactechnews.html", "r") as f:
+            fixture_html = f.read()
+
+        mock_fetch.return_value = fixture_html
+
+        article = {
+            "name": "Kurztest Dan Clark Audio Noire XO",
+            "identifier": "https://www.mactechnews.de/news/article/Kurztest-Dan-Clark-Audio-Noire-XO-186238.html",
+            "content": "",
+        }
+
+        # Test content extraction
+        enriched = self.aggregator.enrich_articles([article])
+        content = enriched[0]["content"]
+
+        # Verify content from .MtnArticle is present
+>       self.assertIn("Kurztest Dan Clark Audio Noire XO", content)
+E       AssertionError: 'Kurztest Dan Clark Audio Noire XO' not found in '<section data-sanitized-class="article-content"><article data-sanitized-class="MtnArticle MtnNewsArticle" id="ContentPlaceHolder1_SynMtnNewsArticle" style="">\n<div>\n<img alt="" data-sanitized-class="NewsPicture" src="https://picture.mactechnews.de/News/NoireXOpen-klein-frei.591946.png" srcset="\n                https://picture.mactechnews.de/News/NoireXOpen-klein-frei.591946.png?=1x 1x,\n                https://picture.mactechnews.de/News/NoireXOpen-klein-frei.591946.png?=2x 2x\n              " style="height: 96px; width: 64px"/><span data-sanitized-class="Texticon TexticonFont Bold" style="font-size: 20px">Gleicher Klang für weniger Geld?</span><br/>Zitat Dan Clark: „Mit dem Noire XO haben wir alles daran\n            gesetzt, das bestmögliche Klangerlebnis zu bieten, unabhängig vom\n            Preis. Wie bei uns üblich, machen wir bei Kopfhörern im unteren\n            Preissegment keine Abstriche. Vielmehr versuchen wir, die\n            Technologie, den Komfort und die Leistung unserer\n            Flaggschiff-Kopfhörer zu nutzen und die Kosten zu senken, um\n            überragende Leistung zu einem niedrigeren Preis zu erzielen […]"<br/><br/>\n<div data-sanitized-class="Texticon TexticonCenter">\n<a data-sanitized-class="Texticon TexticonThumbPicture Full Lightbox1055007006" href="https://data.mactechnews.de/591940.jpg" onclick="return ScriptUtility.lightbox(this);" rel="lightbox[1055007006]" target="_blank" title="Dan Clark"><img alt="" src="https://picture.mactechnews.de/Full/Bild.591940.jpg" style=\'\n                    content: -webkit-image-set(\n                      url("https://picture.mactechnews.de/Full/Bild.591940.jpg?=2x")\n                        2x,\n                      url("https://picture.mactechnews.de/Full/Bild.591940.jpg?=1x")\n                        1x\n                    );\n                  \'/><span data-sanitized-class="Texticon TexticonThumbPictureText">Dan Clark</span></a>\n</div>\n<br/>Das klingt sehr ehrenhaft, aber aus wirtschaftlicher Sicht\n            birgt ein solcher Ansatz Probleme. Wenn das neueste Produkt durch\n            optimierte Technologien und Produktionsprozesse billiger, aber\n            gleich gut wie die Vorbilder ist, dann werden von den teureren\n            Modellen nicht mehr viele verkauft und sie verstauben in den\n            Verkaufsregalen.<br/><br/>\n\n            Aber ganz so weit muss man es ja nicht treiben. Mit einem gewissen\n            Respektabstand zu den Topmodellen – etwa durch nicht ganz so edle\n            Materialien – bleiben auch Gründe für den Griff zu den\n            Spitzenmodellen. Aber erst mal müssen wir hier die Frage klären, ob\n            es DCA mit dem\n            <a data-sanitized-class="Texticon TexticonUrlText" href="https://www.audiodomain.de/Noiree-xo?c=16" target="_blank" title="Link zu www.audiodomain.de">Noire XO</a>\n            tatsächlich gelungen ist, die klanglichen Fähigkeiten seiner\n            teureren Modelle zu erreichen. Da bietet sich als Vergleichsmaßstab\n            der\n            <a data-sanitized-class="Texticon TexticonUrlText" href="https://www.audiodomain.de/e3?c=16" target="_blank" title="Link zu www.audiodomain.de">DCA E3</a>\n            an. Der kostet mit knapp 2.500 Euro fast doppelt so viel wie der\n            Noire XO. Kann der Neuling dem E3 klanglich Paroli bieten?<br/><br/>\n<div data-sanitized-class="Texticon TexticonCenter">\n<a data-sanitized-class="Texticon TexticonThumbPicture Full Lightbox1055007006" href="https://data.mactechnews.de/591941.jpg" onclick="return ScriptUtility.lightbox(this);" rel="lightbox[1055007006]" target="_blank" title="Der DCA Noire XO"><img alt="" src="https://picture.mactechnews.de/Full/Bild.591941.jpg" style=\'\n                    content: -webkit-image-set(\n                      url("https://picture.mactechnews.de/Full/Bild.591941.jpg?=2x")\n                        2x,\n                      url("https://picture.mactechnews.de/Full/Bild.591941.jpg?=1x")\n                        1x\n                    );\n                  \'/><span data-sanitized-class="Texticon TexticonThumbPictureText">Der DCA Noire XO</span></a>\n</div>\n<br/><span data-sanitized-class="Texticon TexticonFont Bold" style="font-size: 20px">Was zeichnet den Dan Clark Audio Noire XO aus?</span><br/>Der Entwickler Dan Clark hat sich auf das magnetostatische\n            Schallwandlerprinzip spezialisiert. So wundert es nicht, dass auch\n            der Noire XO nach diesem Prinzip arbeitet. Und wie der E3 ist auch\n            er ein Over-Ear, aber laut Datenblatt in offener Bauweise. Wäre das\n            überhaupt ein statthafter Vergleich mit dem geschlossenen E3? Ich\n            meine schon, denn wie sich in der Praxis herausstellte, ist es mit\n            der „Offenheit“ der Gehäuse des Noire XO nämlich gar nicht so weit\n            her.<br/><br/>Der Noire XO ist streng genommen allerhöchstens ein\n            halboffener Kopfhörer. Umgebungsgeräusche werden mit ihm durchaus\n            noch merklich gedämpft. Beim E3 ist diese Dämpfung kaum größer.\n            Keine Ahnung, warum DCA beim Noire XO nicht eher von „halboffen“\n            redet. Der Vollständigkeit halber sei an dieser Stelle noch sein\n            Bruder Noire X (ohne „O“, welches für „Open“ steht) erwähnt, der als\n            geschlossen geführt wird und Außengeräusche viel stärker dämpft.\n            <br/><br/>\n\n            Zu den Besonderheiten des Noire XO gehört, dass auch er mit dem von\n            Dan Clark entwickelten und in diversen teureren Modellen\n            eingesetzten Metamaterial AMTS (Acoustic Metamaterial Tuning System)\n            zur Klanganpassung ausgestattet ist. Eben dieses exakt berechnete\n            akustische Material soll der Hauptgrund dafür sein, warum der Noire\n            XO für seinen Preis so gut klingen soll. Das AMTS sei auch dafür\n            verantwortlich, dass der Noire (und seine größeren Geschwister) die\n            Harman-Zielkurve nachbilden können, was für magnetostatische\n            Kopfhörer schon recht selten ist. Mehr Basspotenz ist das\n            Resultat.<br/><br/>Laut Dan gehört der Noire XO zu der sehr\n            kleinen Gruppe magnetostatischer Kopfhörer, die eine absolut\n            ausgewogene Klangsignatur erzeugen können, mit einem Bassdruck, den\n            man sonst eher von geschlossenen Kopfhörern kennt. – Das höre ich\n            mir gerne mal an.<br/><br/>\n<div data-sanitized-class="Texticon TexticonCenter">\n<a data-sanitized-class="Texticon TexticonThumbPicture Full Lightbox1055007006" href="https://data.mactechnews.de/591944.jpg" onclick="return ScriptUtility.lightbox(this);" rel="lightbox[1055007006]" target="_blank"><img alt="" src="https://picture.mactechnews.de/Full/Bild.591944.jpg" style=\'\n                    content: -webkit-image-set(\n                      url("https://picture.mactechnews.de/Full/Bild.591944.jpg?=2x")\n                        2x,\n                      url("https://picture.mactechnews.de/Full/Bild.591944.jpg?=1x")\n                        1x\n                    );\n                  \'/></a><a data-sanitized-class="Texticon TexticonThumbPicture Full Lightbox1055007006" href="https://data.mactechnews.de/591945.jpg" onclick="return ScriptUtility.lightbox(this);" rel="lightbox[1055007006]" target="_blank"><img alt="" src="https://picture.mactechnews.de/Full/Bild.591945.jpg" style=\'\n                    content: -webkit-image-set(\n                      url("https://picture.mactechnews.de/Full/Bild.591945.jpg?=2x")\n                        2x,\n                      url("https://picture.mactechnews.de/Full/Bild.591945.jpg?=1x")\n                        1x\n                    );\n                  \'/></a>\n</div>\n<br/>Noch ein Blick auf die elektrischen Parameter des Noire XO:\n            Die Impedanz gibt der Hersteller bis jetzt gar nicht an, was\n            merkwürdig ist, denn das ist einer der wichtigsten Parameter für ein\n            optimales Zusammenspiel mit dem Kopfhörerverstärker. Der deutsche\n            DCA-Vertrieb audioNEXT (audiodomain.de) hat nachgemessen und kommt\n            auf etwas über 14 Ohm. (Damit bestätigt sich auch die automatische\n            Messung des Luxsin X9 Kopfhörerverstärkers (<a data-sanitized-class="Texticon TexticonUrlText" href="https://www.mactechnews.de/news/article/Test-Luxsin-X9-Der-etwas-andere-DAC-und-Kopfhoererverstaerker-Eine-neue-Generation-187641.html" title="Link zu www.mactechnews.de">siehe Testbericht</a>). <br/><br/>\n<div data-sanitized-class="Texticon TexticonCenter">\n<a data-sanitized-class="Texticon TexticonThumbPicture Full Lightbox1055007006" href="https://data.mactechnews.de/591948.jpg" onclick="return ScriptUtility.lightbox(this);" rel="lightbox[1055007006]" target="_blank" title="Der DCA Noire XO am Luxsin X9."><img alt="" src="https://picture.mactechnews.de/Full/Bild.591948.jpg" style=\'\n                    content: -webkit-image-set(\n                      url("https://picture.mactechnews.de/Full/Bild.591948.jpg?=2x")\n                        2x,\n                      url("https://picture.mactechnews.de/Full/Bild.591948.jpg?=1x")\n                        1x\n                    );\n                  \'/><span data-sanitized-class="Texticon TexticonThumbPictureText">Der DCA Noire XO am Luxsin X9.</span></a>\n</div>\n<br/>Wie der E3 ist auch der XO nicht besonders empfindlich. Zwar\n            spielt er etwas lauter als sein größerer Bruder, aber der\n            Unterschied beträgt (nach gehörmäßigem Abgleich) nur etwa 3 dB.\n            Damit ist er immer noch sehr viel leiser als die meisten\n            herkömmlichen 16-Ohm Over-Ears und sollte daher an einem möglichst\n            potenten und stabilen KHV betrieben werden.<br/><br/>\n<div data-sanitized-class="Texticon TexticonCenter">\n<a data-sanitized-class="Texticon TexticonThumbPicture Full Lightbox1055007006" href="https://data.mactechnews.de/591943.jpg" onclick="return ScriptUtility.lightbox(this);" rel="lightbox[1055007006]" target="_blank"><img alt="" src="https://picture.mactechnews.de/Full/Bild.591943.jpg" style=\'\n                    content: -webkit-image-set(\n                      url("https://picture.mactechnews.de/Full/Bild.591943.jpg?=2x")\n                        2x,\n                      url("https://picture.mactechnews.de/Full/Bild.591943.jpg?=1x")\n                        1x\n                    );\n                  \'/></a>\n</div>\n<br/><span data-sanitized-class="Texticon TexticonFont Bold" style="">Die wichtigsten technischen Daten des Noire XO:</span><br/>\n<ul data-sanitized-class="Texticon TexticonList">\n<li>Konzept: Over-Ear, halboffen</li>\n<li>Wandlerprinzip: Magnetostat</li>\n<li>Impedanz: ca. 14 Ohm (eigene Messung)</li>\n<li>\n                Empfindlichkeit: vom Hersteller nicht angegeben, ca. 93 dB/mW @\n                1 kHz, eher als leise einzustufen\n              </li>\n<li>Gewicht: 408 g ohne Kabel</li>\n<li>\n                Besonderheiten: Einklappmechanismus, Case-Form, Metamaterial zur\n                Abstimmung (AMTS), Bajonett-Anschlüsse\n              </li>\n</ul>\n<br/><span data-sanitized-class="Texticon TexticonFont Bold" style="font-size: 20px">High Noon im Hörtest</span><br/>Den Hauptgegner bei den Hörvergleichen habe ich schon\n            genannt. Der E3 aus gleichem Hause setzt hier den Maßstab. Der E3\n            überzeugt für einen als geschlossenen konstruierten Kopfhörer mit\n            einem außergewöhnlich guten Raumgefühl. Das von geschlossenen\n            Kopfhörern üblicherweise gewohnte (und unschöne) Isolationsgefühl\n            bleibt mit ihm nahezu vollständig aus. Darüber hinaus ist der E3 ein\n            vorbildlich neutraler Kopfhörer mit sehr natürlichen Klangfarben,\n            feinen Höhen, konturiertem und tiefreichendem Bass und einer\n            vergleichsweise hohen Belastbarkeit. <br/><br/>Die erste\n            Erkenntnis mit dem Noire XO ist, dass seine Familienzugehörigkeit\n            klar erkennbar ist. Tonal verfügt er über einen sehr ähnlichen\n            Charakter. Im Grundsatz neutral abgestimmt und mit natürlichen\n            Klangfarben gesegnet, ist er tatsächlich schon sehr nahe am E3.<br/><br/>\n<div data-sanitized-class="Texticon TexticonCenter">\n<a data-sanitized-class="Texticon TexticonThumbPicture Full Lightbox1055007006" href="https://data.mactechnews.de/591942.jpg" onclick="return ScriptUtility.lightbox(this);" rel="lightbox[1055007006]" target="_blank" title="Der Noire XO (links) neben seinem größeren Bruder E3."><img alt="" src="https://picture.mactechnews.de/Full/Bild.591942.jpg" style=\'\n                    content: -webkit-image-set(\n                      url("https://picture.mactechnews.de/Full/Bild.591942.jpg?=2x")\n                        2x,\n                      url("https://picture.mactechnews.de/Full/Bild.591942.jpg?=1x")\n                        1x\n                    );\n                  \'/><span data-sanitized-class="Texticon TexticonThumbPictureText">Der Noire XO (links) neben seinem größeren Bruder E3.</span></a>\n</div>\n<br/>Auch im Bass konnte der XO mit dem E3 gut mithalten. Beide\n            Kopfhörer überzeugen mit einer präzisen, tiefreichenden, aber nicht\n            überbetonten Tieftonperformance. Tiefe und satte Bässe auf\n            Topniveau, aber ohne Überbetonung. Auch hier bleibt der Noire XO auf\n            der neutralen, ehrlichen Seite, was seinen audiophilen Charakter\n            unterstreicht. Andererseits: Wer nach einem Kopfhörer sucht, der im\n            Bass stets ein wenig schummelt und mehr zugibt, als in der Aufnahme\n            vorhanden, der wird mit dem XO vermutlich nicht glücklich werden.<br/><br/>Die\n            Ähnlichkeit in Charakter und Performance der beiden Kopfhörer ist\n            wirklich frappierend, angesichts des Preisunterschiedes. Dennoch\n            habe ich im Laufe der Testphase immer häufiger zum E3 statt zum XO\n            gegriffen. Das lag vor allem daran, weil der E3 in der Summe aller\n            Dinge doch noch etwas transparenter, luftiger und souveräner\n            erschien. Aber ist das den deutlichen Mehrpreis für den E3 wert? Das\n            kann wohl nur jeder für sich selbst beantworten. Doch wer auf den\n            Preis achten muss, kann ohne zu zögern zum Noire XO greifen.<br/>\n<br/><br/><span data-sanitized-class="Texticon TexticonFont Bold" style="font-size: 20px">Fazit:\xa0Downzizing und Downprizing gelungen</span><br/>Tatsächlich ist es DCA mit dem Noire XO gelungen, fast alle\n            Qualitäten seines deutlich teureren E3 in einen Kopfhörer der\n            Preisklasse unter 1.500 Euro zu transplantieren. Wer ganz genau\n            hinsieht und hinhört, findet im E3 nach wie vor das bessere\n            Gesamtpaket – aber eben zu einem erheblich höheren Preis. Darum kann\n            die Mission Noire XO nur als gelungen bezeichnet werden. Dieser\n            Kopfhörer dürfte viele Fans einer besonders natürlichen Abbildung\n            begeistern.<br/><br/>Empfehlenswert ist aber auch für den Noire XO\n            ein kräftiger, hochklassiger Kopfhörerverstärker. An kleinen\n            Popel-Amps kann er sein Potenzial nicht wirklich entfalten und\n            spielt im schlimmsten Fall auch nicht laut genug. Mit einem sehr\n            guten Dongle-DAC, wie dem iFi Audio GO Bar Kensei (<a data-sanitized-class="Texticon TexticonUrlText" href="https://www.mactechnews.de/news/article/Test-iFi-Audio-GO-Bar-Kensei-Ultimativer-Dongle-DAC-und-Allround-Kophoererverstaerker-184970.html#q=Kensei" title="Link zu www.mactechnews.de">Test</a>), ist der Noire XO aber auch für die Reise eine gute Wahl.<br/><br/><br/><span data-sanitized-class="Texticon TexticonFont Bold" style=""><span data-sanitized-class="Texticon TexticonFont Underline" style="">Plus/Minus Dan Clark Audio Noire XO</span></span><br/>+ sehr natürlich, sauberer Bass nicht überbetont,\n            räumlich-transparent<br/>+ gute Verarbeitungsqualität<br/>+ hoher\n            Tragekomfort<br/>+ auch symmetrisch nutzbar (optionales Kabel\n            erforderlich)<br/>+ cleverer Einklappmechanismus<br/>+ diskreter\n            „Stealth-Look“<br/><br/>– braucht kräftige Kopfhörerverstärker\n          </div>\n</article></section>\n\n<footer><p>Source: <a href="https://www.mactechnews.de/news/article/Kurztest-Dan-Clark-Audio-Noire-XO-186238.html" target="_blank" rel="noopener">https://www.mactechnews.de/news/article/Kurztest-Dan-Clark-Audio-Noire-XO-186238.html</a></p></footer>'
+
+core/tests/test_mactechnews_aggregator.py:38: AssertionError
+================================ tests coverage ================================
+_______________ coverage: platform linux, python 3.12.12-final-0 _______________
+
+Name                                                                                              Stmts   Miss  Cover   Missing
+-------------------------------------------------------------------------------------------------------------------------------
+core/__init__.py                                                                                      0      0   100%
+core/admin.py                                                                                       260    149    43%   31-34, 39-42, 52-68, 78-94, 142-177, 187-190, 196-211, 221-263, 267-276, 284-306, 311-339, 348-350, 380-381, 386-420, 429-431
+core/aggregators/__init__.py                                                                          3      0   100%
+core/aggregators/base.py                                                                            133     87    35%   43, 60, 69-70, 85-94, 108-113, 117-122, 134-179, 194, 209, 224-247, 261, 275, 294, 320, 327, 333-338, 352, 372-394, 403, 412, 421
+core/aggregators/caschys_blog/aggregator.py                                                          49     32    35%   15-17, 20, 26, 32, 37-39, 65-87, 91-114
+core/aggregators/dark_legacy/aggregator.py                                                           52     34    35%   16-18, 21, 27, 33, 38-40, 62, 67-103
+core/aggregators/exceptions.py                                                                       16      5    69%   42-45, 48
+core/aggregators/explosm/aggregator.py                                                               49     33    33%   14-16, 19, 25, 31, 36-38, 66, 70-107
+core/aggregators/heise/__init__.py                                                                    2      0   100%
+core/aggregators/heise/aggregator.py                                                                165    136    18%   19-21, 25, 32, 42, 47-49, 101-112, 117-139, 143-156, 160-169, 175-197, 203-231, 235-258, 262-272, 277-280, 283-295, 303-332
+core/aggregators/implementations.py                                                                  46     38    17%   29-67, 76-96, 104-123
+core/aggregators/mactechnews/aggregator.py                                                           29      5    83%   20, 23, 28, 59, 69
+core/aggregators/mein_mmo/__init__.py                                                                 2      0   100%
+core/aggregators/mein_mmo/aggregator.py                                                              66     46    30%   17-20, 24, 31, 38, 43-45, 76-117, 121-129, 133-167
+core/aggregators/mein_mmo/content_extraction.py                                                      52     46    12%   37-104
+core/aggregators/mein_mmo/embed_processors.py                                                       163    136    17%   20, 30, 37-42, 49-78, 83-100, 108-111, 115-143, 150-155, 163-198, 206-210, 215-251, 256-261, 272-310
+core/aggregators/mein_mmo/multipage_handler.py                                                       87     80     8%   28-104, 127-176
+core/aggregators/mein_mmo/utils.py                                                                   30     30     0%   3-59
+core/aggregators/merkur/__init__.py                                                                   2      0   100%
+core/aggregators/merkur/aggregator.py                                                                44     26    41%   22-25, 29, 36, 75, 80-82, 129-148, 154-186
+core/aggregators/oglaf/__init__.py                                                                    2      0   100%
+core/aggregators/oglaf/aggregator.py                                                                 55     36    35%   25-28, 33, 38-40, 57, 76, 83-135
+core/aggregators/podcast/aggregator.py                                                              120    102    15%   16, 23, 27, 32-34, 59-130, 134-205, 209-228, 232-251, 255-261
+core/aggregators/reddit/__init__.py                                                                   2      0   100%
+core/aggregators/reddit/aggregator.py                                                               271    230    15%   41, 46, 50-53, 62-102, 107-126, 137-139, 177-193, 197-223, 232-242, 246-248, 260-318, 330-388, 392-399, 416-450, 462-503, 511-525, 544-567, 585-624
+core/aggregators/reddit/auth.py                                                                      57     47    18%   28-49, 69-71, 94-159
+core/aggregators/reddit/comments.py                                                                  46     35    24%   27-31, 57-123
+core/aggregators/reddit/content.py                                                                  106     91    14%   35-51, 56-58, 63-91, 96-103, 108-119, 124-163, 174-196
+core/aggregators/reddit/images.py                                                                   172    156     9%   30-57, 70-84, 97-117, 133-193, 199-224, 229-257, 262-294, 301-309
+core/aggregators/reddit/markdown.py                                                                  28     20    29%   22-24, 41-104, 117
+core/aggregators/reddit/posts.py                                                                     31     25    19%   25-59
+core/aggregators/reddit/types.py                                                                     37     29    22%   10-28, 32, 59, 66-73
+core/aggregators/reddit/urls.py                                                                      72     57    21%   27, 41-49, 62-82, 97-100, 113-123, 137-167, 183-202
+core/aggregators/registry.py                                                                         29      6    79%   56-58, 63, 76-77
+core/aggregators/rss.py                                                                              38     26    32%   19-28, 32-35, 39-55, 59-64
+core/aggregators/services/__init__.py                                                                 0      0   100%
+core/aggregators/services/config.py                                                                  17     17     0%   8-64
+core/aggregators/services/header_element/__init__.py                                                  3      0   100%
+core/aggregators/services/header_element/context.py                                                  11      0   100%
+core/aggregators/services/header_element/extractor.py                                                33     25    24%   40, 69-111
+core/aggregators/services/header_element/file_handler.py                                             26     18    31%   33-60
+core/aggregators/services/header_element/strategies.py                                              112     85    24%   40, 50, 58, 62-70, 79-83, 87-129, 137, 141-181, 190-195, 199-233
+core/aggregators/services/image_extraction/__init__.py                                                3      0   100%
+core/aggregators/services/image_extraction/compression.py                                            79     62    22%   57-162, 190-212, 229-231
+core/aggregators/services/image_extraction/extractor.py                                              72     60    17%   44, 75-132, 145-170
+core/aggregators/services/image_extraction/fetcher.py                                                70     58    17%   49-65, 78-84, 107-156, 169-185
+core/aggregators/services/image_extraction/strategies.py                                            219    173    21%   44, 57, 67-71, 75-87, 95, 99-125, 133-137, 141-175, 183, 187-233, 238-251, 262, 266-326, 331-346, 351-359
+core/aggregators/tagesschau/__init__.py                                                               2      0   100%
+core/aggregators/tagesschau/aggregator.py                                                            67     47    30%   35-37, 40, 47, 125, 130-132, 144-152, 156-185, 191, 196-224
+core/aggregators/tagesschau/content_extraction.py                                                    27     23    15%   18-41, 46-55
+core/aggregators/tagesschau/media_processor.py                                                      114     99    13%   18-52, 57-69, 75-82, 87-98, 103-116, 122-135, 142-177, 184-212, 219-225
+core/aggregators/tests_base_filtering.py                                                             28     28     0%   3-66
+core/aggregators/utils/__init__.py                                                                    7      0   100%
+core/aggregators/utils/bs4_utils.py                                                                  15      8    47%   20, 23, 37-42
+core/aggregators/utils/content_extractor.py                                                          13      2    85%   29-30
+core/aggregators/utils/content_formatter.py                                                           9      2    78%   31-36
+core/aggregators/utils/html_cleaner.py                                                               96     76    21%   28-39, 56, 69-71, 82-86, 99-109, 123-169, 206-251, 263-270
+core/aggregators/utils/html_fetcher.py                                                               22     17    23%   25-52
+core/aggregators/utils/http_errors.py                                                                29     24    17%   26-39, 58-70, 85-99
+core/aggregators/utils/reddit.py                                                                     64     52    19%   38-41, 58-69, 85-111, 127-168, 184-187, 200-203
+core/aggregators/utils/rss_parser.py                                                                 13      9    31%   23-37
+core/aggregators/utils/tests_youtube_client.py                                                       61     61     0%   1-119
+core/aggregators/utils/twitter.py                                                                    59     48    19%   38-42, 57-64, 81-105, 120-145, 158-159
+core/aggregators/utils/youtube.py                                                                    30     22    27%   33-59, 80, 93, 111-129, 142-146
+core/aggregators/utils/youtube_client.py                                                            194    172    11%   14-15, 26-28, 32-41, 50-85, 89-93, 97-118, 122-152, 156-163, 167-170, 174-210, 216-241, 245-253, 257-295, 301-328
+core/aggregators/website.py                                                                          62     16    74%   39-41, 70-71, 81-82, 101-108, 125-126, 140-141, 152
+core/aggregators/youtube/__init__.py                                                                  2      0   100%
+core/aggregators/youtube/aggregator.py                                                              235    196    17%   26-28, 33, 36, 45-62, 67-98, 103-108, 119-121, 134-139, 143-161, 165-173, 180-194, 198-200, 204-240, 248-283, 287-309, 316-340, 344-368, 372-392, 396-409, 413-432, 436-450
+core/apps.py                                                                                          3      0   100%
+core/choices.py                                                                                       1      0   100%
+core/db/__init__.py                                                                                   0      0   100%
+core/db/backends/sqlite3/__init__.py                                                                  2      0   100%
+core/db/backends/sqlite3/base.py                                                                     22     17    23%   53-112
+core/forms.py                                                                                        25     16    36%   32-36, 44-60
+core/management/__init__.py                                                                           0      0   100%
+core/management/commands/__init__.py                                                                  0      0   100%
+core/management/commands/optimize_sqlite.py                                                          19     19     0%   12-46
+core/management/commands/setup_mein_mmo_test.py                                                      28     28     0%   3-58
+core/management/commands/setup_periodic_tasks.py                                                     11     11     0%   1-25
+core/management/commands/test_aggregator.py                                                         205    205     0%   3-351
+core/management/commands/test_header_extraction.py                                                   47     47     0%   10-100
+core/management/commands/trigger_aggregator.py                                                       41     41     0%   3-90
+core/management/commands/verify_sqlite_optimizations.py                                              48     48     0%   3-75
+core/migrations/0001_initial.py                                                                       8      8     0%   3-17
+core/migrations/0002_add_admin_user.py                                                               13     13     0%   3-25
+core/migrations/0003_alter_article_author_alter_article_icon_and_more.py                              4      4     0%   3-12
+core/migrations/0004_greaderauthtoken.py                                                              6      6     0%   3-15
+core/migrations/0005_alter_article_icon.py                                                            4      4     0%   3-12
+core/migrations/0006_add_user_settings.py                                                             6      6     0%   3-15
+core/migrations/0007_rename_core_userset_user_id_idx_core_userse_user_id_abe139_idx_and_more.py       4      4     0%   3-12
+core/migrations/0008_feed_icon.py                                                                     4      4     0%   3-12
+core/migrations/0009_alter_feed_icon.py                                                               4      4     0%   3-12
+core/migrations/0010_usersettings_youtube_enabled.py                                                  4      4     0%   3-12
+core/migrations/0011_remove_feed_icon.py                                                              4      4     0%   3-12
+core/migrations/0012_alter_feed_daily_limit.py                                                        4      4     0%   3-12
+core/migrations/0013_feed_icon.py                                                                     4      4     0%   3-12
+core/migrations/0014_setup_periodic_tasks.py                                                         19     19     0%   3-64
+core/migrations/0015_feed_options.py                                                                  4      4     0%   3-12
+core/migrations/0016_article_core_articl_feed_id_9fce98_idx_and_more.py                               5      5     0%   3-14
+core/migrations/0017_redditsubreddit_feed_reddit_subreddit_youtubechannel_and_more.py                 5      5     0%   3-13
+core/migrations/0018_youtubechannel_handle.py                                                         4      4     0%   3-12
+core/migrations/0019_alter_youtubechannel_options.py                                                  4      4     0%   3-12
+core/migrations/0020_alter_redditsubreddit_options.py                                                 4      4     0%   3-12
+core/migrations/0021_remove_feed_icon.py                                                              4      4     0%   3-12
+core/migrations/__init__.py                                                                           0      0   100%
+core/models.py                                                                                      141     23    84%   27, 72, 76-90, 123, 168, 186, 204-206, 227, 231, 236-238
+core/services/__init__.py                                                                             4      0   100%
+core/services/aggregator_service.py                                                                  78     65    17%   37-131, 155-165, 181-191
+core/services/article_service.py                                                                     52     42    19%   41-124, 144-155
+core/services/greader/__init__.py                                                                     0      0   100%
+core/services/greader/auth_service.py                                                                85     85     0%   6-241
+core/services/greader/stream_filter_builder.py                                                       85     85     0%   7-215
+core/services/greader/stream_format.py                                                              111    111     0%   7-420
+core/services/greader/stream_service.py                                                              93     93     0%   6-293
+core/services/greader/subscription_service.py                                                       132    132     0%   6-357
+core/services/greader/tag_service.py                                                                 72     72     0%   6-201
+core/services/maintenance_service.py                                                                 12      8    33%   24-38
+core/tests/__init__.py                                                                                0      0   100%
+core/tests/conftest.py                                                                               43     16    63%   15, 22-30, 35, 40, 51, 58, 69, 81-94, 99, 118, 136
+core/tests/test_aggregator_service.py                                                                84     84     0%   1-154
+core/tests/test_article_cleanup.py                                                                   27     27     0%   3-57
+core/tests/test_article_service.py                                                                   79     79     0%   1-114
+core/tests/test_branding.py                                                                          24     24     0%   1-48
+core/tests/test_caschys_blog_aggregator.py                                                           44     44     0%   1-86
+core/tests/test_choices.py                                                                            7      7     0%   3-12
+core/tests/test_daily_limit.py                                                                       51     51     0%   1-153
+core/tests/test_dark_legacy_aggregator.py                                                            25     25     0%   1-47
+core/tests/test_explosm_aggregator.py                                                                25     25     0%   1-47
+core/tests/test_greader_api_auth.py                                                                  34     34     0%   1-50
+core/tests/test_greader_auth.py                                                                      26     26     0%   1-43
+core/tests/test_greader_client_login.py                                                              30     30     0%   1-44
+core/tests/test_greader_polish.py                                                                    33     33     0%   1-78
+core/tests/test_greader_stream.py                                                                   136    136     0%   1-236
+core/tests/test_greader_subscription.py                                                             142    142     0%   1-242
+core/tests/test_greader_tag.py                                                                      122    122     0%   1-227
+core/tests/test_heise_aggregator.py                                                                  49     49     0%   1-101
+core/tests/test_html_cleaner.py                                                                      65     65     0%   1-98
+core/tests/test_html_fetcher.py                                                                      47     47     0%   1-69
+core/tests/test_mactechnews_aggregator.py                                                            26      4    85%   39-43, 47
+core/tests/test_merkur_aggregator.py                                                                 39     39     0%   1-65
+core/tests/test_performance_indexes.py                                                               12     12     0%   1-22
+core/tests/test_podcast_aggregator.py                                                                42     42     0%   1-90
+core/tests/test_reddit_aggregator.py                                                                134    134     0%   1-250
+core/tests/test_tagesschau_aggregator.py                                                             38     38     0%   1-68
+core/tests/test_youtube_aggregator.py                                                                60     60     0%   1-122
+core/urls/__init__.py                                                                                 3      3     0%   3-8
+core/urls/default.py                                                                                  3      3     0%   3-7
+core/urls/greader.py                                                                                  8      8     0%   6-32
+core/views/__init__.py                                                                                2      2     0%   3-5
+core/views/default.py                                                                                38     38     0%   3-183
+core/views/greader/__init__.py                                                                        0      0   100%
+core/views/greader/auth.py                                                                           46     46     0%   3-135
+core/views/greader/decorators.py                                                                     30     30     0%   3-83
+core/views/greader/preference.py                                                                     13     13     0%   3-32
+core/views/greader/stream.py                                                                         68     68     0%   3-186
+core/views/greader/subscription.py                                                                   57     57     0%   3-142
+core/views/greader/tag.py                                                                            68     68     0%   3-162
+-------------------------------------------------------------------------------------------------------------------------------
+TOTAL                                                                                              7325   6140    16%
+=========================== short test summary info ============================
+FAILED core/tests/test_mactechnews_aggregator.py::TestMactechnewsAggregator::test_extract_content_mactechnews
+============================== 1 failed in 1.39s ===============================

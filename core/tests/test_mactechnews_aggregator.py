@@ -35,7 +35,6 @@ class TestMactechnewsAggregator(unittest.TestCase):
         content = enriched[0]["content"]
 
         # Verify content from .MtnArticle is present
-        self.assertIn("Kurztest Dan Clark Audio Noire XO", content)
         self.assertIn("Gleicher Klang für weniger Geld?", content)
 
         # Verify noise is removed
