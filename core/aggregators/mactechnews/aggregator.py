@@ -1,6 +1,6 @@
 """MacTechNews aggregator implementation."""
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict
 from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup
