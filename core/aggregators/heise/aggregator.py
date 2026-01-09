@@ -200,7 +200,13 @@ class HeiseAggregator(FullWebsiteAggregator):
         self, article_url: str, article_html: str, max_comments: int = 5
     ) -> Optional[str]:
         """Extract comments from the forum link."""
-        forum_url = self._find_forum_url(article_html, article_url)
+        # Use HEISE_URL as base if article_url is an RSS GUID (http://heise.de/-...)
+        # This ensures we resolve relative forum links to https://www.heise.de
+        base_url = article_url
+        if "heise.de/-" in article_url:
+            base_url = "https://www.heise.de/"
+
+        forum_url = self._find_forum_url(article_html, base_url)
         if not forum_url:
             return None
 
@@ -249,9 +255,12 @@ class HeiseAggregator(FullWebsiteAggregator):
                 continue
 
         # Fallback link
-        comment_link = soup.select_one('a[href*="/forum/"][href*="comment"]')
-        if isinstance(comment_link, Tag):
-            href = str(comment_link.get("href", ""))
+        # 1. Look for the "Kommentare lesen" button (usually in footer)
+        comment_button = soup.select_one(
+            'a[href*="/forum/"][href*="comment"], footer a[href*="/forum/"]'
+        )
+        if isinstance(comment_button, Tag):
+            href = str(comment_button.get("href", ""))
             if href:
                 return urljoin(article_url, href)
 
