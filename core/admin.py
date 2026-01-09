@@ -13,6 +13,7 @@ from django_q.admin import QueueAdmin as BaseQueueAdmin
 from django_q.admin import ScheduleAdmin as BaseScheduleAdmin
 from django_q.admin import TaskAdmin as BaseTaskAdmin
 from django_q.models import Failure, OrmQ, Schedule, Task
+from djangoql.admin import DjangoQLSearchMixin
 from import_export.admin import ImportExportMixin, ImportExportModelAdmin
 
 from .forms import FeedAdminForm
@@ -24,6 +25,12 @@ admin.site.site_header = "Yana"
 admin.site.site_title = "Yana Admin"
 admin.site.index_title = "Welcome to Yana"
 admin.site.site_url = None
+
+
+class YanaDjangoQLMixin(DjangoQLSearchMixin):
+    """Mixin to enable DjangoQL search with toggle disabled by default."""
+
+    djangoql_completion_enabled_by_default = False
 
 
 @admin.action(description="Clear raw article content for selected feeds")
@@ -43,7 +50,7 @@ def delete_all_articles(modeladmin, request, queryset):
 
 
 @admin.register(RedditSubreddit)
-class RedditSubredditAdmin(admin.ModelAdmin):
+class RedditSubredditAdmin(YanaDjangoQLMixin, admin.ModelAdmin):
     list_display = ["display_name", "title", "subscribers", "created_at"]
     search_fields = ["display_name", "title"]
     readonly_fields = ["created_at"]
@@ -69,7 +76,7 @@ class RedditSubredditAdmin(admin.ModelAdmin):
 
 
 @admin.register(YouTubeChannel)
-class YouTubeChannelAdmin(admin.ModelAdmin):
+class YouTubeChannelAdmin(YanaDjangoQLMixin, admin.ModelAdmin):
     list_display = ["title", "handle", "channel_id", "created_at"]
     search_fields = ["title", "handle", "channel_id"]
     readonly_fields = ["created_at"]
@@ -95,7 +102,7 @@ class YouTubeChannelAdmin(admin.ModelAdmin):
 
 
 @admin.register(FeedGroup)
-class FeedGroupAdmin(admin.ModelAdmin):
+class FeedGroupAdmin(YanaDjangoQLMixin, admin.ModelAdmin):
     """Admin configuration for FeedGroup model."""
 
     list_display = ["name", "user", "created_at"]
@@ -112,7 +119,7 @@ class FeedGroupAdmin(admin.ModelAdmin):
 
 
 @admin.register(Feed)
-class FeedAdmin(ImportExportModelAdmin):
+class FeedAdmin(YanaDjangoQLMixin, ImportExportModelAdmin):
     """Admin configuration for Feed model."""
 
     form = FeedAdminForm
@@ -351,7 +358,7 @@ class FeedAdmin(ImportExportModelAdmin):
 
 
 @admin.register(Article)
-class ArticleAdmin(ImportExportModelAdmin):
+class ArticleAdmin(YanaDjangoQLMixin, ImportExportModelAdmin):
     """Admin configuration for Article model."""
 
     list_display = ["name", "feed", "author", "date", "read", "starred", "created_at"]
@@ -485,7 +492,7 @@ admin.site.unregister(User)
 
 
 @admin.register(User)
-class UserAdmin(ImportExportMixin, BaseUserAdmin):
+class UserAdmin(YanaDjangoQLMixin, ImportExportMixin, BaseUserAdmin):
     """Custom User admin with UserSettings inline."""
 
     inlines = [UserSettingsInline]
@@ -496,7 +503,7 @@ admin.site.unregister(Group)
 
 
 @admin.register(Group)
-class GroupAdmin(BaseGroupAdmin):
+class GroupAdmin(YanaDjangoQLMixin, BaseGroupAdmin):
     """Custom Group admin with DjangoQL support."""
 
     pass
@@ -509,28 +516,28 @@ for model in [Schedule, Task, Failure, OrmQ]:
 
 
 @admin.register(Schedule)
-class ScheduleAdmin(BaseScheduleAdmin):
+class ScheduleAdmin(YanaDjangoQLMixin, BaseScheduleAdmin):
     """Custom Schedule admin with DjangoQL support."""
 
     pass
 
 
 @admin.register(Task)
-class TaskAdmin(BaseTaskAdmin):
+class TaskAdmin(YanaDjangoQLMixin, BaseTaskAdmin):
     """Custom Task admin with DjangoQL support."""
 
     pass
 
 
 @admin.register(Failure)
-class FailAdmin(BaseFailAdmin):
+class FailAdmin(YanaDjangoQLMixin, BaseFailAdmin):
     """Custom Failure admin with DjangoQL support."""
 
     pass
 
 
 @admin.register(OrmQ)
-class QueueAdmin(BaseQueueAdmin):
+class QueueAdmin(YanaDjangoQLMixin, BaseQueueAdmin):
     """Custom Queue admin with DjangoQL support."""
 
     pass
