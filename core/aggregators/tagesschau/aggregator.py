@@ -136,6 +136,12 @@ class TagesschauAggregator(FullWebsiteAggregator):
                 help_text="Filter out articles that are just links to livestreams.",
                 required=False,
             ),
+            "skip_videos": forms.BooleanField(
+                initial=True,
+                label="Skip Videos",
+                help_text="Filter out articles that are primarily videos.",
+                required=False,
+            ),
         }
 
     def filter_articles(self, articles: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -158,6 +164,7 @@ class TagesschauAggregator(FullWebsiteAggregator):
 
         # Check configuration
         skip_livestreams = self.feed.options.get("skip_livestreams", True)
+        skip_videos = self.feed.options.get("skip_videos", True)
 
         # Skip livestreams
         if skip_livestreams and "Livestream:" in title:
@@ -180,6 +187,10 @@ class TagesschauAggregator(FullWebsiteAggregator):
         # Check URL filters
         if "bilder/blickpunkte" in url:
             self.logger.info(f"Skipping image gallery: {url}")
+            return True
+
+        if skip_videos and "video" in url.lower():
+            self.logger.info(f"Skipping video article: {url}")
             return True
 
         return False

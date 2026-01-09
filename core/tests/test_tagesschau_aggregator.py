@@ -48,6 +48,39 @@ class TestTagesschauAggregator:
         assert len(filtered) == 1
         assert filtered[0]["name"] == "Normal News"
 
+    def test_filter_articles_skips_videos(self, tages_agg):
+        articles = [
+            {
+                "name": "Normal News",
+                "identifier": "https://www.tagesschau.de/news-100.html",
+                "date": None,
+            },
+            {
+                "name": "Video News",
+                "identifier": "https://www.tagesschau.de/video/video-100.html",
+                "date": None,
+            },
+        ]
+        # Test with skip_videos = True (default)
+        with patch(
+            "core.aggregators.website.FullWebsiteAggregator.filter_articles",
+            side_effect=lambda x: x,
+        ):
+            filtered = tages_agg.filter_articles(articles)
+
+        assert len(filtered) == 1
+        assert filtered[0]["name"] == "Normal News"
+
+        # Test with skip_videos = False
+        tages_agg.feed.options["skip_videos"] = False
+        with patch(
+            "core.aggregators.website.FullWebsiteAggregator.filter_articles",
+            side_effect=lambda x: x,
+        ):
+            filtered = tages_agg.filter_articles(articles)
+
+        assert len(filtered) == 2
+
     @patch("core.aggregators.tagesschau.aggregator.extract_tagesschau_content")
     def test_extract_content(self, mock_extract, tages_agg):
         mock_extract.return_value = "Specialized Content"
