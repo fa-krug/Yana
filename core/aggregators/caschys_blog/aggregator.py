@@ -3,7 +3,7 @@
 from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import urljoin
 
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 
 from ..website import FullWebsiteAggregator
 
@@ -110,5 +110,66 @@ class CaschysBlogAggregator(FullWebsiteAggregator):
                 and not href.startswith(("http://", "https://", "mailto:", "tel:", "#"))
             ):
                 a["href"] = urljoin(base_url, str(href))
+
+        # Remove first image if we have a header image (avoid duplication)
+        # Caschy's Blog often has the featured image at the top of the content,
+        # sometimes with a different filename than the OG image.
+        if article.get("header_data"):
+            # Get the root container. The content passed to this method is usually wrapped in the content_selector element.
+            # We want to check the *contents* of that wrapper.
+            root: Tag = soup
+
+            # Helper to filter only Tags (ignoring NavigableString etc)
+            top_level_tags = [t for t in soup.contents if isinstance(t, Tag)]
+            if len(top_level_tags) == 1:
+                root = top_level_tags[0]
+
+            # Iterate over top-level elements (ignoring whitespace)
+            for element in root.contents:
+                if not isinstance(element, Tag):
+                    continue
+
+                if not element.name:
+                    continue
+
+                # If first element is an image, remove it
+                if element.name == "img":
+                    self.logger.debug("Removing first image (duplicate of header)")
+                    element.decompose()
+                    break
+
+                # If first element is a paragraph, check if it starts with an image
+                if element.name == "p":
+                    found_image = False
+                    for p_child in element.contents:
+                        if isinstance(p_child, str):
+                            if p_child.strip():
+                                # Text found before image
+                                break
+                            continue
+
+                        if not isinstance(p_child, Tag):
+                            continue
+
+                        if p_child.name == "img":
+                            self.logger.debug(
+                                "Removing first image in paragraph (duplicate of header)"
+                            )
+                            p_child.decompose()
+                            found_image = True
+                            break
+
+                        # Skip line breaks
+                        if p_child.name == "br":
+                            continue
+
+                        # Stop at other tags
+                        break
+
+                    if found_image:
+                        break
+
+                # Only check the first significant element
+                break
 
         return super().process_content(str(soup), article)
