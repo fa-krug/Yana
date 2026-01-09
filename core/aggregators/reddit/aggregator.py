@@ -11,6 +11,8 @@ import requests
 
 from ..base import BaseAggregator
 from ..exceptions import ArticleSkipError
+from ..services.image_extraction.compression import compress_and_encode_image
+from ..services.image_extraction.fetcher import fetch_single_image
 from ..utils import format_article_content
 from .auth import (
     get_reddit_auth_headers,
@@ -547,6 +549,26 @@ class RedditAggregator(BaseAggregator):
             # Move header image URL to a standard field for process_content
             header_image_url = article.get("_reddit_header_image_url")
             if header_image_url:
+                # Fetch and inline header image (user requirement: base64 encoded)
+                try:
+                    # Check if it's already a Data URI or a regular URL
+                    if header_image_url.startswith("http"):
+                        image_data_result = fetch_single_image(header_image_url)
+                        if image_data_result:
+                            # Compress and encode
+                            encoded = compress_and_encode_image(
+                                image_data_result["imageData"],
+                                image_data_result["contentType"],
+                                is_header=True,
+                            )
+                            if encoded:
+                                header_image_url = encoded["dataUri"]
+                except Exception as e:
+                    logger.warning(
+                        f"Failed to inline header image for {article.get('name')}: {e}"
+                    )
+                    # Fallback to original URL if fetching/encoding fails
+
                 article["header_image_url"] = header_image_url
 
             # Process content with formatting
