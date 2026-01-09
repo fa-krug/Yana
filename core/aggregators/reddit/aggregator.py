@@ -564,9 +564,7 @@ class RedditAggregator(BaseAggregator):
                             if encoded:
                                 header_image_url = encoded["dataUri"]
                 except Exception as e:
-                    logger.warning(
-                        f"Failed to inline header image for {article.get('name')}: {e}"
-                    )
+                    logger.warning(f"Failed to inline header image for {article.get('name')}: {e}")
                     # Fallback to original URL if fetching/encoding fails
 
                 article["header_image_url"] = header_image_url
