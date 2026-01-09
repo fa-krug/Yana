@@ -33,6 +33,26 @@ class YanaDjangoQLMixin(DjangoQLSearchMixin):
     djangoql_completion_enabled_by_default = False
 
 
+class EfficientRelatedOnlyFieldListFilter(admin.RelatedOnlyFieldListFilter):
+    """
+    Custom RelatedOnlyFieldListFilter that clears default ordering to ensure DISTINCT works correctly.
+    This prevents N+1 or large duplicate result sets when the related model has default ordering.
+    """
+
+    def field_choices(self, field, request, model_admin):
+        # Access the queryset used by the filter
+        # We must invoke the same logic as RelatedOnlyFieldListFilter but ensure ordering is cleared
+        # so distinct() actually reduces the result set to unique FKs.
+        pk_qs = (
+            model_admin.get_queryset(request)
+            .all()
+            .order_by()
+            .distinct()
+            .values_list("%s__pk" % self.field_path, flat=True)
+        )
+        return field.get_choices(include_blank=False, limit_choices_to={"pk__in": pk_qs})
+
+
 @admin.action(description="Clear raw article content for selected feeds")
 def clear_raw_article_content(modeladmin, request, queryset):
     from .models import Article
@@ -363,7 +383,7 @@ class ArticleAdmin(YanaDjangoQLMixin, ImportExportModelAdmin):
 
     list_display = ["name", "feed", "author", "date", "read", "starred", "created_at"]
     list_filter = [
-        ("feed", admin.RelatedOnlyFieldListFilter),
+        ("feed", EfficientRelatedOnlyFieldListFilter),
         "read",
         "starred",
         "date",
