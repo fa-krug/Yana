@@ -8,6 +8,34 @@ from django.utils import timezone
 
 from .choices import AGGREGATOR_CHOICES
 
+AI_PROVIDER_CHOICES = [
+    ("openai", "OpenAI"),
+    ("anthropic", "Anthropic"),
+    ("gemini", "Gemini"),
+]
+
+OPENAI_MODEL_CHOICES = [
+    ("gpt-4o", "GPT-4o"),
+    ("gpt-4o-mini", "GPT-4o Mini"),
+    ("gpt-4-turbo", "GPT-4 Turbo"),
+    ("gpt-3.5-turbo", "GPT-3.5 Turbo"),
+    ("o1-preview", "o1 Preview"),
+    ("o1-mini", "o1 Mini"),
+]
+
+ANTHROPIC_MODEL_CHOICES = [
+    ("claude-3-5-sonnet-20240620", "Claude 3.5 Sonnet"),
+    ("claude-3-opus-20240229", "Claude 3 Opus"),
+    ("claude-3-sonnet-20240229", "Claude 3 Sonnet"),
+    ("claude-3-haiku-20240307", "Claude 3 Haiku"),
+]
+
+GEMINI_MODEL_CHOICES = [
+    ("gemini-1.5-pro", "Gemini 1.5 Pro"),
+    ("gemini-1.5-flash", "Gemini 1.5 Flash"),
+    ("gemini-1.0-pro", "Gemini 1.0 Pro"),
+]
+
 
 class FeedGroup(models.Model):
     """Feed group for organizing feeds."""
@@ -140,11 +168,34 @@ class UserSettings(models.Model):
     youtube_enabled = models.BooleanField(default=False)
     youtube_api_key = models.CharField(max_length=255, blank=True, default="")
 
+    # AI Provider Settings
+    active_ai_provider = models.CharField(
+        max_length=50, choices=AI_PROVIDER_CHOICES, default="openai"
+    )
+
     # OpenAI API
     openai_enabled = models.BooleanField(default=False)
     openai_api_url = models.CharField(max_length=255, default="https://api.openai.com/v1")
     openai_api_key = models.CharField(max_length=255, blank=True, default="")
-    ai_model = models.CharField(max_length=100, default="gpt-4o-mini")
+    openai_model = models.CharField(
+        max_length=100, default="gpt-4o-mini", choices=OPENAI_MODEL_CHOICES
+    )
+
+    # Anthropic API
+    anthropic_enabled = models.BooleanField(default=False)
+    anthropic_api_key = models.CharField(max_length=255, blank=True, default="")
+    anthropic_model = models.CharField(
+        max_length=100, default="claude-3-5-sonnet-20240620", choices=ANTHROPIC_MODEL_CHOICES
+    )
+
+    # Gemini API
+    gemini_enabled = models.BooleanField(default=False)
+    gemini_api_key = models.CharField(max_length=255, blank=True, default="")
+    gemini_model = models.CharField(
+        max_length=100, default="gemini-1.5-flash", choices=GEMINI_MODEL_CHOICES
+    )
+
+    # Global AI Settings
     ai_temperature = models.FloatField(default=0.3)
     ai_max_tokens = models.IntegerField(default=2000)
     ai_default_daily_limit = models.IntegerField(default=200)

@@ -458,13 +458,10 @@ class UserSettingsInline(admin.StackedInline):
             {"fields": ("youtube_enabled", "youtube_api_key"), "classes": ("collapse",)},
         ),
         (
-            "OpenAI API",
+            "AI General Settings",
             {
                 "fields": (
-                    "openai_enabled",
-                    "openai_api_url",
-                    "openai_api_key",
-                    "ai_model",
+                    "active_ai_provider",
                     "ai_temperature",
                     "ai_max_tokens",
                     "ai_default_daily_limit",
@@ -473,6 +470,40 @@ class UserSettingsInline(admin.StackedInline):
                     "ai_request_timeout",
                     "ai_max_retries",
                     "ai_retry_delay",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            "OpenAI",
+            {
+                "fields": (
+                    "openai_enabled",
+                    "openai_api_url",
+                    "openai_api_key",
+                    "openai_model",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            "Anthropic",
+            {
+                "fields": (
+                    "anthropic_enabled",
+                    "anthropic_api_key",
+                    "anthropic_model",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            "Gemini",
+            {
+                "fields": (
+                    "gemini_enabled",
+                    "gemini_api_key",
+                    "gemini_model",
                 ),
                 "classes": ("collapse",),
             },
