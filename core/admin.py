@@ -31,6 +31,7 @@ class YanaDjangoQLMixin(DjangoQLSearchMixin):
     """Mixin to enable DjangoQL search with toggle disabled by default."""
 
     djangoql_completion_enabled_by_default = False
+    list_per_page = 20
 
 
 class EfficientRelatedOnlyFieldListFilter(admin.RelatedOnlyFieldListFilter):
