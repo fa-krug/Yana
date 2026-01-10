@@ -9,6 +9,7 @@ def format_article_content(
     url: str,
     header_image_url: Optional[str] = None,
     header_caption_html: Optional[str] = None,
+    comments_content: Optional[str] = None,
 ) -> str:
     """
     Format article content with an optional header image, the main content, and a footer.
@@ -22,6 +23,7 @@ def format_article_content(
         url: Article URL (used for footer source link)
         header_image_url: Optional URL of a header image
         header_caption_html: Optional HTML to display below the header image
+        comments_content: Optional HTML content for the comments section
 
     Returns:
         Formatted HTML string
@@ -41,6 +43,12 @@ def format_article_content(
 
     # Main content section
     parts.append(f'<section data-sanitized-class="article-content">{content}</section>')
+
+    # Comments section
+    if comments_content:
+        parts.append(
+            f'<section data-sanitized-class="article-comments">{comments_content}</section>'
+        )
 
     # Footer section
     parts.append(
