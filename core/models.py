@@ -173,8 +173,7 @@ class UserSettings(models.Model):
         max_length=50,
         choices=AI_PROVIDER_CHOICES,
         blank=True,
-        null=True,
-        default=None,
+        default="",
         help_text="Select an AI provider to enable AI features. Leave blank to disable.",
     )
 
