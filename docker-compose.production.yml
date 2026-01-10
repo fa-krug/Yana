@@ -1,6 +1,6 @@
 services:
   yana:
-    image: ${DOCKER_USERNAME:-skrug}/yana:latest
+    image: ${DOCKER_USERNAME:-sascha384}/yana:latest
     container_name: yana
     restart: always
     expose:

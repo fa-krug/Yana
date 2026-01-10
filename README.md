@@ -2,468 +2,208 @@
 
 A modern, self-hosted RSS aggregator built with Django that supports Google Reader API compatibility for use with external RSS clients like Reeder, NetNewsWire, and FeedMe.
 
-## Features
+## 🚀 User Guide: Setup & Run
 
-- **Multi-source Content Aggregation**
-  - RSS/Atom feeds
-  - YouTube channels
-  - Reddit subreddits
-  - Podcasts
-  - Specific websites (news, blogs, comics)
-  - Extensible aggregator system for custom sources
+The easiest way to get Yana up and running is using Docker.
 
-- **Google Reader API Compatibility**
-  - Use any Google Reader-compatible client (Reeder, NetNewsWire, FeedMe)
-  - Full subscription management
-  - Article read/starred state tracking
-  - Stream filtering and pagination
+### Prerequisites
+- [Docker](https://docs.docker.com/get-docker/)
+- [Docker Compose](https://docs.docker.com/compose/install/)
 
-- **Self-Hosted**
-  - SQLite database (no PostgreSQL required)
-  - Docker deployment (multi-stage optimized image)
-  - Background task processing with django-q2
-  - No external dependencies (Redis not required)
+### Quick Start
 
-- **User-Friendly Admin Interface**
-  - Django admin with custom bulk actions
-  - Aggregate feeds directly from admin
-  - Reload articles on demand
-  - Filter and search articles
+1.  **Create a folder for Yana:**
+    ```bash
+    mkdir yana
+    cd yana
+    ```
 
-## Quick Start
+2.  **Create a `docker-compose.yml` file:**
+    Create a new file named `docker-compose.yml` in this directory with the following content:
 
-### Local Development
+    ```yaml
+    version: "3.8"
+    services:
+      yana:
+        image: sascha384/yana:latest
+        container_name: yana
+        restart: unless-stopped
+        ports:
+          - "8000:8000"
+        environment:
+          - SECRET_KEY=change-me-securely
+          - ALLOWED_HOSTS=*
+          - TIME_ZONE=UTC
+          # Default admin user
+          - SUPERUSER_USERNAME=admin
+          - SUPERUSER_EMAIL=admin@example.com
+          - SUPERUSER_PASSWORD=password
+        volumes:
+          - yana_data:/app/data
+          - yana_media:/app/media
 
-```bash
-# Clone and enter directory
-git clone <repo>
-cd Yana
+    volumes:
+      yana_data:
+      yana_media:
+    ```
 
-# Create and activate virtual environment
-python3 -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+3.  **Start the container:**
+    ```bash
+    docker-compose up -d
+    ```
 
-# Install dependencies
-pip install -r requirements.txt
+4.  **Access the application:**
+    Open your browser and navigate to `http://localhost:8000/admin`.
 
-# Run migrations
-python3 manage.py migrate
+### Configuration
 
-# Create admin user
-python3 manage.py createsuperuser
+Yana is configured via environment variables. You can create a `.env` file in the root directory (copy `.env.example` as a starting point).
 
-# Start development server
-python3 manage.py runserver
-```
+**Key Environment Variables:**
 
-Access at:
-- Admin: http://localhost:8000/admin/
-- GReader API: http://localhost:8000/api/greader/*
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `SECRET_KEY` | Django secret key | `dev-secret-key...` |
+| `ALLOWED_HOSTS` | Allowed hostnames | `*` |
+| `TIME_ZONE` | Time zone | `UTC` |
+| `SUPERUSER_USERNAME` | Admin username (created on startup) | `admin` |
+| `SUPERUSER_EMAIL` | Admin email | `admin@example.com` |
+| `SUPERUSER_PASSWORD` | Admin password | `password` |
 
-### Docker
+### Default Credentials
 
-```bash
-# Development
-docker-compose up
+If you used the default settings (or didn't change the superuser variables), you can log in with:
+-   **Username:** `admin`
+-   **Password:** `password`
 
-# Production
-docker-compose -f docker-compose.production.yml up
+### Connecting RSS Clients
 
-# Health check
-curl http://localhost:8000/health/
-```
+Yana provides a Google Reader compatible API. You can use any client that supports "Google Reader" or "GReader" (e.g., Reeder, NetNewsWire, FeedMe).
 
-Environment configuration via `.env` file (see `.env.example`).
+-   **Server Type:** Google Reader / GReader
+-   **Host/URL:** `http://<your-server-ip>:8000` (Note: specific path depends on the client, often just the base URL is enough, or sometimes `http://.../api/greader`)
+-   **Username:** Your Django admin username
+-   **Password:** Your Django admin password
 
-## Architecture
+---
 
-### Core Components
+## ✨ Features
 
-**Django Models:**
-- `FeedGroup` - Organize feeds by user
-- `Feed` - Feed configuration (URL, aggregator type, limits)
-- `Article` - Individual content items
-- `GReaderAuthToken` - Google Reader API authentication
+-   **Self-Hosted & Private:** Keep your reading habits private. SQLite database and no external dependencies (Redis/Postgres optional but not required).
+-   **Multi-Source Aggregation:**
+    -   Standard RSS/Atom feeds
+    -   YouTube channels
+    -   Reddit subreddits
+    -   Podcasts
+    -   Specialized scrapers for websites
+-   **Google Reader API:** Full compatibility with desktop and mobile RSS readers.
+-   **Background Processing:** Automatic feed updates using `django-q2`.
+-   **Admin Interface:** Manage feeds, view fetching status, and trigger updates directly from the Django admin.
 
-**Aggregator System:**
-- Template Method pattern for extensibility
-- 14 aggregator types (2 custom, 8 managed site-specific, 3 social)
-- MeinMmo aggregator fully implemented as reference
-- Support for async header extraction and image compression
+---
 
-**Google Reader API:**
-- 11 endpoints for full Google Reader compatibility
-- Authentication via SHA-256 hashed tokens
-- Stream filtering by feed, label, or starred status
-- Pagination with continuation tokens
+## 💻 Developer Guide
 
-**Services Layer:**
-- `AggregatorService` - Trigger feeds and fetch content
-- `ArticleService` - Reload article content
-- `AuthService` - Token generation and validation
-- `SubscriptionService` - Feed management
-- `StreamService` - Article querying with caching
-- `TagService` - Article state operations
+If you want to contribute or modify Yana, here is how to set up the development environment.
 
-### Project Structure
+### Local Development Setup
 
-```
-core/
-├── models.py                  # 4 data models
-├── admin.py                   # Custom admin interface
-├── choices.py                 # 14 aggregator types
-├── views/                     # Modularized views
-│   ├── default.py             # Health check, YouTube proxy
-│   └── greader/               # Google Reader API views
-├── urls/                      # URL routing
-│   ├── default.py
-│   └── greader.py             # 11 GReader endpoints
-├── services/                  # Business logic
-│   ├── aggregator_service.py
-│   ├── article_service.py
-│   └── greader/               # 7 GReader services
-├── aggregators/               # Content aggregation
-│   ├── base.py                # BaseAggregator
-│   ├── registry.py            # Factory pattern
-│   ├── mein_mmo/              # Reference implementation
-│   └── utils/                 # Shared utilities
-└── migrations/                # Database schema
+**Requirements:** Python 3.11+, `pip`, `virtualenv`.
 
-yana/                          # Django project config
-├── settings.py
-├── urls.py
-├── wsgi.py
-└── asgi.py
-```
+1.  **Create a virtual environment:**
+    ```bash
+    python3 -m venv venv
+    source venv/bin/activate  # On Windows: venv\Scripts\activate
+    ```
 
-## Google Reader API
+2.  **Install dependencies:**
+    ```bash
+    pip install -r requirements.txt
+    ```
 
-The application implements the Google Reader API for RSS client compatibility.
+3.  **Run migrations:**
+    ```bash
+    python3 manage.py migrate
+    ```
 
-### Endpoints
+4.  **Create an admin user:**
+    ```bash
+    python3 manage.py createsuperuser
+    ```
 
-- `POST /api/greader/accounts/ClientLogin` - Authenticate with email/password
-- `GET /api/greader/reader/api/0/token` - Get session token
-- `GET /api/greader/reader/api/0/user-info` - Get user information
-- `GET /api/greader/reader/api/0/subscription/list` - List all subscriptions
-- `POST /api/greader/reader/api/0/subscription/edit` - Add/remove/rename subscriptions
-- `GET /api/greader/reader/api/0/tag/list` - List tags/labels
-- `POST /api/greader/reader/api/0/edit-tag` - Mark articles as read/starred
-- `POST /api/greader/reader/api/0/mark-all-as-read` - Mark stream as read
-- `GET /api/greader/reader/api/0/unread-count` - Get unread counts
-- `GET /api/greader/reader/api/0/stream/items/ids` - Get article IDs
-- `GET/POST /api/greader/reader/api/0/stream/contents` - Get article contents
+5.  **Start the development server:**
+    ```bash
+    python3 manage.py runserver
+    ```
 
-### Authentication
+### Developing Aggregators
 
-1. POST email/password to `/accounts/ClientLogin`
-2. Receive auth token (SHA-256 hashed, 64-char hex)
-3. Include in subsequent requests: `Authorization: GoogleLogin auth=TOKEN`
+Yana uses a flexible aggregator system. New sources can be added by creating a class in `core/aggregators/`.
 
-### Stream Formats
+**Debugging Aggregators:**
 
-Articles can be filtered by:
-- `feed/{id}` - Single feed
-- `user/-/label/{name}` - Group/label
-- `user/-/state/com.google/starred` - Starred items
-- `user/-/state/com.google/reading-list` - All items
-
-## Aggregators
-
-### Supported Types (14 total)
-
-| Type | Source | Status |
-|------|--------|--------|
-| `full_website` | Generic web scraper | Reference |
-| `feed_content` | RSS/Atom feeds | Reference |
-| `mein_mmo` | Gaming blog | Implemented |
-| `youtube` | YouTube channels | Implemented |
-| `reddit` | Reddit subreddits | Implemented |
-| `podcast` | Podcast feeds | Implemented |
-| `heise` | German tech news | Implemented |
-| `merkur` | German news | Implemented |
-| `tagesschau` | German news | Implemented |
-| `explosm` | Web comics | Implemented |
-| `dark_legacy` | Web comics | Implemented |
-| `oglaf` | Web comics | Implemented |
-| `caschys_blog` | Tech blog | Implemented |
-| `mactechnews` | Apple tech news | Implemented |
-
-### Creating New Aggregators
-
-1. Create class extending `BaseAggregator` in `core/aggregators/`
-2. Implement: `fetch_source_data()`, `parse_to_raw_articles()`
-3. Optional hooks: `validate()`, `filter_articles()`, `enrich_articles()`, `finalize_articles()`
-4. Register in `AGGREGATOR_CHOICES` (core/choices.py)
-5. Add to registry (core/aggregators/registry.py)
-
-Reference implementation: `core/aggregators/mein_mmo/` (complete with content extraction, embed processing, multi-page support)
-
-## Development
-
-### Environment Setup
-
-**Required:** Python 3.11+, virtual environment
+The project includes a powerful CLI tool to test and debug aggregators without waiting for scheduled tasks.
 
 ```bash
-source venv/bin/activate
-```
-
-### Common Commands
-
-```bash
-# Development server
-python3 manage.py runserver
-
-# Django shell
-python3 manage.py shell
-
-# Database migrations
-python3 manage.py makemigrations
-python3 manage.py migrate
-
-# Tests
-python3 manage.py test
-
-# Trigger feeds
-python3 manage.py trigger_aggregator --feed-id=1
-python3 manage.py trigger_aggregator --aggregator-type=mein_mmo
-```
-
-### Debugging Aggregators
-
-**Use `python3 manage.py test_aggregator` for all aggregator debugging.** This command provides comprehensive debugging information.
-
-```bash
-# Quick test by feed ID
+# Quick test by feed ID (if it exists in DB)
 python3 manage.py test_aggregator 5
 
-# Test by aggregator type + identifier (creates temp feed)
+# Test by aggregator type with a custom URL (no DB entry needed)
 python3 manage.py test_aggregator heise "https://www.heise.de/"
 
-# Show detailed output (first 3 articles)
-python3 manage.py test_aggregator 5 --first 3
+# Detailed verbose output (raw HTML, logs)
+python3 manage.py test_aggregator 5 --verbose
 
-# Verbose mode: raw HTML, debug logs, full tracebacks
-python3 manage.py test_aggregator 5 -v
-
-# Dry-run: test without saving to database
+# Dry-run (don't save articles to DB)
 python3 manage.py test_aggregator 5 --dry-run
-
-# Debug CSS selectors
-python3 manage.py test_aggregator 5 --selector-debug
-
-# Limit articles (fast iteration)
-python3 manage.py test_aggregator 5 --limit 2
 ```
 
-**Output includes:**
-- Feed configuration details
-- Aggregator class and inheritance info
-- Execution timing
-- Article summaries (first 10)
-- Article details with raw/processed content
-- Data validation (missing fields, empty content, etc.)
-- Database save summary
+See **CLAUDE.md** for more detailed debugging workflows.
 
-**Debugging workflow:**
-1. Start: `python3 manage.py test_aggregator <ID> --limit 2` (fast)
-2. Debug: `python3 manage.py test_aggregator <ID> --first 1 -v` (detailed)
-3. Selectors: `python3 manage.py test_aggregator <ID> --selector-debug` (if needed)
-4. Full test: `python3 manage.py test_aggregator <ID>` (when working)
+### Project Architecture
 
-See **CLAUDE.md** > **Aggregator Debugging Guide** for comprehensive debugging documentation.
+-   **`core/models.py`**: `Feed`, `Article`, `FeedGroup`.
+-   **`core/aggregators/`**: Content fetching logic.
+    -   `registry.py`: Factory pattern for aggregators.
+    -   `base.py`: Base classes for RSS, Full Website, etc.
+-   **`core/services/`**: Business logic (GReader API, Aggregation triggers).
+-   **`core/views/greader/`**: Google Reader API endpoints.
 
-### Admin Interface
-
-Django admin at `http://localhost:8000/admin/` includes:
-
-- **Feed Management:** View, create, edit, filter feeds
-- **Bulk Actions:** Aggregate selected feeds, reload articles
-- **Article Preview:** View raw and processed HTML
-- **Token Management:** Manage GReader API tokens
-- **User Management:** Create users, assign feeds
-
-### Testing
+### Running Tests
 
 ```bash
 # Run all tests
 python3 manage.py test
 
-# Run specific test
-python3 manage.py test core.tests.TestClassName
-
-# Run with coverage
-coverage run --source='.' manage.py test
-coverage report
+# Run specific test module
+python3 manage.py test core.tests.test_greader
 ```
-
-Current test coverage is minimal - contributions welcome!
-
-## Configuration
-
-### Environment Variables (.env)
-
-```
-DEBUG=True|False
-SECRET_KEY=your-secret-key
-ALLOWED_HOSTS=localhost,127.0.0.1
-DATABASE_ENGINE=django.db.backends.sqlite3
-DATABASE_NAME=db.sqlite3
-TIME_ZONE=UTC
-SUPERUSER_USERNAME=admin
-SUPERUSER_EMAIL=admin@example.com
-SUPERUSER_PASSWORD=password
-```
-
-### Django Settings (yana/settings.py)
-
-- **Database:** SQLite (configurable to PostgreSQL/MySQL)
-- **Task Queue:** django-q2 with 4 workers, ORM broker (no Redis needed)
-- **Static Files:** WhiteNoise with debug autorefresh
-- **Cache:** Per-request cache for GReader unread counts (30s)
-
-## Deployment
-
-### Docker
-
-**Development:**
-```bash
-docker-compose up
-```
-
-**Production:**
-```bash
-docker-compose -f docker-compose.production.yml up
-```
-
-**Health Check:**
-```bash
-curl http://localhost:8000/health/
-```
-
-### Docker Image
-
-- Multi-stage build (optimized for size)
-- Python 3.11-slim base
-- Gunicorn (4 workers) + Django-Q daemon via Supervisor
-- Health check endpoint included
-- Unprivileged `yana` user
-
-### Database
-
-- **Default:** SQLite (included, no setup needed)
-- **Production:** Can be configured to PostgreSQL/MySQL via environment
-- **Migrations:** Auto-run via docker-entrypoint.sh
-
-## Key Dependencies
-
-- **Django 6.0** - Web framework
-- **beautifulsoup4 4.14.3** - HTML parsing
-- **requests 2.32.5** - HTTP client
-- **lxml 6.0.2** - XML/HTML processing
-- **Pillow 11.0.0** - Image processing
-- **feedparser 6.0.12** - RSS/Atom parsing
-- **django-q2 1.9.0** - Task queue
-- **graphene-django 3.2.3** - GraphQL API
-- **djangoql 0.18.1** - Advanced query language
-- **gunicorn 21.2.0** - App server
-- **whitenoise 6.6.0** - Static file serving
-- **supervisor 4.2.5** - Process management
-
-See `requirements.txt` for complete list.
-
-## Implementation Status
-
-### Complete ✅
-- Core models and database
-- Django admin with custom actions
-- Aggregator system foundation
-- All 14 aggregators (ported from TypeScript)
-- Docker setup with Supervisor
-- YouTube proxy endpoint
-- Health check endpoint
-- Partial Google Reader API
-
-### In Progress 🔄
-- GReader service implementations (7 modules active)
-- GReader view handlers
-- Article reload functionality
-- GraphQL API integration
-
-### To Do 📋
-- Complete GReader service implementations
-- Comprehensive test coverage
-- Performance optimization and caching tuning
-
-## Documentation
-
-- **CLAUDE.md** - Developer guidelines and architecture overview
-- **GREADER_IMPLEMENTATION_PLAN.md** - Detailed Google Reader API specification (426 lines)
-- **core/aggregators/README.md** - Aggregator development guide
-- **old/docs/** - Legacy TypeScript implementation (reference)
-  - AGGREGATOR_FLOW.md - Aggregator patterns
-  - TRPC_API.md - Original API structure
-
-## Contributing
-
-1. Create feature branch from `main`
-2. Implement changes with tests
-3. Ensure all tests pass: `python3 manage.py test`
-4. Commit with clear messages
-5. Create pull request
-
-Note: This project uses a git worktree strategy with multiple branches:
-- `main` - Primary branch
-- `bright-mountain` - Current development branch
-- Other worktrees: `clever-beacon`, `happy-beacon`
-
-## License
-
-This project is a Django rewrite of the original TypeScript/Angular/Express application.
-
-## Performance
-
-- **Unread count caching:** 30 seconds (GReader API)
-- **Database indexes:** Optimized for common queries
-- **Query optimization:** Uses select_related/prefetch_related
-- **Background processing:** django-q2 for non-blocking aggregation
-- **Docker:** Multi-stage build, minimal runtime (~200MB)
-
-## Troubleshooting
-
-**Virtual environment issues:**
-```bash
-# Deactivate and reactivate
-deactivate
-source venv/bin/activate
-```
-
-**Database issues:**
-```bash
-# Reset database (development only!)
-rm db.sqlite3
-python3 manage.py migrate
-python3 manage.py createsuperuser
-```
-
-**Docker issues:**
-```bash
-# View logs
-docker-compose logs -f
-
-# Rebuild
-docker-compose down
-docker-compose up --build
-```
-
-## Support
-
-For issues, questions, or feature requests:
-1. Check existing documentation (CLAUDE.md, GREADER_IMPLEMENTATION_PLAN.md)
-2. Review GitHub issues
-3. Create detailed issue with reproduction steps
 
 ---
 
-**Yana** - A modern, self-hosted RSS aggregator with Google Reader compatibility.
+## ❓ Troubleshooting
+
+**Docker Logs:**
+If the container isn't starting, check logs:
+```bash
+docker-compose logs -f
+```
+
+**Database Reset (Dev):**
+```bash
+rm db.sqlite3
+python3 manage.py migrate
+```
+
+**"ClientLogin" Errors:**
+Ensure you are using the correct username/password. The GReader API uses the same credentials as the Django admin.
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! Please create a feature branch (`git checkout -b feature/my-feature`) and submit a Pull Request.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

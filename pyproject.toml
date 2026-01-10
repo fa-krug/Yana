@@ -3,6 +3,8 @@ name = "yana"
 version = "0.1.0"
 description = "Django-based RSS aggregator and feed management system"
 requires-python = ">=3.13"
+license = {text = "MIT"}
+authors = [{name = "Stefan Krug"}]
 
 [tool.ruff]
 # Set the maximum line length to 100.
