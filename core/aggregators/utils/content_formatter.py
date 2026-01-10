@@ -8,6 +8,7 @@ def format_article_content(
     title: str,
     url: str,
     header_image_url: Optional[str] = None,
+    header_caption_html: Optional[str] = None,
     comments_content: Optional[str] = None,
 ) -> str:
     """
@@ -21,6 +22,7 @@ def format_article_content(
         title: Article title (used for image alt text)
         url: Article URL (used for footer source link)
         header_image_url: Optional URL of a header image
+        header_caption_html: Optional HTML to display below the header image
         comments_content: Optional HTML content for the comments section
 
     Returns:
@@ -33,8 +35,10 @@ def format_article_content(
         header_parts = [
             '<header style="margin-bottom: 1.5em; text-align: center;">',
             f'<img src="{header_image_url}" alt="{title}" style="max-width: 100%; height: auto; border-radius: 8px;">',
-            "</header>",
         ]
+        if header_caption_html:
+            header_parts.append(header_caption_html)
+        header_parts.append("</header>")
         parts.append("\n".join(header_parts))
 
     # Main content section

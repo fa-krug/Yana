@@ -131,9 +131,11 @@ def extract_header_image_url(post: RedditPostData) -> Optional[str]:
         Header image URL or None
     """
     try:
-        # Priority 0: Check for YouTube videos and v.redd.it videos (highest priority)
+        # Priority 0: Check for YouTube videos (highest priority)
+        # Note: v.redd.it videos are handled as images via thumbnail/preview extraction
+        # to ensure we display an image, not a vxreddit.com HTML link
         video_url = _extract_video_embed_url(post)
-        if video_url:
+        if video_url and "vxreddit.com" not in video_url:
             return video_url
 
         # Priority 1: Gallery posts - get first high-quality image
@@ -163,7 +165,17 @@ def extract_header_image_url(post: RedditPostData) -> Optional[str]:
                 if is_direct_image:
                     return decoded_url
 
-        # Priority 4: Extract URLs from text post selftext and try to find images
+        # Priority 4: Fall back to thumbnail extraction (restored)
+        thumbnail_url = extract_thumbnail_url(post)
+        if thumbnail_url:
+            # Special handling for v.redd.it to get high-res preview if possible
+            if post.url and "v.redd.it" in post.url:
+                preview_url = extract_reddit_video_preview(post)
+                if preview_url:
+                    return preview_url
+            return thumbnail_url
+
+        # Priority 5: Extract URLs from text post selftext and try to find images
         image_url = _extract_image_url_from_selftext(post)
         if image_url:
             return image_url
