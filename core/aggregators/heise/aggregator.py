@@ -6,7 +6,13 @@ from urllib.parse import urljoin, urlparse
 
 from bs4 import BeautifulSoup, Tag
 
-from ..utils import fetch_html
+from ..utils import (
+    clean_html,
+    fetch_html,
+    format_article_content,
+    remove_image_by_url,
+    sanitize_class_names,
+)
 from ..website import FullWebsiteAggregator
 
 
@@ -170,16 +176,35 @@ class HeiseAggregator(FullWebsiteAggregator):
 
     def process_content(self, html: str, article: Dict[str, Any]) -> str:
         """Process content and optionally add comments."""
-        # Use base process_content for initial cleaning and formatting
-        # Note: Base FullWebsiteAggregator.process_content calls format_article_content
-        processed = super().process_content(html, article)
+        # Note: We override FullWebsiteAggregator.process_content entirely
+        # to inject comments BEFORE the footer (which format_article_content adds).
 
-        # Check configuration
+        # 1. Standard Content Processing (copied from FullWebsiteAggregator)
+        soup = BeautifulSoup(html, "html.parser")
+
+        # Remove header image from content if it was extracted
+        header_data = article.get("header_data")
+        if header_data and header_data.image_url:
+            self.logger.debug(f"Removing header image from content: {header_data.image_url}")
+            remove_image_by_url(soup, header_data.image_url)
+
+        # Sanitize class names
+        sanitize_class_names(soup)
+
+        # Clean HTML
+        cleaned = clean_html(str(soup))
+
+        # Determine header image URL for formatting
+        header_image_url = None
+        if header_data:
+            header_image_url = header_data.base64_data_uri or header_data.image_url
+
+        # 2. Extract Comments (Heise Specific)
+        comments_html = None
         include_comments = self.feed.options.get("include_comments", True)
         max_comments = self.feed.options.get("max_comments", 5)
 
         if include_comments:
-            # Extract and append comments if possible (Requested "all features")
             try:
                 # We need the original full HTML to find the forum link
                 raw_html = article.get("raw_content", "")
@@ -187,14 +212,21 @@ class HeiseAggregator(FullWebsiteAggregator):
                     comments_html = self.extract_comments(
                         article["identifier"], raw_html, max_comments=max_comments
                     )
-                    if comments_html:
-                        processed += f"\n\n{comments_html}"
             except Exception as e:
                 self.logger.warning(
                     f"[process_content] Failed to extract comments for {article['identifier']}: {e}"
                 )
 
-        return processed
+        # 3. Format Article (Inject content + comments + footer)
+        formatted = format_article_content(
+            cleaned,
+            title=article["name"],
+            url=article["identifier"],
+            header_image_url=header_image_url,
+            comments_content=comments_html,
+        )
+
+        return formatted
 
     def extract_comments(
         self, article_url: str, article_html: str, max_comments: int = 5
@@ -229,8 +261,9 @@ class HeiseAggregator(FullWebsiteAggregator):
             if not comment_parts:
                 return None
 
+            # Reddit-style header and simple section container
             header = f'<h3><a href="{forum_url}">Comments</a></h3>'
-            return f'<section style="margin-top: 2em; border-top: 1px solid #eee; padding-top: 1em;">{header}{"".join(comment_parts)}</section>'
+            return f"<section>{header}{''.join(comment_parts)}</section>"
 
         except Exception as e:
             self.logger.warning(f"[extract_comments] Error: {e}")
@@ -301,8 +334,9 @@ class HeiseAggregator(FullWebsiteAggregator):
         title = title_link.get_text(strip=True)
         comment_url = urljoin(self.HEISE_URL, title_link.get("href", ""))
 
+        # Reddit-style styling (clean blockquote)
         return (
-            f'<blockquote style="margin: 1em 0; padding: 0.5em 1em; border-left: 4px solid #ddd; background: #f9f9f9;">'
+            f"<blockquote>"
             f'<p><strong>{author}</strong> | <a href="{comment_url}">source</a></p>'
             f"<div><p>{title}</p></div>"
             f"</blockquote>"
@@ -338,8 +372,9 @@ class HeiseAggregator(FullWebsiteAggregator):
         comment_id = el.get("id") or f"comment-{index}"
         comment_url = f"{article_url}#{comment_id}"
 
+        # Reddit-style styling (clean blockquote)
         return (
-            f'<blockquote style="margin: 1em 0; padding: 0.5em 1em; border-left: 4px solid #ddd; background: #f9f9f9;">'
+            f"<blockquote>"
             f'<p><strong>{author}</strong> | <a href="{comment_url}">source</a></p>'
             f"<div>{content}</div>"
             f"</blockquote>"
