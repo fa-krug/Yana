@@ -163,12 +163,7 @@ def extract_header_image_url(post: RedditPostData) -> Optional[str]:
                 if is_direct_image:
                     return decoded_url
 
-        # Priority 4: Fall back to thumbnail extraction
-        thumbnail_url = extract_thumbnail_url(post)
-        if thumbnail_url:
-            return thumbnail_url
-
-        # Priority 5: Extract URLs from text post selftext and try to find images
+        # Priority 4: Extract URLs from text post selftext and try to find images
         image_url = _extract_image_url_from_selftext(post)
         if image_url:
             return image_url
