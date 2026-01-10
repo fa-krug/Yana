@@ -426,7 +426,7 @@ class ArticleAdmin(YanaDjangoQLMixin, ImportExportModelAdmin):
         "date",
         "created_at",
     ]
-    search_fields = ["name", "author", "identifier", "content"]
+    search_fields = ["name", "author", "identifier"]
     readonly_fields = ["created_at", "updated_at"]
     actions = ["reload_selected_articles", "force_delete_selected"]
     save_as = True
