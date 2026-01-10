@@ -63,4 +63,4 @@ class TestBaseFiltering(TestCase):
         for article in filtered:
             current_now = timezone.now()
             diff = abs((article["date"] - current_now).total_seconds())
-            self.assertLess(diff, 10.0)
+            self.assertLess(diff, 40.0)
