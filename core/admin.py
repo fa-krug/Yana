@@ -485,10 +485,15 @@ class UserSettingsInline(admin.StackedInline):
             {"fields": ("youtube_enabled", "youtube_api_key"), "classes": ("collapse",)},
         ),
         (
+            "AI Settings",
+            {
+                "fields": ("active_ai_provider",),
+            },
+        ),
+        (
             "AI General Settings",
             {
                 "fields": (
-                    "active_ai_provider",
                     "ai_temperature",
                     "ai_max_tokens",
                     "ai_default_daily_limit",
