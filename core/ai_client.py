@@ -1,9 +1,10 @@
 import logging
-import requests
-import json
 from typing import Optional
 
+import requests
+
 logger = logging.getLogger(__name__)
+
 
 class AIClient:
     def __init__(self, settings):
@@ -53,10 +54,7 @@ class AIClient:
 
         try:
             response = requests.post(
-                url,
-                headers=headers,
-                json=data,
-                timeout=self.settings.ai_request_timeout
+                url, headers=headers, json=data, timeout=self.settings.ai_request_timeout
             )
             response.raise_for_status()
             result = response.json()
@@ -88,10 +86,7 @@ class AIClient:
 
         try:
             response = requests.post(
-                url,
-                headers=headers,
-                json=data,
-                timeout=self.settings.ai_request_timeout
+                url, headers=headers, json=data, timeout=self.settings.ai_request_timeout
             )
             response.raise_for_status()
             result = response.json()
@@ -123,19 +118,16 @@ class AIClient:
 
         try:
             response = requests.post(
-                url,
-                headers=headers,
-                json=data,
-                timeout=self.settings.ai_request_timeout
+                url, headers=headers, json=data, timeout=self.settings.ai_request_timeout
             )
             response.raise_for_status()
             result = response.json()
             # Gemini response structure can vary, handle basic case
             try:
                 return result["candidates"][0]["content"]["parts"][0]["text"]
-            except (KeyError, IndexError):
+            except (KeyError, IndexError) as err:
                 logger.error(f"Unexpected Gemini response format: {result}")
-                raise ValueError("Unexpected Gemini response format")
+                raise ValueError("Unexpected Gemini response format") from err
         except requests.exceptions.RequestException as e:
             logger.error(f"Gemini Request Error: {e}")
             if response is not None:

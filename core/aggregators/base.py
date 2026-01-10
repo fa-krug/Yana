@@ -8,11 +8,13 @@ from datetime import timedelta
 from typing import Any, Dict, List, Optional
 
 from django.utils import timezone
+
 from bs4 import BeautifulSoup
 
-from .services.header_element.context import HeaderElementData
 from core.ai_client import AIClient
 from core.models import UserSettings
+
+from .services.header_element.context import HeaderElementData
 
 
 class BaseAggregator(ABC):
@@ -342,7 +344,9 @@ class BaseAggregator(ABC):
 
                 full_prompt = "\n".join(prompt_parts) + "\n\nInput Content:\n" + clean_html
 
-                self.logger.info(f"Sending article '{article.get('name')}' to AI ({user_settings.active_ai_provider})")
+                self.logger.info(
+                    f"Sending article '{article.get('name')}' to AI ({user_settings.active_ai_provider})"
+                )
                 result = ai_client.generate_response(full_prompt)
 
                 if result:
@@ -357,10 +361,14 @@ class BaseAggregator(ABC):
                     article["content"] = result.strip()
                     finalized_articles.append(article)
                 else:
-                    self.logger.warning(f"AI processing failed for article '{article.get('name')}'. Skipping.")
+                    self.logger.warning(
+                        f"AI processing failed for article '{article.get('name')}'. Skipping."
+                    )
 
             except Exception as e:
-                self.logger.error(f"Error during AI processing for article '{article.get('name')}': {e}")
+                self.logger.error(
+                    f"Error during AI processing for article '{article.get('name')}': {e}"
+                )
                 # Skip article on error as requested
                 continue
 
