@@ -4,10 +4,12 @@ import logging
 from datetime import datetime, timedelta
 from datetime import timezone as dt_timezone
 from typing import Any, Dict, List, Optional
+from urllib.parse import urlparse
 
 from django.utils import timezone
 
 import requests
+from bs4 import BeautifulSoup
 
 from ..base import BaseAggregator
 from ..exceptions import ArticleSkipError
@@ -557,6 +559,13 @@ class RedditAggregator(BaseAggregator):
         for article in articles:
             # Move header image URL to a standard field for process_content
             header_image_url = article.get("_reddit_header_image_url")
+
+            # Strip duplicate image from content before inlining header image
+            if header_image_url and article.get("content"):
+                article["content"] = self._strip_image_from_content(
+                    article["content"], header_image_url
+                )
+
             if header_image_url:
                 # Fetch and inline header image (user requirement: base64 encoded)
                 try:
@@ -594,6 +603,54 @@ class RedditAggregator(BaseAggregator):
             finalized.append(article)
 
         return finalized
+
+    def _strip_image_from_content(self, content: str, image_url: str) -> str:
+        """
+        Strip image from content if it matches the header image.
+
+        Args:
+            content: HTML content
+            image_url: Header image URL
+
+        Returns:
+            Modified HTML content
+        """
+        if not content or not image_url:
+            return content
+
+        try:
+            soup = BeautifulSoup(content, "html.parser")
+            header_parsed = urlparse(image_url)
+            # Compare base paths (ignore query params)
+            header_base = header_parsed.path
+
+            modified = False
+            for img in soup.find_all("img"):
+                src = img.get("src")
+                if not src or not isinstance(src, str):
+                    continue
+
+                src_parsed = urlparse(src)
+                if src_parsed.path == header_base:
+                    # Found duplicate image, remove it
+                    parent = img.parent
+                    img.decompose()
+                    modified = True
+
+                    # Check if parent is now empty (e.g. <p> or <div> wrapper)
+                    if (
+                        parent
+                        and parent.name in ["p", "div", "figure"]
+                        and not parent.get_text(strip=True)
+                        and not parent.find_all(["img", "iframe", "video", "a"])
+                    ):
+                        parent.decompose()
+
+            return str(soup) if modified else content
+
+        except Exception as e:
+            logger.warning(f"Error stripping image from content: {e}")
+            return content
 
     def fetch_article_content(self, url: str) -> str:
         """
