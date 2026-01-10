@@ -26,6 +26,25 @@ class FeedAdminForm(forms.ModelForm):
             "identifier": forms.TextInput(attrs={"class": "vTextField"}),
         }
 
+    ai_summarize = forms.BooleanField(
+        required=False, label="AI Summarize", help_text="Generate a summary of the article."
+    )
+    ai_improve_writing = forms.BooleanField(
+        required=False,
+        label="AI Improve Writing",
+        help_text="Rewrite the article to improve clarity and style.",
+    )
+    ai_translate = forms.BooleanField(
+        required=False,
+        label="AI Translate",
+        help_text="Translate the article to another language.",
+    )
+    ai_translate_language = forms.CharField(
+        required=False,
+        label="Target Language",
+        help_text="Language to translate to (e.g., 'German', 'French', 'English').",
+    )
+
     def __init__(self, *args, **kwargs):
         # The ModelAdmin passes 'request' to the form, but ModelForm doesn't expect it.
         # Remove it before calling super().__init__
