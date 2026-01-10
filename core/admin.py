@@ -205,6 +205,17 @@ class FeedAdmin(YanaDjangoQLMixin, ImportExportModelAdmin):
         return (
             (None, {"fields": fields}),
             ("Configuration", {"fields": config_fieldset_fields}),
+            (
+                "AI Configuration",
+                {
+                    "fields": (
+                        "ai_summarize",
+                        "ai_improve_writing",
+                        "ai_translate",
+                        "ai_translate_language",
+                    )
+                },
+            ),
             ("Relationships", {"fields": ("user", "group")}),
             ("Timestamps", {"fields": ("created_at", "updated_at"), "classes": ("collapse",)}),
         )
@@ -288,6 +299,17 @@ class FeedAdmin(YanaDjangoQLMixin, ImportExportModelAdmin):
                     except Exception as e:
                         print(f"Error configuring form for aggregator: {e}")
 
+                # Initialize AI fields from options
+                ai_fields = [
+                    "ai_summarize",
+                    "ai_improve_writing",
+                    "ai_translate",
+                    "ai_translate_language",
+                ]
+                for field_name in ai_fields:
+                    if obj and obj.options and field_name in obj.options:
+                        self_form.initial[field_name] = obj.options[field_name]
+
         return RequestForm
 
     def save_model(self, request, obj, form, change):
@@ -300,6 +322,20 @@ class FeedAdmin(YanaDjangoQLMixin, ImportExportModelAdmin):
                 aggregator.save_options(form.cleaned_data)
             except Exception as e:
                 print(f"Error saving aggregator options: {e}")
+
+        # Save AI fields to options
+        ai_fields = [
+            "ai_summarize",
+            "ai_improve_writing",
+            "ai_translate",
+            "ai_translate_language",
+        ]
+        if not obj.options:
+            obj.options = {}
+
+        for field_name in ai_fields:
+            if field_name in form.cleaned_data:
+                obj.options[field_name] = form.cleaned_data[field_name]
 
         super().save_model(request, obj, form, change)
 

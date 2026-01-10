@@ -9,6 +9,11 @@ from typing import Any, Dict, List, Optional
 
 from django.utils import timezone
 
+from bs4 import BeautifulSoup
+
+from core.ai_client import AIClient
+from core.models import UserSettings
+
 from .services.header_element.context import HeaderElementData
 
 
@@ -265,6 +270,7 @@ class BaseAggregator(ABC):
         Final processing before returning articles.
 
         Override for custom finalization.
+        Applies AI processing if enabled.
 
         Args:
             articles: List of article dictionaries
@@ -272,7 +278,101 @@ class BaseAggregator(ABC):
         Returns:
             Finalized list of articles
         """
-        return articles
+        return self._apply_ai_processing(articles)
+
+    def _apply_ai_processing(self, articles: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Apply AI processing to articles if configured.
+        """
+        # Check if AI is enabled for the feed
+        options = self.feed.options or {}
+        ai_enabled = any(
+            [
+                options.get("ai_summarize"),
+                options.get("ai_improve_writing"),
+                options.get("ai_translate"),
+            ]
+        )
+
+        if not ai_enabled:
+            return articles
+
+        # Check if AI provider is configured for the user
+        try:
+            user_settings = UserSettings.objects.get(user=self.feed.user)
+            if not user_settings.active_ai_provider:
+                return articles
+        except UserSettings.DoesNotExist:
+            return articles
+
+        ai_client = AIClient(user_settings)
+        finalized_articles = []
+
+        for article in articles:
+            try:
+                content = article.get("content", "")
+                if not content:
+                    finalized_articles.append(article)
+                    continue
+
+                # Parse HTML and extract sections (removing header/footer/nav)
+                soup = BeautifulSoup(content, "html.parser")
+                for tag in soup(["header", "footer", "nav", "script", "style"]):
+                    tag.decompose()
+
+                # Get clean text for AI (keeping structure if possible, but request implies just sections)
+                # However, to maintain formatting, we should probably pass the cleaned HTML body
+                # The prompt will ask for HTML output to replace the content
+                clean_html = str(soup)
+
+                prompt_parts = []
+
+                if options.get("ai_summarize"):
+                    prompt_parts.append("Summarize the following article content concisely.")
+
+                if options.get("ai_improve_writing"):
+                    prompt_parts.append("Rewrite the content to improve clarity, flow, and style.")
+
+                if options.get("ai_translate"):
+                    target_lang = options.get("ai_translate_language", "English")
+                    prompt_parts.append(f"Translate the content to {target_lang}.")
+
+                prompt_parts.append(
+                    "Return ONLY the result as valid HTML. Do not include any explanations or markdown code blocks. "
+                    "The input HTML has stripped headers/footers, please maintain the general structure of sections/paragraphs."
+                )
+
+                full_prompt = "\n".join(prompt_parts) + "\n\nInput Content:\n" + clean_html
+
+                self.logger.info(
+                    f"Sending article '{article.get('name')}' to AI ({user_settings.active_ai_provider})"
+                )
+                result = ai_client.generate_response(full_prompt)
+
+                if result:
+                    # Clean up markdown code blocks if the AI added them despite instructions
+                    if result.startswith("```html"):
+                        result = result[7:]
+                    if result.startswith("```"):
+                        result = result[3:]
+                    if result.endswith("```"):
+                        result = result[:-3]
+
+                    article["content"] = result.strip()
+                    finalized_articles.append(article)
+                else:
+                    self.logger.warning(
+                        f"AI processing failed for article '{article.get('name')}'. Skipping."
+                    )
+
+            except Exception as e:
+                self.logger.error(
+                    f"Error during AI processing for article '{article.get('name')}': {e}"
+                )
+                # Skip article on error as requested
+                continue
+
+        return finalized_articles
 
     def get_aggregator_type(self) -> str:
         """Get the aggregator type name."""
