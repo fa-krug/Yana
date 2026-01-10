@@ -131,9 +131,11 @@ def extract_header_image_url(post: RedditPostData) -> Optional[str]:
         Header image URL or None
     """
     try:
-        # Priority 0: Check for YouTube videos and v.redd.it videos (highest priority)
+        # Priority 0: Check for YouTube videos (highest priority)
+        # Note: v.redd.it videos are handled as images via thumbnail/preview extraction
+        # to ensure we display an image, not a vxreddit.com HTML link
         video_url = _extract_video_embed_url(post)
-        if video_url:
+        if video_url and "vxreddit.com" not in video_url:
             return video_url
 
         # Priority 1: Gallery posts - get first high-quality image

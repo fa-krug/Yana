@@ -148,12 +148,8 @@ def _process_link_media(post: RedditPostData, url: str, content_parts: List[str]
 
     # Handle video media (Reddit videos and YouTube)
     if "v.redd.it" in url_lower:
-        from .images import extract_reddit_video_preview
-
-        preview_url = extract_reddit_video_preview(post)
-        if preview_url:
-            content_parts.append(f'<p><img src="{preview_url}" alt="Video thumbnail"></p>')
-        content_parts.append(f'<p><a href="{url}">▶ View Video</a></p>')
+        # Note: v.redd.it video links and thumbnails are now handled in the header
+        # via aggregator.py process_content, so we don't add them to the body here.
         return True
 
     if "youtube.com" in url_lower or "youtu.be" in url_lower:

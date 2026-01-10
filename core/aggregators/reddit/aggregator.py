@@ -362,9 +362,9 @@ class RedditAggregator(BaseAggregator):
             article_thumbnail_url = header_image_url or thumbnail_url
 
             # Extract video media URL
-            if post_data.is_video and post_data.url and "v.redd.it" in post_data.url:
-                # Video handling to be implemented
-                pass
+            video_url = None
+            if post_data.url and "v.redd.it" in post_data.url:
+                video_url = post_data.url
 
             # Convert created_utc to datetime
             post_date = datetime.fromtimestamp(post_data.created_utc, tz=dt_timezone.utc)
@@ -383,6 +383,7 @@ class RedditAggregator(BaseAggregator):
                 "_reddit_is_cross_post": is_cross_post,
                 "_reddit_num_comments": post_data.num_comments,
                 "_reddit_header_image_url": header_image_url,
+                "_reddit_video_url": video_url,
             }
 
             articles.append(article)
@@ -513,6 +514,8 @@ class RedditAggregator(BaseAggregator):
         include_header_image = self.feed.options.get("include_header_image", True)
 
         header_image_url = None
+        header_caption_html = None
+
         if include_header_image:
             # Get header image URL from article dict if available
             header_image_url = article.get("header_image_url")
@@ -524,11 +527,17 @@ class RedditAggregator(BaseAggregator):
                     header_data, "image_url", None
                 )
 
+            # Check for video URL to display in header
+            video_url = article.get("_reddit_video_url")
+            if video_url:
+                header_caption_html = f'<p><a href="{video_url}">▶ View Video</a></p>'
+
         return format_article_content(
             content=content,
             title=article["name"],
             url=article["identifier"],
             header_image_url=header_image_url,
+            header_caption_html=header_caption_html,
         )
 
     def finalize_articles(self, articles: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
