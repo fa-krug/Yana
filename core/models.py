@@ -170,7 +170,11 @@ class UserSettings(models.Model):
 
     # AI Provider Settings
     active_ai_provider = models.CharField(
-        max_length=50, choices=AI_PROVIDER_CHOICES, default="openai"
+        max_length=50,
+        choices=AI_PROVIDER_CHOICES,
+        blank=True,
+        default="",
+        help_text="Select an AI provider to enable AI features. Leave blank to disable.",
     )
 
     # OpenAI API
