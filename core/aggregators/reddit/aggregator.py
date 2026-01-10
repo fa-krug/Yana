@@ -6,10 +6,10 @@ from datetime import timezone as dt_timezone
 from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
 
-from bs4 import BeautifulSoup
 from django.utils import timezone
 
 import requests
+from bs4 import BeautifulSoup
 
 from ..base import BaseAggregator
 from ..exceptions import ArticleSkipError
@@ -618,7 +618,7 @@ class RedditAggregator(BaseAggregator):
             modified = False
             for img in soup.find_all("img"):
                 src = img.get("src")
-                if not src:
+                if not src or not isinstance(src, str):
                     continue
 
                 src_parsed = urlparse(src)
@@ -629,12 +629,13 @@ class RedditAggregator(BaseAggregator):
                     modified = True
 
                     # Check if parent is now empty (e.g. <p> or <div> wrapper)
-                    if parent and parent.name in ["p", "div", "figure"]:
-                        # Check for text content or other children
-                        if not parent.get_text(strip=True) and not parent.find_all(
-                            ["img", "iframe", "video", "a"]
-                        ):
-                            parent.decompose()
+                    if (
+                        parent
+                        and parent.name in ["p", "div", "figure"]
+                        and not parent.get_text(strip=True)
+                        and not parent.find_all(["img", "iframe", "video", "a"])
+                    ):
+                        parent.decompose()
 
             return str(soup) if modified else content
 
