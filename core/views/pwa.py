@@ -1,7 +1,6 @@
 """PWA views for the application."""
 
 import json
-
 from datetime import timedelta
 
 from django.contrib.auth.decorators import login_required
