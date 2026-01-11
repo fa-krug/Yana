@@ -2,10 +2,13 @@
 
 import json
 
+from datetime import timedelta
+
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, render
+from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
 from core.models import Article
@@ -15,14 +18,19 @@ from core.models import Article
 @require_GET
 def sync_articles(request):
     """
-    Return all articles for the current user to sync the PWA.
+    Return unread articles from the last 2 months for the current user to sync the PWA.
     Returns a JSON list of article objects.
     """
     user = request.user
+    cutoff_date = timezone.now() - timedelta(days=60)
 
-    # Get articles from feeds directly assigned to user OR feeds in groups assigned to user
+    # Get unread articles from last 2 months from feeds directly assigned to user OR feeds in groups assigned to user
     articles = (
-        Article.objects.filter(Q(feed__user=user) | Q(feed__group__user=user))
+        Article.objects.filter(
+            Q(feed__user=user) | Q(feed__group__user=user),
+            read=False,
+            date__gte=cutoff_date,
+        )
         .select_related("feed")
         .order_by("-date")
     )
