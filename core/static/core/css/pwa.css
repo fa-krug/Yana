@@ -51,9 +51,10 @@ body {
 }
 
 .settings-link {
-    font-size: 24px;
+    font-size: 1rem;
     text-decoration: none;
     color: var(--text-color);
+    font-weight: 500;
 }
 
 /* Article Container */
