@@ -147,7 +147,7 @@ const App = {
             container.innerHTML = `
                 <div class="app-header">
                     <div style="width: 32px"></div>
-                    <a href="/admin/" class="settings-link">⚙️</a>
+                    <a href="/admin/" class="settings-link" target="_blank">Admin</a>
                 </div>
                 <div class="empty-state">No unread articles!</div>`;
             return;
@@ -158,7 +158,7 @@ const App = {
         container.innerHTML = `
             <div class="app-header">
                 <img src="${article.icon_url || '/static/core/img/icon.png'}" class="feed-icon" onerror="this.src='/static/core/img/icon.png'">
-                <a href="/admin/" class="settings-link">⚙️</a>
+                <a href="/admin/" class="settings-link" target="_blank">Admin</a>
             </div>
             <div class="article-slider" id="slider">
                 <div class="article-card active" id="card-current">
