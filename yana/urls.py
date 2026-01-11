@@ -8,7 +8,7 @@ from django.contrib import admin
 from django.shortcuts import redirect
 from django.urls import include, path, re_path
 from django.views.static import serve
-
+from core.views.pwa import pwa_index
 
 def redirect_to_admin(request, *args, **kwargs):
     return redirect("admin:index")
@@ -17,6 +17,8 @@ def redirect_to_admin(request, *args, **kwargs):
 urlpatterns: List[Any] = [
     path("admin/", admin.site.urls),
     path("api/greader/", include("core.urls.greader")),
+    path("api/pwa/", include("core.urls.pwa")),
+    path("", pwa_index, name="pwa_index"),
     path("", include("core.urls")),
 ]
 
@@ -29,6 +31,10 @@ if settings.DEBUG:
     # In DEBUG, serve static files as well (Whitenoise handles this in prod)
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 
+# Remove the catch-all redirect to admin to allow PWA to handle routes if needed,
+# or keep it but ensure it doesn't conflict.
+# Since pwa_index is at "", it should match first.
+# But for sub-paths that don't match anything, redirecting to admin is fine.
 urlpatterns += [
     re_path(r"^.*$", redirect_to_admin),
 ]

@@ -1,0 +1,26 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#ffffff">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <link rel="manifest" href="{% static 'core/manifest.json' %}">
+    <link rel="icon" type="image/png" href="{% static 'core/img/icon.png' %}">
+    <link rel="apple-touch-icon" href="{% static 'core/img/apple-touch-icon.png' %}">
+    <title>Yana Reader</title>
+    <link rel="stylesheet" href="{% static 'core/css/pwa.css' %}">
+</head>
+<body>
+    <div id="app-container">
+        <div class="loading-screen">
+            <div class="spinner"></div>
+            <p>Loading your articles...</p>
+        </div>
+    </div>
+    {% csrf_token %}
+    <script src="{% static 'core/js/pwa.js' %}"></script>
+</body>
+</html>
