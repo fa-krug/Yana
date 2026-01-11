@@ -5,7 +5,6 @@
 
 {% block extrahead %}
 {{ block.super }}
-<link rel="manifest" href="{% static 'core/manifest.json' %}">
 <link rel="apple-touch-icon" href="{% static 'core/img/apple-touch-icon.png' %}">
 <link rel="icon" type="image/png" href="{% static 'core/img/icon.png' %}">
 <link rel="stylesheet" href="{% static 'core/css/admin_mobile.css' %}">
@@ -23,8 +22,4 @@
         Yana
     </a>
 </h1>
-{% endblock %}
-
-{% block nav-global %}
-<a href="/" style="float: right; margin-right: 15px; color: var(--header-link-color, white); line-height: 2.5rem; text-decoration: none;">View Site</a>
 {% endblock %}

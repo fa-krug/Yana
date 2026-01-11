@@ -9,8 +9,6 @@ from django.shortcuts import redirect
 from django.urls import include, path, re_path
 from django.views.static import serve
 
-from core.views.pwa import pwa_index
-
 
 def redirect_to_admin(request, *args, **kwargs):
     return redirect("admin:index")
@@ -19,8 +17,6 @@ def redirect_to_admin(request, *args, **kwargs):
 urlpatterns: List[Any] = [
     path("admin/", admin.site.urls),
     path("api/greader/", include("core.urls.greader")),
-    path("api/pwa/", include("core.urls.pwa")),
-    path("", pwa_index, name="pwa_index"),
     path("", include("core.urls")),
 ]
 
