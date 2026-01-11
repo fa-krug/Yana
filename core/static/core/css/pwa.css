@@ -36,7 +36,36 @@ body {
     width: 100%;
     height: 100%;
     overflow: hidden;
+    background-color: var(--bg-color); /* Ensure it covers the spinner */
+    z-index: 10; /* Higher than spinner */
 }
+
+/* Refresh Spinner */
+.refresh-spinner {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 100px; /* Space for the spinner */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1; /* Behind app-container */
+}
+
+.spinner-icon, .spinner {
+    width: 24px;
+    height: 24px;
+    border: 3px solid var(--secondary-text);
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
 
 /* Header */
 .app-header {

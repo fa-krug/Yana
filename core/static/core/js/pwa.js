@@ -150,6 +150,7 @@ const App = {
                     <a href="/admin/" class="settings-link">⚙️</a>
                 </div>
                 <div class="empty-state">No unread articles!</div>`;
+            this.initPullToRefresh();
             return;
         }
 
@@ -172,6 +173,7 @@ const App = {
                 </div>
             </div>
         `;
+        this.initPullToRefresh();
     },
 
     renderArticleContent(article) {
@@ -284,6 +286,100 @@ const App = {
             touchStartX = 0;
             touchCurrentX = 0;
         });
+    },
+
+    initPullToRefresh() {
+        const header = document.querySelector('.app-header');
+        if (!header) return;
+
+        const container = document.getElementById('app-container');
+        const spinner = document.querySelector('.spinner-icon');
+        let touchStartY = 0;
+        let touchStartX = 0;
+        let isPulling = false;
+        let isScroll = false;
+        const PULL_THRESHOLD = 80;
+        const MAX_PULL = 150;
+
+        header.addEventListener('touchstart', (e) => {
+            // Only if we are at the top of the content?
+            // Since we are pulling the header, which is fixed at top, we are always at the top of the view.
+            touchStartY = e.touches[0].clientY;
+            touchStartX = e.touches[0].clientX;
+            isPulling = false;
+            isScroll = false;
+            container.style.transition = 'none';
+        }, { passive: true });
+
+        header.addEventListener('touchmove', (e) => {
+            const currentY = e.touches[0].clientY;
+            const currentX = e.touches[0].clientX;
+            const diffY = currentY - touchStartY;
+            const diffX = currentX - touchStartX;
+
+            // Check direction on first move
+            if (!isPulling && !isScroll) {
+                 if (Math.abs(diffX) > Math.abs(diffY)) {
+                     isScroll = true; // Horizontal swipe
+                 } else if (diffY > 0) {
+                     isPulling = true; // Vertical pull
+                 }
+            }
+
+            if (isPulling && !isScroll) {
+                if (e.cancelable) e.preventDefault(); // Prevent standard scroll if applicable
+                const resistance = 0.5; // Dampen the pull
+                const translate = Math.min(diffY * resistance, MAX_PULL);
+
+                container.style.transform = `translateY(${translate}px)`;
+                if (spinner) {
+                    spinner.style.transform = `rotate(${translate * 2}deg)`;
+                }
+            }
+        }, { passive: false }); // Changed to false to allow preventDefault
+
+        header.addEventListener('touchend', async (e) => {
+            if (!isPulling) return;
+
+            const style = window.getComputedStyle(container);
+            const matrix = new DOMMatrix(style.transform);
+            const currentY = matrix.m42;
+
+            container.style.transition = 'transform 0.3s ease';
+
+            if (currentY > PULL_THRESHOLD) {
+                // Refresh Triggered
+                container.style.transform = 'translateY(60px)'; // Hold position
+                if (spinner) spinner.style.animation = 'spin 1s linear infinite';
+
+                try {
+                    await this.handleRefresh();
+                } catch (err) {
+                    console.error('Refresh failed:', err);
+                } finally {
+                    // After refresh (or error)
+                    container.style.transform = 'translateY(0)';
+                    setTimeout(() => {
+                       if (spinner) spinner.style.animation = ''; // Reset animation
+                    }, 300);
+                }
+            } else {
+                // Snap back
+                container.style.transform = 'translateY(0)';
+            }
+
+            isPulling = false;
+            isScroll = false;
+            touchStartY = 0;
+            touchStartX = 0;
+        });
+    },
+
+    async handleRefresh() {
+        console.log('Refreshing...');
+        await this.sync();
+        await this.loadFromDB();
+        this.render();
     },
 
     goToNext() {
