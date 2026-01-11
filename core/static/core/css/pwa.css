@@ -3,8 +3,19 @@
     --card-bg: #ffffff;
     --text-color: #212529;
     --secondary-text: #6c757d;
+    --border-color: #e9ecef;
     --header-height: 60px;
     --transition-speed: 0.3s;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bg-color: #000000;
+        --card-bg: #1c1c1e;
+        --text-color: #ffffff;
+        --secondary-text: #8e8e93;
+        --border-color: #2c2c2e;
+    }
 }
 
 body {
@@ -31,7 +42,7 @@ body {
 .app-header {
     height: var(--header-height);
     background-color: var(--card-bg);
-    border-bottom: 1px solid #e9ecef;
+    border-bottom: 1px solid var(--border-color);
     display: flex;
     justify-content: space-between;
     align-items: center;
