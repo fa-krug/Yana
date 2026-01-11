@@ -145,7 +145,7 @@ const App = {
         const container = document.getElementById('app-container');
         if (this.articles.length === 0) {
             container.innerHTML = `
-                <div class="app-header">
+                <div class="global-header">
                     <div style="width: 32px"></div>
                     <a href="/admin/" class="settings-link" target="_blank">Admin</a>
                 </div>
@@ -157,7 +157,7 @@ const App = {
         const article = this.articles[0]; // Current top of stack
 
         container.innerHTML = `
-            <div class="app-header">
+            <div class="global-header">
                 <img src="${article.icon_url || '/static/core/img/icon.png'}" class="feed-icon" onerror="this.src='/static/core/img/icon.png'">
                 <a href="/admin/" class="settings-link" target="_blank">Admin</a>
             </div>
@@ -177,8 +177,17 @@ const App = {
     },
 
     renderArticleContent(article) {
+        const hasPrev = this.history.length > 0;
+        const hasNext = this.articles.length > 1;
+
         return `
-            <h1 class="article-title"><a href="${article.url}" target="_blank">${article.title}</a></h1>
+            <div class="article-header-row">
+                <h1 class="article-title"><a href="${article.url}" target="_blank">${article.title}</a></h1>
+                <div class="nav-buttons">
+                    <button class="nav-btn" data-action="prev" ${!hasPrev ? 'disabled' : ''}>&larr; Prev</button>
+                    <button class="nav-btn" data-action="next" ${!hasNext ? 'disabled' : ''}>Next &rarr;</button>
+                </div>
+            </div>
             <div class="article-meta">${article.feed_name} • ${new Date(article.date).toLocaleDateString()}</div>
             <div class="article-content">${article.content}</div>
         `;
@@ -286,6 +295,22 @@ const App = {
             touchStartX = 0;
             touchCurrentX = 0;
         });
+        this.initNavButtons();
+    },
+
+    initNavButtons() {
+        const navButtons = document.querySelectorAll('.nav-btn[data-action]');
+
+        navButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const action = btn.getAttribute('data-action');
+                if (action === 'prev' && this.history.length > 0) {
+                    this.goToPrev();
+                } else if (action === 'next' && this.articles.length > 1) {
+                    this.goToNext();
+                }
+            });
+        });
     },
 
     initPullToRefresh() {
@@ -319,11 +344,11 @@ const App = {
 
             // Check direction on first move
             if (!isPulling && !isScroll) {
-                 if (Math.abs(diffX) > Math.abs(diffY)) {
-                     isScroll = true; // Horizontal swipe
-                 } else if (diffY > 0) {
-                     isPulling = true; // Vertical pull
-                 }
+                if (Math.abs(diffX) > Math.abs(diffY)) {
+                    isScroll = true; // Horizontal swipe
+                } else if (diffY > 0) {
+                    isPulling = true; // Vertical pull
+                }
             }
 
             if (isPulling && !isScroll) {
@@ -360,7 +385,7 @@ const App = {
                     // After refresh (or error)
                     container.style.transform = 'translateY(0)';
                     setTimeout(() => {
-                       if (spinner) spinner.style.animation = ''; // Reset animation
+                        if (spinner) spinner.style.animation = ''; // Reset animation
                     }, 300);
                 }
             } else {
