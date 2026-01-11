@@ -62,7 +62,6 @@ const db = {
         });
     },
     async updateReadStatus(id, status) {
-        // We need to fetch, update, put
         return new Promise((resolve, reject) => {
             const transaction = this.db.transaction([STORE_NAME], 'readwrite');
             const store = transaction.objectStore(STORE_NAME);
@@ -88,14 +87,24 @@ const App = {
 
     async init() {
         await db.open();
-        this.showLoading();
-        await this.sync();
+
+        // Initial load from DB (fast)
         await this.loadFromDB();
         this.render();
-        this.initGestures();
+
+        // Background sync
+        this.sync().then(async () => {
+            // Update with any new data
+            await this.loadFromDB();
+            this.render();
+        });
     },
 
     async sync() {
+        // Show background spinner
+        const spinner = document.getElementById('background-spinner');
+        if (spinner) spinner.classList.remove('hidden');
+
         try {
             const response = await fetch('/api/pwa/sync/');
             if (!response.ok) throw new Error('Sync failed');
@@ -116,29 +125,16 @@ const App = {
         } catch (e) {
             console.error('Sync error:', e);
             // Continue with offline data
+        } finally {
+            if (spinner) spinner.classList.add('hidden');
         }
     },
 
     async loadFromDB() {
         const all = await db.getAllArticles();
-        // Sort by date desc (Newest first) or Asc?
-        // User wants "First unread".
-        // Let's assume standard feed behavior: Newest First.
-        // But "First unread" implies chronological reading?
-        // Usually, RSS readers sort Newest First.
-        // Let's stick to Newest First for now.
-        // Filter unread
         this.articles = all
             .filter(a => !a.read)
             .sort((a, b) => new Date(b.date) - new Date(a.date));
-
-        // If "downloads all" really means we should be able to browse read history too...
-        // But "swipe left... marks current as read... next unread" implies a queue of unread.
-        // "Swipe right... last item" implies history.
-    },
-
-    showLoading() {
-        document.getElementById('app-container').innerHTML = '<div class="loading-screen">Loading...</div>';
     },
 
     render() {
@@ -174,6 +170,7 @@ const App = {
             </div>
         `;
         this.initPullToRefresh();
+        this.initGestures();
     },
 
     renderArticleContent(article) {
@@ -217,9 +214,15 @@ const App = {
 
     initGestures() {
         let touchStartX = 0;
-        let touchCurrentX = 0;
+        let touchStartY = 0;
+        let isSwiping = false; // Horizontal
+        let isScrolling = false; // Vertical
+
         const slider = document.getElementById('slider');
-        if (!slider) return;
+        if (!slider) {
+            this.initNavButtons();
+            return;
+        }
 
         const currentCard = document.getElementById('card-current');
         const nextCard = document.getElementById('card-next');
@@ -232,41 +235,84 @@ const App = {
 
         slider.addEventListener('touchstart', (e) => {
             touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+            isSwiping = false;
+            isScrolling = false;
+
+            // Disable transitions during drag
+            if(currentCard) currentCard.style.transition = 'none';
+            if(nextCard) nextCard.style.transition = 'none';
+            if(prevCard) prevCard.style.transition = 'none';
         }, { passive: true });
 
         slider.addEventListener('touchmove', (e) => {
-            touchCurrentX = e.touches[0].clientX;
-            const diff = touchCurrentX - touchStartX;
-
-            // Limit swipe based on availability
-            // Left swipe (Next) -> Only if next exists
-            if (diff < 0 && this.articles.length <= 1) return;
-            // Right swipe (Prev) -> Only if history exists
-            if (diff > 0 && this.history.length === 0) return;
-
-            // Apply transform
-            // We move the current card and the one appearing
-            if (diff < 0) {
-                // Moving Left (Next)
-                currentCard.style.transform = `translateX(${diff}px)`;
-                nextCard.style.transform = `translateX(${100 + (diff / window.innerWidth * 100)}%)`;
-                nextCard.style.display = 'block';
-            } else {
-                // Moving Right (Prev)
-                currentCard.style.transform = `translateX(${diff}px)`;
-                prevCard.style.transform = `translateX(${-100 + (diff / window.innerWidth * 100)}%)`;
-                prevCard.style.display = 'block';
+            if (isScrolling) {
+                return;
             }
 
-        }, { passive: true });
+            const currentX = e.touches[0].clientX;
+            const currentY = e.touches[0].clientY;
+            const diffX = currentX - touchStartX;
+            const diffY = currentY - touchStartY;
+
+            // Determine intent if not yet known
+            if (!isSwiping && !isScrolling) {
+                // Determine dominance
+                // We need a small threshold to be sure, but we want to lock early.
+                // Let's use 10px.
+                if (Math.abs(diffX) > 10 || Math.abs(diffY) > 10) {
+                    if (Math.abs(diffX) > Math.abs(diffY)) {
+                        isSwiping = true;
+                    } else {
+                        isScrolling = true;
+                        return; // Let native scroll happen
+                    }
+                } else {
+                    return; // Wait for more movement
+                }
+            }
+
+            if (isSwiping) {
+                if (e.cancelable) e.preventDefault(); // Stop vertical scroll
+
+                // Limit swipe based on availability
+                if (diffX < 0 && this.articles.length <= 1) {
+                    return;
+                }
+                if (diffX > 0 && this.history.length === 0) {
+                    return;
+                }
+
+                // Apply transform
+                if (diffX < 0) {
+                    // Moving Left (Next)
+                    currentCard.style.transform = `translateX(${diffX}px)`;
+                    nextCard.style.transform = `translateX(${100 + (diffX / window.innerWidth * 100)}%)`;
+                    nextCard.style.display = 'block';
+                } else {
+                    // Moving Right (Prev)
+                    currentCard.style.transform = `translateX(${diffX}px)`;
+                    prevCard.style.transform = `translateX(${-100 + (diffX / window.innerWidth * 100)}%)`;
+                    prevCard.style.display = 'block';
+                }
+            }
+
+        }, { passive: false }); // False to allow preventDefault
 
         slider.addEventListener('touchend', async (e) => {
-            const diff = touchCurrentX - touchStartX;
+            if (!isSwiping) {
+                // Clean up transitions just in case
+                if(currentCard) currentCard.style.transition = 'transform 0.3s ease';
+                return;
+            }
+
+            const currentX = e.changedTouches[0].clientX;
+            const diff = currentX - touchStartX;
             const threshold = window.innerWidth * 0.25; // 25% width
 
-            currentCard.style.transition = 'transform 0.3s ease';
-            nextCard.style.transition = 'transform 0.3s ease';
-            prevCard.style.transition = 'transform 0.3s ease';
+            if(currentCard) currentCard.style.transition = 'transform 0.3s ease';
+            if(nextCard) nextCard.style.transition = 'transform 0.3s ease';
+            if(prevCard) prevCard.style.transition = 'transform 0.3s ease';
 
             if (diff < -threshold && this.articles.length > 1) {
                 // Successful Next Swipe
@@ -291,10 +337,10 @@ const App = {
                 else prevCard.style.transform = 'translateX(-100%)';
             }
 
-            // Reset variables
-            touchStartX = 0;
-            touchCurrentX = 0;
+            // Reset
+            isSwiping = false;
         });
+
         this.initNavButtons();
     },
 
@@ -314,7 +360,8 @@ const App = {
     },
 
     initPullToRefresh() {
-        const header = document.querySelector('.app-header');
+        // Use global-header or app-header if it exists
+        const header = document.querySelector('.global-header') || document.querySelector('.app-header');
         if (!header) return;
 
         const container = document.getElementById('app-container');
@@ -327,8 +374,6 @@ const App = {
         const MAX_PULL = 150;
 
         header.addEventListener('touchstart', (e) => {
-            // Only if we are at the top of the content?
-            // Since we are pulling the header, which is fixed at top, we are always at the top of the view.
             touchStartY = e.touches[0].clientY;
             touchStartX = e.touches[0].clientX;
             isPulling = false;
@@ -342,18 +387,17 @@ const App = {
             const diffY = currentY - touchStartY;
             const diffX = currentX - touchStartX;
 
-            // Check direction on first move
             if (!isPulling && !isScroll) {
                 if (Math.abs(diffX) > Math.abs(diffY)) {
-                    isScroll = true; // Horizontal swipe
+                    isScroll = true;
                 } else if (diffY > 0) {
-                    isPulling = true; // Vertical pull
+                    isPulling = true;
                 }
             }
 
             if (isPulling && !isScroll) {
-                if (e.cancelable) e.preventDefault(); // Prevent standard scroll if applicable
-                const resistance = 0.5; // Dampen the pull
+                if (e.cancelable) e.preventDefault();
+                const resistance = 0.5;
                 const translate = Math.min(diffY * resistance, MAX_PULL);
 
                 container.style.transform = `translateY(${translate}px)`;
@@ -361,7 +405,7 @@ const App = {
                     spinner.style.transform = `rotate(${translate * 2}deg)`;
                 }
             }
-        }, { passive: false }); // Changed to false to allow preventDefault
+        }, { passive: false });
 
         header.addEventListener('touchend', async (e) => {
             if (!isPulling) return;
@@ -373,8 +417,8 @@ const App = {
             container.style.transition = 'transform 0.3s ease';
 
             if (currentY > PULL_THRESHOLD) {
-                // Refresh Triggered
-                container.style.transform = 'translateY(60px)'; // Hold position
+                // Refresh
+                container.style.transform = 'translateY(60px)';
                 if (spinner) spinner.style.animation = 'spin 1s linear infinite';
 
                 try {
@@ -382,21 +426,17 @@ const App = {
                 } catch (err) {
                     console.error('Refresh failed:', err);
                 } finally {
-                    // After refresh (or error)
                     container.style.transform = 'translateY(0)';
                     setTimeout(() => {
-                        if (spinner) spinner.style.animation = ''; // Reset animation
+                        if (spinner) spinner.style.animation = '';
                     }, 300);
                 }
             } else {
-                // Snap back
                 container.style.transform = 'translateY(0)';
             }
 
             isPulling = false;
             isScroll = false;
-            touchStartY = 0;
-            touchStartX = 0;
         });
     },
 
@@ -408,21 +448,16 @@ const App = {
     },
 
     goToNext() {
-        const current = this.articles.shift(); // Remove current
-        this.history.push(current); // Add to history
+        const current = this.articles.shift();
+        this.history.push(current);
         this.markAsRead(current);
-        this.render(); // Re-render with new top
-        this.initGestures();
+        this.render();
     },
 
     goToPrev() {
-        const prev = this.history.pop(); // Remove from history
-        // Mark as unread? Or keep read?
-        // Usually going back doesn't toggle read status back.
-        // But we need to put it back in the stack.
+        const prev = this.history.pop();
         this.articles.unshift(prev);
         this.render();
-        this.initGestures();
     }
 };
 

@@ -18,11 +18,11 @@
     <div id="refresh-spinner" class="refresh-spinner">
         <div class="spinner-icon"></div>
     </div>
+    <div id="background-spinner" class="background-spinner hidden">
+        <div class="spinner-sm"></div>
+    </div>
     <div id="app-container">
-        <div class="loading-screen">
-            <div class="spinner"></div>
-            <p>Loading your articles...</p>
-        </div>
+        <!-- Content will be injected here -->
     </div>
     {% csrf_token %}
     <script src="{% static 'core/js/pwa.js' %}"></script>
