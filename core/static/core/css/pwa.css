@@ -68,6 +68,28 @@ body {
     animation: spin 1s linear infinite;
 }
 
+/* Background Spinner */
+.background-spinner {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 200;
+    pointer-events: none;
+}
+
+.background-spinner.hidden {
+    display: none;
+}
+
+.spinner-sm {
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--secondary-text);
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
 @keyframes spin {
     to {
         transform: rotate(360deg);
@@ -76,7 +98,7 @@ body {
 
 
 /* Header */
-.app-header {
+.app-header, .global-header {
     height: var(--header-height);
     background-color: var(--card-bg);
     border-bottom: 1px solid var(--border-color);
@@ -225,6 +247,10 @@ body {
         width: 100%;
         max-width: 650px;
         margin-bottom: 24px;
+        position: static; /* Reset position for desktop */
+        height: auto;
+        border-bottom: none;
+        background-color: transparent;
     }
 
     /* Main Content Wrapper */
@@ -335,6 +361,7 @@ body {
         display: none;
     }
 
+    /* Ensure .global-header shares .app-header styles on mobile */
     .global-header {
         height: var(--header-height);
         background-color: var(--card-bg);
