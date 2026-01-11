@@ -6,7 +6,7 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, render
-from django.views.decorators.http import require_POST, require_GET
+from django.views.decorators.http import require_GET, require_POST
 
 from core.models import Article
 
@@ -21,9 +21,11 @@ def sync_articles(request):
     user = request.user
 
     # Get articles from feeds directly assigned to user OR feeds in groups assigned to user
-    articles = Article.objects.filter(
-        Q(feed__user=user) | Q(feed__group__user=user)
-    ).select_related('feed').order_by('-date')
+    articles = (
+        Article.objects.filter(Q(feed__user=user) | Q(feed__group__user=user))
+        .select_related("feed")
+        .order_by("-date")
+    )
 
     data = []
     for article in articles:
@@ -32,22 +34,24 @@ def sync_articles(request):
         if article.icon:
             icon_url = article.icon.url
         elif article.feed.reddit_subreddit:
-             # Fallback/Logic for reddit icon if needed, but article.icon should be populated
-             pass
+            # Fallback/Logic for reddit icon if needed, but article.icon should be populated
+            pass
 
         # If article.icon is missing, maybe we can use a default or the feed's icon if we had one.
         # For now, we rely on article.icon as per plan.
 
-        data.append({
-            "id": article.id,
-            "title": article.name,
-            "url": article.identifier,
-            "content": article.content,
-            "read": article.read,
-            "date": article.date.isoformat(),
-            "feed_name": article.feed.name,
-            "icon_url": icon_url,
-        })
+        data.append(
+            {
+                "id": article.id,
+                "title": article.name,
+                "url": article.identifier,
+                "content": article.content,
+                "read": article.read,
+                "date": article.date.isoformat(),
+                "feed_name": article.feed.name,
+                "icon_url": icon_url,
+            }
+        )
 
     return JsonResponse({"articles": data})
 
@@ -70,8 +74,7 @@ def mark_read(request):
 
     # Ensure the user owns the article
     article = get_object_or_404(
-        Article,
-        Q(pk=article_id) & (Q(feed__user=request.user) | Q(feed__group__user=request.user))
+        Article, Q(pk=article_id) & (Q(feed__user=request.user) | Q(feed__group__user=request.user))
     )
 
     article.read = True

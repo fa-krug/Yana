@@ -8,7 +8,9 @@ from django.contrib import admin
 from django.shortcuts import redirect
 from django.urls import include, path, re_path
 from django.views.static import serve
+
 from core.views.pwa import pwa_index
+
 
 def redirect_to_admin(request, *args, **kwargs):
     return redirect("admin:index")
