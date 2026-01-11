@@ -588,6 +588,7 @@ admin.site.unregister(User)
 class UserAdmin(YanaDjangoQLMixin, ImportExportMixin, BaseUserAdmin):
     """Custom User admin with UserSettings inline."""
 
+    search_fields = BaseUserAdmin.search_fields
     inlines = [UserSettingsInline]
 
 
@@ -599,7 +600,7 @@ admin.site.unregister(Group)
 class GroupAdmin(YanaDjangoQLMixin, BaseGroupAdmin):
     """Custom Group admin with DjangoQL support."""
 
-    pass
+    search_fields = BaseGroupAdmin.search_fields
 
 
 # Unregister default Django Q2 admins and register with DjangoQL
@@ -612,21 +613,21 @@ for model in [Schedule, Task, Failure, OrmQ]:
 class ScheduleAdmin(YanaDjangoQLMixin, BaseScheduleAdmin):
     """Custom Schedule admin with DjangoQL support."""
 
-    pass
+    search_fields = BaseScheduleAdmin.search_fields
 
 
 @admin.register(Task)
 class TaskAdmin(YanaDjangoQLMixin, BaseTaskAdmin):
     """Custom Task admin with DjangoQL support."""
 
-    pass
+    search_fields = BaseTaskAdmin.search_fields
 
 
 @admin.register(Failure)
 class FailAdmin(YanaDjangoQLMixin, BaseFailAdmin):
     """Custom Failure admin with DjangoQL support."""
 
-    pass
+    search_fields = BaseFailAdmin.search_fields
 
 
 @admin.register(OrmQ)
