@@ -35,9 +35,7 @@ class AIClient:
             return False
 
     @staticmethod
-    def _verify_openai(
-        api_key: str, model: str, api_url: Optional[str], prompt: str
-    ) -> bool:
+    def _verify_openai(api_key: str, model: str, api_url: Optional[str], prompt: str) -> bool:
         if not api_key:
             return False
 
