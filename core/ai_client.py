@@ -11,6 +11,94 @@ class AIClient:
         self.settings = settings
         self.provider = settings.active_ai_provider
 
+    @staticmethod
+    def verify_api_connection(
+        provider: str, api_key: str, model: str, api_url: Optional[str] = None
+    ) -> bool:
+        """
+        Verify the API connection for a given provider with the specified credentials.
+        Returns True if the connection is successful, False otherwise.
+        """
+        try:
+            prompt = "Hello"
+            if provider == "openai":
+                return AIClient._verify_openai(api_key, model, api_url, prompt)
+            elif provider == "anthropic":
+                return AIClient._verify_anthropic(api_key, model, prompt)
+            elif provider == "gemini":
+                return AIClient._verify_gemini(api_key, model, prompt)
+            else:
+                logger.error(f"Unknown AI provider for verification: {provider}")
+                return False
+        except Exception as e:
+            logger.error(f"Verification failed for {provider}: {e}")
+            return False
+
+    @staticmethod
+    def _verify_openai(api_key: str, model: str, api_url: Optional[str], prompt: str) -> bool:
+        if not api_key:
+            return False
+
+        base_url = api_url or "https://api.openai.com/v1"
+        url = f"{base_url}/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        }
+
+        data = {
+            "model": model,
+            "messages": [{"role": "user", "content": prompt}],
+            "max_tokens": 5,
+        }
+
+        response = requests.post(url, headers=headers, json=data, timeout=10)
+        response.raise_for_status()
+        return True
+
+    @staticmethod
+    def _verify_anthropic(api_key: str, model: str, prompt: str) -> bool:
+        if not api_key:
+            return False
+
+        url = "https://api.anthropic.com/v1/messages"
+        headers = {
+            "x-api-key": api_key,
+            "anthropic-version": "2023-06-01",
+            "Content-Type": "application/json",
+        }
+
+        data = {
+            "model": model,
+            "messages": [{"role": "user", "content": prompt}],
+            "max_tokens": 5,
+        }
+
+        response = requests.post(url, headers=headers, json=data, timeout=10)
+        response.raise_for_status()
+        return True
+
+    @staticmethod
+    def _verify_gemini(api_key: str, model: str, prompt: str) -> bool:
+        if not api_key:
+            return False
+
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+        headers = {
+            "Content-Type": "application/json",
+        }
+
+        data = {
+            "contents": [{"parts": [{"text": prompt}]}],
+            "generationConfig": {
+                "maxOutputTokens": 5,
+            },
+        }
+
+        response = requests.post(url, headers=headers, json=data, timeout=10)
+        response.raise_for_status()
+        return True
+
     def generate_response(self, prompt: str) -> Optional[str]:
         """
         Generate a response from the active AI provider.

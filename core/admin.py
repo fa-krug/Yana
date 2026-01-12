@@ -16,7 +16,7 @@ from django_q.models import Failure, OrmQ, Schedule, Task
 from djangoql.admin import DjangoQLSearchMixin
 from import_export.admin import ImportExportMixin, ImportExportModelAdmin
 
-from .forms import FeedAdminForm
+from .forms import FeedAdminForm, UserSettingsAdminForm
 from .models import Article, Feed, FeedGroup, RedditSubreddit, UserSettings, YouTubeChannel
 from .services import AggregatorService, ArticleService
 
@@ -499,6 +499,7 @@ class UserSettingsInline(admin.StackedInline):
     """Inline admin for UserSettings displayed in User admin."""
 
     model = UserSettings
+    form = UserSettingsAdminForm
     can_delete = False
     verbose_name = "API Settings"
     verbose_name_plural = "API Settings"

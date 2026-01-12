@@ -2,7 +2,94 @@
 
 from django import forms
 
-from .models import Feed
+from .ai_client import AIClient
+from .models import Feed, UserSettings
+
+
+class UserSettingsAdminForm(forms.ModelForm):
+    """Custom form for UserSettings admin with validation."""
+
+    class Meta:
+        model = UserSettings
+        fields = [
+            "user",
+            "reddit_enabled",
+            "reddit_client_id",
+            "reddit_client_secret",
+            "reddit_user_agent",
+            "youtube_enabled",
+            "youtube_api_key",
+            "active_ai_provider",
+            "openai_enabled",
+            "openai_api_url",
+            "openai_api_key",
+            "openai_model",
+            "anthropic_enabled",
+            "anthropic_api_key",
+            "anthropic_model",
+            "gemini_enabled",
+            "gemini_api_key",
+            "gemini_model",
+            "ai_temperature",
+            "ai_max_tokens",
+            "ai_default_daily_limit",
+            "ai_default_monthly_limit",
+            "ai_max_prompt_length",
+            "ai_request_timeout",
+            "ai_max_retries",
+            "ai_retry_delay",
+        ]
+
+    def clean(self):
+        cleaned_data = super().clean()
+
+        # Check OpenAI
+        if cleaned_data.get("openai_enabled"):
+            api_key = cleaned_data.get("openai_api_key")
+            model = cleaned_data.get("openai_model")
+            api_url = cleaned_data.get("openai_api_url")
+
+            # Check if relevant fields changed or if it was just enabled
+            if (
+                "openai_enabled" in self.changed_data
+                or "openai_api_key" in self.changed_data
+                or "openai_model" in self.changed_data
+                or "openai_api_url" in self.changed_data
+            ) and not AIClient.verify_api_connection("openai", api_key, model, api_url):
+                self.add_error(
+                    "openai_api_key", "Verification failed: Could not connect to OpenAI API."
+                )
+
+        # Check Anthropic
+        if cleaned_data.get("anthropic_enabled"):
+            api_key = cleaned_data.get("anthropic_api_key")
+            model = cleaned_data.get("anthropic_model")
+
+            if (
+                "anthropic_enabled" in self.changed_data
+                or "anthropic_api_key" in self.changed_data
+                or "anthropic_model" in self.changed_data
+            ) and not AIClient.verify_api_connection("anthropic", api_key, model):
+                self.add_error(
+                    "anthropic_api_key",
+                    "Verification failed: Could not connect to Anthropic API.",
+                )
+
+        # Check Gemini
+        if cleaned_data.get("gemini_enabled"):
+            api_key = cleaned_data.get("gemini_api_key")
+            model = cleaned_data.get("gemini_model")
+
+            if (
+                "gemini_enabled" in self.changed_data
+                or "gemini_api_key" in self.changed_data
+                or "gemini_model" in self.changed_data
+            ) and not AIClient.verify_api_connection("gemini", api_key, model):
+                self.add_error(
+                    "gemini_api_key", "Verification failed: Could not connect to Gemini API."
+                )
+
+        return cleaned_data
 
 
 class FeedAdminForm(forms.ModelForm):
