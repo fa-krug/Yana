@@ -116,7 +116,9 @@ def _add_link_media(post: RedditPostData, content_parts: List[str], is_cross_pos
 
     # Fallback link
     if not is_cross_post and not post.is_self:
-        content_parts.append(f'<p><a href="{url}">{escape_html(url)}</a></p>')
+        content_parts.append(
+            f'<p><a href="{url}" target="_blank" rel="noopener">{escape_html(url)}</a></p>'
+        )
 
 
 def _process_link_media(post: RedditPostData, url: str, content_parts: List[str]) -> bool:
@@ -143,7 +145,9 @@ def _process_link_media(post: RedditPostData, url: str, content_parts: List[str]
     if is_image:
         fixed_url = fix_reddit_media_url(url)
         if fixed_url:
-            content_parts.append(f'<p><a href="{fixed_url}">{escape_html(fixed_url)}</a></p>')
+            content_parts.append(
+                f'<p><a href="{fixed_url}" target="_blank" rel="noopener">{escape_html(fixed_url)}</a></p>'
+            )
         return True
 
     # Handle video media (Reddit videos and YouTube)
@@ -153,7 +157,9 @@ def _process_link_media(post: RedditPostData, url: str, content_parts: List[str]
         return True
 
     if "youtube.com" in url_lower or "youtu.be" in url_lower:
-        content_parts.append(f'<p><a href="{url}">▶ View Video on YouTube</a></p>')
+        content_parts.append(
+            f'<p><a href="{url}" target="_blank" rel="noopener">▶ View Video on YouTube</a></p>'
+        )
         return True
 
     return False

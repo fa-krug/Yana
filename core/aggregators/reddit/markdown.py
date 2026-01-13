@@ -4,6 +4,7 @@ import html
 import re
 
 import markdown
+from bs4 import BeautifulSoup, NavigableString
 
 from .urls import decode_html_entities_in_url
 
@@ -31,6 +32,7 @@ def convert_reddit_markdown(text: str) -> str:
     Handles Reddit-specific markdown extensions like ^superscript,
     ~~strikethrough~~, >!spoilers!<, and Giphy embeds.
     Then converts standard markdown to HTML using markdown library.
+    Finally, auto-links plain URLs and ensures all links open in a new tab.
 
     Args:
         text: Reddit markdown text
@@ -101,7 +103,79 @@ def convert_reddit_markdown(text: str) -> str:
     html_content = _md.convert(text)
     _md.reset()  # Reset for next use
 
-    return html_content
+    # Post-process to linkify plain URLs and add target="_blank"
+    return linkify_html(html_content)
+
+
+def linkify_html(html_content: str) -> str:
+    """
+    Linkify plain text URLs in HTML and ensure all links open in new tab.
+
+    Args:
+        html_content: HTML string
+
+    Returns:
+        Modified HTML string
+    """
+    if not html_content:
+        return ""
+
+    try:
+        soup = BeautifulSoup(html_content, "html.parser")
+
+        # 1. Linkify plain text URLs in text nodes
+        # Regex to match URLs (simple version)
+        url_pattern = re.compile(r'(https?://[^\s<"]+)')
+
+        # Iterate over text nodes, skipping those inside 'a' tags
+        for text_node in soup.find_all(string=True):
+            if isinstance(text_node, NavigableString) and text_node.parent.name != "a":
+                text = str(text_node)
+                if url_pattern.search(text):
+                    new_content = []
+                    last_idx = 0
+                    for match in url_pattern.finditer(text):
+                        url = match.group(0)
+                        # Strip trailing punctuation often included by simple regex
+                        # e.g. "http://example.com." -> "http://example.com"
+                        clean_url = re.sub(r"[.,;:!?)]+$", "", url)
+
+                        start, end = match.span()
+                        # Adjust end if we stripped chars
+                        end = start + len(clean_url)
+
+                        # Add preceding text
+                        if match.start() > last_idx:
+                            new_content.append(text[last_idx:match.start()])
+
+                        # Add link
+                        link_tag = soup.new_tag("a", href=clean_url, target="_blank", rel="noopener")
+                        link_tag.string = clean_url
+                        new_content.append(link_tag)
+
+                        trailing_punct = url[len(clean_url):]
+                        if trailing_punct:
+                            new_content.append(trailing_punct)
+
+                        last_idx = match.end()
+
+                    # Add remaining text
+                    if last_idx < len(text):
+                        new_content.append(text[last_idx:])
+
+                    # Replace the text node with the new content
+                    text_node.replace_with(*new_content)
+
+        # 2. Add target="_blank" to all links (existing and new)
+        for a in soup.find_all("a"):
+            a["target"] = "_blank"
+            a["rel"] = "noopener"
+
+        return str(soup)
+
+    except Exception:
+        # Fallback to original content on error
+        return html_content
 
 
 def escape_html(text: str) -> str:

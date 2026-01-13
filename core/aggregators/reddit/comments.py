@@ -30,7 +30,7 @@ def format_comment_html(comment: RedditComment) -> str:
 
     return f"""
 <blockquote>
-<p><strong>{escape_html(author)}</strong> | <a href="{comment_url}">source</a></p>
+<p><strong>{escape_html(author)}</strong> | <a href="{comment_url}" target="_blank" rel="noopener">source</a></p>
 <div>{body}</div>
 </blockquote>
 """
