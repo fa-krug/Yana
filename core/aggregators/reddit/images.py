@@ -288,7 +288,9 @@ def _extract_image_url_from_selftext(post: RedditPostData) -> Optional[str]:
             continue
         if first_valid_url is None:
             first_valid_url = url
-        if any(ext in url.lower() for ext in [".jpg", ".jpeg", ".png", ".webp", ".gif"]):
+        if "preview.redd.it" in url.lower() or any(
+            ext in url.lower() for ext in [".jpg", ".jpeg", ".png", ".webp", ".gif"]
+        ):
             return url
 
     # If no direct image URL found, try to extract image from the linked page
