@@ -4,7 +4,7 @@ import html
 import re
 
 import markdown
-from bs4 import BeautifulSoup, NavigableString
+from bs4 import BeautifulSoup, NavigableString, Tag
 
 from .urls import decode_html_entities_in_url
 
@@ -129,7 +129,11 @@ def linkify_html(html_content: str) -> str:
 
         # Iterate over text nodes, skipping those inside 'a' tags
         for text_node in soup.find_all(string=True):
-            if isinstance(text_node, NavigableString) and text_node.parent.name != "a":
+            if (
+                isinstance(text_node, NavigableString)
+                and text_node.parent
+                and text_node.parent.name != "a"
+            ):
                 text = str(text_node)
                 if url_pattern.search(text):
                     new_content = []
@@ -140,20 +144,18 @@ def linkify_html(html_content: str) -> str:
                         # e.g. "http://example.com." -> "http://example.com"
                         clean_url = re.sub(r"[.,;:!?)]+$", "", url)
 
-                        start, end = match.span()
-                        # Adjust end if we stripped chars
-                        end = start + len(clean_url)
-
                         # Add preceding text
                         if match.start() > last_idx:
-                            new_content.append(text[last_idx:match.start()])
+                            new_content.append(text[last_idx : match.start()])
 
                         # Add link
-                        link_tag = soup.new_tag("a", href=clean_url, target="_blank", rel="noopener")
+                        link_tag = soup.new_tag(
+                            "a", href=clean_url, target="_blank", rel="noopener"
+                        )
                         link_tag.string = clean_url
-                        new_content.append(link_tag)
+                        new_content.append(link_tag)  # type: ignore
 
-                        trailing_punct = url[len(clean_url):]
+                        trailing_punct = url[len(clean_url) :]
                         if trailing_punct:
                             new_content.append(trailing_punct)
 
@@ -168,8 +170,9 @@ def linkify_html(html_content: str) -> str:
 
         # 2. Add target="_blank" to all links (existing and new)
         for a in soup.find_all("a"):
-            a["target"] = "_blank"
-            a["rel"] = "noopener"
+            if isinstance(a, Tag):
+                a["target"] = "_blank"
+                a["rel"] = "noopener"
 
         return str(soup)
 
