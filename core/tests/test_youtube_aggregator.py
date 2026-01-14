@@ -71,9 +71,16 @@ class TestYouTubeAggregator(unittest.TestCase):
         # Verify text is in HTML (textDisplay)
         self.assertIn("Nice!", html)
 
+    @patch("core.models.UserSettings.objects.get")
     @patch("core.aggregators.youtube.aggregator.create_youtube_embed_html")
     @patch("core.aggregators.youtube.aggregator.format_article_content")
-    def test_finalize_articles(self, mock_format, mock_embed):
+    def test_finalize_articles(self, mock_format, mock_embed, mock_get_settings):
+        # Mock settings to raise DoesNotExist so AI processing is skipped
+        # and we test the standard formatting logic
+        from core.models import UserSettings
+
+        mock_get_settings.side_effect = UserSettings.DoesNotExist
+
         mock_embed.return_value = "<iframe></iframe>"
         mock_format.return_value = "<html>Content</html>"
 
