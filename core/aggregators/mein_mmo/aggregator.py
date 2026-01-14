@@ -63,6 +63,7 @@ class MeinMmoAggregator(FullWebsiteAggregator):
         "ul.page-numbers",
         ".post-page-numbers",
         "#ftwp-container-outer",
+        "div.wp-block-wbd-affiliate-widget",
         "script",
         "style",
         "iframe",
