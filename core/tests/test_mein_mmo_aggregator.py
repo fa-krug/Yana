@@ -1,5 +1,7 @@
 import pytest
+
 from core.aggregators.mein_mmo.aggregator import MeinMmoAggregator
+
 
 @pytest.mark.django_db
 class TestMeinMmoAggregator:
