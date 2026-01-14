@@ -341,6 +341,9 @@ class YouTubeAggregator(BaseAggregator):
 
     def finalize_articles(self, articles: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Finalize articles by adding the YouTube embed in the header."""
+        # Apply AI processing first
+        articles = self._apply_ai_processing(articles)
+
         finalized = []
 
         for article in articles:

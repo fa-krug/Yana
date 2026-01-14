@@ -554,6 +554,9 @@ class RedditAggregator(BaseAggregator):
         Returns:
             Finalized list of articles
         """
+        # Apply AI processing first
+        articles = self._apply_ai_processing(articles)
+
         finalized = []
 
         for article in articles:
