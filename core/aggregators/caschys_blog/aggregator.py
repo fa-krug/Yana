@@ -54,7 +54,6 @@ class CaschysBlogAggregator(FullWebsiteAggregator):
         ".aawp-disclaimer",
         "script",
         "style",
-        "iframe",
         "noscript",
         "svg",
     ]

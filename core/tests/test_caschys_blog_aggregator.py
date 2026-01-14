@@ -112,6 +112,38 @@ class TestCaschysBlogAggregator(unittest.TestCase):
         self.assertNotIn("image.jpg", processed)
         self.assertIn("Content starts here", processed)
 
+    @patch("core.aggregators.website.FullWebsiteAggregator.extract_header_element")
+    @patch("core.aggregators.website.fetch_html")
+    def test_youtube_embed_preservation(self, mock_fetch, mock_header):
+        mock_header.return_value = None
+
+        # HTML with YouTube iframe
+        html_content = """
+        <div class="entry themeform">
+            <div class="entry-inner">
+                <p>Some text</p>
+                <div class="video-container">
+                    <iframe loading="lazy" title="ONE PIECE" width="720" height="405"
+                            src="https://www.youtube.com/embed/vplWD2LRECs?feature=oembed"
+                            frameborder="0" allowfullscreen></iframe>
+                </div>
+            </div>
+        </div>
+        """
+        mock_fetch.return_value = html_content
+
+        article = {
+            "name": "Test Article",
+            "identifier": "https://stadt-bremerhaven.de/test/",
+            "content": "",
+        }
+
+        enriched = self.aggregator.enrich_articles([article])
+        content = enriched[0]["content"]
+
+        self.assertIn("<iframe", content)
+        self.assertIn('src="https://www.youtube.com/embed/vplWD2LRECs?feature=oembed"', content)
+
 
 if __name__ == "__main__":
     unittest.main()
