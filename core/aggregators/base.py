@@ -352,9 +352,7 @@ class BaseAggregator(ABC):
                 # Prepare input
                 input_data = {"title": article.get("name", ""), "content": clean_html}
 
-                full_prompt = (
-                    "\n".join(prompt_parts) + "\n\nInput Data:\n" + json.dumps(input_data)
-                )
+                full_prompt = "\n".join(prompt_parts) + "\n\nInput Data:\n" + json.dumps(input_data)
 
                 self.logger.info(
                     f"Sending article '{article.get('name')}' to AI ({user_settings.active_ai_provider})"

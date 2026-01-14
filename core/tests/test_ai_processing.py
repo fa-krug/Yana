@@ -1,19 +1,25 @@
-
 import json
 from unittest.mock import MagicMock, patch
+
+from django.contrib.auth.models import User
+
 import pytest
+
 from core.aggregators.base import BaseAggregator
 from core.models import Feed, UserSettings
-from django.contrib.auth.models import User
+
 
 # Concrete implementation for testing
 class TestAggregator(BaseAggregator):
     def fetch_source_data(self, limit=None):
         return []
+
     def parse_to_raw_articles(self, source_data):
         return []
+
     def aggregate(self):
         return []
+
 
 @pytest.mark.django_db
 class TestAIProcessing:
@@ -28,7 +34,7 @@ class TestAIProcessing:
             active_ai_provider="openai",
             openai_enabled=True,
             openai_api_key="sk-test",
-            openai_model="gpt-4o-mini"
+            openai_model="gpt-4o-mini",
         )
         return settings
 
@@ -38,10 +44,7 @@ class TestAIProcessing:
             name="Test Feed",
             identifier="http://example.com/feed",
             user=user,
-            options={
-                "ai_translate": True,
-                "ai_translate_language": "German"
-            }
+            options={"ai_translate": True, "ai_translate_language": "German"},
         )
 
     @pytest.fixture
@@ -55,17 +58,16 @@ class TestAIProcessing:
         mock_ai_client_cls.return_value = mock_ai_instance
 
         # expected JSON response
-        ai_response = json.dumps({
-            "title": "Übersetzter Titel",
-            "content": "<p>Übersetzter Inhalt</p>"
-        })
+        ai_response = json.dumps(
+            {"title": "Übersetzter Titel", "content": "<p>Übersetzter Inhalt</p>"}
+        )
         mock_ai_instance.generate_response.return_value = ai_response
 
         # Article to process
         article = {
             "name": "Original Title",
             "content": "<p>Original Content</p>",
-            "identifier": "http://example.com/1"
+            "identifier": "http://example.com/1",
         }
 
         # Run processing
@@ -95,7 +97,7 @@ class TestAIProcessing:
         article = {
             "name": "Original Title",
             "content": "<p>Original Content</p>",
-            "identifier": "http://example.com/1"
+            "identifier": "http://example.com/1",
         }
 
         # Run processing
