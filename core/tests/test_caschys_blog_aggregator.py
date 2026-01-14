@@ -144,6 +144,45 @@ class TestCaschysBlogAggregator(unittest.TestCase):
         self.assertIn("<iframe", content)
         self.assertIn('src="https://www.youtube.com/embed/vplWD2LRECs?feature=oembed"', content)
 
+    @patch("core.aggregators.website.FullWebsiteAggregator.extract_header_element")
+    @patch("core.aggregators.website.fetch_html")
+    def test_iframe_filtering(self, mock_fetch, mock_header):
+        mock_header.return_value = None
+
+        html_content = """
+        <div class="entry themeform">
+            <div class="entry-inner">
+                <p>Allowed:</p>
+                <iframe src="https://www.youtube.com/embed/12345"></iframe>
+                <iframe src="https://platform.twitter.com/embed/tweet"></iframe>
+                <iframe src="https://x.com/embed/tweet"></iframe>
+
+                <p>Blocked:</p>
+                <iframe src="https://vimeo.com/12345"></iframe>
+                <iframe src="https://malicious.com/iframe"></iframe>
+            </div>
+        </div>
+        """
+        mock_fetch.return_value = html_content
+
+        article = {
+            "name": "Test Iframe Filtering",
+            "identifier": "https://stadt-bremerhaven.de/iframe-test/",
+            "content": "",
+        }
+
+        enriched = self.aggregator.enrich_articles([article])
+        content = enriched[0]["content"]
+
+        # Assert allowed iframes are present
+        self.assertIn('src="https://www.youtube.com/embed/12345"', content)
+        self.assertIn('src="https://platform.twitter.com/embed/tweet"', content)
+        self.assertIn('src="https://x.com/embed/tweet"', content)
+
+        # Assert blocked iframes are removed
+        self.assertNotIn('src="https://vimeo.com/12345"', content)
+        self.assertNotIn('src="https://malicious.com/iframe"', content)
+
 
 if __name__ == "__main__":
     unittest.main()

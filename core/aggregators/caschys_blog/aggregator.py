@@ -90,6 +90,21 @@ class CaschysBlogAggregator(FullWebsiteAggregator):
         soup = BeautifulSoup(html, "html.parser")
         base_url = article["identifier"]
 
+        # Filter iframes (only allow YouTube and Twitter/X)
+        for iframe in soup.find_all("iframe"):
+            src = iframe.get("src", "")
+            if not src:
+                iframe.decompose()
+                continue
+
+            # Check if source is allowed
+            is_youtube = "youtube.com" in src or "youtu.be" in src
+            is_twitter = "twitter.com" in src or "x.com" in src
+
+            if not (is_youtube or is_twitter):
+                self.logger.debug(f"Removing disallowed iframe: {src}")
+                iframe.decompose()
+
         # Resolve relative URLs for images
         for img in soup.find_all("img"):
             src = img.get("src")
