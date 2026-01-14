@@ -1,5 +1,6 @@
 """Base aggregator class for implementing feed providers."""
 
+import json
 import logging
 import math
 import random
@@ -322,27 +323,36 @@ class BaseAggregator(ABC):
 
                 # Get clean text for AI (keeping structure if possible, but request implies just sections)
                 # However, to maintain formatting, we should probably pass the cleaned HTML body
-                # The prompt will ask for HTML output to replace the content
                 clean_html = str(soup)
 
                 prompt_parts = []
 
+                # Instruction to output JSON
+                prompt_parts.append(
+                    "You are an AI assistant that processes article content. "
+                    "You will receive an article title and content in HTML format. "
+                    "You must return the result as a JSON object with keys 'title' and 'content'. "
+                    "Do not include any markdown formatting (like ```json) in the response, just the raw JSON string."
+                )
+
                 if options.get("ai_summarize"):
-                    prompt_parts.append("Summarize the following article content concisely.")
+                    prompt_parts.append("Summarize the article content concisely.")
 
                 if options.get("ai_improve_writing"):
                     prompt_parts.append("Rewrite the content to improve clarity, flow, and style.")
 
                 if options.get("ai_translate"):
                     target_lang = options.get("ai_translate_language", "English")
-                    prompt_parts.append(f"Translate the content to {target_lang}.")
+                    prompt_parts.append(f"Translate the title and content to {target_lang}.")
 
                 prompt_parts.append(
-                    "Return ONLY the result as valid HTML. Do not include any explanations or markdown code blocks. "
-                    "The input HTML has stripped headers/footers, please maintain the general structure of sections/paragraphs."
+                    "The input content is HTML with stripped headers/footers. Please maintain the general structure of sections/paragraphs in the 'content' field."
                 )
 
-                full_prompt = "\n".join(prompt_parts) + "\n\nInput Content:\n" + clean_html
+                # Prepare input
+                input_data = {"title": article.get("name", ""), "content": clean_html}
+
+                full_prompt = "\n".join(prompt_parts) + "\n\nInput Data:\n" + json.dumps(input_data)
 
                 self.logger.info(
                     f"Sending article '{article.get('name')}' to AI ({user_settings.active_ai_provider})"
@@ -351,15 +361,28 @@ class BaseAggregator(ABC):
 
                 if result:
                     # Clean up markdown code blocks if the AI added them despite instructions
-                    if result.startswith("```html"):
+                    if result.startswith("```json"):
                         result = result[7:]
                     if result.startswith("```"):
                         result = result[3:]
                     if result.endswith("```"):
                         result = result[:-3]
 
-                    article["content"] = result.strip()
-                    finalized_articles.append(article)
+                    result = result.strip()
+
+                    try:
+                        parsed_result = json.loads(result)
+                        if "title" in parsed_result:
+                            article["name"] = parsed_result["title"]
+                        if "content" in parsed_result:
+                            article["content"] = parsed_result["content"]
+                        finalized_articles.append(article)
+                    except json.JSONDecodeError:
+                        self.logger.error(
+                            f"AI returned invalid JSON for article '{article.get('name')}': {result[:100]}..."
+                        )
+                        # Skip article on error
+                        continue
                 else:
                     self.logger.warning(
                         f"AI processing failed for article '{article.get('name')}'. Skipping."
