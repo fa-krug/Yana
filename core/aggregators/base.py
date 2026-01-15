@@ -1,5 +1,6 @@
 """Base aggregator class for implementing feed providers."""
 
+import contextlib
 import json
 import logging
 import math
@@ -382,20 +383,16 @@ class BaseAggregator(ABC):
                         # Look for ```json ... ``` or just { ... }
                         match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", result, re.DOTALL)
                         if match:
-                            try:
+                            with contextlib.suppress(json.JSONDecodeError):
                                 parsed_result = json.loads(match.group(1))
-                            except json.JSONDecodeError:
-                                pass
 
                         if not parsed_result:
                             # Try to find the first '{' and last '}'
                             start = result.find("{")
                             end = result.rfind("}")
                             if start != -1 and end != -1:
-                                try:
+                                with contextlib.suppress(json.JSONDecodeError):
                                     parsed_result = json.loads(result[start : end + 1])
-                                except json.JSONDecodeError:
-                                    pass
 
                     if parsed_result:
                         if "title" in parsed_result:

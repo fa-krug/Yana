@@ -1,32 +1,36 @@
-import pytest
-import json
 from unittest.mock import MagicMock, patch
+
+from django.contrib.auth.models import User
+
+import pytest
+
 from core.aggregators.base import BaseAggregator
 from core.models import Feed, UserSettings
-from django.contrib.auth.models import User
-from core.ai_client import AIClient
+
 
 # Concrete implementation for testing
 class TestAggregator(BaseAggregator):
-    def fetch_source_data(self, limit=None): return []
-    def parse_to_raw_articles(self, source_data): return []
-    def aggregate(self): return []
+    def fetch_source_data(self, limit=None):
+        return []
+
+    def parse_to_raw_articles(self, source_data):
+        return []
+
+    def aggregate(self):
+        return []
+
 
 @pytest.mark.django_db
 def test_ai_response_with_fluff_and_payload_check():
     user = User.objects.create_user(username="testuser_fluff", password="password")
-    settings = UserSettings.objects.create(
+    UserSettings.objects.create(
         user=user,
         active_ai_provider="gemini",
         gemini_enabled=True,
         gemini_api_key="test-key",
-        gemini_model="gemini-1.5-flash"
+        gemini_model="gemini-1.5-flash",
     )
-    feed = Feed.objects.create(
-        name="Test Feed",
-        user=user,
-        options={"ai_summarize": True}
-    )
+    feed = Feed.objects.create(name="Test Feed", user=user, options={"ai_summarize": True})
     aggregator = TestAggregator(feed)
 
     # We mock requests.post to check the payload sent by AIClient
@@ -35,8 +39,12 @@ def test_ai_response_with_fluff_and_payload_check():
         mock_response = MagicMock()
         # Mocking the Gemini response structure
         mock_response.json.return_value = {
-            "candidates": [{
-                "content": {"parts": [{"text": """
+            "candidates": [
+                {
+                    "content": {
+                        "parts": [
+                            {
+                                "text": """
                 Wait, here is the JSON:
                 ```json
                 {
@@ -44,8 +52,12 @@ def test_ai_response_with_fluff_and_payload_check():
                     "content": "Clean Content"
                 }
                 ```
-                """}]}
-            }]
+                """
+                            }
+                        ]
+                    }
+                }
+            ]
         }
         mock_post.return_value = mock_response
 
