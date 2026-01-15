@@ -10,8 +10,9 @@ Provides functions for:
 import re
 from typing import Optional
 
-from bs4 import BeautifulSoup
 from django.conf import settings
+
+from bs4 import BeautifulSoup
 
 
 def extract_youtube_video_id(url: str) -> Optional[str]:
@@ -158,6 +159,10 @@ def proxy_youtube_embeds(soup: BeautifulSoup) -> None:
         src = iframe.get("src", "")
         if not src:
             continue
+
+        # Ensure src is a string
+        if isinstance(src, list):
+            src = src[0]
 
         if is_youtube_url(src):
             video_id = extract_youtube_video_id(src)

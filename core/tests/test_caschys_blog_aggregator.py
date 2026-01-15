@@ -177,7 +177,7 @@ class TestCaschysBlogAggregator(unittest.TestCase):
 
         # Assert allowed iframes are present
         # YouTube should be proxied
-        self.assertIn('/api/youtube-proxy?v=12345', content)
+        self.assertIn("/api/youtube-proxy?v=12345", content)
         self.assertIn('src="https://platform.twitter.com/embed/tweet"', content)
         self.assertIn('src="https://x.com/embed/tweet"', content)
 
