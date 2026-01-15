@@ -99,10 +99,17 @@ class AIClient:
         response.raise_for_status()
         return True
 
-    def generate_response(self, prompt: str) -> Optional[str]:
+    def generate_response(
+        self, prompt: str, json_mode: bool = False, json_schema: Optional[dict] = None
+    ) -> Optional[str]:
         """
         Generate a response from the active AI provider.
         Returns the generated text or None if the call fails.
+
+        Args:
+            prompt: The input prompt
+            json_mode: Whether to enforce JSON output (if supported)
+            json_schema: Optional JSON schema for structured output (if supported)
         """
         if not self.provider:
             logger.warning("No AI provider selected.")
@@ -110,11 +117,11 @@ class AIClient:
 
         try:
             if self.provider == "openai":
-                return self._call_openai(prompt)
+                return self._call_openai(prompt, json_mode)
             elif self.provider == "anthropic":
                 return self._call_anthropic(prompt)
             elif self.provider == "gemini":
-                return self._call_gemini(prompt)
+                return self._call_gemini(prompt, json_mode, json_schema)
             else:
                 logger.error(f"Unknown AI provider: {self.provider}")
                 return None
@@ -122,7 +129,7 @@ class AIClient:
             logger.error(f"AI API call failed: {e}")
             return None
 
-    def _call_openai(self, prompt: str) -> Optional[str]:
+    def _call_openai(self, prompt: str, json_mode: bool = False) -> Optional[str]:
         if not self.settings.openai_enabled or not self.settings.openai_api_key:
             logger.warning("OpenAI is not enabled or configured.")
             return None
@@ -139,6 +146,9 @@ class AIClient:
             "temperature": self.settings.ai_temperature,
             "max_tokens": self.settings.ai_max_tokens,
         }
+
+        if json_mode:
+            data["response_format"] = {"type": "json_object"}
 
         try:
             response = requests.post(
@@ -185,7 +195,9 @@ class AIClient:
                 logger.error(f"Response: {response.text}")
             raise
 
-    def _call_gemini(self, prompt: str) -> Optional[str]:
+    def _call_gemini(
+        self, prompt: str, json_mode: bool = False, json_schema: Optional[dict] = None
+    ) -> Optional[str]:
         if not self.settings.gemini_enabled or not self.settings.gemini_api_key:
             logger.warning("Gemini is not enabled or configured.")
             return None
@@ -196,12 +208,19 @@ class AIClient:
             "Content-Type": "application/json",
         }
 
+        generation_config = {
+            "temperature": self.settings.ai_temperature,
+            "maxOutputTokens": self.settings.ai_max_tokens,
+        }
+
+        if json_mode:
+            generation_config["responseMimeType"] = "application/json"
+            if json_schema:
+                generation_config["responseSchema"] = json_schema
+
         data = {
             "contents": [{"parts": [{"text": prompt}]}],
-            "generationConfig": {
-                "temperature": self.settings.ai_temperature,
-                "maxOutputTokens": self.settings.ai_max_tokens,
-            },
+            "generationConfig": generation_config,
         }
 
         try:
