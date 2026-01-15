@@ -12,6 +12,8 @@ from typing import Optional
 
 from django.conf import settings
 
+from bs4 import BeautifulSoup
+
 
 def extract_youtube_video_id(url: str) -> Optional[str]:
     """
@@ -144,3 +146,32 @@ def is_youtube_url(url: str) -> bool:
 
     youtube_domains = ["youtube.com", "youtu.be", "m.youtube.com", "youtube-nocookie.com"]
     return any(domain in url for domain in youtube_domains)
+
+
+def proxy_youtube_embeds(soup: BeautifulSoup) -> None:
+    """
+    Find and replace YouTube iframes with proxy embeds.
+
+    Args:
+        soup: BeautifulSoup object to modify in-place
+    """
+    for iframe in soup.find_all("iframe"):
+        src = iframe.get("src", "")
+        if not src:
+            continue
+
+        # Ensure src is a string
+        if isinstance(src, list):
+            src = src[0]
+
+        if is_youtube_url(src):
+            video_id = extract_youtube_video_id(src)
+            if video_id:
+                # Create replacement HTML
+                replacement_html = create_youtube_embed_html(video_id)
+                replacement_soup = BeautifulSoup(replacement_html, "html.parser")
+
+                # The first element should be the div
+                new_tag = replacement_soup.find("div", class_="youtube-embed-container")
+                if new_tag:
+                    iframe.replace_with(new_tag)

@@ -3,6 +3,7 @@
 from typing import Any, Dict, List, Optional, Tuple
 
 from ..utils import clean_html, format_article_content, remove_image_by_url
+from ..utils.youtube import proxy_youtube_embeds
 from ..website import FullWebsiteAggregator
 from .content_extraction import extract_mein_mmo_content
 from .multipage_handler import detect_pagination, fetch_all_pages
@@ -66,7 +67,7 @@ class MeinMmoAggregator(FullWebsiteAggregator):
         "div.wp-block-wbd-affiliate-widget",
         "script",
         "style",
-        "iframe",
+        "iframe:not([src*='youtube.com']):not([src*='youtu.be'])",
         "noscript",
     ]
 
@@ -133,17 +134,24 @@ class MeinMmoAggregator(FullWebsiteAggregator):
         """Process Mein-MMO content with header image extraction."""
         self.logger.debug(f"[process_content] Starting for {article.get('identifier')}")
 
+        from bs4 import BeautifulSoup
+
+        # Parse HTML for processing
+        soup = BeautifulSoup(html, "html.parser")
+
+        # Proxy YouTube embeds
+        proxy_youtube_embeds(soup)
+
         # Remove header image from content if it was extracted
         header_data = article.get("header_data")
         if header_data and header_data.image_url:
-            from bs4 import BeautifulSoup
-
-            soup = BeautifulSoup(html, "html.parser")
             self.logger.debug(
                 f"[process_content] Removing header image from content: {header_data.image_url}"
             )
             remove_image_by_url(soup, header_data.image_url)
-            html = str(soup)
+
+        # Convert back to string for cleaning
+        html = str(soup)
 
         # Clean HTML
         self.logger.debug("[process_content] Cleaning HTML")

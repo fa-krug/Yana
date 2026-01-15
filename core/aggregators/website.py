@@ -14,6 +14,7 @@ from .utils import (
     remove_image_by_url,
     sanitize_class_names,
 )
+from .utils.youtube import proxy_youtube_embeds
 
 
 class FullWebsiteAggregator(RssAggregator):
@@ -23,7 +24,7 @@ class FullWebsiteAggregator(RssAggregator):
     selectors_to_remove: List[str] = [
         "script",
         "style",
-        "iframe",
+        "iframe:not([src*='youtube.com']):not([src*='youtu.be'])",
         "noscript",
         ".advertisement",
         ".ad",
@@ -133,6 +134,9 @@ class FullWebsiteAggregator(RssAggregator):
         """Process and format content."""
         # Parse HTML
         soup = BeautifulSoup(html, "html.parser")
+
+        # Proxy YouTube embeds
+        proxy_youtube_embeds(soup)
 
         # Remove header image from content if it was extracted
         header_data = article.get("header_data")
