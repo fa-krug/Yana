@@ -4,6 +4,7 @@ import json
 import logging
 import math
 import random
+import re
 from abc import ABC, abstractmethod
 from datetime import timedelta
 from typing import Any, Dict, List, Optional
@@ -354,30 +355,55 @@ class BaseAggregator(ABC):
 
                 full_prompt = "\n".join(prompt_parts) + "\n\nInput Data:\n" + json.dumps(input_data)
 
+                # Schema for JSON mode (using uppercase types for Gemini responseSchema)
+                json_schema = {
+                    "type": "OBJECT",
+                    "properties": {
+                        "title": {"type": "STRING"},
+                        "content": {"type": "STRING"},
+                    },
+                    "required": ["title", "content"],
+                }
+
                 self.logger.info(
                     f"Sending article '{article.get('name')}' to AI ({user_settings.active_ai_provider})"
                 )
-                result = ai_client.generate_response(full_prompt)
+                result = ai_client.generate_response(
+                    full_prompt, json_mode=True, json_schema=json_schema
+                )
 
                 if result:
-                    # Clean up markdown code blocks if the AI added them despite instructions
-                    if result.startswith("```json"):
-                        result = result[7:]
-                    if result.startswith("```"):
-                        result = result[3:]
-                    if result.endswith("```"):
-                        result = result[:-3]
-
-                    result = result.strip()
-
+                    # Robust JSON extraction
+                    parsed_result = None
                     try:
                         parsed_result = json.loads(result)
+                    except json.JSONDecodeError:
+                        # Try to find JSON block in the response
+                        # Look for ```json ... ``` or just { ... }
+                        match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", result, re.DOTALL)
+                        if match:
+                            try:
+                                parsed_result = json.loads(match.group(1))
+                            except json.JSONDecodeError:
+                                pass
+
+                        if not parsed_result:
+                            # Try to find the first '{' and last '}'
+                            start = result.find("{")
+                            end = result.rfind("}")
+                            if start != -1 and end != -1:
+                                try:
+                                    parsed_result = json.loads(result[start : end + 1])
+                                except json.JSONDecodeError:
+                                    pass
+
+                    if parsed_result:
                         if "title" in parsed_result:
                             article["name"] = parsed_result["title"]
                         if "content" in parsed_result:
                             article["content"] = parsed_result["content"]
                         finalized_articles.append(article)
-                    except json.JSONDecodeError:
+                    else:
                         self.logger.error(
                             f"AI returned invalid JSON for article '{article.get('name')}': {result[:100]}..."
                         )
