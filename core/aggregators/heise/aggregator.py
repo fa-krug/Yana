@@ -13,6 +13,7 @@ from ..utils import (
     remove_image_by_url,
     sanitize_class_names,
 )
+from ..utils.youtube import proxy_youtube_embeds
 from ..website import FullWebsiteAggregator
 
 
@@ -87,7 +88,7 @@ class HeiseAggregator(FullWebsiteAggregator):
         "div[data-component='RecommendationBox']",
         ".opt-in__content-container",
         ".a-box",
-        "iframe",
+        "iframe:not([src*='youtube.com']):not([src*='youtu.be'])",
         ".a-u-inline",
         ".redakteurskuerzel",
         ".branding",
@@ -181,6 +182,9 @@ class HeiseAggregator(FullWebsiteAggregator):
 
         # 1. Standard Content Processing (copied from FullWebsiteAggregator)
         soup = BeautifulSoup(html, "html.parser")
+
+        # Proxy YouTube embeds
+        proxy_youtube_embeds(soup)
 
         # Remove header image from content if it was extracted
         header_data = article.get("header_data")

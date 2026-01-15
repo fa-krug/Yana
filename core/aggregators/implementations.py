@@ -8,6 +8,7 @@ from bs4 import BeautifulSoup
 
 from .rss import RssAggregator
 from .utils import clean_html, format_article_content, sanitize_class_names
+from .utils.youtube import proxy_youtube_embeds
 
 
 class FeedContentAggregator(RssAggregator):
@@ -106,6 +107,9 @@ class FeedContentAggregator(RssAggregator):
 
         # Parse HTML
         soup = BeautifulSoup(html, "html.parser")
+
+        # Proxy YouTube embeds
+        proxy_youtube_embeds(soup)
 
         # Sanitize class names
         sanitize_class_names(soup)

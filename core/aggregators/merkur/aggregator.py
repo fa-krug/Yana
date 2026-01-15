@@ -10,6 +10,7 @@ from ..utils import (
     remove_sanitized_attributes,
     sanitize_html_attributes,
 )
+from ..utils.youtube import proxy_youtube_embeds
 from ..website import FullWebsiteAggregator
 
 
@@ -108,7 +109,7 @@ class MerkurAggregator(FullWebsiteAggregator):
         "figcaption",
         "script",
         "style",
-        "iframe",
+        "iframe:not([src*='youtube.com']):not([src*='youtu.be'])",
         "noscript",
         "svg",
         ".id-StoryElement-intestitialLink",
@@ -164,6 +165,9 @@ class MerkurAggregator(FullWebsiteAggregator):
         # Step 1: Remove empty elements (p, div, span) that have no text and no images
         if remove_empty:
             remove_empty_elements(soup, tags=["p", "div", "span"])
+
+        # Proxy YouTube embeds (before sanitization)
+        proxy_youtube_embeds(soup)
 
         # Step 2: Sanitize HTML (create data-sanitized-* attributes)
         # This removes scripts, converts class/style/id to data-sanitized-* format

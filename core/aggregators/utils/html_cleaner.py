@@ -206,9 +206,15 @@ def sanitize_html_attributes(soup: Union[BeautifulSoup, Tag]) -> None:
     for tag in soup.find_all(["script", "object", "embed"]):
         tag.decompose()
 
-    # Remove style and iframe elements
-    for tag in soup.find_all(["style", "iframe"]):
+    # Remove style elements
+    for tag in soup.find_all("style"):
         tag.decompose()
+
+    # Remove iframe elements, unless they are proxied YouTube embeds
+    for tag in soup.find_all("iframe"):
+        src = tag.get("src", "")
+        if "/api/youtube-proxy" not in str(src):
+            tag.decompose()
 
     # Rename attributes for all elements
     for elem in soup.find_all(True):
