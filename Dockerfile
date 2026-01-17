@@ -66,7 +66,7 @@ RUN apk add --no-cache \
     libxml2 \
     libxslt \
     curl \
-    && mkdir -p /app/data /app/media /app/staticfiles
+    && mkdir -p /app/data /app/media /app/staticfiles /app/logs
 
 # Copy virtual environment from builder
 COPY --from=builder /opt/venv /opt/venv

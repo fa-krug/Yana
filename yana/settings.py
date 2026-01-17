@@ -33,6 +33,17 @@ env = environ.Env(
     DATABASE_ENGINE=(str, "django.db.backends.sqlite3"),
     # Internationalization
     TIME_ZONE=(str, "UTC"),
+    # Email
+    EMAIL_BACKEND=(str, "django.core.mail.backends.console.EmailBackend"),
+    EMAIL_HOST=(str, ""),
+    EMAIL_PORT=(int, 587),
+    EMAIL_USE_TLS=(bool, True),
+    EMAIL_USE_SSL=(bool, False),
+    EMAIL_HOST_USER=(str, ""),
+    EMAIL_HOST_PASSWORD=(str, ""),
+    DEFAULT_FROM_EMAIL=(str, "noreply@localhost"),
+    SERVER_EMAIL=(str, "server@localhost"),
+    ADMIN_EMAIL=(str, ""),
 )
 
 # Read environment file (.env) if it exists
@@ -223,4 +234,126 @@ Q_CLUSTER = {
     "max_attempts": 3,  # Maximum retry attempts
     "ack_failures": True,  # Acknowledge failed tasks
     "sync": False,  # Run asynchronously (set to True for testing)
+}
+
+
+# Email Configuration
+# https://docs.djangoproject.com/en/6.0/topics/email/
+
+# Email backend (console for development, SMTP for production)
+EMAIL_BACKEND = env("EMAIL_BACKEND")
+
+# SMTP Configuration
+EMAIL_HOST = env("EMAIL_HOST")
+EMAIL_PORT = env("EMAIL_PORT")
+EMAIL_USE_TLS = env("EMAIL_USE_TLS")
+EMAIL_USE_SSL = env("EMAIL_USE_SSL")
+EMAIL_HOST_USER = env("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD")
+
+# Email addresses
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL")
+SERVER_EMAIL = env("SERVER_EMAIL")
+
+# Admins - receive error notifications via email
+# Set ADMIN_EMAIL in .env to enable error email notifications
+ADMINS = []
+admin_email = env("ADMIN_EMAIL")
+if admin_email:
+    # Parse comma-separated list of admin emails
+    # Format: "Name <email@example.com>, Name2 <email2@example.com>"
+    # Or just: "email@example.com, email2@example.com"
+    admin_entries = [entry.strip() for entry in admin_email.split(",")]
+    for entry in admin_entries:
+        if "<" in entry and ">" in entry:
+            # Format: "Name <email@example.com>"
+            name = entry.split("<")[0].strip()
+            email = entry.split("<")[1].split(">")[0].strip()
+            ADMINS.append((name, email))
+        else:
+            # Format: "email@example.com"
+            ADMINS.append(("Admin", entry.strip()))
+
+MANAGERS = ADMINS
+
+# Email timeout (seconds)
+EMAIL_TIMEOUT = 10
+
+
+# Logging Configuration
+# https://docs.djangoproject.com/en/6.0/topics/logging/
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {
+            "format": "[{levelname}] {asctime} {name} {module} {process:d} {thread:d} {message}",
+            "style": "{",
+        },
+        "simple": {
+            "format": "[{levelname}] {asctime} {name} {message}",
+            "style": "{",
+        },
+    },
+    "filters": {
+        "require_debug_false": {
+            "()": "django.utils.log.RequireDebugFalse",
+        },
+        "require_debug_true": {
+            "()": "django.utils.log.RequireDebugTrue",
+        },
+    },
+    "handlers": {
+        "console": {
+            "level": "INFO",
+            "class": "logging.StreamHandler",
+            "formatter": "simple",
+        },
+        "mail_admins": {
+            "level": "ERROR",
+            "class": "django.utils.log.AdminEmailHandler",
+            "filters": ["require_debug_false"],
+            "include_html": True,
+        },
+        "file": {
+            "level": "INFO",
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": BASE_DIR / "logs" / "yana.log",
+            "maxBytes": 10485760,  # 10MB
+            "backupCount": 5,
+            "formatter": "verbose",
+        },
+    },
+    "loggers": {
+        "django": {
+            "handlers": ["console", "file"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "django.request": {
+            "handlers": ["console", "file", "mail_admins"],
+            "level": "ERROR",
+            "propagate": False,
+        },
+        "django.security": {
+            "handlers": ["console", "file", "mail_admins"],
+            "level": "ERROR",
+            "propagate": False,
+        },
+        "core": {
+            "handlers": ["console", "file", "mail_admins"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "django_q": {
+            "handlers": ["console", "file"],
+            "level": "INFO",
+            "propagate": False,
+        },
+    },
+    "root": {
+        "handlers": ["console", "file"],
+        "level": "INFO",
+    },
 }
