@@ -344,15 +344,32 @@ class FeedAdmin(YanaDjangoQLMixin, ImportExportModelAdmin):
         Redirect to the change view after adding a new Feed.
         This allows the user to immediately see and configure the aggregator-specific options
         that appear only after the feed type is saved.
+
+        Special handling for 'Save as new': redirect to changelist instead.
         """
         from django.http import HttpResponseRedirect
         from django.urls import reverse
         from django.utils.html import format_html
         from django.utils.translation import gettext as _
 
+        opts = obj._meta
+
+        # If the user clicked "Save as new", redirect to changelist
+        if "_saveasnew" in request.POST:
+            changelist_url = reverse(
+                f"admin:{opts.app_label}_{opts.model_name}_changelist",
+                current_app=self.admin_site.name,
+            )
+            msg = format_html(
+                _('The {name} "{obj}" was added successfully.'),
+                name=opts.verbose_name,
+                obj=obj,
+            )
+            self.message_user(request, msg, messages.SUCCESS)
+            return HttpResponseRedirect(changelist_url)
+
         # If the user clicked "Save" (not "Save and add another" or "Save and continue editing")
         if "_save" in request.POST:
-            opts = obj._meta
             change_url = reverse(
                 f"admin:{opts.app_label}_{opts.model_name}_change",
                 args=(obj.pk,),
