@@ -165,7 +165,13 @@ def extract_header_image_url(post: RedditPostData) -> Optional[str]:
                 if is_direct_image:
                     return decoded_url
 
-        # Priority 4: Fall back to thumbnail extraction (restored)
+        # Priority 3: Extract URLs from text post selftext (check before thumbnail fallback
+        # to get high-res images when available in selftext)
+        image_url = _extract_image_url_from_selftext(post)
+        if image_url:
+            return image_url
+
+        # Priority 4: Fall back to thumbnail extraction
         thumbnail_url = extract_thumbnail_url(post)
         if thumbnail_url:
             # Special handling for v.redd.it to get high-res preview if possible
@@ -175,12 +181,7 @@ def extract_header_image_url(post: RedditPostData) -> Optional[str]:
                     return preview_url
             return thumbnail_url
 
-        # Priority 5: Extract URLs from text post selftext and try to find images
-        image_url = _extract_image_url_from_selftext(post)
-        if image_url:
-            return image_url
-
-        # Priority 6: If it is a link post, try to extract image from the linked page
+        # Priority 5: If it is a link post, try to extract image from the linked page
         if post.url and not post.is_self:
             decoded_url = decode_html_entities_in_url(post.url)
             # Ignore Reddit post URLs (they are internal links)
