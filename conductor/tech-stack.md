@@ -11,7 +11,6 @@
 
 # API & Networking
 - **HTTP Client:** `requests`
-- **GraphQL:** `graphene-django` (for specialized queries)
 - **Static Assets:** `whitenoise`
 
 # Code Quality & Tooling

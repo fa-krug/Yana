@@ -20,10 +20,6 @@ djangoql==0.18.1
 et_xmlfile==2.0.0
 feedparser==6.0.12
 filelock==3.20.1
-graphene-django==3.2.3
-graphene==3.4.3
-graphql-core==3.2.7
-graphql-relay==3.2.0
 gunicorn==21.2.0
 identify==2.6.15
 idna==3.11
