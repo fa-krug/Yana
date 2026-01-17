@@ -150,6 +150,7 @@ class AIClient:
         if json_mode:
             data["response_format"] = {"type": "json_object"}
 
+        response = None
         try:
             response = requests.post(
                 url, headers=headers, json=data, timeout=self.settings.ai_request_timeout
@@ -182,6 +183,7 @@ class AIClient:
             "temperature": self.settings.ai_temperature,
         }
 
+        response = None
         try:
             response = requests.post(
                 url, headers=headers, json=data, timeout=self.settings.ai_request_timeout
@@ -223,6 +225,7 @@ class AIClient:
             "generationConfig": generation_config,
         }
 
+        response = None
         try:
             response = requests.post(
                 url, headers=headers, json=data, timeout=self.settings.ai_request_timeout
