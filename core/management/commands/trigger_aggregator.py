@@ -57,7 +57,7 @@ class Command(BaseCommand):
                     )
                 )
                 results = AggregatorService.trigger_by_aggregator_type(
-                    aggregator_type, limit=limit, force_update=force_update
+                    aggregator_type, limit=limit, force_update=force_update, sync=True
                 )
                 for result in results:
                     self._print_result(result)
@@ -69,7 +69,9 @@ class Command(BaseCommand):
                         "Triggering all enabled feeds" + (f" (limit: {limit})" if limit else "")
                     )
                 )
-                results = AggregatorService.trigger_all(limit=limit, force_update=force_update)
+                results = AggregatorService.trigger_all(
+                    limit=limit, force_update=force_update, sync=True
+                )
                 for result in results:
                     self._print_result(result)
 
