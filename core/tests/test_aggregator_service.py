@@ -192,3 +192,29 @@ class TestAggregatorService:
             force_update=True,
             task_name=f"aggregate_feed_{rss_feed.id}",
         )
+
+    @patch("core.services.aggregator_service.AggregatorService.trigger_by_feed_id")
+    def test_trigger_all_sync(self, mock_trigger, rss_feed, youtube_feed):
+        """Test that sync=True processes feeds synchronously."""
+        mock_trigger.return_value = {"success": True, "articles_count": 1}
+
+        results = AggregatorService.trigger_all(sync=True)
+
+        assert len(results) == 2
+        assert mock_trigger.call_count == 2
+        # Results should be the direct return values from trigger_by_feed_id
+        for result in results:
+            assert result["success"] is True
+            assert result["articles_count"] == 1
+
+    @patch("core.services.aggregator_service.AggregatorService.trigger_by_feed_id")
+    def test_trigger_by_aggregator_type_sync(self, mock_trigger, rss_feed):
+        """Test that sync=True processes feeds synchronously."""
+        mock_trigger.return_value = {"success": True, "articles_count": 3}
+
+        results = AggregatorService.trigger_by_aggregator_type("rss", sync=True)
+
+        assert len(results) == 1
+        assert mock_trigger.called
+        assert results[0]["success"] is True
+        assert results[0]["articles_count"] == 3

@@ -143,20 +143,24 @@ class AggregatorService:
 
     @staticmethod
     def trigger_by_aggregator_type(
-        aggregator_type: str, limit: Optional[int] = None, force_update: bool = False
+        aggregator_type: str,
+        limit: Optional[int] = None,
+        force_update: bool = False,
+        sync: bool = False,
     ) -> List[Dict[str, Any]]:
         """
-        Trigger all feeds of a specific aggregator type by spawning individual async tasks.
-
-        Each feed is processed in its own django-q task to prevent timeouts.
+        Trigger all feeds of a specific aggregator type.
 
         Args:
             aggregator_type: The aggregator type (e.g., 'youtube', 'reddit')
             limit: Optional limit on number of feeds to process
             force_update: Whether to update existing articles
+            sync: If True, process feeds synchronously. If False (default),
+                  spawn individual async tasks to prevent timeouts.
 
         Returns:
-            List of dictionaries with feed_id and task_id for each spawned task
+            If sync=True: List of result dictionaries from trigger_by_feed_id
+            If sync=False: List of dictionaries with feed_id and task_id for each spawned task
         """
         feeds = Feed.objects.filter(aggregator=aggregator_type, enabled=True)
 
@@ -165,40 +169,49 @@ class AggregatorService:
 
         results = []
         for feed in feeds:
-            task_id = async_task(
-                "core.services.aggregator_service.AggregatorService.trigger_by_feed_id",
-                feed.id,
-                force_update=force_update,
-                task_name=f"aggregate_feed_{feed.id}",
-            )
-            logger.info(f"Spawned aggregation task for feed {feed.id} ({feed.name}): {task_id}")
-            results.append(
-                {
-                    "feed_id": feed.id,
-                    "feed_name": feed.name,
-                    "task_id": task_id,
-                    "status": "queued",
-                }
-            )
+            if sync:
+                result = AggregatorService.trigger_by_feed_id(feed.id, force_update=force_update)
+                results.append(result)
+            else:
+                task_id = async_task(
+                    "core.services.aggregator_service.AggregatorService.trigger_by_feed_id",
+                    feed.id,
+                    force_update=force_update,
+                    task_name=f"aggregate_feed_{feed.id}",
+                )
+                logger.info(
+                    f"Spawned aggregation task for feed {feed.id} ({feed.name}): {task_id}"
+                )
+                results.append(
+                    {
+                        "feed_id": feed.id,
+                        "feed_name": feed.name,
+                        "task_id": task_id,
+                        "status": "queued",
+                    }
+                )
 
         return results
 
     @staticmethod
     def trigger_all(
-        limit: Optional[int] = None, force_update: bool = False
+        limit: Optional[int] = None,
+        force_update: bool = False,
+        sync: bool = False,
     ) -> List[Dict[str, Any]]:
         """
-        Trigger all enabled feeds by spawning individual async tasks.
-
-        Each feed is processed in its own django-q task to prevent timeouts
-        when processing many feeds or feeds with slow operations (e.g., AI processing).
+        Trigger all enabled feeds.
 
         Args:
             limit: Optional limit on number of feeds to process
             force_update: Whether to update existing articles
+            sync: If True, process feeds synchronously. If False (default),
+                  spawn individual async tasks to prevent timeouts when
+                  processing many feeds or feeds with slow operations.
 
         Returns:
-            List of dictionaries with feed_id and task_id for each spawned task
+            If sync=True: List of result dictionaries from trigger_by_feed_id
+            If sync=False: List of dictionaries with feed_id and task_id for each spawned task
         """
         feeds = Feed.objects.filter(enabled=True)
 
@@ -207,21 +220,28 @@ class AggregatorService:
 
         results = []
         for feed in feeds:
-            task_id = async_task(
-                "core.services.aggregator_service.AggregatorService.trigger_by_feed_id",
-                feed.id,
-                force_update=force_update,
-                task_name=f"aggregate_feed_{feed.id}",
-            )
-            logger.info(f"Spawned aggregation task for feed {feed.id} ({feed.name}): {task_id}")
-            results.append(
-                {
-                    "feed_id": feed.id,
-                    "feed_name": feed.name,
-                    "task_id": task_id,
-                    "status": "queued",
-                }
-            )
+            if sync:
+                result = AggregatorService.trigger_by_feed_id(feed.id, force_update=force_update)
+                results.append(result)
+            else:
+                task_id = async_task(
+                    "core.services.aggregator_service.AggregatorService.trigger_by_feed_id",
+                    feed.id,
+                    force_update=force_update,
+                    task_name=f"aggregate_feed_{feed.id}",
+                )
+                logger.info(
+                    f"Spawned aggregation task for feed {feed.id} ({feed.name}): {task_id}"
+                )
+                results.append(
+                    {
+                        "feed_id": feed.id,
+                        "feed_name": feed.name,
+                        "task_id": task_id,
+                        "status": "queued",
+                    }
+                )
 
-        logger.info(f"Queued {len(results)} feed aggregation tasks")
+        if not sync:
+            logger.info(f"Queued {len(results)} feed aggregation tasks")
         return results
