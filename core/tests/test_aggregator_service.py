@@ -135,20 +135,60 @@ class TestAggregatorService:
         assert result["success"] is False
         assert "Aggregation failed" in result["error"]
 
-    @patch("core.services.aggregator_service.AggregatorService.trigger_by_feed_id")
-    def test_trigger_by_aggregator_type(self, mock_trigger, rss_feed):
-        mock_trigger.return_value = {"success": True}
+    @patch("core.services.aggregator_service.async_task")
+    def test_trigger_by_aggregator_type(self, mock_async_task, rss_feed):
+        mock_async_task.return_value = "task-123"
 
         results = AggregatorService.trigger_by_aggregator_type("rss")
 
         assert len(results) == 1
-        assert mock_trigger.called
+        assert mock_async_task.called
+        assert results[0]["feed_id"] == rss_feed.id
+        assert results[0]["task_id"] == "task-123"
+        assert results[0]["status"] == "queued"
 
-    @patch("core.services.aggregator_service.AggregatorService.trigger_by_feed_id")
-    def test_trigger_all(self, mock_trigger, rss_feed, youtube_feed):
-        mock_trigger.return_value = {"success": True}
+        # Verify async_task was called with correct arguments
+        mock_async_task.assert_called_once_with(
+            "core.services.aggregator_service.AggregatorService.trigger_by_feed_id",
+            rss_feed.id,
+            force_update=False,
+            task_name=f"aggregate_feed_{rss_feed.id}",
+        )
+
+    @patch("core.services.aggregator_service.async_task")
+    def test_trigger_all(self, mock_async_task, rss_feed, youtube_feed):
+        mock_async_task.return_value = "task-456"
 
         results = AggregatorService.trigger_all()
 
         assert len(results) == 2
-        assert mock_trigger.call_count == 2
+        assert mock_async_task.call_count == 2
+
+        # Verify each result has the expected structure
+        for result in results:
+            assert "feed_id" in result
+            assert "feed_name" in result
+            assert result["task_id"] == "task-456"
+            assert result["status"] == "queued"
+
+    @patch("core.services.aggregator_service.async_task")
+    def test_trigger_all_with_limit(self, mock_async_task, rss_feed, youtube_feed):
+        mock_async_task.return_value = "task-789"
+
+        results = AggregatorService.trigger_all(limit=1)
+
+        assert len(results) == 1
+        assert mock_async_task.call_count == 1
+
+    @patch("core.services.aggregator_service.async_task")
+    def test_trigger_by_aggregator_type_with_force_update(self, mock_async_task, rss_feed):
+        mock_async_task.return_value = "task-abc"
+
+        AggregatorService.trigger_by_aggregator_type("rss", force_update=True)
+
+        mock_async_task.assert_called_once_with(
+            "core.services.aggregator_service.AggregatorService.trigger_by_feed_id",
+            rss_feed.id,
+            force_update=True,
+            task_name=f"aggregate_feed_{rss_feed.id}",
+        )
