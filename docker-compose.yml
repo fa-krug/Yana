@@ -21,6 +21,17 @@ services:
       - SUPERUSER_USERNAME=${SUPERUSER_USERNAME:-}
       - SUPERUSER_EMAIL=${SUPERUSER_EMAIL:-}
       - SUPERUSER_PASSWORD=${SUPERUSER_PASSWORD:-}
+
+      # Email Configuration (SMTP)
+      - EMAIL_HOST=${EMAIL_HOST:-}
+      - EMAIL_PORT=${EMAIL_PORT:-587}
+      - EMAIL_USE_TLS=${EMAIL_USE_TLS:-True}
+      - EMAIL_USE_SSL=${EMAIL_USE_SSL:-False}
+      - EMAIL_HOST_USER=${EMAIL_HOST_USER:-}
+      - EMAIL_HOST_PASSWORD=${EMAIL_HOST_PASSWORD:-}
+      - DEFAULT_FROM_EMAIL=${DEFAULT_FROM_EMAIL:-noreply@localhost}
+      - SERVER_EMAIL=${SERVER_EMAIL:-server@localhost}
+      - ADMIN_EMAIL=${ADMIN_EMAIL:-}
     volumes:
       # Development: bind mounts for live reload
       - .:/app
