@@ -341,14 +341,27 @@ class BaseAggregator(ABC):
                     prompt_parts.append("Summarize the article content concisely.")
 
                 if options.get("ai_improve_writing"):
-                    prompt_parts.append("Rewrite the content to improve clarity, flow, and style.")
+                    prompt_parts.append(
+                        "Rewrite the content to improve clarity, flow, and style. "
+                        "IMPORTANT: Preserve the complete HTML structure including all tags. "
+                        "Keep all links (<a> tags) exactly as they are - do not modify href attributes or remove any links. "
+                        "Only improve the text content itself."
+                    )
 
                 if options.get("ai_translate"):
                     target_lang = options.get("ai_translate_language", "English")
-                    prompt_parts.append(f"Translate the title and content to {target_lang}.")
+                    prompt_parts.append(
+                        f"Translate the title and content to {target_lang}. "
+                        "IMPORTANT: Do NOT translate link labels (the text inside <a> tags). "
+                        "Keep link text in the original language. Only translate regular text content."
+                    )
 
                 prompt_parts.append(
-                    "The input content is HTML with stripped headers/footers. Please maintain the general structure of sections/paragraphs in the 'content' field."
+                    "The input content is HTML with stripped headers/footers. "
+                    "CRITICAL: Preserve ALL HTML tags and structure in your output. "
+                    "This includes: links (<a>), paragraphs (<p>), headings (<h1>-<h6>), lists (<ul>, <ol>, <li>), "
+                    "images (<img>), divs, spans, and all other HTML elements. "
+                    "Your output 'content' field must be valid HTML with the exact same structure as the input."
                 )
 
                 # Prepare input
