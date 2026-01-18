@@ -22,8 +22,7 @@ services:
       - SUPERUSER_EMAIL=${SUPERUSER_EMAIL:-}
       - SUPERUSER_PASSWORD=${SUPERUSER_PASSWORD:-}
 
-      # Email Configuration
-      - EMAIL_BACKEND=${EMAIL_BACKEND:-django.core.mail.backends.console.EmailBackend}
+      # Email Configuration (SMTP)
       - EMAIL_HOST=${EMAIL_HOST:-}
       - EMAIL_PORT=${EMAIL_PORT:-587}
       - EMAIL_USE_TLS=${EMAIL_USE_TLS:-True}
@@ -40,8 +39,6 @@ services:
       - ./data:/app/data
       # Persist media files
       - ./media:/app/media
-      # Persist logs
-      - ./logs:/app/logs
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health/"]
       interval: 30s

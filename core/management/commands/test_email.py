@@ -55,14 +55,6 @@ class Command(BaseCommand):
         self.stdout.write(f"Server Email: {settings.SERVER_EMAIL}")
         self.stdout.write(f"Admins: {settings.ADMINS or '(not set)'}\n")
 
-        # Check if email is configured
-        if settings.EMAIL_BACKEND == "django.core.mail.backends.console.EmailBackend":
-            self.stdout.write(
-                self.style.WARNING(
-                    "Note: Using console backend. Email will be printed to console, not sent."
-                )
-            )
-
         # Send error email to admins
         if send_error:
             if not settings.ADMINS:
@@ -148,9 +140,7 @@ class Command(BaseCommand):
             if count > 0:
                 self.stdout.write(self.style.SUCCESS("✓ Test email sent successfully!"))
             else:
-                self.stdout.write(
-                    self.style.WARNING("⚠ Email backend returned 0 (check console output)")
-                )
+                self.stdout.write(self.style.WARNING("⚠ Email backend returned 0"))
         except Exception as e:
             self.stdout.write(self.style.ERROR(f"✗ Failed to send test email: {e}"))
             import traceback

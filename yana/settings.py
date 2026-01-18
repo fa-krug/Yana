@@ -34,7 +34,6 @@ env = environ.Env(
     # Internationalization
     TIME_ZONE=(str, "UTC"),
     # Email
-    EMAIL_BACKEND=(str, "django.core.mail.backends.console.EmailBackend"),
     EMAIL_HOST=(str, ""),
     EMAIL_PORT=(int, 587),
     EMAIL_USE_TLS=(bool, True),
@@ -240,8 +239,8 @@ Q_CLUSTER = {
 # Email Configuration
 # https://docs.djangoproject.com/en/6.0/topics/email/
 
-# Email backend (console for development, SMTP for production)
-EMAIL_BACKEND = env("EMAIL_BACKEND")
+# Email backend - always use SMTP
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 
 # SMTP Configuration
 EMAIL_HOST = env("EMAIL_HOST")
@@ -287,10 +286,6 @@ LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
     "formatters": {
-        "verbose": {
-            "format": "[{levelname}] {asctime} {name} {module} {process:d} {thread:d} {message}",
-            "style": "{",
-        },
         "simple": {
             "format": "[{levelname}] {asctime} {name} {message}",
             "style": "{",
@@ -299,9 +294,6 @@ LOGGING = {
     "filters": {
         "require_debug_false": {
             "()": "django.utils.log.RequireDebugFalse",
-        },
-        "require_debug_true": {
-            "()": "django.utils.log.RequireDebugTrue",
         },
     },
     "handlers": {
@@ -316,44 +308,36 @@ LOGGING = {
             "filters": ["require_debug_false"],
             "include_html": True,
         },
-        "file": {
-            "level": "INFO",
-            "class": "logging.handlers.RotatingFileHandler",
-            "filename": BASE_DIR / "logs" / "yana.log",
-            "maxBytes": 10485760,  # 10MB
-            "backupCount": 5,
-            "formatter": "verbose",
-        },
     },
     "loggers": {
         "django": {
-            "handlers": ["console", "file"],
+            "handlers": ["console"],
             "level": "INFO",
             "propagate": False,
         },
         "django.request": {
-            "handlers": ["console", "file", "mail_admins"],
+            "handlers": ["console", "mail_admins"],
             "level": "ERROR",
             "propagate": False,
         },
         "django.security": {
-            "handlers": ["console", "file", "mail_admins"],
+            "handlers": ["console", "mail_admins"],
             "level": "ERROR",
             "propagate": False,
         },
         "core": {
-            "handlers": ["console", "file", "mail_admins"],
+            "handlers": ["console", "mail_admins"],
             "level": "INFO",
             "propagate": False,
         },
         "django_q": {
-            "handlers": ["console", "file"],
+            "handlers": ["console"],
             "level": "INFO",
             "propagate": False,
         },
     },
     "root": {
-        "handlers": ["console", "file"],
+        "handlers": ["console"],
         "level": "INFO",
     },
 }
