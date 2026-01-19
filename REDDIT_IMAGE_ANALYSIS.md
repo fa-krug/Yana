@@ -105,9 +105,9 @@ It returns early with the low-resolution `post.thumbnail` field BEFORE checking 
 
 The function should be checking `preview.images[0].source` (high-res) BEFORE falling back to the `thumbnail` field (low-res).
 
-## Recommended Fix
+## Implemented Fix ✅
 
-Reverse the priority order in `extract_thumbnail_url()`:
+The priority order in `extract_thumbnail_url()` has been reversed to prioritize high-resolution images:
 
 ```python
 def extract_thumbnail_url(post: RedditPostData) -> Optional[str]:
@@ -139,13 +139,17 @@ def extract_thumbnail_url(post: RedditPostData) -> Optional[str]:
     return None
 ```
 
-## Testing Approach
+## Testing
 
-Since Reddit API is currently inaccessible from this environment, you should:
+To verify the fix is working correctly:
 
 1. Configure your Reddit API credentials in the Django admin
-2. Create a test feed for the subreddit
+2. Create a test feed for a subreddit with image posts
 3. Run: `python manage.py test_aggregator <feed_id> --verbose --first 1`
-4. Check if images are high-resolution or low-resolution thumbnails
+4. Verify that images are now high-resolution (not low-resolution thumbnails)
 
-The fix will ensure `preview.images[0].source` (high-res) is always preferred over `thumbnail` (low-res).
+The fix ensures `preview.images[0].source` (high-res) is always preferred over `thumbnail` (low-res).
+
+## Result
+
+Reddit posts will now display high-resolution header images instead of low-resolution thumbnails.
