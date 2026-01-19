@@ -167,20 +167,27 @@ class FeedAdmin(YanaDjangoQLMixin, ImportExportModelAdmin):
 
     def get_fieldsets(self, request, obj=None):
         """Dynamic fieldsets: Simple for Add, Detailed for Edit."""
-        if not obj:
+        # Check if this is a "Save as new" operation
+        is_save_as_new = "_saveasnew" in request.POST
+
+        if not obj and not is_save_as_new:
             # Add View: Minimal fields
             return ((None, {"fields": ("name", "aggregator")}),)
 
+        # For "Save as new", get aggregator from POST data
+        aggregator_type = obj.aggregator if obj else request.POST.get("aggregator", "")
+
         # Edit View: Full fields
+        # For "Save as new", show editable aggregator field; for edit, show readonly info
         fields = [
             "name",
-            "aggregator_info",
+            "aggregator" if is_save_as_new else "aggregator_info",
         ]
 
         try:
             from .aggregators.registry import AggregatorRegistry
 
-            agg_class = AggregatorRegistry.get(obj.aggregator)
+            agg_class = AggregatorRegistry.get(aggregator_type)
             fields.append(agg_class.identifier_field)
         except Exception:
             fields.append("identifier")
@@ -189,11 +196,11 @@ class FeedAdmin(YanaDjangoQLMixin, ImportExportModelAdmin):
 
         # DYNAMIC CONFIG FIELDS
         config_field_names = []
-        if obj.aggregator:
+        if aggregator_type:
             try:
                 from .aggregators.registry import AggregatorRegistry
 
-                agg_class = AggregatorRegistry.get(obj.aggregator)
+                agg_class = AggregatorRegistry.get(aggregator_type)
                 config_fields = agg_class.get_configuration_fields()
                 config_field_names = list(config_fields.keys())
             except Exception:
@@ -221,9 +228,11 @@ class FeedAdmin(YanaDjangoQLMixin, ImportExportModelAdmin):
         )
 
     def get_readonly_fields(self, request, obj=None):
-        """Make aggregator readonly in edit view."""
+        """Make aggregator readonly in edit view, but not for 'Save as new'."""
+        is_save_as_new = "_saveasnew" in request.POST
 
-        if obj:
+        # For "Save as new", don't make aggregator readonly since it's a new object
+        if obj and not is_save_as_new:
             return ["aggregator_info", "created_at", "updated_at"]
 
         return ["created_at", "updated_at"]
@@ -253,8 +262,11 @@ class FeedAdmin(YanaDjangoQLMixin, ImportExportModelAdmin):
         """
         Pass request to form and dynamically adjust fields.
         - Add View: Only name/aggregator.
-        - Edit View: Inject config fields and toggling logic.
+        - Edit View / Save as new: Inject config fields and toggling logic.
         """
+        # Check if this is a "Save as new" operation
+        is_save_as_new = "_saveasnew" in request.POST
+
         # Filter out non-model fields (dynamic config fields) from kwargs['fields']
         # to ensure modelform_factory doesn't raise FieldError
         if "fields" in kwargs and kwargs["fields"]:
@@ -265,17 +277,24 @@ class FeedAdmin(YanaDjangoQLMixin, ImportExportModelAdmin):
 
         form_class = super().get_form(request, obj, **kwargs)
 
+        # Get aggregator type from obj or POST data (for "Save as new")
+        aggregator_type = None
+        if obj and obj.aggregator:
+            aggregator_type = obj.aggregator
+        elif is_save_as_new:
+            aggregator_type = request.POST.get("aggregator", "")
+
         class RequestForm(form_class):
             def __init__(self_form, *args, **kwargs):
                 super().__init__(*args, **kwargs)
 
-                # Handling for Edit View (obj exists)
-                if obj and obj.aggregator:
+                # Handling for Edit View (obj exists) or "Save as new"
+                if aggregator_type:
                     # 1. Inject aggregator-specific configuration fields
                     try:
                         from .aggregators.registry import AggregatorRegistry
 
-                        agg_class = AggregatorRegistry.get(obj.aggregator)
+                        agg_class = AggregatorRegistry.get(aggregator_type)
 
                         # Check if aggregator provides static identifier choices
                         # (not dynamic search)
@@ -293,7 +312,7 @@ class FeedAdmin(YanaDjangoQLMixin, ImportExportModelAdmin):
                         # Add config fields
                         for field_name, field in config_fields.items():
                             self_form.fields[field_name] = field
-                            if obj.options and field_name in obj.options:
+                            if obj and obj.options and field_name in obj.options:
                                 self_form.initial[field_name] = obj.options[field_name]
 
                     except Exception as e:
