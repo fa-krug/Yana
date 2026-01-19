@@ -21,6 +21,8 @@ def extract_thumbnail_url(post: RedditPostData) -> Optional[str]:
     """
     Extract thumbnail URL from Reddit post.
 
+    Prioritizes high-resolution images from preview data over low-resolution thumbnails.
+
     Args:
         post: RedditPostData instance
 
@@ -28,21 +30,14 @@ def extract_thumbnail_url(post: RedditPostData) -> Optional[str]:
         Thumbnail URL or None
     """
     try:
-        # Try post thumbnail property
-        if post.thumbnail and post.thumbnail not in ["self", "default", "nsfw", "spoiler"]:
-            if post.thumbnail.startswith("http"):
-                return decode_html_entities_in_url(post.thumbnail)
-            if post.thumbnail.startswith("/"):
-                return decode_html_entities_in_url(f"https://reddit.com{post.thumbnail}")
-
-        # Try preview images
+        # Priority 1: Try preview images (high-resolution source)
         if post.preview and post.preview.get("images") and len(post.preview["images"]) > 0:
             source_url = post.preview["images"][0].get("source", {}).get("url")
             if source_url:
                 decoded = decode_html_entities_in_url(source_url)
                 return fix_reddit_media_url(decoded)
 
-        # Try post URL if it's an image
+        # Priority 2: Try post URL if it's an image (original resolution)
         if post.url:
             decoded_url = decode_html_entities_in_url(post.url)
             url_lower = decoded_url.lower()
@@ -50,6 +45,13 @@ def extract_thumbnail_url(post: RedditPostData) -> Optional[str]:
                 return decoded_url
             if "v.redd.it" in url_lower:
                 return extract_reddit_video_preview(post)
+
+        # Priority 3: Fall back to post thumbnail property (low-resolution)
+        if post.thumbnail and post.thumbnail not in ["self", "default", "nsfw", "spoiler"]:
+            if post.thumbnail.startswith("http"):
+                return decode_html_entities_in_url(post.thumbnail)
+            if post.thumbnail.startswith("/"):
+                return decode_html_entities_in_url(f"https://reddit.com{post.thumbnail}")
 
         return None
     except Exception as e:
