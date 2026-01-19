@@ -275,6 +275,19 @@ class FeedAdmin(YanaDjangoQLMixin, ImportExportModelAdmin):
             # Ensure our FKs are in valid_fields if we passed them?
             # They are in the model, so yes.
 
+        # For edit view (not save_as_new), ensure "aggregator" is included in the form
+        # so its value is submitted when "Save as new" is clicked.
+        # The fieldsets use "aggregator_info" (readonly display), but we need the actual
+        # field to preserve the value for "Save as new".
+        if (
+            obj
+            and not is_save_as_new
+            and "fields" in kwargs
+            and kwargs["fields"]
+            and "aggregator" not in kwargs["fields"]
+        ):
+            kwargs["fields"] = ["aggregator"] + list(kwargs["fields"])
+
         form_class = super().get_form(request, obj, **kwargs)
 
         # Get aggregator type from obj or POST data (for "Save as new")
@@ -284,9 +297,19 @@ class FeedAdmin(YanaDjangoQLMixin, ImportExportModelAdmin):
         elif is_save_as_new:
             aggregator_type = request.POST.get("aggregator", "")
 
+        # Capture whether this is edit view for use in RequestForm
+        is_edit_view = obj is not None and not is_save_as_new
+
         class RequestForm(form_class):
             def __init__(self_form, *args, **kwargs):
+                from django import forms as django_forms
+
                 super().__init__(*args, **kwargs)
+
+                # In edit view, make aggregator a hidden field (we display aggregator_info instead)
+                # This ensures the aggregator value is submitted when "Save as new" is clicked
+                if is_edit_view and "aggregator" in self_form.fields:
+                    self_form.fields["aggregator"].widget = django_forms.HiddenInput()
 
                 # Handling for Edit View (obj exists) or "Save as new"
                 if aggregator_type:
