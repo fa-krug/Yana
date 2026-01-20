@@ -15,7 +15,7 @@ class ReadonlyWithHiddenInputWidget(forms.Widget):
     need to submit their value in the form (e.g., for 'Save as new' functionality).
     """
 
-    template_name = None  # We override render() completely
+    template_name = ""  # We override render() completely, no template needed
 
     def __init__(self, display_value="", choices=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -36,8 +36,7 @@ class ReadonlyWithHiddenInputWidget(forms.Widget):
 
         # Render readonly display + hidden input
         return format_html(
-            '<span class="readonly">{}</span>'
-            '<input type="hidden" name="{}" value="{}">',
+            '<span class="readonly">{}</span><input type="hidden" name="{}" value="{}">',
             display_text,
             name,
             value or "",

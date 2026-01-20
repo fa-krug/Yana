@@ -5,8 +5,9 @@ This test module verifies that the 'Save as new' feature in Django admin
 properly preserves feed data when creating a new feed based on an existing one.
 """
 
-import pytest
 from django.urls import reverse
+
+import pytest
 
 from core.models import Feed, FeedGroup
 
@@ -140,8 +141,7 @@ class TestFeedSaveAsNew:
         new_feed = Feed.objects.filter(name="Aggregator Test Feed").first()
         assert new_feed is not None, "New feed was not created."
         assert new_feed.aggregator == test_feed.aggregator, (
-            f"Aggregator mismatch: expected '{test_feed.aggregator}', "
-            f"got '{new_feed.aggregator}'."
+            f"Aggregator mismatch: expected '{test_feed.aggregator}', got '{new_feed.aggregator}'."
         )
 
     def test_save_as_new_preserves_all_fields(self, admin_client, test_feed):

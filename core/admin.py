@@ -290,8 +290,6 @@ class FeedAdmin(YanaDjangoQLMixin, ImportExportModelAdmin):
 
         class RequestForm(form_class):
             def __init__(self_form, *args, **kwargs):
-                from django import forms as django_forms
-
                 from .forms import ReadonlyWithHiddenInputWidget
 
                 super().__init__(*args, **kwargs)
