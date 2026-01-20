@@ -29,7 +29,7 @@ def test_feed(admin_user, test_feed_group):
     """Create a test feed with various options set."""
     return Feed.objects.create(
         name="Original Test Feed",
-        aggregator="rss",
+        aggregator="feed_content",  # Use valid aggregator type from AGGREGATOR_CHOICES
         identifier="https://example.com/feed.xml",
         daily_limit=15,
         enabled=True,
