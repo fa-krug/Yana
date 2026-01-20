@@ -112,6 +112,39 @@ class TestCaschysBlogAggregator(unittest.TestCase):
         self.assertNotIn("image.jpg", processed)
         self.assertIn("Content starts here", processed)
 
+    def test_duplicate_image_removal_wrapped_in_link(self):
+        """Test that images wrapped in links (<p><a><img></a></p>) are also removed."""
+        from core.aggregators.services.header_element.context import HeaderElementData
+        from core.aggregators.utils import extract_main_content
+
+        # This is the actual structure from Caschy's Blog articles
+        html = """
+<div class="entry themeform">
+    <div class="entry-inner">
+        <p><a href="https://stadt-bremerhaven.de/wp-content/uploads/2022/08/Plaion-Logo-scaled.jpg"><img src="https://stadt-bremerhaven.de/wp-content/uploads/2022/08/Plaion-Logo-720x389.jpg" alt="" /></a></p>
+        <p>Content starts here after the image.</p>
+    </div>
+</div>
+"""
+        content = extract_main_content(html, selector=self.aggregator.content_selector)
+
+        article = {
+            "name": "Test Article",
+            "identifier": "https://stadt-bremerhaven.de/test-article/",
+            "header_data": HeaderElementData(
+                image_bytes=b"fake",
+                content_type="image/jpeg",
+                image_url="https://stadt-bremerhaven.de/wp-content/uploads/2022/08/Plaion-Logo.jpg",
+                base64_data_uri="data:image/jpeg;base64,fake",
+            ),
+        }
+
+        processed = self.aggregator.process_content(content, article)
+
+        # Image wrapped in link should be removed (the entire <a> containing <img>)
+        self.assertNotIn("Plaion-Logo", processed)
+        self.assertIn("Content starts here", processed)
+
     @patch("core.aggregators.website.FullWebsiteAggregator.extract_header_element")
     @patch("core.aggregators.website.fetch_html")
     def test_youtube_embed_preservation(self, mock_fetch, mock_header):

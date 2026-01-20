@@ -173,6 +173,18 @@ class CaschysBlogAggregator(FullWebsiteAggregator):
                             found_image = True
                             break
 
+                        # Check for image wrapped in a link: <a><img></a>
+                        if p_child.name == "a":
+                            link_img = p_child.find("img", recursive=False)
+                            if link_img:
+                                self.logger.debug(
+                                    "Removing first image in link (duplicate of header)"
+                                )
+                                # Remove the entire link containing the image
+                                p_child.decompose()
+                                found_image = True
+                            break
+
                         # Skip line breaks
                         if p_child.name == "br":
                             continue
