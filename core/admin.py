@@ -178,10 +178,11 @@ class FeedAdmin(YanaDjangoQLMixin, ImportExportModelAdmin):
         aggregator_type = obj.aggregator if obj else request.POST.get("aggregator", "")
 
         # Edit View: Full fields
-        # For "Save as new", show editable aggregator field; for edit, show readonly info
+        # Always include "aggregator" (not "aggregator_info") so it's part of the form.
+        # In edit view, we'll use a custom widget to show it as readonly + hidden input.
         fields = [
             "name",
-            "aggregator" if is_save_as_new else "aggregator_info",
+            "aggregator",
         ]
 
         try:
@@ -228,13 +229,9 @@ class FeedAdmin(YanaDjangoQLMixin, ImportExportModelAdmin):
         )
 
     def get_readonly_fields(self, request, obj=None):
-        """Make aggregator readonly in edit view, but not for 'Save as new'."""
-        is_save_as_new = "_saveasnew" in request.POST
-
-        # For "Save as new", don't make aggregator readonly since it's a new object
-        if obj and not is_save_as_new:
-            return ["aggregator_info", "created_at", "updated_at"]
-
+        """Return readonly fields for the admin form."""
+        # We no longer use aggregator_info since we use a custom widget for aggregator
+        # that renders both readonly display and hidden input.
         return ["created_at", "updated_at"]
 
     @admin.display(description="Aggregator Type")
@@ -275,18 +272,9 @@ class FeedAdmin(YanaDjangoQLMixin, ImportExportModelAdmin):
             # Ensure our FKs are in valid_fields if we passed them?
             # They are in the model, so yes.
 
-        # For edit view (not save_as_new), ensure "aggregator" is included in the form
-        # so its value is submitted when "Save as new" is clicked.
-        # The fieldsets use "aggregator_info" (readonly display), but we need the actual
-        # field to preserve the value for "Save as new".
-        if (
-            obj
-            and not is_save_as_new
-            and "fields" in kwargs
-            and kwargs["fields"]
-            and "aggregator" not in kwargs["fields"]
-        ):
-            kwargs["fields"] = ["aggregator"] + list(kwargs["fields"])
+        # Note: We used to try adding "aggregator" to kwargs["fields"] here, but
+        # Django calls get_form() with empty kwargs, so that approach doesn't work.
+        # Instead, we add the aggregator field directly in RequestForm.__init__ below.
 
         form_class = super().get_form(request, obj, **kwargs)
 
@@ -302,14 +290,19 @@ class FeedAdmin(YanaDjangoQLMixin, ImportExportModelAdmin):
 
         class RequestForm(form_class):
             def __init__(self_form, *args, **kwargs):
-                from django import forms as django_forms
+                from .forms import ReadonlyWithHiddenInputWidget
 
                 super().__init__(*args, **kwargs)
 
-                # In edit view, make aggregator a hidden field (we display aggregator_info instead)
-                # This ensures the aggregator value is submitted when "Save as new" is clicked
+                # In edit view, make the aggregator field appear readonly while still
+                # including a hidden input for form submission. This is critical for
+                # "Save as new" to work - the aggregator value must be in POST data.
                 if is_edit_view and "aggregator" in self_form.fields:
-                    self_form.fields["aggregator"].widget = django_forms.HiddenInput()
+                    # Get the display label for the current aggregator value
+                    choices = list(self_form.fields["aggregator"].choices)
+                    self_form.fields["aggregator"].widget = ReadonlyWithHiddenInputWidget(
+                        choices=choices,
+                    )
 
                 # Handling for Edit View (obj exists) or "Save as new"
                 if aggregator_type:

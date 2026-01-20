@@ -1,9 +1,46 @@
 """Forms for the application."""
 
 from django import forms
+from django.utils.html import format_html
 
 from .ai_client import AIClient
 from .models import Feed, UserSettings
+
+
+class ReadonlyWithHiddenInputWidget(forms.Widget):
+    """
+    A widget that renders a readonly display value AND a hidden input.
+
+    This is useful for fields that should be displayed as readonly but still
+    need to submit their value in the form (e.g., for 'Save as new' functionality).
+    """
+
+    template_name = ""  # We override render() completely, no template needed
+
+    def __init__(self, display_value="", choices=None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.display_value = display_value
+        self.choices = choices or []
+
+    def render(self, name, value, attrs=None, renderer=None):
+        # Get the display text for the value
+        display_text = self.display_value
+        if not display_text and self.choices:
+            for choice_value, choice_label in self.choices:
+                if choice_value == value:
+                    display_text = choice_label
+                    break
+
+        if not display_text:
+            display_text = value or ""
+
+        # Render readonly display + hidden input
+        return format_html(
+            '<span class="readonly">{}</span><input type="hidden" name="{}" value="{}">',
+            display_text,
+            name,
+            value or "",
+        )
 
 
 class UserSettingsAdminForm(forms.ModelForm):
