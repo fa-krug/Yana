@@ -248,3 +248,150 @@ class TestRedditAuth:
 
         token = get_reddit_access_token(user_with_settings.id)
         assert token == "cached_token"
+
+
+@pytest.mark.django_db
+class TestRedditYouTubeEmbed:
+    """Test YouTube video embedding in Reddit posts."""
+
+    @pytest.fixture
+    def reddit_agg(self, reddit_feed, user_with_settings):
+        return RedditAggregator(reddit_feed)
+
+    def test_strip_youtube_link_from_content(self, reddit_agg):
+        """Test that YouTube links are stripped when embedded in header."""
+        content = """
+        <div>Some text</div>
+        <p><a href="https://www.youtube.com/watch?v=sl2YybDiluQ" target="_blank">▶ View Video on YouTube</a></p>
+        <section>Comments section</section>
+        """
+        youtube_url = "https://www.youtube.com/watch?v=sl2YybDiluQ"
+
+        result = reddit_agg._strip_youtube_link_from_content(content, youtube_url)
+
+        assert "View Video on YouTube" not in result
+        assert "youtube.com/watch" not in result
+        assert "Comments section" in result
+
+    def test_strip_youtube_link_different_format(self, reddit_agg):
+        """Test stripping works with different YouTube URL formats."""
+        content = '<p><a href="https://youtu.be/sl2YybDiluQ">Watch video</a></p>'
+        youtube_url = "https://www.youtube.com/watch?v=sl2YybDiluQ"
+
+        result = reddit_agg._strip_youtube_link_from_content(content, youtube_url)
+
+        # Same video ID should be stripped
+        assert "youtu.be" not in result
+
+    def test_strip_youtube_link_preserves_other_links(self, reddit_agg):
+        """Test that other links are preserved when stripping YouTube link."""
+        content = """
+        <p><a href="https://www.youtube.com/watch?v=abc123def45">Video 1</a></p>
+        <p><a href="https://www.youtube.com/watch?v=xyz789ghi12">Video 2</a></p>
+        <p><a href="https://reddit.com/r/test">Reddit link</a></p>
+        """
+        youtube_url = "https://www.youtube.com/watch?v=abc123def45"
+
+        result = reddit_agg._strip_youtube_link_from_content(content, youtube_url)
+
+        assert "abc123def45" not in result
+        assert "xyz789ghi12" in result  # Different video, should be preserved
+        assert "reddit.com/r/test" in result
+
+    def test_parse_youtube_video_url(self, reddit_agg):
+        """Test that YouTube URLs are detected as video URLs."""
+        from core.aggregators.reddit.types import RedditPost
+
+        post_data = {
+            "data": {
+                "id": "testpost",
+                "title": "YouTube Video Post",
+                "url": "https://www.youtube.com/watch?v=sl2YybDiluQ",
+                "author": "user1",
+                "permalink": "/r/NintendoSwitch/comments/abc123/test/",
+                "created_utc": 1704024000,
+                "num_comments": 50,
+                "is_self": False,
+            }
+        }
+
+        posts = [RedditPost(post_data)]
+        source_data = {"posts": posts, "subreddit": "NintendoSwitch"}
+
+        articles = reddit_agg.parse_to_raw_articles(source_data)
+
+        assert len(articles) == 1
+        assert articles[0]["_reddit_video_url"] == "https://www.youtube.com/watch?v=sl2YybDiluQ"
+
+    def test_parse_youtu_be_video_url(self, reddit_agg):
+        """Test that youtu.be short URLs are detected as video URLs."""
+        from core.aggregators.reddit.types import RedditPost
+
+        post_data = {
+            "data": {
+                "id": "testpost",
+                "title": "YouTube Video Post",
+                "url": "https://youtu.be/sl2YybDiluQ",
+                "author": "user1",
+                "permalink": "/r/NintendoSwitch/comments/abc123/test/",
+                "created_utc": 1704024000,
+                "num_comments": 50,
+                "is_self": False,
+            }
+        }
+
+        posts = [RedditPost(post_data)]
+        source_data = {"posts": posts, "subreddit": "NintendoSwitch"}
+
+        articles = reddit_agg.parse_to_raw_articles(source_data)
+
+        assert len(articles) == 1
+        assert articles[0]["_reddit_video_url"] == "https://youtu.be/sl2YybDiluQ"
+
+
+class TestContentFormatterYouTubeEmbed:
+    """Test YouTube embed in content formatter."""
+
+    def test_format_with_youtube_header(self):
+        """Test that YouTube URLs are rendered as iframe embeds."""
+        from core.aggregators.utils.content_formatter import format_article_content
+
+        result = format_article_content(
+            content="<p>Some content</p>",
+            title="Test Title",
+            url="https://reddit.com/r/test/comments/abc123/",
+            header_image_url="https://www.youtube.com/watch?v=sl2YybDiluQ",
+        )
+
+        # Should have an iframe embed, not an img tag
+        assert "<iframe" in result
+        assert "youtube-embed-container" in result
+        assert '<img src="https://www.youtube.com/watch' not in result
+
+    def test_format_with_regular_image_header(self):
+        """Test that regular images still work as img tags."""
+        from core.aggregators.utils.content_formatter import format_article_content
+
+        result = format_article_content(
+            content="<p>Some content</p>",
+            title="Test Title",
+            url="https://reddit.com/r/test/",
+            header_image_url="https://i.redd.it/example.jpg",
+        )
+
+        assert '<img src="https://i.redd.it/example.jpg"' in result
+        assert "<iframe" not in result
+
+    def test_format_with_youtu_be_header(self):
+        """Test that youtu.be short URLs are also rendered as iframes."""
+        from core.aggregators.utils.content_formatter import format_article_content
+
+        result = format_article_content(
+            content="<p>Some content</p>",
+            title="Test Title",
+            url="https://reddit.com/r/test/",
+            header_image_url="https://youtu.be/sl2YybDiluQ",
+        )
+
+        assert "<iframe" in result
+        assert "youtube-embed-container" in result
