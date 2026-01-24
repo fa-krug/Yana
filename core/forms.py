@@ -7,6 +7,27 @@ from .ai_client import AIClient
 from .models import Feed, UserSettings
 
 
+class TextareaWithCopyButtonWidget(forms.Textarea):
+    """
+    A textarea widget with a copy-to-clipboard button.
+
+    Useful for readonly or large text fields where users might want to
+    copy the content easily.
+    """
+
+    template_name = "admin/widgets/textarea_with_copy.html"
+
+    class Media:
+        css = {"all": ("admin/css/copy_button.css",)}
+        js = ("admin/js/copy_button.js",)
+
+    def __init__(self, attrs=None):
+        default_attrs = {"rows": 10, "cols": 80}
+        if attrs:
+            default_attrs.update(attrs)
+        super().__init__(attrs=default_attrs)
+
+
 class ReadonlyWithHiddenInputWidget(forms.Widget):
     """
     A widget that renders a readonly display value AND a hidden input.
