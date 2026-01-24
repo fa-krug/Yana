@@ -18,7 +18,7 @@
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    padding: 4px 8px;
+    padding: 6px 10px;
     background-color: var(--button-bg, #417690);
     color: var(--button-fg, #fff);
     border: none;
@@ -28,6 +28,11 @@
     font-weight: 500;
     opacity: 0.8;
     transition: opacity 0.2s ease, background-color 0.2s ease;
+    /* Ensure minimum touch target size */
+    min-height: 32px;
+    min-width: 32px;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
 }
 
 .textarea-with-copy-wrapper .copy-button:hover {
@@ -37,11 +42,13 @@
 
 .textarea-with-copy-wrapper .copy-button:active {
     transform: scale(0.98);
+    opacity: 1;
 }
 
 .textarea-with-copy-wrapper .copy-button svg {
     width: 14px;
     height: 14px;
+    flex-shrink: 0;
 }
 
 .textarea-with-copy-wrapper .copy-button.copied {
@@ -50,6 +57,39 @@
 
 .textarea-with-copy-wrapper .copy-button.copied .copy-text::after {
     content: "!";
+}
+
+/* Mobile: larger touch target, icon only */
+@media (max-width: 767px) {
+    .textarea-with-copy-wrapper .copy-button {
+        min-height: 44px;
+        min-width: 44px;
+        padding: 10px;
+        justify-content: center;
+    }
+
+    .textarea-with-copy-wrapper .copy-button .copy-text {
+        display: none;
+    }
+
+    .textarea-with-copy-wrapper .copy-button svg {
+        width: 18px;
+        height: 18px;
+    }
+
+    .textarea-with-copy-wrapper .copy-button.copied::after {
+        content: "";
+        position: absolute;
+        top: -30px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #28a745;
+        color: #fff;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        white-space: nowrap;
+    }
 }
 
 /* Dark mode support */
