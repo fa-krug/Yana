@@ -16,7 +16,7 @@ from django_q.models import Failure, OrmQ, Schedule, Task
 from djangoql.admin import DjangoQLSearchMixin
 from import_export.admin import ImportExportMixin, ImportExportModelAdmin
 
-from .forms import FeedAdminForm, UserSettingsAdminForm
+from .forms import FeedAdminForm, TextareaWithCopyButtonWidget, UserSettingsAdminForm
 from .models import Article, Feed, FeedGroup, RedditSubreddit, UserSettings, YouTubeChannel
 from .services import AggregatorService, ArticleService
 
@@ -491,6 +491,12 @@ class ArticleAdmin(YanaDjangoQLMixin, ImportExportModelAdmin):
         ("Status", {"fields": ("read", "starred")}),
         ("Timestamps", {"fields": ("created_at", "updated_at"), "classes": ("collapse",)}),
     )
+
+    def formfield_for_dbfield(self, db_field, request, **kwargs):
+        """Use TextareaWithCopyButtonWidget for content fields."""
+        if db_field.name in ("content", "raw_content"):
+            kwargs["widget"] = TextareaWithCopyButtonWidget(attrs={"rows": 15, "cols": 80})
+        return super().formfield_for_dbfield(db_field, request, **kwargs)
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
