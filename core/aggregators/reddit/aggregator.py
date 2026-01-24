@@ -16,6 +16,7 @@ from ..exceptions import ArticleSkipError
 from ..services.image_extraction.compression import compress_and_encode_image
 from ..services.image_extraction.fetcher import fetch_single_image
 from ..utils import format_article_content
+from ..utils.youtube import extract_youtube_video_id
 from .auth import (
     get_reddit_auth_headers,
     get_reddit_user_settings,
@@ -363,10 +364,16 @@ class RedditAggregator(BaseAggregator):
             thumbnail_url = extract_thumbnail_url(post_data)
             article_thumbnail_url = header_image_url or thumbnail_url
 
-            # Extract video media URL
+            # Extract video media URL (v.redd.it or YouTube)
             video_url = None
-            if post_data.url and "v.redd.it" in post_data.url:
-                video_url = post_data.url
+            if post_data.url:
+                url_lower = post_data.url.lower()
+                if (
+                    "v.redd.it" in url_lower
+                    or "youtube.com" in url_lower
+                    or "youtu.be" in url_lower
+                ):
+                    video_url = post_data.url
 
             # Convert created_utc to datetime
             post_date = datetime.fromtimestamp(post_data.created_utc, tz=dt_timezone.utc)
@@ -563,32 +570,47 @@ class RedditAggregator(BaseAggregator):
             # Move header image URL to a standard field for process_content
             header_image_url = article.get("_reddit_header_image_url")
 
+            # Check if header is a YouTube URL (will be embedded as iframe, not image)
+            is_youtube_header = header_image_url and extract_youtube_video_id(header_image_url)
+
             # Strip duplicate image from content before inlining header image
             if header_image_url and article.get("content"):
                 article["content"] = self._strip_image_from_content(
                     article["content"], header_image_url
                 )
 
-            if header_image_url:
-                # Fetch and inline header image (user requirement: base64 encoded)
-                try:
-                    # Check if it's already a Data URI or a regular URL
-                    if header_image_url.startswith("http"):
-                        image_data_result = fetch_single_image(header_image_url)
-                        if image_data_result:
-                            # Compress and encode
-                            encoded = compress_and_encode_image(
-                                image_data_result["imageData"],
-                                image_data_result["contentType"],
-                                is_header=True,
-                            )
-                            if encoded:
-                                header_image_url = encoded["dataUri"]
-                except Exception as e:
-                    logger.warning(f"Failed to inline header image for {article.get('name')}: {e}")
-                    # Fallback to original URL if fetching/encoding fails
+            # Strip YouTube link from content if it's being embedded in header
+            if is_youtube_header and header_image_url and article.get("content"):
+                article["content"] = self._strip_youtube_link_from_content(
+                    article["content"], header_image_url
+                )
 
-                article["header_image_url"] = header_image_url
+            if header_image_url:
+                # Skip image fetching for YouTube URLs (they'll be embedded as iframes)
+                if is_youtube_header:
+                    article["header_image_url"] = header_image_url
+                else:
+                    # Fetch and inline header image (user requirement: base64 encoded)
+                    try:
+                        # Check if it's already a Data URI or a regular URL
+                        if header_image_url.startswith("http"):
+                            image_data_result = fetch_single_image(header_image_url)
+                            if image_data_result:
+                                # Compress and encode
+                                encoded = compress_and_encode_image(
+                                    image_data_result["imageData"],
+                                    image_data_result["contentType"],
+                                    is_header=True,
+                                )
+                                if encoded:
+                                    header_image_url = encoded["dataUri"]
+                    except Exception as e:
+                        logger.warning(
+                            f"Failed to inline header image for {article.get('name')}: {e}"
+                        )
+                        # Fallback to original URL if fetching/encoding fails
+
+                    article["header_image_url"] = header_image_url
 
             # Process content with formatting
             content = article.get("content", "")
@@ -653,6 +675,58 @@ class RedditAggregator(BaseAggregator):
 
         except Exception as e:
             logger.warning(f"Error stripping image from content: {e}")
+            return content
+
+    def _strip_youtube_link_from_content(self, content: str, youtube_url: str) -> str:
+        """
+        Strip YouTube link from content when it's being embedded in the header.
+
+        Removes the "View Video on YouTube" link that would be redundant
+        when the video is embedded in the header.
+
+        Args:
+            content: HTML content
+            youtube_url: YouTube URL being embedded in header
+
+        Returns:
+            Modified HTML content
+        """
+        if not content or not youtube_url:
+            return content
+
+        try:
+            soup = BeautifulSoup(content, "html.parser")
+            youtube_video_id = extract_youtube_video_id(youtube_url)
+            if not youtube_video_id:
+                return content
+
+            modified = False
+            for link in soup.find_all("a"):
+                href = link.get("href")
+                if not href or not isinstance(href, str):
+                    continue
+
+                # Check if this link points to the same YouTube video
+                link_video_id = extract_youtube_video_id(href)
+                if link_video_id == youtube_video_id:
+                    # Found duplicate YouTube link, remove it
+                    parent = link.parent
+                    link.decompose()
+                    modified = True
+
+                    # Check if parent is now empty (e.g. <p> wrapper)
+                    if (
+                        parent
+                        and parent.name in ["p", "div"]
+                        and not parent.get_text(strip=True)
+                        and not parent.find_all(["img", "iframe", "video", "a"])
+                    ):
+                        parent.decompose()
+
+            return str(soup) if modified else content
+
+        except Exception as e:
+            logger.warning(f"Error stripping YouTube link from content: {e}")
             return content
 
     def fetch_article_content(self, url: str) -> str:
