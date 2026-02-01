@@ -81,8 +81,8 @@ def remove_empty_elements(soup: Union[BeautifulSoup, Tag], tags: List[str]) -> N
     """
     for tag_name in tags:
         for elem in soup.find_all(tag_name):
-            # Check if empty (no text and no images)
-            if not elem.get_text(strip=True) and not elem.find("img"):
+            # Check if empty (no text and no media elements)
+            if not elem.get_text(strip=True) and not elem.find(["img", "iframe", "video"]):
                 elem.decompose()
 
 
