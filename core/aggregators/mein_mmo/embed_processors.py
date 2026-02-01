@@ -198,6 +198,64 @@ class RedditEmbedProcessor(EmbedProcessorStrategy):
         return p
 
 
+class TikTokEmbedProcessor(EmbedProcessorStrategy):
+    """Process TikTok embed figures."""
+
+    TIKTOK_EMBED_URL = "https://www.tiktok.com/embed/v3/"
+
+    def can_handle(self, figure: Tag) -> bool:
+        class_str = get_attr_str(figure, "class")
+        sanitized_class = get_attr_str(figure, "data-sanitized-class")
+
+        return any(
+            keyword in class_str or keyword in sanitized_class
+            for keyword in ["wp-block-embed-tiktok", "is-provider-tiktok", "embed-tiktok"]
+        )
+
+    def process(self, figure: Tag, soup: BeautifulSoup, logger: logging.Logger) -> Optional[Tag]:
+        # Extract video ID from TikTok link
+        video_id = self._extract_video_id(figure)
+
+        if not video_id:
+            return None
+
+        # Create iframe embed
+        iframe = soup.new_tag(
+            "iframe",
+            src=f"{self.TIKTOK_EMBED_URL}{video_id}",
+            width="325",
+            height="605",
+            frameborder="0",
+            allow="autoplay; encrypted-media",
+            allowfullscreen="true",
+        )
+
+        # Wrap in div
+        wrapper = soup.new_tag("div")
+        wrapper["data-sanitized-class"] = "tiktok-embed"
+        wrapper.append(iframe)
+
+        # Add caption if present
+        figcaption = figure.find("figcaption")
+        if figcaption:
+            caption = soup.new_tag("p")
+            caption.string = figcaption.get_text(strip=True)
+            wrapper.append(caption)
+
+        logger.debug(f"Converted TikTok embed to iframe: {video_id}")
+        return wrapper
+
+    def _extract_video_id(self, figure: Tag) -> Optional[str]:
+        """Extract TikTok video ID from figure."""
+        for link in figure.find_all("a", href=True):
+            href = get_attr_str(link, "href")
+            if "tiktok.com" in href:
+                match = re.search(r"/video/(\d+)", href)
+                if match:
+                    return match.group(1)
+        return None
+
+
 class YouTubeFallbackProcessor(EmbedProcessorStrategy):
     """Fallback processor for YouTube links without specific class markers."""
 
@@ -273,6 +331,7 @@ def process_embeds(content: Tag, logger: logging.Logger) -> None:
         YouTubeEmbedProcessor(),
         TwitterEmbedProcessor(),
         RedditEmbedProcessor(),
+        TikTokEmbedProcessor(),
         YouTubeFallbackProcessor(),  # Fallback for YouTube links
     ]
 
