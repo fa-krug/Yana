@@ -157,3 +157,116 @@ def get_first_tweet_image(data: Dict[str, Any]) -> Optional[str]:
     """
     images = extract_image_urls_from_tweet(data)
     return images[0] if images else None
+
+
+def build_tweet_embed_html(url: str) -> Optional[str]:
+    """
+    Build a rich HTML embed for a Twitter/X post.
+
+    Fetches tweet data from fxtwitter API and renders it as a styled blockquote
+    with author info, tweet text, images, and engagement stats.
+
+    Args:
+        url: Twitter/X URL
+
+    Returns:
+        HTML string with the tweet embed, or None if fetching failed
+    """
+    tweet_id = extract_tweet_id(url)
+    if not tweet_id:
+        return None
+
+    data = fetch_tweet_data(tweet_id)
+    if not data:
+        return None
+
+    tweet = data.get("tweet", {})
+    if not tweet:
+        return None
+
+    # Extract tweet fields
+    text = tweet.get("text", "")
+    author = tweet.get("author", {})
+    author_name = author.get("name", "")
+    screen_name = author.get("screen_name", "")
+    likes = tweet.get("likes", 0)
+    retweets = tweet.get("retweets", 0)
+    created_at = tweet.get("created_at", "")
+
+    # Clean URL (remove tracking params)
+    clean_url = url.split("?")[0]
+
+    # Build HTML parts
+    parts = [
+        '<blockquote style="border-left: 3px solid #1d9bf0; padding: 12px 16px;'
+        ' margin: 1em 0; background: #f7f9fa;">',
+    ]
+
+    # Author line
+    author_display = f"@{screen_name}" if screen_name else author_name
+    parts.append(
+        f'<p style="margin: 0 0 8px 0;">'
+        f"<strong>{_escape(author_display)}</strong> · "
+        f'<a href="{clean_url}" target="_blank" rel="noopener">View on X</a>'
+        f"</p>"
+    )
+
+    # Tweet text
+    if text:
+        parts.append(f'<p style="margin: 0 0 8px 0;">{_escape(text)}</p>')
+
+    # Images
+    image_urls = extract_image_urls_from_tweet(data)
+    for img_url in image_urls:
+        parts.append(
+            f'<p><img src="{img_url}" alt="Tweet image"'
+            f' style="max-width: 100%; border-radius: 8px;"></p>'
+        )
+
+    # Engagement stats and date
+    stats_parts = []
+    if likes:
+        stats_parts.append(f"&#9829; {_format_count(likes)}")
+    if retweets:
+        stats_parts.append(f"&#128257; {_format_count(retweets)}")
+    if created_at:
+        formatted_date = _format_tweet_date(created_at)
+        if formatted_date:
+            stats_parts.append(formatted_date)
+
+    if stats_parts:
+        stats_str = " · ".join(stats_parts)
+        parts.append(f'<p style="margin: 0; color: #536471; font-size: 0.9em;">{stats_str}</p>')
+
+    parts.append("</blockquote>")
+
+    logger.debug(f"Built tweet embed for {tweet_id} by @{screen_name}")
+    return "\n".join(parts)
+
+
+def _escape(text: str) -> str:
+    """Escape HTML special characters."""
+    return (
+        text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
+    )
+
+
+def _format_count(count: int) -> str:
+    """Format a number for display (e.g. 1234 -> '1.2K')."""
+    if count >= 1_000_000:
+        return f"{count / 1_000_000:.1f}M"
+    if count >= 1_000:
+        return f"{count / 1_000:.1f}K"
+    return str(count)
+
+
+def _format_tweet_date(created_at: str) -> Optional[str]:
+    """Format fxtwitter date string for display."""
+    try:
+        # fxtwitter returns dates like "Wed Jan 15 12:34:56 +0000 2026"
+        from datetime import datetime
+
+        dt = datetime.strptime(created_at, "%a %b %d %H:%M:%S %z %Y")
+        return dt.strftime("%b %d, %Y")
+    except (ValueError, TypeError):
+        return None

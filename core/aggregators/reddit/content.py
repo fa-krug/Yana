@@ -162,6 +162,20 @@ def _process_link_media(post: RedditPostData, url: str, content_parts: List[str]
         )
         return True
 
+    # Handle Twitter/X links
+    if "twitter.com" in url_lower or "x.com" in url_lower:
+        from ..utils.twitter import build_tweet_embed_html
+
+        embed_html = build_tweet_embed_html(url)
+        if embed_html:
+            content_parts.append(embed_html)
+        else:
+            # Fallback to plain link if API fetch fails
+            content_parts.append(
+                f'<p><a href="{url}" target="_blank" rel="noopener">View on X/Twitter</a></p>'
+            )
+        return True
+
     return False
 
 
