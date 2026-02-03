@@ -159,3 +159,6 @@ ngsw-state.json
 # Django media and staticfiles
 media/
 staticfiles/
+
+# Git worktrees
+.worktrees/
