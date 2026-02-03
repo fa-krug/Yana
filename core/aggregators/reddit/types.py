@@ -1,6 +1,11 @@
 """Reddit type definitions."""
 
-from typing import Any, Dict
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any, Dict
+
+if TYPE_CHECKING:
+    from praw.models import Comment, Submission
 
 
 class RedditPostData:
@@ -26,6 +31,45 @@ class RedditPostData:
         self.is_video = data.get("is_video", False)
         self.media = data.get("media")
         self.crosspost_parent_list = data.get("crosspost_parent_list")
+
+    @classmethod
+    def from_praw(cls, submission: Submission) -> RedditPostData:
+        """Convert PRAW Submission to RedditPostData.
+
+        Args:
+            submission: A PRAW Submission object.
+
+        Returns:
+            A RedditPostData instance with data from the submission.
+        """
+        # Handle deleted authors - submission.author is None for deleted posts
+        author = "[deleted]"
+        if submission.author is not None:
+            author = submission.author.name
+
+        return cls(
+            {
+                "id": submission.id,
+                "title": submission.title,
+                "author": author,
+                "selftext": submission.selftext,
+                "selftext_html": submission.selftext_html,
+                "url": submission.url,
+                "permalink": submission.permalink,
+                "created_utc": submission.created_utc,
+                "score": submission.score,
+                "num_comments": submission.num_comments,
+                "is_self": submission.is_self,
+                "is_video": submission.is_video,
+                "is_gallery": getattr(submission, "is_gallery", False),
+                "thumbnail": submission.thumbnail,
+                "preview": getattr(submission, "preview", None),
+                "media": submission.media,
+                "media_metadata": getattr(submission, "media_metadata", None),
+                "gallery_data": getattr(submission, "gallery_data", None),
+                "crosspost_parent_list": getattr(submission, "crosspost_parent_list", None),
+            }
+        )
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary."""
@@ -71,3 +115,33 @@ class RedditComment:
         self.permalink = data.get("permalink", "")
         self.created_utc = data.get("created_utc", 0)
         self.replies = data.get("replies")
+
+    @classmethod
+    def from_praw(cls, comment: Comment) -> RedditComment:
+        """Convert PRAW Comment to RedditComment.
+
+        Args:
+            comment: A PRAW Comment object.
+
+        Returns:
+            A RedditComment instance with data from the comment.
+        """
+        # Handle deleted authors - comment.author is None for deleted comments
+        author = "[deleted]"
+        if comment.author is not None:
+            author = comment.author.name
+
+        return cls(
+            {
+                "id": comment.id,
+                "body": comment.body,
+                "body_html": comment.body_html,
+                "author": author,
+                "score": comment.score,
+                "permalink": comment.permalink,
+                "created_utc": comment.created_utc,
+                # PRAW comments have a replies attribute that is a CommentForest
+                # We store None here since replies are handled separately
+                "replies": None,
+            }
+        )
