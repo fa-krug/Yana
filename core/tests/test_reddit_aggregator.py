@@ -1,11 +1,9 @@
-import time
 from unittest.mock import MagicMock, patch
 
 import pytest
 import requests
 
 from core.aggregators.reddit.aggregator import RedditAggregator
-from core.aggregators.reddit.auth import _token_cache, get_reddit_access_token
 
 
 @pytest.mark.django_db
@@ -221,33 +219,109 @@ class TestRedditAuth:
         assert settings["reddit_enabled"] is True
         assert settings["reddit_client_id"] == "test_client_id"
 
-    @patch("core.aggregators.reddit.auth.requests.post")
-    def test_get_reddit_access_token_success(self, mock_post, user_with_settings):
-        # Clear cache
-        _token_cache.clear()
+    def test_get_reddit_user_settings_creates_defaults(self, user):
+        """Test that get_reddit_user_settings creates defaults for new users."""
+        from core.aggregators.reddit.auth import get_reddit_user_settings
 
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "access_token": "new_token",
-            "token_type": "bearer",
-            "expires_in": 3600,
-        }
-        mock_post.return_value = mock_response
+        settings = get_reddit_user_settings(user.id)
+        assert settings["reddit_enabled"] is False
+        assert settings["reddit_client_id"] == ""
+        assert settings["reddit_client_secret"] == ""
+        assert settings["reddit_user_agent"] == "Yana/1.0"
 
-        token = get_reddit_access_token(user_with_settings.id)
+    def test_get_reddit_user_settings_nonexistent_user(self):
+        """Test that get_reddit_user_settings raises for nonexistent user."""
+        from core.aggregators.reddit.auth import get_reddit_user_settings
 
-        assert token == "new_token"
-        assert user_with_settings.id in _token_cache
+        with pytest.raises(ValueError, match="User with id 99999 does not exist"):
+            get_reddit_user_settings(99999)
 
-    def test_get_reddit_access_token_cache(self, user_with_settings):
-        _token_cache[user_with_settings.id] = {
-            "token": "cached_token",
-            "expires_at": time.time() + 1000,
-        }
+    @patch("core.aggregators.reddit.auth.praw.Reddit")
+    def test_get_praw_instance_success(self, mock_reddit_class, user_with_settings):
+        """Test successful PRAW instance creation."""
+        from core.aggregators.reddit.auth import get_praw_instance
 
-        token = get_reddit_access_token(user_with_settings.id)
-        assert token == "cached_token"
+        mock_reddit_instance = MagicMock()
+        mock_reddit_class.return_value = mock_reddit_instance
+
+        result = get_praw_instance(user_with_settings.id)
+
+        assert result == mock_reddit_instance
+        mock_reddit_class.assert_called_once_with(
+            client_id="test_client_id",
+            client_secret="test_client_secret",
+            user_agent="Yana/1.0",
+        )
+
+    def test_get_praw_instance_reddit_not_enabled(self, user):
+        """Test that get_praw_instance raises when Reddit is not enabled."""
+        from core.aggregators.reddit.auth import get_praw_instance
+        from core.models import UserSettings
+
+        UserSettings.objects.create(
+            user=user,
+            reddit_enabled=False,
+            reddit_client_id="test_id",
+            reddit_client_secret="test_secret",
+        )
+
+        with pytest.raises(ValueError, match="Reddit is not enabled"):
+            get_praw_instance(user.id)
+
+    def test_get_praw_instance_missing_client_id(self, user):
+        """Test that get_praw_instance raises when client_id is missing."""
+        from core.aggregators.reddit.auth import get_praw_instance
+        from core.models import UserSettings
+
+        UserSettings.objects.create(
+            user=user,
+            reddit_enabled=True,
+            reddit_client_id="",
+            reddit_client_secret="test_secret",
+        )
+
+        with pytest.raises(ValueError, match="Reddit API credentials not configured"):
+            get_praw_instance(user.id)
+
+    def test_get_praw_instance_missing_client_secret(self, user):
+        """Test that get_praw_instance raises when client_secret is missing."""
+        from core.aggregators.reddit.auth import get_praw_instance
+        from core.models import UserSettings
+
+        UserSettings.objects.create(
+            user=user,
+            reddit_enabled=True,
+            reddit_client_id="test_id",
+            reddit_client_secret="",
+        )
+
+        with pytest.raises(ValueError, match="Reddit API credentials not configured"):
+            get_praw_instance(user.id)
+
+    @patch("core.aggregators.reddit.auth.praw.Reddit")
+    def test_get_praw_instance_custom_user_agent(self, mock_reddit_class, user):
+        """Test that custom user agent is passed to PRAW."""
+        from core.aggregators.reddit.auth import get_praw_instance
+        from core.models import UserSettings
+
+        UserSettings.objects.create(
+            user=user,
+            reddit_enabled=True,
+            reddit_client_id="test_id",
+            reddit_client_secret="test_secret",
+            reddit_user_agent="CustomApp/2.0",
+        )
+
+        mock_reddit_instance = MagicMock()
+        mock_reddit_class.return_value = mock_reddit_instance
+
+        get_praw_instance(user.id)
+
+        mock_reddit_class.assert_called_once_with(
+            client_id="test_id",
+            client_secret="test_secret",
+            user_agent="CustomApp/2.0",
+        )
 
 
 @pytest.mark.django_db
