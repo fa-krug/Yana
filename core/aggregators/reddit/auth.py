@@ -84,31 +84,3 @@ def get_praw_instance(user_id: int) -> praw.Reddit:
         client_secret=client_secret,
         user_agent=settings.get("reddit_user_agent", "Yana/1.0"),
     )
-
-
-# Deprecated functions - kept temporarily for import compatibility
-# These will be removed once all consumers are migrated to use get_praw_instance()
-
-
-def get_reddit_auth_headers(user_id: int) -> Dict[str, str]:
-    """
-    DEPRECATED: Use get_praw_instance() instead.
-
-    This function is no longer available. PRAW handles authentication automatically.
-    """
-    raise NotImplementedError(
-        "get_reddit_auth_headers() has been removed. Use get_praw_instance() instead. "
-        "PRAW handles authentication automatically."
-    )
-
-
-def get_reddit_access_token(user_id: int) -> str:
-    """
-    DEPRECATED: Use get_praw_instance() instead.
-
-    This function is no longer available. PRAW handles token management automatically.
-    """
-    raise NotImplementedError(
-        "get_reddit_access_token() has been removed. Use get_praw_instance() instead. "
-        "PRAW handles token management automatically."
-    )
