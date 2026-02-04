@@ -37,7 +37,7 @@ logger = logging.getLogger(__name__)
 
 
 class RedditAggregator(BaseAggregator):
-    """Aggregator for Reddit subreddits using Reddit's OAuth2 API."""
+    """Aggregator for Reddit subreddits using PRAW."""
 
     identifier_field = "reddit_subreddit"
     supports_identifier_search = True
