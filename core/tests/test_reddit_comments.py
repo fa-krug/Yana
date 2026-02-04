@@ -44,6 +44,9 @@ def _make_mock_comment(
 def _make_mock_submission_with_comments(comments):
     """Create a mock PRAW Submission with a comment forest.
 
+    Mocks iteration on submission.comments to return top-level comments only,
+    matching PRAW's CommentForest behavior (direct iteration = top-level only).
+
     Args:
         comments: List of mock PRAW Comment objects
     """
@@ -51,7 +54,8 @@ def _make_mock_submission_with_comments(comments):
     mock_submission.id = "abc123"
     mock_submission.comment_sort = "best"
     mock_submission.comments.replace_more.return_value = []
-    mock_submission.comments.list.return_value = comments
+    # Direct iteration on CommentForest yields only top-level comments
+    mock_submission.comments.__iter__ = MagicMock(return_value=iter(comments))
     return mock_submission
 
 
@@ -184,6 +188,28 @@ class TestFetchPostComments:
         fetch_post_comments("python", "abc123", comment_limit=5, user_id=1)
 
         mock_submission.comments.replace_more.assert_called_once_with(limit=0)
+
+    @patch("core.aggregators.reddit.comments.get_praw_instance")
+    def test_iterates_top_level_comments_not_list(self, mock_get_praw):
+        """Test that submission.comments is iterated directly, not .list().
+
+        Direct iteration on CommentForest yields only top-level comments,
+        while .list() flattens the entire tree including nested replies.
+        """
+        mock_comments = [
+            _make_mock_comment(comment_id="c1", body="Top-level comment", score=10),
+        ]
+        mock_submission = _make_mock_submission_with_comments(mock_comments)
+        mock_reddit = MagicMock()
+        mock_reddit.submission.return_value = mock_submission
+        mock_get_praw.return_value = mock_reddit
+
+        fetch_post_comments("python", "abc123", comment_limit=10, user_id=1)
+
+        # Verify direct iteration was used (via __iter__)
+        mock_submission.comments.__iter__.assert_called_once()
+        # Verify .list() was NOT called (it would flatten the tree)
+        mock_submission.comments.list.assert_not_called()
 
     @patch("core.aggregators.reddit.comments.get_praw_instance")
     def test_filters_deleted_comments(self, mock_get_praw):

@@ -98,8 +98,9 @@ def fetch_post_comments(
         submission.comment_sort = "best"
         submission.comments.replace_more(limit=0)  # Skip "load more" links
 
-        # Get top-level comments and convert to RedditComment
-        raw_comments = submission.comments.list()
+        # Get top-level comments only (iterating CommentForest directly, not .list()
+        # which would flatten the entire tree including nested replies)
+        raw_comments = list(submission.comments)
         comments = [RedditComment.from_praw(c) for c in raw_comments]
 
         # Filter out deleted/removed comments and bots
