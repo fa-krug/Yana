@@ -3,11 +3,10 @@
 import logging
 from typing import List
 
-import requests
+import prawcore.exceptions
 
 from ..exceptions import ArticleSkipError
-from ..utils.http_errors import is_4xx_error
-from .auth import get_reddit_access_token
+from .auth import get_praw_instance
 from .markdown import convert_reddit_markdown, escape_html
 from .types import RedditComment
 
@@ -36,14 +35,53 @@ def format_comment_html(comment: RedditComment) -> str:
 """
 
 
+def _is_bot_account(author: str) -> bool:
+    """
+    Check if an author name belongs to a known bot account.
+
+    Args:
+        author: Reddit username
+
+    Returns:
+        True if the account is likely a bot
+    """
+    author_lower = author.lower()
+    return (
+        author_lower.endswith("_bot")
+        or author_lower.endswith("-bot")
+        or author_lower == "automoderator"
+    )
+
+
+def _is_valid_comment(comment: RedditComment) -> bool:
+    """
+    Check if a comment should be included (not deleted/removed and not a bot).
+
+    Args:
+        comment: RedditComment instance
+
+    Returns:
+        True if comment should be included
+    """
+    # Skip deleted or removed comments
+    if not comment.body or comment.body in ("[deleted]", "[removed]"):
+        return False
+
+    # Skip bot accounts
+    return bool(comment.author) and not _is_bot_account(comment.author)
+
+
 def fetch_post_comments(
     subreddit: str, post_id: str, comment_limit: int, user_id: int
 ) -> List[RedditComment]:
     """
-    Fetch comments for a Reddit post.
+    Fetch comments for a Reddit post using PRAW.
+
+    Uses PRAW to fetch top-level comments from a submission, filters out bots
+    and deleted/removed comments, sorts by score, and returns up to comment_limit.
 
     Args:
-        subreddit: Subreddit name
+        subreddit: Subreddit name (unused with PRAW but kept for API compatibility)
         post_id: Post ID
         comment_limit: Maximum number of comments to return
         user_id: User ID for authentication
@@ -52,72 +90,42 @@ def fetch_post_comments(
         List of RedditComment instances
 
     Raises:
-        ArticleSkipError: On 4xx HTTP errors (article should be skipped)
+        ArticleSkipError: On Forbidden (403) or NotFound (404) errors
     """
     try:
-        access_token = get_reddit_access_token(user_id)
-        url = f"https://oauth.reddit.com/r/{subreddit}/comments/{post_id}"
-        response = requests.get(
-            url,
-            params={"sort": "best"},
-            headers={"Authorization": f"Bearer {access_token}"},
-            timeout=10,
-        )
-        response.raise_for_status()
+        reddit = get_praw_instance(user_id)
+        submission = reddit.submission(id=post_id)
+        submission.comment_sort = "best"
+        submission.comments.replace_more(limit=0)  # Skip "load more" links
 
-        # Reddit comments API returns an array with two items:
-        # [0] = post data
-        # [1] = comments data
-        json_data = response.json()
-        if not isinstance(json_data, list) or len(json_data) < 2:
-            return []
+        # Get top-level comments and convert to RedditComment
+        raw_comments = submission.comments.list()
+        comments = [RedditComment.from_praw(c) for c in raw_comments]
 
-        comments_data = json_data[1]
-        if not comments_data.get("data", {}).get("children"):
-            return []
+        # Filter out deleted/removed comments and bots
+        filtered = [c for c in comments if _is_valid_comment(c)]
 
-        # Collect only top-level comments (direct replies to the post, not nested replies)
-        top_level_comments = []
-        for comment_item in comments_data["data"]["children"]:
-            if comment_item.get("kind") != "t1":
-                continue
-
-            comment_data = comment_item.get("data", {})
-            if (
-                comment_data.get("body")
-                and comment_data.get("body") != "[deleted]"
-                and comment_data.get("body") != "[removed]"
-            ):
-                top_level_comments.append(RedditComment(comment_data))
-
-        # Sort by score (descending) and filter out bots
-        filtered = [
-            c
-            for c in top_level_comments
-            if c.author
-            and not c.author.lower().endswith("_bot")
-            and not c.author.lower().endswith("-bot")
-            and c.author.lower() != "automoderator"
-        ]
+        # Sort by score descending
         filtered.sort(key=lambda c: c.score or 0, reverse=True)
 
-        # Get more than needed to account for filtering, then slice
-        return filtered[: comment_limit * 2][:comment_limit]
+        return filtered[:comment_limit]
 
-    except requests.exceptions.HTTPError as e:
-        # Check for 4xx errors - skip article on client errors
-        status_code = is_4xx_error(e)
-        if status_code is not None:
-            logger.warning(
-                f"4xx error fetching Reddit comments for r/{subreddit}/{post_id}, skipping article: {status_code}"
-            )
-            raise ArticleSkipError(
-                f"Failed to fetch Reddit comments: {status_code} {str(e)}",
-                status_code=status_code,
-                original_error=e,
-            ) from e
-        logger.warning(f"Error fetching Reddit comments for r/{subreddit}/{post_id}: {e}")
-        return []
+    except prawcore.exceptions.Forbidden as e:
+        logger.warning(f"Access forbidden to post {post_id}")
+        raise ArticleSkipError(
+            "Post is private or removed",
+            status_code=403,
+            original_error=e,
+        ) from e
+    except prawcore.exceptions.NotFound as e:
+        logger.warning(f"Post {post_id} not found")
+        raise ArticleSkipError(
+            "Post not found",
+            status_code=404,
+            original_error=e,
+        ) from e
+    except ArticleSkipError:
+        raise
     except Exception as e:
-        logger.warning(f"Error fetching Reddit comments for r/{subreddit}/{post_id}: {e}")
-        return []
+        logger.warning(f"Error fetching comments for post {post_id}: {e}")
+        return []  # Graceful degradation - article without comments
