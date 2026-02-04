@@ -8,7 +8,8 @@ from urllib.parse import urlparse
 
 from django.utils import timezone
 
-import requests
+import praw.exceptions
+import prawcore.exceptions
 from bs4 import BeautifulSoup
 
 from ..base import BaseAggregator
@@ -18,13 +19,13 @@ from ..services.image_extraction.fetcher import fetch_single_image
 from ..utils import format_article_content
 from ..utils.youtube import extract_youtube_video_id
 from .auth import (
-    get_reddit_auth_headers,
+    get_praw_instance,
     get_reddit_user_settings,
 )
 from .content import build_post_content
 from .images import extract_header_image_url, extract_thumbnail_url
 from .posts import fetch_reddit_post
-from .types import RedditPost, RedditPostData
+from .types import RedditPostData
 from .urls import (
     extract_post_info_from_url,
     fetch_subreddit_info,
@@ -62,7 +63,7 @@ class RedditAggregator(BaseAggregator):
         cls, query: Optional[str] = None, user: Optional[Any] = None
     ) -> List[tuple]:
         """
-        Search for subreddits via Reddit API.
+        Search for subreddits via PRAW.
         """
         if not query or not user or not user.is_authenticated:
             return []
@@ -73,32 +74,18 @@ class RedditAggregator(BaseAggregator):
             if not settings.get("reddit_enabled"):
                 return []
 
-            headers = get_reddit_auth_headers(user.id)
-
-            url = "https://oauth.reddit.com/subreddits/search"
-            response = requests.get(
-                url,
-                params={"q": str(query), "limit": "10", "include_over_18": "on"},
-                headers=headers,
-                timeout=5,
-            )
-            response.raise_for_status()
-
-            data = response.json()
-            children = data.get("data", {}).get("children", [])
+            reddit = get_praw_instance(user.id)
+            results = reddit.subreddits.search(query, limit=10)
 
             choices = []
-            for child in children:
-                data = child.get("data", {})
-                display_name = data.get("display_name_prefixed", "")  # e.g. r/python
-                title = data.get("title", "")
-                subscribers = data.get("subscribers", 0)
+            for sub in results:
+                display_name = sub.display_name or ""
+                display_name_prefixed = sub.display_name_prefixed or ""
+                title = sub.title or ""
+                subscribers = sub.subscribers or 0
 
-                # Value is the subreddit name (e.g. "python")
-                value = data.get("display_name", "")
-
-                label = f"{display_name}: {title} ({subscribers:,} subs)"
-                choices.append((value, label))
+                label = f"{display_name_prefixed}: {title} ({subscribers:,} subs)"
+                choices.append((display_name, label))
 
             return choices
 
@@ -254,14 +241,18 @@ class RedditAggregator(BaseAggregator):
 
     def fetch_source_data(self, limit: Optional[int] = None) -> Dict[str, Any]:
         """
-        Fetch Reddit posts from API.
+        Fetch Reddit posts via PRAW.
 
         Args:
             limit: Optional limit on number of posts to fetch
 
         Returns:
-            Dict with 'posts', 'subreddit', and 'subredditInfo' keys
+            Dict with 'posts', 'subreddit', and 'subredditInfo' keys.
+            Each post in 'posts' is a SimpleNamespace with a .data attribute
+            containing a RedditPostData instance (compatible with parse_to_raw_articles).
         """
+        from types import SimpleNamespace
+
         if not self.feed or not self.feed.user:
             raise ValueError("Feed not initialized or missing user")
 
@@ -287,22 +278,15 @@ class RedditAggregator(BaseAggregator):
         fetch_limit = min(desired_article_count * 3, 100)
 
         try:
-            # Get authentication headers (Bearer token + User-Agent)
-            headers = get_reddit_auth_headers(user_id)
+            reddit = get_praw_instance(user_id)
+            subreddit_obj = reddit.subreddit(subreddit)
 
-            # Fetch posts from Reddit OAuth API
-            url = f"https://oauth.reddit.com/r/{subreddit}/{sort_by}"
-            response = requests.get(
-                url,
-                params={"limit": fetch_limit},
-                headers=headers,
-                timeout=30,
-            )
-            response.raise_for_status()
+            # Fetch posts using the configured sort method
+            submissions = list(getattr(subreddit_obj, sort_by)(limit=fetch_limit))
 
-            data = response.json()
-            posts_data = data.get("data", {}).get("children", [])
-            posts = [RedditPost(post_item) for post_item in posts_data]
+            # Convert PRAW submissions to RedditPostData and wrap for
+            # compatibility with parse_to_raw_articles (which expects post.data)
+            posts = [SimpleNamespace(data=RedditPostData.from_praw(s)) for s in submissions]
 
             logger.info(f"Reddit posts fetched: {len(posts)} posts from r/{subreddit}")
 
@@ -312,12 +296,14 @@ class RedditAggregator(BaseAggregator):
                 "subredditInfo": subreddit_info,
             }
 
-        except requests.exceptions.HTTPError as e:
-            if e.response.status_code == 404:
-                raise ValueError(f"Subreddit 'r/{subreddit}' does not exist or is private.") from e
-            if e.response.status_code == 403:
-                raise ValueError(f"Subreddit 'r/{subreddit}' is private or banned.") from e
-            raise ValueError(f"Error fetching Reddit posts: {e}") from e
+        except prawcore.exceptions.Forbidden as e:
+            raise ValueError(f"Subreddit 'r/{subreddit}' is private or banned.") from e
+        except prawcore.exceptions.NotFound as e:
+            raise ValueError(f"Subreddit 'r/{subreddit}' does not exist.") from e
+        except praw.exceptions.RedditAPIException as e:
+            raise ValueError("Reddit rate limit exceeded.") from e
+        except prawcore.exceptions.RequestException as e:
+            raise ValueError("Failed to connect to Reddit.") from e
         except Exception as e:
             logger.error(f"Error fetching Reddit posts: {e}")
             raise
