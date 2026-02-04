@@ -5,9 +5,9 @@ import logging
 import re
 from typing import Any, Dict, Optional
 
-import requests
+import prawcore.exceptions
 
-from .auth import get_reddit_auth_headers
+from .auth import get_praw_instance
 
 logger = logging.getLogger(__name__)
 
@@ -125,7 +125,7 @@ def validate_subreddit(subreddit: str) -> Dict[str, Any]:
 
 def fetch_subreddit_info(subreddit: str, user_id: int) -> Dict[str, Optional[str]]:
     """
-    Fetch subreddit information including icon.
+    Fetch subreddit information including icon using PRAW.
 
     Args:
         subreddit: Subreddit name (without /r/)
@@ -135,24 +135,13 @@ def fetch_subreddit_info(subreddit: str, user_id: int) -> Dict[str, Optional[str
         Dict with 'iconUrl' key
     """
     try:
-        headers = get_reddit_auth_headers(user_id)
-        url = f"https://oauth.reddit.com/r/{subreddit}/about"
-        response = requests.get(
-            url,
-            headers=headers,
-            timeout=10,
-        )
-        response.raise_for_status()
-
-        data = response.json()
-        subreddit_data = data.get("data", {})
+        reddit = get_praw_instance(user_id)
+        sub = reddit.subreddit(subreddit)
 
         # Try multiple fields for icon in order of preference
-        raw_icon_url = (
-            subreddit_data.get("icon_img")
-            or subreddit_data.get("community_icon")
-            or subreddit_data.get("header_img")
-        )
+        # Access .icon_img first; PRAW lazily fetches subreddit data on attribute access
+        raw_icon_url = sub.icon_img or sub.community_icon or getattr(sub, "header_img", None)
+
         icon_url = None
         if raw_icon_url:
             icon_url = fix_reddit_media_url(raw_icon_url)
@@ -161,6 +150,14 @@ def fetch_subreddit_info(subreddit: str, user_id: int) -> Dict[str, Optional[str
             logger.debug(f"Fetched subreddit icon for r/{subreddit}: {icon_url}")
 
         return {"iconUrl": icon_url}
+
+    except prawcore.exceptions.NotFound:
+        logger.warning(f"Subreddit r/{subreddit} not found")
+        return {"iconUrl": None}
+
+    except prawcore.exceptions.Forbidden:
+        logger.warning(f"Subreddit r/{subreddit} is private or banned")
+        return {"iconUrl": None}
 
     except Exception as e:
         logger.warning(f"Failed to fetch subreddit info for r/{subreddit}: {e}")
