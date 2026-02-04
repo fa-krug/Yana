@@ -1,4 +1,5 @@
 import logging
+import time
 from typing import Optional
 
 import requests
@@ -10,6 +11,34 @@ class AIClient:
     def __init__(self, settings):
         self.settings = settings
         self.provider = settings.active_ai_provider
+
+    def _request_with_retry(self, url, headers, data, timeout):
+        """POST request with retry on 429 (rate limit) using exponential backoff."""
+        max_retries = getattr(self.settings, "ai_max_retries", 3)
+        retry_delay = getattr(self.settings, "ai_retry_delay", 2)
+
+        response = None
+        last_exception = None
+
+        for attempt in range(1 + max_retries):
+            response = requests.post(url, headers=headers, json=data, timeout=timeout)
+            try:
+                response.raise_for_status()
+                return response
+            except requests.exceptions.HTTPError as e:
+                if response.status_code == 429 and attempt < max_retries:
+                    wait = retry_delay * (2**attempt) if retry_delay else 0
+                    logger.warning(
+                        f"Rate limited (429), retrying in {wait}s "
+                        f"(attempt {attempt + 1}/{max_retries})"
+                    )
+                    if wait:
+                        time.sleep(wait)
+                    last_exception = e
+                    continue
+                raise
+
+        raise last_exception  # pragma: no cover
 
     @staticmethod
     def verify_api_connection(
@@ -126,7 +155,7 @@ class AIClient:
                 logger.error(f"Unknown AI provider: {self.provider}")
                 return None
         except Exception as e:
-            logger.error(f"AI API call failed: {e}")
+            logger.warning(f"AI API call failed: {e}")
             return None
 
     def _call_openai(self, prompt: str, json_mode: bool = False) -> Optional[str]:
@@ -150,18 +179,14 @@ class AIClient:
         if json_mode:
             data["response_format"] = {"type": "json_object"}
 
-        response = None
         try:
-            response = requests.post(
-                url, headers=headers, json=data, timeout=self.settings.ai_request_timeout
+            response = self._request_with_retry(
+                url, headers, data, timeout=self.settings.ai_request_timeout
             )
-            response.raise_for_status()
             result = response.json()
             return result["choices"][0]["message"]["content"]
         except requests.exceptions.RequestException as e:
-            logger.error(f"OpenAI Request Error: {e}")
-            if response is not None:
-                logger.error(f"Response: {response.text}")
+            logger.warning(f"OpenAI Request Error: {e}")
             raise
 
     def _call_anthropic(self, prompt: str) -> Optional[str]:
@@ -183,18 +208,14 @@ class AIClient:
             "temperature": self.settings.ai_temperature,
         }
 
-        response = None
         try:
-            response = requests.post(
-                url, headers=headers, json=data, timeout=self.settings.ai_request_timeout
+            response = self._request_with_retry(
+                url, headers, data, timeout=self.settings.ai_request_timeout
             )
-            response.raise_for_status()
             result = response.json()
             return result["content"][0]["text"]
         except requests.exceptions.RequestException as e:
-            logger.error(f"Anthropic Request Error: {e}")
-            if response is not None:
-                logger.error(f"Response: {response.text}")
+            logger.warning(f"Anthropic Request Error: {e}")
             raise
 
     def _call_gemini(
@@ -225,12 +246,10 @@ class AIClient:
             "generationConfig": generation_config,
         }
 
-        response = None
         try:
-            response = requests.post(
-                url, headers=headers, json=data, timeout=self.settings.ai_request_timeout
+            response = self._request_with_retry(
+                url, headers, data, timeout=self.settings.ai_request_timeout
             )
-            response.raise_for_status()
             result = response.json()
             # Gemini response structure can vary, handle basic case
             try:
@@ -239,7 +258,5 @@ class AIClient:
                 logger.error(f"Unexpected Gemini response format: {result}")
                 raise ValueError("Unexpected Gemini response format") from err
         except requests.exceptions.RequestException as e:
-            logger.error(f"Gemini Request Error: {e}")
-            if response is not None:
-                logger.error(f"Response: {response.text}")
+            logger.warning(f"Gemini Request Error: {e}")
             raise

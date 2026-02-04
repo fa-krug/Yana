@@ -326,7 +326,7 @@ LOGGING = {
             "propagate": False,
         },
         "core": {
-            "handlers": ["console", "mail_admins"],
+            "handlers": ["console"],
             "level": "INFO",
             "propagate": False,
         },
