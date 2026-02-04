@@ -541,7 +541,8 @@ class BaseAggregator(ABC):
 
             # Run extraction synchronously
             extractor = HeaderElementExtractor()
-            header_data = extractor.extract_header_element(url, alt)
+            user_id = getattr(getattr(self.feed, "user", None), "id", None)
+            header_data = extractor.extract_header_element(url, alt, user_id=user_id)
 
             return header_data
 

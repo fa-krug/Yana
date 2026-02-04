@@ -94,7 +94,7 @@ class RedditPostStrategy(HeaderElementStrategy):
                 return None
 
             # Fetch subreddit icon URL
-            icon_url = fetch_subreddit_icon(subreddit)
+            icon_url = fetch_subreddit_icon(subreddit, user_id=context.user_id)
             if not icon_url:
                 logger.debug(f"RedditPostStrategy: No icon found for r/{subreddit}")
                 return None

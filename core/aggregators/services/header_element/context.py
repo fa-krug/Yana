@@ -13,6 +13,7 @@ class HeaderElementContext:
 
     url: str  # Source URL
     alt: str  # Alt text for image/title for iframe
+    user_id: int | None = None  # Optional user ID for authenticated API calls
 
 
 @dataclass

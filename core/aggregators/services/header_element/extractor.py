@@ -45,7 +45,7 @@ class HeaderElementExtractor:
         ]
 
     def extract_header_element(
-        self, url: str, alt: str = "Article image"
+        self, url: str, alt: str = "Article image", user_id: int | None = None
     ) -> HeaderElementData | None:
         """
         Extract header element from URL using strategy chain.
@@ -59,6 +59,7 @@ class HeaderElementExtractor:
         Args:
             url: URL to extract header element from
             alt: Alt text / title for element
+            user_id: Optional user ID for authenticated API calls (e.g. Reddit)
 
         Returns:
             HeaderElementData containing raw bytes and base64 URI, or None if extraction fails
@@ -72,7 +73,7 @@ class HeaderElementExtractor:
 
         logger.debug(f"HeaderElementExtractor: Starting extraction from {url}")
 
-        context = HeaderElementContext(url=url, alt=alt)
+        context = HeaderElementContext(url=url, alt=alt, user_id=user_id)
 
         # Try each strategy in order
         for strategy in self.strategies:

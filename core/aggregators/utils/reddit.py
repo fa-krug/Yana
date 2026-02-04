@@ -12,12 +12,9 @@ import logging
 import re
 from typing import Optional
 
-import requests
+import prawcore.exceptions
 
 logger = logging.getLogger(__name__)
-
-# Reddit API endpoint
-REDDIT_API_BASE = "https://www.reddit.com"
 
 
 def is_reddit_embed_url(url: str) -> bool:
@@ -111,15 +108,13 @@ def create_reddit_embed_html(embed_url: str, caption: str = "") -> str:
     return html
 
 
-def fetch_subreddit_icon(subreddit: str, timeout: int = 10) -> Optional[str]:
+def fetch_subreddit_icon(subreddit: str, user_id: int | None = None) -> Optional[str]:
     """
-    Fetch subreddit icon URL from Reddit API.
-
-    Uses the public subreddit about JSON endpoint to get community icon.
+    Fetch subreddit icon URL using PRAW.
 
     Args:
         subreddit: Subreddit name (without /r/)
-        timeout: Request timeout in seconds
+        user_id: User ID for PRAW authentication
 
     Returns:
         Subreddit icon URL if found, None otherwise
@@ -127,43 +122,35 @@ def fetch_subreddit_icon(subreddit: str, timeout: int = 10) -> Optional[str]:
     if not subreddit:
         return None
 
-    try:
-        url = f"{REDDIT_API_BASE}/r/{subreddit}/about.json"
-        headers = {"User-Agent": "Yana/1.0"}
-
-        response = requests.get(url, headers=headers, timeout=timeout)
-        response.raise_for_status()
-
-        data = response.json()
-        subreddit_data = data.get("data", {})
-
-        # Try icon_img first (older field)
-        icon_url = subreddit_data.get("icon_img")
-        if icon_url:
-            # Fix Reddit media URL encoding (&amp; -> &)
-            icon_url = fix_reddit_media_url(icon_url)
-            logger.debug(f"Found subreddit icon for r/{subreddit}: {icon_url}")
-            return icon_url
-
-        # Fallback to community_icon (newer field)
-        community_icon = subreddit_data.get("community_icon")
-        if community_icon:
-            community_icon = fix_reddit_media_url(community_icon)
-            logger.debug(f"Found community icon for r/{subreddit}: {community_icon}")
-            return community_icon
-
-        logger.debug(f"No icon found for subreddit r/{subreddit}")
+    if not user_id:
+        logger.debug(f"No user_id provided for fetch_subreddit_icon r/{subreddit}, skipping")
         return None
 
-    except requests.exceptions.HTTPError as e:
-        if e.response.status_code == 404:
-            logger.debug(f"Subreddit r/{subreddit} not found")
-        else:
-            logger.warning(f"HTTP error fetching subreddit r/{subreddit}: {e.response.status_code}")
-    except requests.exceptions.RequestException as e:
-        logger.warning(f"Error fetching subreddit icon for r/{subreddit}: {e}")
+    try:
+        from core.aggregators.reddit.auth import get_praw_instance
+
+        reddit = get_praw_instance(user_id)
+        sub = reddit.subreddit(subreddit)
+
+        # Try multiple fields for icon in order of preference
+        raw_icon_url = sub.icon_img or sub.community_icon or getattr(sub, "header_img", None)
+
+        if not raw_icon_url:
+            logger.debug(f"No icon found for subreddit r/{subreddit}")
+            return None
+
+        icon_url = fix_reddit_media_url(raw_icon_url)
+        logger.debug(f"Found subreddit icon for r/{subreddit}: {icon_url}")
+        return icon_url
+
+    except prawcore.exceptions.NotFound:
+        logger.debug(f"Subreddit r/{subreddit} not found")
+    except prawcore.exceptions.Forbidden:
+        logger.debug(f"Subreddit r/{subreddit} is private or banned")
+    except ValueError as e:
+        logger.debug(f"Reddit not configured for user {user_id}: {e}")
     except Exception as e:
-        logger.error(f"Unexpected error fetching subreddit icon: {e}")
+        logger.warning(f"Error fetching subreddit icon for r/{subreddit}: {e}")
 
     return None
 
