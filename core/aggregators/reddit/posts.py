@@ -1,10 +1,10 @@
-"""Reddit post fetching utilities."""
+"""Reddit post fetching utilities using PRAW."""
 
 import logging
 
-import requests
+import prawcore.exceptions
 
-from .auth import get_reddit_auth_headers
+from .auth import get_praw_instance
 from .types import RedditPostData
 
 logger = logging.getLogger(__name__)
@@ -12,10 +12,13 @@ logger = logging.getLogger(__name__)
 
 def fetch_reddit_post(subreddit: str, post_id: str, user_id: int) -> RedditPostData | None:
     """
-    Fetch a single Reddit post by ID.
+    Fetch a single Reddit post by ID using PRAW.
+
+    The subreddit parameter is kept for backward compatibility but is not used
+    by PRAW, which can fetch submissions directly by ID.
 
     Args:
-        subreddit: Subreddit name
+        subreddit: Subreddit name (kept for backward compatibility, not used by PRAW)
         post_id: Post ID
         user_id: User ID for authentication
 
@@ -23,37 +26,28 @@ def fetch_reddit_post(subreddit: str, post_id: str, user_id: int) -> RedditPostD
         RedditPostData instance or None if not found
     """
     try:
-        headers = get_reddit_auth_headers(user_id)
-        response = requests.get(
-            f"https://oauth.reddit.com/r/{subreddit}/comments/{post_id}",
-            headers=headers,
-            timeout=10,
-        )
-        response.raise_for_status()
+        reddit = get_praw_instance(user_id)
+        submission = reddit.submission(id=post_id)
+        _ = submission.title  # Trigger lazy fetch
+        return RedditPostData.from_praw(submission)
 
-        # Reddit comments API returns: [0] = post data, [1] = comments data
-        data = response.json()
-        if isinstance(data, list) and len(data) > 0:
-            post_data = data[0].get("data", {}).get("children", [])
-            if post_data and len(post_data) > 0:
-                return RedditPostData(post_data[0].get("data", {}))
-
+    except prawcore.exceptions.NotFound:
+        logger.warning(f"Reddit post {post_id} not found")
         return None
-
-    except requests.exceptions.HTTPError as e:
-        if e.response.status_code == 404:
-            logger.warning(f"Reddit post {post_id} in r/{subreddit} not found")
-            return None
-        if e.response.status_code == 403:
-            logger.warning(f"Access forbidden to post {post_id} in r/{subreddit}")
-            return None
-        if e.response.status_code == 401:
+    except prawcore.exceptions.Forbidden:
+        logger.warning(f"Reddit post {post_id} is private/removed")
+        return None
+    except prawcore.exceptions.ResponseException as e:
+        if e.response is not None and e.response.status_code == 401:
             logger.error("Reddit authentication failed while fetching post")
             raise ValueError(
                 "Reddit authentication failed. Please check your API credentials."
             ) from None
-        logger.warning(f"Error fetching Reddit post {post_id} in r/{subreddit}: {e}")
+        logger.warning(f"Error fetching Reddit post {post_id}: {e}")
         return None
+    except ValueError:
+        # Re-raise ValueError from get_praw_instance (credentials not configured)
+        raise
     except Exception as e:
-        logger.warning(f"Unexpected error fetching Reddit post {post_id} in r/{subreddit}: {e}")
+        logger.warning(f"Unexpected error fetching Reddit post {post_id}: {e}")
         return None
