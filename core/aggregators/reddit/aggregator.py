@@ -523,8 +523,10 @@ class RedditAggregator(BaseAggregator):
                 )
 
             # Check for video URL to display in header
+            # Only show "View Video" link if header is NOT a YouTube embed (would be redundant)
             video_url = article.get("_reddit_video_url")
-            if video_url:
+            is_youtube_embed = header_image_url and extract_youtube_video_id(header_image_url)
+            if video_url and not is_youtube_embed:
                 header_caption_html = f'<p><a href="{video_url}">▶ View Video</a></p>'
 
         return format_article_content(
