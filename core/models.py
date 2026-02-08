@@ -215,6 +215,10 @@ class UserSettings(models.Model):
     ai_request_timeout = models.IntegerField(default=120)
     ai_max_retries = models.IntegerField(default=3)
     ai_retry_delay = models.IntegerField(default=2)
+    ai_request_delay = models.IntegerField(
+        default=2,
+        help_text="Delay in seconds between AI API calls to avoid rate limits.",
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

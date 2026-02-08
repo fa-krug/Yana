@@ -13,12 +13,17 @@ class AIClient:
         self.provider = settings.active_ai_provider
 
     def _request_with_retry(self, url, headers, data, timeout):
-        """POST request with retry on 429 (rate limit) using exponential backoff."""
+        """POST request with retry on 429 (rate limit) using exponential backoff.
+
+        Caps total retry time to avoid exceeding django-q task timeouts.
+        """
         max_retries = getattr(self.settings, "ai_max_retries", 3)
         retry_delay = getattr(self.settings, "ai_retry_delay", 2)
+        max_retry_time = getattr(self.settings, "ai_max_retry_time", 60)
 
         response = None
         last_exception = None
+        start_time = time.monotonic()
 
         for attempt in range(1 + max_retries):
             response = requests.post(url, headers=headers, json=data, timeout=timeout)
@@ -28,6 +33,14 @@ class AIClient:
             except requests.exceptions.HTTPError as e:
                 if response.status_code == 429 and attempt < max_retries:
                     wait = retry_delay * (2**attempt) if retry_delay else 0
+                    elapsed = time.monotonic() - start_time
+                    if wait and (elapsed + wait) > max_retry_time:
+                        logger.warning(
+                            f"Rate limited (429), but retrying would exceed "
+                            f"time budget ({elapsed:.0f}s elapsed, {wait}s wait, "
+                            f"{max_retry_time}s max). Giving up."
+                        )
+                        raise
                     logger.warning(
                         f"Rate limited (429), retrying in {wait}s "
                         f"(attempt {attempt + 1}/{max_retries})"

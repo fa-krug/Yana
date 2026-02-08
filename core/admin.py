@@ -598,6 +598,7 @@ class UserSettingsInline(admin.StackedInline):
                     "ai_request_timeout",
                     "ai_max_retries",
                     "ai_retry_delay",
+                    "ai_request_delay",
                 ),
                 "classes": ("collapse",),
             },

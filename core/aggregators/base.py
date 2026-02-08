@@ -6,6 +6,7 @@ import logging
 import math
 import random
 import re
+import time
 from abc import ABC, abstractmethod
 from datetime import timedelta
 from typing import Any, Dict, List, Optional
@@ -310,8 +311,11 @@ class BaseAggregator(ABC):
 
         ai_client = AIClient(user_settings)
         finalized_articles = []
+        ai_delay = getattr(user_settings, "ai_request_delay", 2)
 
-        for article in articles:
+        for i, article in enumerate(articles):
+            if i > 0 and ai_delay:
+                time.sleep(ai_delay)
             try:
                 content = article.get("content", "")
                 if not content:

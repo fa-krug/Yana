@@ -5,12 +5,13 @@ import requests
 from core.ai_client import AIClient
 
 
-def _make_settings(provider="gemini", max_retries=3, retry_delay=1):
+def _make_settings(provider="gemini", max_retries=3, retry_delay=1, max_retry_time=60):
     """Create a mock UserSettings with AI configuration."""
     settings = MagicMock()
     settings.active_ai_provider = provider
     settings.ai_max_retries = max_retries
     settings.ai_retry_delay = retry_delay
+    settings.ai_max_retry_time = max_retry_time
     settings.ai_request_timeout = 30
     settings.ai_temperature = 0.7
     settings.ai_max_tokens = 1000
@@ -146,6 +147,31 @@ class TestGeminiRetryOn429:
 
         assert result is None
         assert mock_post.call_count == 1
+
+    @patch("core.ai_client.time.monotonic")
+    @patch("core.ai_client.time.sleep")
+    @patch("core.ai_client.requests.post")
+    def test_stops_retrying_when_time_budget_exceeded(self, mock_post, mock_sleep, mock_mono):
+        """Should stop retrying if next sleep would exceed max_retry_time."""
+        settings = _make_settings(
+            provider="gemini", max_retries=5, retry_delay=2, max_retry_time=10
+        )
+
+        mock_post.side_effect = [
+            _make_429_response(),
+            _make_429_response(),
+        ]
+
+        # start=0; after 1st 429: elapsed=3, wait=2(2^0)=2, 3+2=5<10 → sleep & retry
+        # after 2nd 429: elapsed=7, wait=2(2^1)=4, 7+4=11>10 → budget exceeded, raise
+        mock_mono.side_effect = [0, 3, 7]
+
+        client = AIClient(settings)
+        result = client.generate_response("test prompt")
+
+        assert result is None
+        assert mock_post.call_count == 2
+        assert mock_sleep.call_count == 1
 
 
 class TestOpenAIRetryOn429:
