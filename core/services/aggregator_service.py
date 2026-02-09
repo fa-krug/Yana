@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional
 
 from django.core.exceptions import ObjectDoesNotExist
 from django.utils import timezone
+from django.utils.text import slugify
 
 from django_q.tasks import async_task
 
@@ -178,7 +179,7 @@ class AggregatorService:
                     "core.services.aggregator_service.AggregatorService.trigger_by_feed_id",
                     feed.id,
                     force_update=force_update,
-                    task_name=f"aggregate_feed_{feed.id}",
+                    task_name=f"aggregate_feed_{slugify(feed.name).replace('-', '_')}",
                 )
                 logger.info(f"Spawned aggregation task for feed {feed.id} ({feed.name}): {task_id}")
                 results.append(
@@ -227,7 +228,7 @@ class AggregatorService:
                     "core.services.aggregator_service.AggregatorService.trigger_by_feed_id",
                     feed.id,
                     force_update=force_update,
-                    task_name=f"aggregate_feed_{feed.id}",
+                    task_name=f"aggregate_feed_{slugify(feed.name).replace('-', '_')}",
                 )
                 logger.info(f"Spawned aggregation task for feed {feed.id} ({feed.name}): {task_id}")
                 results.append(

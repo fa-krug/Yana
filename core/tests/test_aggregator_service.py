@@ -152,7 +152,7 @@ class TestAggregatorService:
             "core.services.aggregator_service.AggregatorService.trigger_by_feed_id",
             rss_feed.id,
             force_update=False,
-            task_name=f"aggregate_feed_{rss_feed.id}",
+            task_name="aggregate_feed_rss_feed",
         )
 
     @patch("core.services.aggregator_service.async_task")
@@ -190,7 +190,7 @@ class TestAggregatorService:
             "core.services.aggregator_service.AggregatorService.trigger_by_feed_id",
             rss_feed.id,
             force_update=True,
-            task_name=f"aggregate_feed_{rss_feed.id}",
+            task_name="aggregate_feed_rss_feed",
         )
 
     @patch("core.services.aggregator_service.AggregatorService.trigger_by_feed_id")
