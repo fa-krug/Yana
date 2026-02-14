@@ -163,6 +163,98 @@ def _generate_embed_html(embed_url):
     return html
 
 
+@xframe_options_exempt
+@require_http_methods(["GET"])
+def dailymotion_proxy_view(request):
+    """
+    Serve embedded Dailymotion videos via a proxy endpoint.
+
+    Returns an HTML page with an embedded Dailymotion player iframe.
+
+    Query Parameters:
+        v (required): Dailymotion video ID
+
+    Returns:
+        HttpResponse: HTML page with Dailymotion iframe embed
+        400: If video ID is missing
+    """
+    video_id = request.GET.get("v", "").strip()
+
+    if not video_id:
+        return _error_response("Error: Missing video ID parameter (?v=VIDEO_ID)")
+
+    embed_url = f"https://geo.dailymotion.com/player.html?video={video_id}"
+
+    html = _generate_dailymotion_embed_html(embed_url)
+
+    return HttpResponse(html, content_type="text/html")
+
+
+def _generate_dailymotion_embed_html(embed_url):
+    """Generate HTML page with Dailymotion embed."""
+    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <title>Dailymotion Video - Yana</title>
+    <link rel="icon" type="image/png" href="/static/core/img/icon.png">
+    <link rel="apple-touch-icon" href="/static/core/img/apple-touch-icon.png">
+    <style>
+        * {{
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }}
+
+        html, body {{
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #000;
+        }}
+
+        .dailymotion-embed-container {{
+            position: relative;
+            width: 100%;
+            height: 100%;
+            padding-bottom: 56.25%;  /* 16:9 aspect ratio */
+        }}
+
+        .dailymotion-embed-container iframe {{
+            border: 0;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }}
+
+        @media (max-width: 512px) {{
+            .dailymotion-embed-container {{
+                height: 100%;
+                padding-bottom: 0;
+            }}
+        }}
+    </style>
+</head>
+<body>
+    <div class="dailymotion-embed-container">
+        <iframe
+            src="{embed_url}"
+            width="560"
+            height="315"
+            allowfullscreen
+            allow="autoplay; web-share"
+            referrerpolicy="strict-origin-when-cross-origin"
+        ></iframe>
+    </div>
+</body>
+</html>"""
+    return html
+
+
 @require_http_methods(["GET"])
 def health_check(request):
     """

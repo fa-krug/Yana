@@ -1,9 +1,12 @@
 """Mein-MMO content extraction logic."""
 
 import logging
+import re
 from typing import Any, Dict, List
 
-from bs4 import BeautifulSoup
+from django.conf import settings
+
+from bs4 import BeautifulSoup, Tag
 
 from ..utils import clean_data_attributes, remove_empty_elements, sanitize_class_names
 from .embed_processors import process_embeds
@@ -61,6 +64,9 @@ def extract_mein_mmo_content(
         content = content_divs[0]
         logger.debug("Single page article, using first content div")
 
+    # Convert Dailymotion video blocks to playable iframes before removal
+    process_dailymotion_blocks(content, logger)
+
     # Remove unwanted elements
     logger.debug(f"Removing unwanted elements using {len(selectors_to_remove)} selectors")
     removed_count = 0
@@ -102,3 +108,76 @@ def extract_mein_mmo_content(
     result = str(content)
     logger.info(f"Content extraction complete: {len(result)} bytes")
     return result
+
+
+def process_dailymotion_blocks(content: Tag, logger: logging.Logger) -> None:
+    """
+    Convert div.wp-block-mmo-video blocks to playable Dailymotion iframes.
+
+    MeinMMO uses Dailymotion as their video provider. The video blocks contain
+    a JavaScript-rendered player with the Dailymotion video ID in a script tag.
+    This function extracts the video ID and replaces the block with an iframe.
+    """
+    video_blocks = content.select("div.wp-block-mmo-video")
+    if not video_blocks:
+        return
+
+    logger.debug(f"Found {len(video_blocks)} Dailymotion video block(s)")
+
+    soup = content.find_parent()
+    if not soup:
+        soup = BeautifulSoup("", "html.parser")
+    elif not isinstance(soup, BeautifulSoup):
+        curr = content
+        while curr.parent:
+            curr = curr.parent
+        soup = curr if isinstance(curr, BeautifulSoup) else BeautifulSoup("", "html.parser")
+
+    for idx, block in enumerate(video_blocks, 1):
+        video_id = _extract_dailymotion_video_id(block)
+        if not video_id:
+            logger.debug(f"Dailymotion block {idx}: no video ID found, skipping")
+            continue
+
+        # Extract title from the thumbnail overlay
+        title_div = block.select_one("div.title")
+        title = title_div.get_text(strip=True) if title_div else ""
+
+        # Build proxy URL
+        proxy_url = f"{settings.BASE_URL}/api/dailymotion-proxy?v={video_id}"
+
+        # Create iframe
+        iframe = soup.new_tag(
+            "iframe",
+            src=proxy_url,
+            width="560",
+            height="315",
+            frameborder="0",
+            allow="autoplay; web-share",
+            allowfullscreen="true",
+        )
+
+        # Wrap in container div
+        wrapper = soup.new_tag("div")
+        wrapper["class"] = "dailymotion-embed-container"
+        wrapper.append(iframe)
+
+        # Add title as caption if available
+        if title:
+            caption = soup.new_tag("p")
+            caption.string = title
+            wrapper.append(caption)
+
+        block.replace_with(wrapper)
+        logger.debug(f"Dailymotion block {idx}: converted to iframe (video={video_id})")
+
+
+def _extract_dailymotion_video_id(block: Tag) -> str | None:
+    """Extract Dailymotion video ID from a wp-block-mmo-video block."""
+    # The video ID is in a script tag: dmVideoId: 'x9yt07o'
+    for script in block.find_all("script"):
+        script_text = script.string or ""
+        match = re.search(r"dmVideoId:\s*'([^']+)'", script_text)
+        if match:
+            return match.group(1)
+    return None

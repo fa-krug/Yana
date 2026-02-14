@@ -56,7 +56,6 @@ class MeinMmoAggregator(FullWebsiteAggregator):
     content_selector = "div.gp-entry-content"
 
     selectors_to_remove = [
-        "div.wp-block-mmo-video",
         "div.wp-block-mmo-recirculation-box",
         "div.reading-position-indicator-end",
         "label.toggle",
