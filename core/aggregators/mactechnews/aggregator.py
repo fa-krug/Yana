@@ -1,5 +1,6 @@
 """MacTechNews aggregator implementation."""
 
+import re
 from typing import Any, Dict
 from urllib.parse import urljoin
 
@@ -43,10 +44,37 @@ class MactechnewsAggregator(FullWebsiteAggregator):
         ".TexticonBox.Right",  # Remove sidebars/summary boxes inside content
     ]
 
+    @staticmethod
+    def _extract_mtn_image_id(url: str) -> str | None:
+        """Extract numeric image ID from mactechnews image URLs.
+
+        URLs follow the pattern: Name.{numeric_id}.{ext}
+        e.g. Cover-Raumakustik.592736.jpg -> 592736
+             Bild.592736.jpg -> 592736
+        """
+        match = re.search(r"\.(\d{5,})\.\w+$", url)
+        return match.group(1) if match else None
+
     def process_content(self, html: str, article: Dict[str, Any]) -> str:
-        """Resolve relative URLs in content."""
+        """Resolve relative URLs and remove duplicate header images."""
         soup = BeautifulSoup(html, "html.parser")
         base_url = article["identifier"]
+
+        # Remove content images that duplicate the header image.
+        # mactechnews uses the same numeric ID across different image variants
+        # (e.g. og:image "Cover-Raumakustik.592736.jpg" vs content "Bild.592736.jpg")
+        header_data = article.get("header_data")
+        if header_data and header_data.image_url:
+            header_image_id = self._extract_mtn_image_id(header_data.image_url)
+            if header_image_id:
+                for img in soup.find_all("img"):
+                    src = img.get("src")
+                    if (
+                        src
+                        and not isinstance(src, list)
+                        and self._extract_mtn_image_id(src) == header_image_id
+                    ):
+                        img.decompose()
 
         # Resolve relative URLs for images
         for img in soup.find_all("img"):
