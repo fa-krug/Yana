@@ -125,7 +125,7 @@ def extract_image_urls_from_tweet(data: Dict[str, Any]) -> List[str]:
     try:
         # fxtwitter API structure: data.tweet.media
         tweet = data.get("tweet", {})
-        media = tweet.get("media", {})
+        media = tweet.get("media") or {}
 
         # Try photos first
         if "photos" in media:
@@ -138,6 +138,15 @@ def extract_image_urls_from_tweet(data: Dict[str, Any]) -> List[str]:
             for item in media["all"]:
                 if isinstance(item, dict) and item.get("type") == "photo" and "url" in item:
                     image_urls.append(item["url"])
+
+        # Try article cover image if no media images found
+        if not image_urls:
+            article = tweet.get("article") or {}
+            cover_media = article.get("cover_media") or {}
+            media_info = cover_media.get("media_info") or {}
+            original_img_url = media_info.get("original_img_url")
+            if original_img_url:
+                image_urls.append(original_img_url)
 
     except (KeyError, TypeError) as e:
         logger.debug(f"Error extracting images from tweet: {e}")

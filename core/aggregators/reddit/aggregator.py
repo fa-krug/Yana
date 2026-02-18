@@ -17,6 +17,7 @@ from ..exceptions import ArticleSkipError
 from ..services.image_extraction.compression import compress_and_encode_image
 from ..services.image_extraction.fetcher import fetch_single_image
 from ..utils import format_article_content
+from ..utils.twitter import is_twitter_url
 from ..utils.youtube import extract_youtube_video_id
 from .auth import (
     get_praw_instance,
@@ -558,8 +559,9 @@ class RedditAggregator(BaseAggregator):
             # Move header image URL to a standard field for process_content
             header_image_url = article.get("_reddit_header_image_url")
 
-            # Check if header is a YouTube URL (will be embedded as iframe, not image)
+            # Check if header is a YouTube or Twitter/X URL (will be embedded, not image)
             is_youtube_header = header_image_url and extract_youtube_video_id(header_image_url)
+            is_twitter_header = header_image_url and is_twitter_url(header_image_url)
 
             # Strip duplicate image from content before inlining header image
             if header_image_url and article.get("content"):
@@ -574,8 +576,8 @@ class RedditAggregator(BaseAggregator):
                 )
 
             if header_image_url:
-                # Skip image fetching for YouTube URLs (they'll be embedded as iframes)
-                if is_youtube_header:
+                # Skip image fetching for YouTube/Twitter URLs (they'll be embedded)
+                if is_youtube_header or is_twitter_header:
                     article["header_image_url"] = header_image_url
                 else:
                     # Fetch and inline header image (user requirement: base64 encoded)

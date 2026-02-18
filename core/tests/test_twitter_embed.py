@@ -197,12 +197,10 @@ class TestHelperFunctions:
 class TestRedditContentTwitterIntegration:
     """Tests for Twitter/X handling in Reddit content building."""
 
-    @patch("core.aggregators.utils.twitter.build_tweet_embed_html")
-    def test_process_link_media_twitter(self, mock_embed):
+    def test_process_link_media_twitter(self):
+        """Twitter/X links are consumed but not added to body (embed is in header)."""
         from core.aggregators.reddit.content import _process_link_media
         from core.aggregators.reddit.types import RedditPostData
-
-        mock_embed.return_value = "<blockquote>tweet embed</blockquote>"
 
         post = RedditPostData(
             {
@@ -221,43 +219,12 @@ class TestRedditContentTwitterIntegration:
         result = _process_link_media(post, "https://x.com/user/status/123", content_parts)
 
         assert result is True
-        assert len(content_parts) == 1
-        assert "<blockquote>tweet embed</blockquote>" in content_parts[0]
-        mock_embed.assert_called_once_with("https://x.com/user/status/123")
+        assert len(content_parts) == 0  # Embed handled by header, not body
 
-    @patch("core.aggregators.utils.twitter.build_tweet_embed_html")
-    def test_process_link_media_twitter_fallback(self, mock_embed):
+    def test_process_link_media_twitter_dot_com(self):
+        """twitter.com links are also consumed for header embedding."""
         from core.aggregators.reddit.content import _process_link_media
         from core.aggregators.reddit.types import RedditPostData
-
-        mock_embed.return_value = None  # API failure
-
-        post = RedditPostData(
-            {
-                "id": "test123",
-                "title": "Check this tweet",
-                "url": "https://x.com/user/status/123",
-                "selftext": "",
-                "author": "testuser",
-                "permalink": "/r/test/comments/test123/check_this_tweet/",
-                "created_utc": 1700000000,
-                "num_comments": 5,
-            }
-        )
-
-        content_parts = []
-        result = _process_link_media(post, "https://x.com/user/status/123", content_parts)
-
-        assert result is True
-        assert len(content_parts) == 1
-        assert "View on X/Twitter" in content_parts[0]
-
-    @patch("core.aggregators.utils.twitter.build_tweet_embed_html")
-    def test_process_link_media_twitter_dot_com(self, mock_embed):
-        from core.aggregators.reddit.content import _process_link_media
-        from core.aggregators.reddit.types import RedditPostData
-
-        mock_embed.return_value = "<blockquote>embed</blockquote>"
 
         post = RedditPostData(
             {
@@ -276,4 +243,4 @@ class TestRedditContentTwitterIntegration:
         result = _process_link_media(post, "https://twitter.com/user/status/123", content_parts)
 
         assert result is True
-        mock_embed.assert_called_once()
+        assert len(content_parts) == 0  # Embed handled by header, not body

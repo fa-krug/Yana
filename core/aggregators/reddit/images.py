@@ -6,6 +6,7 @@ from typing import Optional
 
 from core.aggregators.services.image_extraction.extractor import ImageExtractor
 
+from ..utils.twitter import is_twitter_url
 from ..utils.youtube import extract_youtube_video_id
 from .types import RedditPostData
 from .urls import (
@@ -139,6 +140,10 @@ def extract_header_image_url(post: RedditPostData) -> Optional[str]:
         video_url = _extract_video_embed_url(post)
         if video_url and "vxreddit.com" not in video_url:
             return video_url
+
+        # Priority 0.5: Twitter/X link posts (return URL for header embed)
+        if post.url and is_twitter_url(post.url):
+            return decode_html_entities_in_url(post.url)
 
         # Priority 1: Gallery posts - get first high-quality image
         gallery_url = _extract_gallery_image_url(post)

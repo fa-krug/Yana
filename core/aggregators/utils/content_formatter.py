@@ -2,6 +2,7 @@
 
 from typing import Optional
 
+from .twitter import build_tweet_embed_html, is_twitter_url
 from .youtube import create_youtube_embed_html, extract_youtube_video_id
 
 
@@ -32,7 +33,7 @@ def format_article_content(
     """
     parts = []
 
-    # Optional header image or YouTube embed
+    # Optional header image, YouTube embed, or Twitter/X embed
     if header_image_url:
         # Check if header URL is a YouTube video
         youtube_video_id = extract_youtube_video_id(header_image_url)
@@ -45,6 +46,16 @@ def format_article_content(
                 "</header>",
             ]
             parts.append("\n".join(header_parts))
+        elif is_twitter_url(header_image_url):
+            # Embed Twitter/X post in header
+            tweet_embed = build_tweet_embed_html(header_image_url)
+            if tweet_embed:
+                header_parts = [
+                    '<header style="margin-bottom: 1.5em;">',
+                    tweet_embed,
+                    "</header>",
+                ]
+                parts.append("\n".join(header_parts))
         else:
             # Regular image header
             header_parts = [
