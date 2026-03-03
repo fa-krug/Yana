@@ -145,6 +145,13 @@ def extract_header_image_url(post: RedditPostData) -> Optional[str]:
         if post.url and is_twitter_url(post.url):
             return decode_html_entities_in_url(post.url)
 
+        # Priority 0.6: Twitter/X URL in selftext (return URL for header embed)
+        if post.is_self and post.selftext:
+            selftext_urls = extract_urls_from_text(post.selftext)
+            for url in selftext_urls:
+                if is_twitter_url(url):
+                    return decode_html_entities_in_url(url)
+
         # Priority 1: Gallery posts - get first high-quality image
         gallery_url = _extract_gallery_image_url(post)
         if gallery_url:
@@ -294,12 +301,14 @@ def _extract_image_url_from_selftext(post: RedditPostData) -> Optional[str]:
     for url in urls:
         if not url.startswith(("http://", "https://")):
             continue
-        if first_valid_url is None:
-            first_valid_url = url
         if "preview.redd.it" in url.lower() or any(
             ext in url.lower() for ext in [".jpg", ".jpeg", ".png", ".webp", ".gif"]
         ):
             return url
+        # Skip Twitter/X URLs for image extraction - they are handled as
+        # header embeds in extract_header_image_url() Priority 0.6
+        if first_valid_url is None and not is_twitter_url(url):
+            first_valid_url = url
 
     # If no direct image URL found, try to extract image from the linked page
     if first_valid_url:
