@@ -244,3 +244,144 @@ class TestRedditContentTwitterIntegration:
 
         assert result is True
         assert len(content_parts) == 0  # Embed handled by header, not body
+
+
+class TestTwitterUrlInSelftext:
+    """Tests for Twitter/X URLs found in selftext being used for header embeds."""
+
+    def test_selftext_twitter_url_returns_twitter_url_for_header(self):
+        """When a self post contains a Twitter/X URL in selftext,
+        extract_header_image_url should return the Twitter URL directly
+        so it can be embedded as a tweet, not treated as an image source."""
+        from core.aggregators.reddit.images import extract_header_image_url
+        from core.aggregators.reddit.types import RedditPostData
+
+        post = RedditPostData(
+            {
+                "id": "1rfwhe3",
+                "title": "Did anyone's usage just get reset?",
+                "selftext": (
+                    "Just logged in after heavy usage, then saw the week just reset\n\n"
+                    "anyone know why or how?\n\n"
+                    "REASON: https://x.com/trq212/status/2027232172810416493"
+                ),
+                "url": "https://reddit.com/r/ClaudeCode/comments/1rfwhe3/did_anyones_usage_just_get_reset/",
+                "author": "testuser",
+                "permalink": "/r/ClaudeCode/comments/1rfwhe3/did_anyones_usage_just_get_reset/",
+                "created_utc": 1700000000,
+                "num_comments": 10,
+                "is_self": True,
+            }
+        )
+
+        result = extract_header_image_url(post)
+
+        assert result == "https://x.com/trq212/status/2027232172810416493"
+
+    def test_selftext_twitter_url_not_used_for_image_extraction(self):
+        """Twitter/X URLs in selftext should not be passed to ImageExtractor
+        for image extraction (which would return wrong placeholder images)."""
+        from core.aggregators.reddit.images import _extract_image_url_from_selftext
+        from core.aggregators.reddit.types import RedditPostData
+
+        post = RedditPostData(
+            {
+                "id": "test123",
+                "title": "Test post",
+                "selftext": "Check this: https://x.com/user/status/123456",
+                "url": "https://reddit.com/r/test/comments/test123/test_post/",
+                "author": "testuser",
+                "permalink": "/r/test/comments/test123/test_post/",
+                "created_utc": 1700000000,
+                "num_comments": 5,
+                "is_self": True,
+            }
+        )
+
+        # _extract_image_url_from_selftext should NOT return anything from a
+        # Twitter URL because it would get a wrong image. Twitter URLs are
+        # handled by the header embed flow instead.
+        result = _extract_image_url_from_selftext(post)
+
+        # Should be None because we don't extract images from Twitter URLs
+        assert result is None
+
+    def test_selftext_twitter_url_with_other_image(self):
+        """When selftext has both a Twitter URL and a direct image URL,
+        the image URL should be used for image extraction (not the Twitter URL)."""
+        from core.aggregators.reddit.images import _extract_image_url_from_selftext
+        from core.aggregators.reddit.types import RedditPostData
+
+        post = RedditPostData(
+            {
+                "id": "test456",
+                "title": "Test post with image and tweet",
+                "selftext": (
+                    "Look at this: https://x.com/user/status/123456\n\n"
+                    "And this image: https://i.redd.it/abc123.jpg"
+                ),
+                "url": "https://reddit.com/r/test/comments/test456/test_post/",
+                "author": "testuser",
+                "permalink": "/r/test/comments/test456/test_post/",
+                "created_utc": 1700000000,
+                "num_comments": 5,
+                "is_self": True,
+            }
+        )
+
+        result = _extract_image_url_from_selftext(post)
+
+        # Should return the direct image, not the Twitter URL
+        assert result == "https://i.redd.it/abc123.jpg"
+
+    def test_selftext_twitter_com_url_returns_twitter_url(self):
+        """twitter.com URLs in selftext should also be returned for embedding."""
+        from core.aggregators.reddit.images import extract_header_image_url
+        from core.aggregators.reddit.types import RedditPostData
+
+        post = RedditPostData(
+            {
+                "id": "test789",
+                "title": "Test post",
+                "selftext": "See: https://twitter.com/user/status/999888777",
+                "url": "https://reddit.com/r/test/comments/test789/test_post/",
+                "author": "testuser",
+                "permalink": "/r/test/comments/test789/test_post/",
+                "created_utc": 1700000000,
+                "num_comments": 5,
+                "is_self": True,
+            }
+        )
+
+        result = extract_header_image_url(post)
+
+        assert result == "https://twitter.com/user/status/999888777"
+
+    @patch("core.aggregators.utils.twitter.fetch_tweet_data")
+    def test_content_formatter_embeds_twitter_from_selftext(self, mock_fetch):
+        """End-to-end: Twitter URL from selftext should produce a tweet embed
+        in the header, not a regular image."""
+        from core.aggregators.utils.content_formatter import format_article_content
+
+        mock_fetch.return_value = {
+            "tweet": {
+                "text": "Usage limits have been reset!",
+                "author": {"name": "Test User", "screen_name": "testuser"},
+                "likes": 100,
+                "retweets": 50,
+                "created_at": "Wed Jan 15 12:34:56 +0000 2026",
+                "media": {},
+            },
+        }
+
+        result = format_article_content(
+            content="<p>Some content</p>",
+            title="Test Post",
+            url="https://reddit.com/r/test/comments/test/",
+            header_image_url="https://x.com/testuser/status/123456",
+        )
+
+        # Should contain tweet embed blockquote, NOT a regular <img> tag
+        assert "<blockquote" in result
+        assert "Usage limits have been reset!" in result
+        assert 'alt="Test Post"' not in result  # Should NOT be a regular image header
