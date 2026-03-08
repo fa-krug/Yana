@@ -51,14 +51,18 @@ def convert_reddit_markdown(text: str) -> str:
     # Handle Reddit preview images
     text = re.sub(
         r"(?<!\[\(])https?://preview\.redd\.it/[^\s)]+",
-        lambda m: f'<img src="{decode_html_entities_in_url(m.group(0))}" alt="Reddit preview image">',
+        lambda m: (
+            f'<img src="{decode_html_entities_in_url(m.group(0))}" alt="Reddit preview image">'
+        ),
         text,
     )
 
     # Convert markdown links with preview.redd.it URLs to image tags
     text = re.sub(
         r"\[([^\]]{0,200})\]\((https?://preview\.redd\.it/[^\s)]{1,500})\)",
-        lambda m: f'<img src="{decode_html_entities_in_url(m.group(2))}" alt="{m.group(1) or "Reddit preview image"}">',
+        lambda m: (
+            f'<img src="{decode_html_entities_in_url(m.group(2))}" alt="{m.group(1) or "Reddit preview image"}">'
+        ),
         text,
     )
 
