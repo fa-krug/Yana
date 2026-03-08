@@ -6,7 +6,16 @@ from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup
 
+from ..utils import (
+    clean_html,
+    format_article_content,
+    remove_image_by_url,
+    sanitize_class_names,
+)
+from ..utils.youtube import proxy_youtube_embeds
 from ..website import FullWebsiteAggregator
+from .comment_extractor import extract_comments
+from .multipage_handler import detect_pagination, fetch_all_pages
 
 
 class MactechnewsAggregator(FullWebsiteAggregator):
@@ -25,8 +34,31 @@ class MactechnewsAggregator(FullWebsiteAggregator):
 
     @classmethod
     def get_configuration_fields(cls) -> Dict[str, Any]:
-        """Remove configuration options for this managed aggregator."""
-        return {}
+        """Configuration options for MacTechNews aggregator."""
+        from django import forms
+
+        return {
+            "combine_pages": forms.BooleanField(
+                initial=True,
+                label="Combine Multi-page Articles",
+                help_text="Automatically fetch and combine all pages of a multi-page article.",
+                required=False,
+            ),
+            "include_comments": forms.BooleanField(
+                initial=True,
+                label="Include Comments",
+                help_text="Extract user comments from article pages.",
+                required=False,
+            ),
+            "max_comments": forms.IntegerField(
+                initial=5,
+                label="Max Comments",
+                help_text="Maximum number of comments to extract per article.",
+                required=False,
+                min_value=0,
+                max_value=20,
+            ),
+        }
 
     # Main content container
     content_selector = ".MtnArticle"
@@ -55,14 +87,53 @@ class MactechnewsAggregator(FullWebsiteAggregator):
         match = re.search(r"\.(\d{5,})\.\w+$", url)
         return match.group(1) if match else None
 
+    def fetch_article_content(self, url: str) -> str:
+        """Fetch article content, handling multi-page articles."""
+        self.logger.debug(f"[fetch_article_content] Starting for URL: {url}")
+
+        combine_pages = self.feed.options.get("combine_pages", True)
+
+        # Fetch first page
+        first_page_html = super().fetch_article_content(url)
+        self.logger.debug(
+            f"[fetch_article_content] First page fetched ({len(first_page_html)} bytes)"
+        )
+
+        if not combine_pages:
+            self.logger.info(f"[fetch_article_content] Multi-page combination disabled for {url}")
+            return first_page_html
+
+        # Detect pagination
+        page_numbers = detect_pagination(first_page_html, self.logger)
+
+        if len(page_numbers) <= 1:
+            self.logger.info(f"[fetch_article_content] Single page article for {url}")
+            return first_page_html
+
+        # Multi-page article - fetch and combine all pages
+        self.logger.info(f"[fetch_article_content] Multi-page article: {len(page_numbers)} pages")
+
+        combined_html = fetch_all_pages(
+            base_url=url,
+            page_numbers=page_numbers,
+            content_selector=self.content_selector,
+            fetcher=lambda page_url: super(MactechnewsAggregator, self).fetch_article_content(
+                page_url
+            ),
+            logger=self.logger,
+            first_page_html=first_page_html,
+        )
+
+        self.logger.debug(f"[fetch_article_content] Combined HTML: {len(combined_html)} bytes")
+        return combined_html
+
     def process_content(self, html: str, article: Dict[str, Any]) -> str:
-        """Resolve relative URLs and remove duplicate header images."""
+        """Process content with relative URL resolution, header dedup, and comments."""
         soup = BeautifulSoup(html, "html.parser")
         base_url = article["identifier"]
 
         # Remove content images that duplicate the header image.
         # mactechnews uses the same numeric ID across different image variants
-        # (e.g. og:image "Cover-Raumakustik.592736.jpg" vs content "Bild.592736.jpg")
         header_data = article.get("header_data")
         if header_data and header_data.image_url:
             header_image_id = self._extract_mtn_image_id(header_data.image_url)
@@ -96,4 +167,49 @@ class MactechnewsAggregator(FullWebsiteAggregator):
             ):
                 a["href"] = urljoin(base_url, str(href))
 
-        return super().process_content(str(soup), article)
+        # Proxy YouTube embeds
+        proxy_youtube_embeds(soup)
+
+        # Remove header image from content if extracted
+        if header_data and header_data.image_url:
+            remove_image_by_url(soup, header_data.image_url)
+
+        # Sanitize class names
+        sanitize_class_names(soup)
+
+        # Clean HTML
+        cleaned = clean_html(str(soup))
+
+        # Determine header image URL
+        header_image_url = None
+        if header_data:
+            header_image_url = header_data.base64_data_uri or header_data.image_url
+
+        # Extract comments from the raw (full) HTML
+        comments_html = None
+        include_comments = self.feed.options.get("include_comments", True)
+        max_comments = self.feed.options.get("max_comments", 5)
+
+        if include_comments:
+            try:
+                raw_html = article.get("raw_content", "")
+                if raw_html:
+                    comments_html = extract_comments(
+                        raw_html,
+                        article["identifier"],
+                        max_comments=max_comments,
+                        logger=self.logger,
+                    )
+            except Exception as e:
+                self.logger.warning(f"[process_content] Failed to extract comments: {e}")
+
+        # Format with header, content, comments, and footer
+        formatted = format_article_content(
+            cleaned,
+            title=article["name"],
+            url=article["identifier"],
+            header_image_url=header_image_url,
+            comments_content=comments_html,
+        )
+
+        return formatted
