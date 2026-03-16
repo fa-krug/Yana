@@ -3,7 +3,7 @@
 import logging
 from typing import Optional
 
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 
 
 def extract_comments(
@@ -64,7 +64,7 @@ def extract_comments(
     return f"<section>{header}{''.join(comment_parts)}</section>"
 
 
-def _process_comment(comment_el: "BeautifulSoup", article_url: str) -> Optional[str]:
+def _process_comment(comment_el: Tag, article_url: str) -> Optional[str]:
     """Process a single MacTechNews comment element into a blockquote."""
     # Extract author
     author_el = comment_el.select_one("span.MtnCommentAccountName")
