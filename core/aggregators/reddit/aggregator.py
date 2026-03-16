@@ -163,6 +163,18 @@ class RedditAggregator(BaseAggregator):
                 help_text="Which posts to fetch (Hot, New, Top, Rising).",
                 required=False,
             ),
+            "min_age_hours": forms.IntegerField(
+                initial=48,
+                label="Minimum Post Age (hours)",
+                help_text=(
+                    "Only import posts older than this many hours. "
+                    "Helps filter out posts that get removed by moderators shortly after posting. "
+                    "Set to 0 to disable."
+                ),
+                required=False,
+                min_value=0,
+                max_value=168,
+            ),
         }
 
     def aggregate(self) -> List[Dict[str, Any]]:
@@ -404,6 +416,7 @@ class RedditAggregator(BaseAggregator):
         Filters out:
         - AutoModerator posts
         - Posts older than 2 months
+        - Posts younger than min_age_hours (to avoid moderator-removed content)
         - Posts with fewer than min_comments (if configured)
 
         Args:
@@ -414,17 +427,27 @@ class RedditAggregator(BaseAggregator):
         """
         filtered = []
 
-        # Get min_comments option (default: 5)
+        # Get options
         min_comments = self.feed.options.get("min_comments", 5)
+        min_age_hours = self.feed.options.get("min_age_hours", 48)
 
-        # Two months ago cutoff
-        two_months_ago = timezone.now() - timedelta(days=60)
+        now = timezone.now()
+        two_months_ago = now - timedelta(days=60)
+        min_age_cutoff = now - timedelta(hours=min_age_hours) if min_age_hours > 0 else None
 
         for article in articles:
-            # Check base skip logic (age check)
             article_date = article.get("date")
+
+            # Skip posts older than 2 months
             if article_date and article_date < two_months_ago:
                 logger.debug(f"Skipping old post: {article.get('name')} ({article_date})")
+                continue
+
+            # Skip posts that are too recent (not yet past moderation window)
+            if min_age_cutoff and article_date and article_date > min_age_cutoff:
+                logger.debug(
+                    f"Skipping too-recent post (age < {min_age_hours}h): {article.get('name')} ({article_date})"
+                )
                 continue
 
             # Skip AutoModerator posts
@@ -442,7 +465,7 @@ class RedditAggregator(BaseAggregator):
                     continue
 
             # Update date to now for accepted articles (matching base behavior)
-            article["date"] = timezone.now()
+            article["date"] = now
             filtered.append(article)
 
         logger.info(f"Filtered articles: kept {len(filtered)}/{len(articles)}")
