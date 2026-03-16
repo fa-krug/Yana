@@ -263,14 +263,17 @@ class TestRedditAggregator:
 
         from django.utils import timezone
 
+        # Use a date older than default min_age_hours (48h) but within 2 months
+        good_date = timezone.now() - timedelta(hours=72)
+
         articles = [
-            {"name": "Good", "author": "user1", "date": timezone.now(), "_reddit_num_comments": 10},
-            {"name": "AutoMod", "author": "AutoModerator", "date": timezone.now()},
+            {"name": "Good", "author": "user1", "date": good_date, "_reddit_num_comments": 10},
+            {"name": "AutoMod", "author": "AutoModerator", "date": good_date},
             {"name": "Old", "author": "user2", "date": timezone.now() - timedelta(days=70)},
             {
                 "name": "Few comments",
                 "author": "user3",
-                "date": timezone.now(),
+                "date": good_date,
                 "_reddit_num_comments": 2,
             },
         ]
@@ -279,6 +282,83 @@ class TestRedditAggregator:
 
         assert len(filtered) == 1
         assert filtered[0]["name"] == "Good"
+
+    def test_filter_articles_min_age_skips_recent_posts(self, reddit_agg):
+        """Posts younger than min_age_hours should be skipped."""
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        # Default min_age_hours is 48
+        articles = [
+            {
+                "name": "Too Recent",
+                "author": "user1",
+                "date": timezone.now() - timedelta(hours=12),
+                "_reddit_num_comments": 10,
+            },
+            {
+                "name": "Old Enough",
+                "author": "user2",
+                "date": timezone.now() - timedelta(hours=72),
+                "_reddit_num_comments": 10,
+            },
+        ]
+
+        filtered = reddit_agg.filter_articles(articles)
+
+        assert len(filtered) == 1
+        assert filtered[0]["name"] == "Old Enough"
+
+    def test_filter_articles_min_age_disabled(self, reddit_agg):
+        """Setting min_age_hours=0 disables the age filter."""
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        reddit_agg.feed.options = {"min_comments": 0, "min_age_hours": 0}
+
+        articles = [
+            {
+                "name": "Brand New",
+                "author": "user1",
+                "date": timezone.now() - timedelta(minutes=5),
+                "_reddit_num_comments": 0,
+            },
+        ]
+
+        filtered = reddit_agg.filter_articles(articles)
+
+        assert len(filtered) == 1
+        assert filtered[0]["name"] == "Brand New"
+
+    def test_filter_articles_custom_min_age(self, reddit_agg):
+        """Custom min_age_hours value is respected."""
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        reddit_agg.feed.options = {"min_comments": 0, "min_age_hours": 6}
+
+        articles = [
+            {
+                "name": "Too Fresh",
+                "author": "user1",
+                "date": timezone.now() - timedelta(hours=3),
+                "_reddit_num_comments": 0,
+            },
+            {
+                "name": "Aged Enough",
+                "author": "user2",
+                "date": timezone.now() - timedelta(hours=8),
+                "_reddit_num_comments": 0,
+            },
+        ]
+
+        filtered = reddit_agg.filter_articles(articles)
+
+        assert len(filtered) == 1
+        assert filtered[0]["name"] == "Aged Enough"
 
     @patch("core.aggregators.reddit.aggregator.build_post_content")
     def test_enrich_articles(self, mock_build, reddit_agg):
