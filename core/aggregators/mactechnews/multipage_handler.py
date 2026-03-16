@@ -37,6 +37,14 @@ def detect_pagination(html: str, logger: logging.Logger) -> Set[int]:
             page_numbers.add(page_num)
             logger.debug(f"Found page number from link: {page_num}")
 
+    # Detect the current page (rendered as <strong>N</strong> without a link)
+    for strong in soup.find_all("strong"):
+        text = strong.get_text(strip=True)
+        if re.fullmatch(r"\d+", text):
+            page_num = int(text)
+            page_numbers.add(page_num)
+            logger.debug(f"Found current page number from bold text: {page_num}")
+
     sorted_pages = sorted(page_numbers)
     logger.info(f"Pagination detection complete: {len(page_numbers)} pages found - {sorted_pages}")
     return page_numbers
