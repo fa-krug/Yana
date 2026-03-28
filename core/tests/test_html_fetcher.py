@@ -67,3 +67,48 @@ class TestHtmlFetcher:
         # Should try 3 times
         assert mock_get.call_count == 3
         assert mock_sleep.call_count == 2
+
+    @patch("core.aggregators.utils.html_fetcher.requests.get")
+    def test_fetch_html_fixes_iso8859_default_encoding(self, mock_get):
+        """UTF-8 content with ISO-8859-1 default should use apparent_encoding."""
+        utf8_text = "Ärger mit Übung und Straße"
+        mock_response = MagicMock()
+        mock_response.encoding = "ISO-8859-1"
+        mock_response.apparent_encoding = "utf-8"
+        mock_response.raise_for_status.return_value = None
+        mock_response.text = utf8_text
+        mock_get.return_value = mock_response
+
+        result = fetch_html("https://example.com")
+
+        assert result == utf8_text
+        assert mock_response.encoding == "utf-8"
+
+    @patch("core.aggregators.utils.html_fetcher.requests.get")
+    def test_fetch_html_preserves_explicit_charset(self, mock_get):
+        """When server explicitly sets charset, encoding should not be overridden."""
+        mock_response = MagicMock()
+        mock_response.encoding = "utf-8"
+        mock_response.apparent_encoding = "utf-8"
+        mock_response.text = "Content with ä ö ü"
+        mock_response.raise_for_status.return_value = None
+        mock_get.return_value = mock_response
+
+        result = fetch_html("https://example.com")
+
+        assert result == "Content with ä ö ü"
+        assert mock_response.encoding == "utf-8"
+
+    @patch("core.aggregators.utils.html_fetcher.requests.get")
+    def test_fetch_html_fixes_latin1_alias_encoding(self, mock_get):
+        """latin-1 alias should also trigger encoding correction."""
+        mock_response = MagicMock()
+        mock_response.encoding = "latin-1"
+        mock_response.apparent_encoding = "utf-8"
+        mock_response.text = "Ö"
+        mock_response.raise_for_status.return_value = None
+        mock_get.return_value = mock_response
+
+        fetch_html("https://example.com")
+
+        assert mock_response.encoding == "utf-8"

@@ -38,6 +38,18 @@ def fetch_html(url: str, timeout: int = 30) -> str:
         try:
             response = requests.get(url, headers=headers, timeout=timeout, allow_redirects=True)
             response.raise_for_status()
+
+            # requests defaults to ISO-8859-1 for text/html without explicit
+            # charset in Content-Type header (RFC 2616), breaking UTF-8 content
+            # like German umlauts (ä → Ã¤). Use apparent_encoding to detect
+            # the actual encoding from the response body.
+            if response.encoding and response.encoding.lower() in (
+                "iso-8859-1",
+                "latin-1",
+                "latin1",
+            ):
+                response.encoding = response.apparent_encoding
+
             return response.text
 
         except requests.RequestException as e:
