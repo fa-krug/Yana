@@ -68,6 +68,7 @@ class MeinMmoAggregator(FullWebsiteAggregator):
         "style",
         "iframe:not([src*='youtube.com']):not([src*='youtu.be'])",
         "noscript",
+        ".dailymotion-embed-container",
     ]
 
     def fetch_article_content(self, url: str) -> str:
