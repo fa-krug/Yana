@@ -151,11 +151,21 @@ def get_stream_item_ids(
 
     articles = articles[:limit]
 
-    # Return IDs only
-    item_ids = [str(article.id) for article in articles]
+    # Return IDs with stream context for iOS client compatibility
+    from core.services.greader.stream_format import unix_timestamp_microseconds
+
+    item_refs = []
+    for article in articles:
+        item_refs.append(
+            {
+                "id": str(article.id),
+                "directStreamIds": [f"feed/{article.feed_id}"],
+                "timestampUsec": unix_timestamp_microseconds(article.date),
+            }
+        )
 
     return {
-        "itemRefs": [{"id": item_id} for item_id in item_ids],
+        "itemRefs": item_refs,
     }
 
 

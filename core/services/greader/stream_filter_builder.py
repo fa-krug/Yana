@@ -129,7 +129,8 @@ class DefaultFilter(StreamFilter):
 
     def build_conditions(self, stream_id: str, user_id: int) -> Tuple[Optional[Q], bool]:
         # All articles from accessible feeds (user's + shared)
-        return Q(feed__user_id__in=[user_id, None]), True
+        # User access control is applied centrally in build_filter()
+        return Q(), True
 
 
 class StreamFilterOrchestrator:
@@ -170,8 +171,9 @@ class StreamFilterOrchestrator:
                 if conditions is None:
                     return None, needs_access
 
-                # Always add feed access control unless filter explicitly handles it
+                # Always add feed access and user ownership control
                 conditions &= Q(feed__enabled=True)
+                conditions &= Q(feed__user_id__in=[user_id, None])
 
                 return conditions, needs_access
         # Fallback: return None (should not happen with DefaultFilter as last option)
