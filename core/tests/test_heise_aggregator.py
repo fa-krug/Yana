@@ -43,6 +43,21 @@ class TestHeiseAggregator:
         assert len(filtered) == 1
         assert filtered[0]["name"] == "Normal News"
 
+    def test_filter_articles_skips_bilder_der_woche(self, heise_agg):
+        articles = [
+            {"name": "Normal News", "date": None},
+            {"name": "Die Bilder der Woche (KW 15)", "date": None},
+            {"name": "die Bilder der Woche in der Übersicht", "date": None},
+        ]
+        with patch(
+            "core.aggregators.website.FullWebsiteAggregator.filter_articles",
+            side_effect=lambda x: x,
+        ):
+            filtered = heise_agg.filter_articles(articles)
+
+        assert len(filtered) == 1
+        assert filtered[0]["name"] == "Normal News"
+
     def test_enrich_articles_skips_event_sourcing(self, heise_agg):
         articles = [
             {"name": "A", "content": "normal content"},
