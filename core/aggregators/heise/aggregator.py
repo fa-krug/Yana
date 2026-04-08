@@ -138,7 +138,8 @@ class HeiseAggregator(FullWebsiteAggregator):
         filtered = []
         for article in articles:
             title = article.get("name", "")
-            if any(term in title for term in skip_terms):
+            title_lower = title.lower()
+            if any(term.lower() in title_lower for term in skip_terms):
                 self.logger.info(f"[filter_articles] Skipping filtered content by title: {title}")
                 continue
             filtered.append(article)
