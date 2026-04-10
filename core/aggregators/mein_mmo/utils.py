@@ -13,8 +13,8 @@ def extract_header_image_url(html: str, logger: logging.Logger) -> Optional[str]
     Extract header image URL from Mein-MMO article.
 
     Strategy:
-    1. Look for image with width="16" height="9" (aspect ratio marker)
-    2. Fallback: First image in div#gp-page-header-inner
+    1. Look for img.wp-post-image inside div.post-thumbnail in header.entry-header
+    2. Fallback: First img.wp-post-image anywhere on the page
 
     Args:
         html: Full HTML of article page
@@ -26,34 +26,35 @@ def extract_header_image_url(html: str, logger: logging.Logger) -> Optional[str]
     logger.debug("[extract_header_image_url] Starting header image extraction")
     soup = BeautifulSoup(html, "html.parser")
 
-    # Strategy 1: Find 16:9 aspect ratio image
-    logger.debug("[extract_header_image_url] Strategy 1: Looking for img[width='16'][height='9']")
-    header_img = soup.find("img", attrs={"width": "16", "height": "9"})
-    if isinstance(header_img, Tag):
-        src = get_attr_str(header_img, "src")
-        if src:
-            logger.info(f"[extract_header_image_url] Found header image (16:9): {src}")
-            return src
-        else:
-            logger.debug("[extract_header_image_url] Strategy 1: Image found but no src attribute")
-
-    # Strategy 2: Header div image
-    logger.debug("[extract_header_image_url] Strategy 2: Looking in div#gp-page-header-inner")
-    header_div = soup.select_one("div#gp-page-header-inner")
-    if isinstance(header_div, Tag):
-        logger.debug("[extract_header_image_url] Header div found, searching for img")
-        img = header_div.find("img")
+    # Strategy 1: Find wp-post-image inside the entry header's post-thumbnail
+    logger.debug(
+        "[extract_header_image_url] Strategy 1: Looking for img.wp-post-image in div.post-thumbnail"
+    )
+    post_thumbnail = soup.select_one("header.entry-header div.post-thumbnail")
+    if isinstance(post_thumbnail, Tag):
+        img = post_thumbnail.find("img", class_="wp-post-image")
         if isinstance(img, Tag):
             src = get_attr_str(img, "src")
             if src:
-                logger.info(f"[extract_header_image_url] Found header image from header div: {src}")
+                logger.info(
+                    f"[extract_header_image_url] Found header image in post-thumbnail: {src}"
+                )
                 return src
             else:
-                logger.debug("[extract_header_image_url] Image in header div has no src attribute")
+                logger.debug(
+                    "[extract_header_image_url] Strategy 1: Image found but no src attribute"
+                )
+
+    # Strategy 2: Fallback to first wp-post-image on page
+    logger.debug("[extract_header_image_url] Strategy 2: Looking for first img.wp-post-image")
+    header_img = soup.select_one("img.wp-post-image")
+    if isinstance(header_img, Tag):
+        src = get_attr_str(header_img, "src")
+        if src:
+            logger.info(f"[extract_header_image_url] Found header image (wp-post-image): {src}")
+            return src
         else:
-            logger.debug("[extract_header_image_url] No img found in header div")
-    else:
-        logger.debug("[extract_header_image_url] div#gp-page-header-inner not found")
+            logger.debug("[extract_header_image_url] Strategy 2: Image found but no src attribute")
 
     logger.debug("[extract_header_image_url] No header image found using any strategy")
     return None

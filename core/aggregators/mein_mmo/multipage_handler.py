@@ -14,9 +14,7 @@ def detect_pagination(html: str, logger: logging.Logger) -> Set[int]:
     Detect page numbers from pagination elements.
 
     Looks for:
-    - nav.navigation.pagination
-    - div.gp-pagination
-    - ul.page-numbers
+    - div.page-links (new layout: contains a.post-page-numbers and span.post-page-numbers)
 
     Args:
         html: HTML content to parse
@@ -31,48 +29,29 @@ def detect_pagination(html: str, logger: logging.Logger) -> Set[int]:
     logger.debug("Starting pagination detection")
 
     # Try to find pagination within the content area first to avoid header/footer pagination
-    content_div = soup.select_one("div.gp-entry-content")
+    content_div = soup.select_one("div.entry-content")
 
     pagination = None
     if content_div:
-        pagination = (
-            content_div.select_one("div.gp-pagination-numbers")
-            or content_div.select_one("ul.page-numbers")
-            or content_div.select_one("nav.navigation.pagination")
-            or content_div.select_one("div.gp-pagination")
-        )
+        pagination = content_div.select_one("div.page-links")
 
     # Fallback to global search if not found in content div
     if not pagination:
-        pagination = (
-            soup.select_one("div.gp-pagination-numbers")
-            or soup.select_one("nav.navigation.pagination")
-            or soup.select_one("div.gp-pagination")
-            or soup.select_one("ul.page-numbers")
-        )
+        pagination = soup.select_one("div.page-links")
 
     if not pagination:
         logger.debug("No pagination container found, assuming single page")
         return page_numbers
 
-    logger.debug(f"Found pagination container: {pagination.name}")
+    logger.debug(f"Found pagination container: {pagination.name}.{'.'.join(pagination.get('class', []))}")
 
-    # Extract page numbers from links
+    # Extract page numbers from links (a.post-page-numbers)
     logger.debug("Extracting page numbers from links")
-    for link in pagination.select("a.page-numbers, a.post-page-numbers"):
-        # Try link text
+    for link in pagination.select("a.post-page-numbers"):
         text = link.get_text(strip=True)
         if text.isdigit():
             page_numbers.add(int(text))
             logger.debug(f"Found page number from link text: {text}")
-
-        # Try nested span first
-        nested_span = link.find("span", class_="page-numbers")
-        if nested_span:
-            span_text = nested_span.get_text(strip=True)
-            if span_text.isdigit():
-                page_numbers.add(int(span_text))
-                logger.debug(f"Found page number from nested span in link: {span_text}")
 
         # Try URL pattern: /article-name/2/
         href = get_attr_str(link, "href")
@@ -83,21 +62,13 @@ def detect_pagination(html: str, logger: logging.Logger) -> Set[int]:
                 page_numbers.add(page_num)
                 logger.debug(f"Found page number from URL pattern: {page_num}")
 
-    # Extract current page from spans (direct and nested)
-    logger.debug("Extracting page numbers from spans")
-    for span in pagination.select("span.page-numbers, span.post-page-numbers, span.current"):
+    # Extract current page from spans (span.post-page-numbers.current)
+    logger.debug("Extracting current page from spans")
+    for span in pagination.select("span.post-page-numbers"):
         text = span.get_text(strip=True)
         if text.isdigit():
             page_numbers.add(int(text))
             logger.debug(f"Found page number from span: {text}")
-
-        # Also check for nested span.page-numbers within span.post-page-numbers
-        nested_span = span.find("span", class_="page-numbers")
-        if nested_span:
-            nested_text = nested_span.get_text(strip=True)
-            if nested_text.isdigit():
-                page_numbers.add(int(nested_text))
-                logger.debug(f"Found page number from nested span in span: {nested_text}")
 
     sorted_pages = sorted(page_numbers)
     logger.info(f"Pagination detection complete: {len(page_numbers)} pages found - {sorted_pages}")
@@ -152,7 +123,7 @@ def fetch_all_pages(
 
             # Extract content div
             soup = BeautifulSoup(page_html, "html.parser")
-            content_div = soup.select_one("div.gp-entry-content")
+            content_div = soup.select_one("div.entry-content")
 
             if content_div:
                 content_html = str(content_div)

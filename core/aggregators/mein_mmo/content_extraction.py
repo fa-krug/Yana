@@ -41,7 +41,7 @@ def extract_mein_mmo_content(
     soup = BeautifulSoup(html, "html.parser")
 
     # Find all content divs (multi-page articles have multiple)
-    content_divs = soup.select("div.gp-entry-content")
+    content_divs = soup.select("div.entry-content")
     logger.debug(f"Found {len(content_divs)} content div(s)")
 
     if not content_divs:
@@ -53,7 +53,7 @@ def extract_mein_mmo_content(
         logger.info(f"Multi-page article detected: combining {len(content_divs)} content divs")
         # Create wrapper div
         wrapper = soup.new_tag("div")
-        wrapper["class"] = "gp-entry-content"
+        wrapper["class"] = "entry-content"
         for div in content_divs:
             # Move all children to wrapper
             for child in list(div.children):
