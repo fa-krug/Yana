@@ -53,16 +53,16 @@ class MeinMmoAggregator(FullWebsiteAggregator):
         }
 
     # Mein-MMO specific selectors
-    content_selector = "div.gp-entry-content"
+    content_selector = "div.entry-content"
 
     selectors_to_remove = [
         "div.wp-block-mmo-recirculation-box",
         "div.reading-position-indicator-end",
         "label.toggle",
         "a.wp-block-mmo-content-box",
-        "ul.page-numbers",
-        ".post-page-numbers",
-        "#ftwp-container-outer",
+        "div.page-links",
+        "div.sources-wrapper",
+        "div.feedback-box",
         "div.wp-block-wbd-affiliate-widget",
         "script",
         "style",

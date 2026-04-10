@@ -13,7 +13,7 @@ class TestMeinMmoAggregator:
 
     def test_extract_content_removes_affiliate_widget(self, mein_mmo_agg):
         html = """
-<div class="gp-entry-content">
+<div class="entry-content">
 <p>Some content</p>
 <div class="wp-block-wbd-affiliate-widget swiper js-ga-view"><div class="products swiper-wrapper">
 <a class="wp-block-wbd-affiliate-widget-product product swiper-slide js-ga" href="https://ndirect.ppro.de/click/pBy1" rel="noopener nofollow sponsored" target="_blank"><div class="image"><img alt="HBO Max mit WaipuTV" decoding="async" src="https://images-toolbox.webediagaming.de/wp-content/uploads/2026/01/hbo-max-waipu.jpg"/></div><div class="name">HBO Max mit WaipuTV</div><div class="descript">HBO MAX mit über 300 HD-Sendern und mehr als 40.000 zusätzlich abrufbaren Inhalten.</div><div class="prices"><span class="price">Ab 17,99 €</span></div><button class="button">zu Waipu</button></a>
