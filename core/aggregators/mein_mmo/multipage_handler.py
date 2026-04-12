@@ -43,7 +43,9 @@ def detect_pagination(html: str, logger: logging.Logger) -> Set[int]:
         logger.debug("No pagination container found, assuming single page")
         return page_numbers
 
-    logger.debug(f"Found pagination container: {pagination.name}.{'.'.join(pagination.get('class', []))}")
+    logger.debug(
+        f"Found pagination container: {pagination.name}.{'.'.join(pagination.get('class', []))}"
+    )
 
     # Extract page numbers from links (a.post-page-numbers)
     logger.debug("Extracting page numbers from links")
