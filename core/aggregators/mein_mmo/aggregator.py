@@ -57,6 +57,7 @@ class MeinMmoAggregator(FullWebsiteAggregator):
 
     selectors_to_remove = [
         "div.wp-block-mmo-recirculation-box",
+        "div.wp-block-mmo-hub-box",
         "div.reading-position-indicator-end",
         "label.toggle",
         "a.wp-block-mmo-content-box",
