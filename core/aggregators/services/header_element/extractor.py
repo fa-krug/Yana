@@ -8,6 +8,9 @@ Tries strategies in specific order (RedditEmbed BEFORE RedditPost) until one suc
 import logging
 
 from ...exceptions import ArticleSkipError
+from ..image_extraction.compression import compress_and_encode_image
+from ..image_extraction.domain_overrides import get_override_image_url
+from ..image_extraction.fetcher import fetch_single_image
 from .context import HeaderElementContext, HeaderElementData
 from .strategies import (
     GenericImageStrategy,
@@ -73,6 +76,10 @@ class HeaderElementExtractor:
 
         logger.debug(f"HeaderElementExtractor: Starting extraction from {url}")
 
+        override_result = self._build_override_data(url)
+        if override_result is not None:
+            return override_result
+
         context = HeaderElementContext(url=url, alt=alt, user_id=user_id)
 
         # Try each strategy in order
@@ -110,3 +117,39 @@ class HeaderElementExtractor:
         # All strategies tried, none succeeded
         logger.debug("HeaderElementExtractor: All strategies failed")
         return None
+
+    @staticmethod
+    def _build_override_data(url: str) -> HeaderElementData | None:
+        """Return HeaderElementData built from a domain override, or None."""
+        override_url = get_override_image_url(url)
+        if not override_url:
+            return None
+
+        logger.debug(
+            f"HeaderElementExtractor: Using domain override image {override_url} for {url}"
+        )
+        image_result = fetch_single_image(override_url)
+        if not image_result:
+            logger.warning(
+                f"HeaderElementExtractor: Domain override fetch failed for {override_url}, "
+                "falling back to normal extraction"
+            )
+            return None
+
+        encode_result = compress_and_encode_image(
+            image_result["imageData"],
+            image_result["contentType"],
+            is_header=True,
+        )
+        if not encode_result:
+            logger.warning(
+                f"HeaderElementExtractor: Failed to encode override image {override_url}"
+            )
+            return None
+
+        return HeaderElementData(
+            image_bytes=image_result["imageData"],
+            content_type=image_result["contentType"],
+            base64_data_uri=encode_result["dataUri"],
+            image_url=override_url,
+        )
