@@ -4,6 +4,7 @@ import logging
 import re
 from typing import Optional
 
+from core.aggregators.services.image_extraction.domain_overrides import get_override_image_url
 from core.aggregators.services.image_extraction.extractor import ImageExtractor
 
 from ..utils.twitter import is_twitter_url
@@ -134,6 +135,16 @@ def extract_header_image_url(post: RedditPostData) -> Optional[str]:
         Header image URL or None
     """
     try:
+        # Priority -1: Domain image overrides take precedence over everything else.
+        # When the linked URL matches a configured override (e.g. Nintendo support
+        # pages) we use the configured brand image instead of Reddit's auto-generated
+        # preview, which is often an animated GIF placeholder.
+        if post.url:
+            decoded_post_url = decode_html_entities_in_url(post.url)
+            override_url = get_override_image_url(decoded_post_url)
+            if override_url:
+                return override_url
+
         # Priority 0: Check for YouTube videos (highest priority)
         # Note: v.redd.it videos are handled as images via thumbnail/preview extraction
         # to ensure we display an image, not a vxreddit.com HTML link

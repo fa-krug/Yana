@@ -12,6 +12,8 @@ import requests
 from bs4 import BeautifulSoup
 
 from ...exceptions import ArticleSkipError
+from .domain_overrides import get_override_image_url
+from .fetcher import fetch_single_image
 from .strategies import (
     DirectImageStrategy,
     ImageExtractionContext,
@@ -77,6 +79,18 @@ class ImageExtractor:
             return None
 
         logger.debug(f"ImageExtractor: Starting extraction from {url}")
+
+        override_url = get_override_image_url(url)
+        if override_url:
+            logger.debug(f"ImageExtractor: Using domain override image {override_url} for {url}")
+            override_result = fetch_single_image(override_url)
+            if override_result:
+                override_result["imageUrl"] = override_url
+                return override_result
+            logger.warning(
+                f"ImageExtractor: Domain override fetch failed for {override_url}, "
+                "falling back to normal extraction"
+            )
 
         context = ImageExtractionContext(url=url, is_header_image=is_header_image)
 
