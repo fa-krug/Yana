@@ -14,6 +14,13 @@ class Command(BaseCommand):
         # Ensure connection is established (triggers init_connection_state)
         connection.ensure_connection()
 
+        # Check transaction mode (should be IMMEDIATE to avoid "database is locked"
+        # errors under concurrent writers). This is a connection OPTION, not a PRAGMA.
+        transaction_mode = connection.settings_dict.get("OPTIONS", {}).get("transaction_mode")
+        expected_immediate = (transaction_mode or "").upper() == "IMMEDIATE"
+        status = self.style.SUCCESS("✓") if expected_immediate else self.style.ERROR("✗")
+        self.stdout.write(f"{status} Transaction mode: {transaction_mode} (expected: IMMEDIATE)")
+
         with connection.cursor() as cursor:
             # Check journal mode (should be WAL)
             cursor.execute("PRAGMA journal_mode")
