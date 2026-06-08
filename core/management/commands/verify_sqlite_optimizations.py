@@ -19,9 +19,7 @@ class Command(BaseCommand):
         transaction_mode = connection.settings_dict.get("OPTIONS", {}).get("transaction_mode")
         expected_immediate = (transaction_mode or "").upper() == "IMMEDIATE"
         status = self.style.SUCCESS("✓") if expected_immediate else self.style.ERROR("✗")
-        self.stdout.write(
-            f"{status} Transaction mode: {transaction_mode} (expected: IMMEDIATE)"
-        )
+        self.stdout.write(f"{status} Transaction mode: {transaction_mode} (expected: IMMEDIATE)")
 
         with connection.cursor() as cursor:
             # Check journal mode (should be WAL)
