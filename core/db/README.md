@@ -75,6 +75,22 @@ The custom backend extends Django's default SQLite backend to automatically appl
   - Waits for locks to be released instead of failing immediately
   - Essential for multi-threaded applications
 
+### 10. Immediate Transaction Mode
+- **OPTION**: `transaction_mode="IMMEDIATE"` (a Django connection option, not a PRAGMA)
+- **Benefits**:
+  - The key fix for "database is locked" (`SQLITE_BUSY`) errors under concurrent
+    writers (multiple Django Q2 workers + web requests)
+  - Acquires the write lock at the *start* of a write transaction (`BEGIN IMMEDIATE`)
+    instead of lazily upgrading from a read lock (`BEGIN`/DEFERRED)
+- **Why it matters**: In WAL mode with DEFERRED transactions, a connection first
+  takes a read lock and only upgrades to a write lock on its first write. If two
+  connections both hold a read lock and try to upgrade, SQLite returns
+  `SQLITE_BUSY` *immediately* to break the deadlock — **ignoring `busy_timeout`**.
+  With IMMEDIATE, the write lock is taken up front, so `busy_timeout` is honored
+  and writers queue instead of failing.
+- **Note**: Supported since Django 5.1. Read-only (autocommit `SELECT`) queries
+  are unaffected and still run concurrently.
+
 ## Configuration
 
 The optimized backend is configured in `yana/settings.py`:
@@ -87,6 +103,7 @@ DATABASES = {
         "OPTIONS": {
             "timeout": 30,  # Connection timeout in seconds
             "check_same_thread": False,  # Required for Django Q2 multi-threading
+            "transaction_mode": "IMMEDIATE",  # Avoids "database is locked" on concurrent writes
         },
     }
 }
@@ -233,10 +250,14 @@ This reclaims space and can improve performance.
 ## Troubleshooting
 
 ### "database is locked" errors
+- Ensure `transaction_mode="IMMEDIATE"` is set in OPTIONS (primary fix for
+  concurrent-writer lock errors; busy_timeout alone does NOT cover the
+  read-to-write upgrade deadlock case)
 - Increase `busy_timeout` in PRAGMA settings (currently 30s)
 - Check for long-running transactions
 - Ensure `check_same_thread=False` in OPTIONS
 - Verify WAL mode is enabled (allows concurrent readers)
+- Consider lowering Django Q2 `workers` if write contention remains high
 
 ### High memory usage
 - Reduce `cache_size` and `mmap_size` values in `base.py`

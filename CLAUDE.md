@@ -325,6 +325,11 @@ Custom backend at `core/db/backends/sqlite3/` with performance PRAGMAs:
 | temp_store | MEMORY | Faster temp operations |
 | busy_timeout | 30000ms | Prevent lock errors |
 
+Plus the `transaction_mode="IMMEDIATE"` connection OPTION (in `settings.py`,
+not a PRAGMA) — required to avoid "database is locked" (`SQLITE_BUSY`) errors
+under concurrent writers, since `busy_timeout` alone does not cover the WAL
+read-to-write lock-upgrade deadlock.
+
 Verify with: `python3 manage.py verify_sqlite_optimizations`
 
 ## Development Workflow

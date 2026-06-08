@@ -158,6 +158,21 @@ DATABASES = {
             # Check same thread (set to False for better performance in multi-threaded apps)
             # Note: Django Q2 uses multiple threads, so we set this to False
             "check_same_thread": False,
+            # Use BEGIN IMMEDIATE for write transactions instead of the default
+            # DEFERRED mode. This is the key fix for "database is locked"
+            # (SQLITE_BUSY) errors under concurrent writers (e.g. multiple
+            # Django Q2 workers + web requests).
+            #
+            # In WAL mode with DEFERRED transactions, a connection first takes a
+            # read lock and only upgrades to a write lock on its first write.
+            # If two connections both hold a read lock and try to upgrade, SQLite
+            # returns SQLITE_BUSY *immediately* to avoid a deadlock -- ignoring
+            # busy_timeout entirely. IMMEDIATE acquires the write lock up front,
+            # so busy_timeout is honored and connections queue instead of failing.
+            #
+            # Supported since Django 5.1. See:
+            # https://docs.djangoproject.com/en/stable/ref/databases/#sqlite-isolation
+            "transaction_mode": "IMMEDIATE",
         },
     }
 }
