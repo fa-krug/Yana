@@ -8,6 +8,7 @@ from typing import List, Optional
 from bs4 import BeautifulSoup, Tag
 
 from ..utils import get_attr_str
+from ..utils.bluesky import build_bluesky_embed_html, is_bluesky_url
 from ..utils.youtube import get_youtube_proxy_url
 
 
@@ -198,6 +199,45 @@ class RedditEmbedProcessor(EmbedProcessorStrategy):
         return p
 
 
+class BlueskyEmbedProcessor(EmbedProcessorStrategy):
+    """Process Bluesky embed figures."""
+
+    def can_handle(self, figure: Tag) -> bool:
+        # Look for Bluesky links
+        for link in figure.find_all("a", href=True):
+            if is_bluesky_url(get_attr_str(link, "href")):
+                return True
+        return False
+
+    def process(self, figure: Tag, soup: BeautifulSoup, logger: logging.Logger) -> Optional[Tag]:
+        # Find the Bluesky post link
+        bluesky_link = None
+        for link in figure.find_all("a", href=True):
+            href = get_attr_str(link, "href")
+            if is_bluesky_url(href):
+                bluesky_link = href
+                break
+
+        if not bluesky_link:
+            return None
+
+        # Build a rich embed via the public Bluesky API
+        embed_html = build_bluesky_embed_html(bluesky_link)
+        if not embed_html:
+            logger.debug(f"Could not build Bluesky embed for {bluesky_link}")
+            return None
+
+        # Parse the embed HTML into a wrapper element
+        fragment = BeautifulSoup(embed_html, "html.parser")
+        wrapper = soup.new_tag("div")
+        wrapper["data-sanitized-class"] = "bluesky-embed"
+        for child in list(fragment.children):
+            wrapper.append(child)
+
+        logger.debug(f"Converted Bluesky embed: {bluesky_link}")
+        return wrapper
+
+
 class TikTokEmbedProcessor(EmbedProcessorStrategy):
     """Process TikTok embed figures."""
 
@@ -331,6 +371,7 @@ def process_embeds(content: Tag, logger: logging.Logger) -> None:
         YouTubeEmbedProcessor(),
         TwitterEmbedProcessor(),
         RedditEmbedProcessor(),
+        BlueskyEmbedProcessor(),
         TikTokEmbedProcessor(),
         YouTubeFallbackProcessor(),  # Fallback for YouTube links
     ]
