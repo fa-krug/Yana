@@ -23,7 +23,7 @@ def extract_mein_mmo_content(
     2. Find all content divs (multi-page support)
     3. Combine content from multiple pages
     4. Remove unwanted elements
-    5. Process embeds (YouTube, Twitter, Reddit)
+    5. Process embeds (YouTube, Twitter, Reddit, Bluesky)
     6. Remove empty elements
     7. Clean data attributes
     8. Sanitize class names
@@ -90,7 +90,7 @@ def extract_mein_mmo_content(
     logger.debug(f"Removed pagination markers, total removed: {removed_count}")
 
     # Process embeds
-    logger.debug("Processing embeds (YouTube, Twitter, Reddit)")
+    logger.debug("Processing embeds (YouTube, Twitter, Reddit, Bluesky)")
     process_embeds(content, logger)
 
     # Remove empty paragraphs and divs
